@@ -184,7 +184,7 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
       <div className="screen-body">
         {tab === 'curse' && <RidesScreen profile={profile} isOwner={isOwner} lang={lang} />}
         {tab === 'licitatii' && isOwner && <BiddingScreen profile={profile} lang={lang} />}
-        {tab === 'castiguri' && isOwner && <PlaceholderScreen title={t('tabEarnings', lang)} note={t('earningsPlaceholder', lang)} />}
+        {tab === 'castiguri' && isOwner && <EarningsScreen profile={profile} lang={lang} />}
         {tab === 'profil' && (
           <ProfileScreen
             session={session}
@@ -486,6 +486,7 @@ function RideDetailScreen({ order, isOwner, lang, onBack, onStatusChange }) {
   const mapInstanceRef = useRef(null)
   const pickupCoords = useGeocode(order.pickup_address)
   const deliveryCoords = useGeocode(order.delivery_address)
+  const companyName = useCompanyName(order.created_by)
 
   useEffect(() => {
     if (!mapRef.current || mapInstanceRef.current) return
@@ -544,6 +545,12 @@ function RideDetailScreen({ order, isOwner, lang, onBack, onStatusChange }) {
       <div className="live-map">
         <div ref={mapRef} style={{ width: '100%', height: '100%' }} />
       </div>
+
+      {companyName && (
+        <div className="info-card">
+          <div className="info-card-head">🏢 {companyName}</div>
+        </div>
+      )}
 
       {order.status === 'assigned' && !confirmedAt && (
         <LegWorkflow order={order} leg={leg} lang={lang} startedAt={startedAt} arrivedAt={arrivedAt} onStatusChange={onStatusChange} />
@@ -918,6 +925,134 @@ function isToday(dateStr) {
   if (!dateStr) return false
   const today = new Date().toISOString().slice(0, 10)
   return dateStr === today
+}
+
+function getWeekStart(dateStr) {
+  const d = new Date(dateStr)
+  const day = d.getDay() // 0=Sun..6=Sat
+  const diff = day === 0 ? -6 : 1 - day // back to Monday
+  const monday = new Date(d)
+  monday.setDate(d.getDate() + diff)
+  monday.setHours(0, 0, 0, 0)
+  return monday
+}
+
+function formatDateShort(d) {
+  return d.toLocaleDateString(undefined, { day: '2-digit', month: '2-digit' })
+}
+
+function EarningsScreen({ profile, lang }) {
+  const [orders, setOrders] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [summary, setSummary] = useState(null)
+
+  useEffect(() => {
+    if (!profile?.id) { setLoading(false); return }
+    supabase
+      .from('orders')
+      .select('*')
+      .eq('assigned_driver_id', profile.id)
+      .eq('status', 'done')
+      .then(({ data, error }) => {
+        if (error) console.error('earnings fetch error:', error.message)
+        setOrders(data || [])
+        setLoading(false)
+      })
+  }, [profile?.id])
+
+  if (loading) return <PlaceholderScreen title={t('tabEarnings', lang)} note={t('loadingRides', lang)} />
+
+  const withDate = orders
+    .map((o) => ({ ...o, _refDate: o.delivery_confirmed_at || o.delivery_date }))
+    .filter((o) => o._refDate)
+
+  const currentWeekStart = getWeekStart(new Date().toISOString())
+  const byWeek = new Map()
+  withDate.forEach((o) => {
+    const ws = getWeekStart(o._refDate)
+    const key = ws.toISOString()
+    if (!byWeek.has(key)) byWeek.set(key, { start: ws, orders: [] })
+    byWeek.get(key).orders.push(o)
+  })
+
+  const currentKey = currentWeekStart.toISOString()
+  const currentWeek = byWeek.get(currentKey) || { start: currentWeekStart, orders: [] }
+  const otherWeeks = [...byWeek.entries()]
+    .filter(([key]) => key !== currentKey)
+    .map(([, v]) => v)
+    .sort((a, b) => b.start - a.start)
+
+  const currentTotal = currentWeek.orders.reduce((sum, o) => sum + (o.estimated_price || 0), 0)
+  const weekEnd = new Date(currentWeekStart)
+  weekEnd.setDate(weekEnd.getDate() + 6)
+
+  function openSummary(o) {
+    const net = o.estimated_price || 0
+    const vat = net * 0.19
+    setSummary({
+      id: o.order_number || o.reference || o.id.slice(0, 8),
+      route: `${o.pickup_address} → ${o.delivery_address}`,
+      km: o.km,
+      net,
+      vat,
+    })
+  }
+
+  return (
+    <div className="rides-list">
+      <div className="earn-hero">
+        <div className="lbl">{t('earningsWeekLabel', lang)}</div>
+        <div className="amt">{currentTotal.toFixed(2)} €</div>
+        <div className="row">
+          <div>{t('earningsPeriod', lang)}<b>{formatDateShort(currentWeekStart)}–{formatDateShort(weekEnd)}</b></div>
+          <div>{t('tabRides', lang)}<b>{currentWeek.orders.length}</b></div>
+        </div>
+      </div>
+
+      <div className="section-heading">{t('earningsThisWeek', lang)} <span className="count-pill">{currentWeek.orders.length}</span></div>
+      {currentWeek.orders.length === 0 ? (
+        <div className="empty-note">{t('noRides', lang)}</div>
+      ) : (
+        currentWeek.orders.map((o) => (
+          <div className="hist-item" key={o.id} onClick={() => openSummary(o)}>
+            <div><div className="id">{o.order_number || o.reference || o.id.slice(0, 8)}</div>{o.pickup_address} → {o.delivery_address}</div>
+            <div className="p">{(o.estimated_price || 0).toFixed(2)} €</div>
+          </div>
+        ))
+      )}
+
+      {otherWeeks.length > 0 && (
+        <>
+          <div className="section-heading">{t('earningsPreviousWeeks', lang)}</div>
+          {otherWeeks.map((w) => {
+            const end = new Date(w.start)
+            end.setDate(end.getDate() + 6)
+            const total = w.orders.reduce((sum, o) => sum + (o.estimated_price || 0), 0)
+            return (
+              <div className="hist-item" key={w.start.toISOString()} style={{ opacity: 0.75 }}>
+                <div><div className="id">{formatDateShort(w.start)}–{formatDateShort(end)}</div>{w.orders.length} {t('tabRides', lang)}</div>
+                <div className="p">{total.toFixed(2)} €</div>
+              </div>
+            )
+          })}
+        </>
+      )}
+
+      {summary && (
+        <div className="filter-overlay show" onClick={(e) => { if (e.target === e.currentTarget) setSummary(null) }}>
+          <div className="filter-panel">
+            <h4>{summary.id}</h4>
+            <div className="ride-card2-route" style={{ margin: '0 0 14px' }}>{summary.route}</div>
+            <div className="info-row"><span className="k">{t('kmLabel', lang)}</span><span className="v">{summary.km ? `${summary.km} km` : '—'}</span></div>
+            <div className="info-row"><span className="k">{t('priceLabel', lang)}</span><span className="v">{summary.net.toFixed(2)} €</span></div>
+            <div className="info-row"><span className="k">MwSt (19%)</span><span className="v">{summary.vat.toFixed(2)} €</span></div>
+            <div className="info-row"><span className="k">Gesamt</span><span className="v price">{(summary.net + summary.vat).toFixed(2)} €</span></div>
+            <button className="filter-apply" style={{ marginTop: 16 }} onClick={() => setSummary(null)}>{t('back', lang)}</button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
 }
 
 function BiddingScreen({ profile, lang }) {

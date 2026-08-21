@@ -16,6 +16,7 @@ body {
   font-family: 'IBM Plex Sans', sans-serif;
   background: var(--cream);
   color: var(--text);
+  font-size: 15px;
 }
 
 .phone-shell {
@@ -718,11 +719,11 @@ body {
   font-family: 'Oswald', sans-serif;
   font-weight: 600;
   color: var(--orange);
-  font-size: 14px;
+  font-size: 15.5px;
 }
 
 .ride-card2-route {
-  font-size: 12.5px;
+  font-size: 13.5px;
   color: var(--text-soft);
   margin: 2px 0 10px 38px;
 }
@@ -872,8 +873,8 @@ body {
   flex: 1;
   background: none;
   border: none;
-  padding: 8px 4px 10px;
-  font-size: 12.5px;
+  padding: 9px 4px 11px;
+  font-size: 13.5px;
   font-weight: 600;
   color: var(--text-soft);
   cursor: pointer;
@@ -992,9 +993,11 @@ body {
   background: none;
   border: none;
   color: #fff;
-  font-size: 19px;
   cursor: pointer;
-  padding: 2px 4px;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .menu-overlay {
@@ -1014,7 +1017,7 @@ body {
   top: 0;
   right: 0;
   bottom: 0;
-  width: 260px;
+  width: 270px;
   max-width: 80vw;
   background: #fff;
   box-shadow: -6px 0 20px rgba(15,34,64,.25);
@@ -1034,28 +1037,36 @@ body {
 
 .menu-header-name {
   font-family: 'Oswald', sans-serif;
-  font-size: 14px;
+  font-size: 15px;
   color: var(--navy);
 }
 
 .menu-item {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 13px 20px;
+  gap: 14px;
+  padding: 14px 20px;
   background: none;
   border: none;
   text-align: left;
-  font-size: 13.5px;
+  font-size: 14.5px;
   font-weight: 500;
   color: var(--text);
   cursor: pointer;
 }
 
 .menu-item .ic {
-  font-size: 17px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 22px;
-  text-align: center;
+  color: var(--navy);
+  opacity: .75;
+}
+
+.menu-item.active .ic {
+  color: var(--orange);
+  opacity: 1;
 }
 
 .menu-item.active {
@@ -1274,7 +1285,7 @@ body {
 
 .bid-order-id {
   font-family: 'IBM Plex Mono', monospace;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-soft);
   margin-bottom: 10px;
 }
@@ -1621,4 +1632,23 @@ textarea.bid-input2 {
   font-weight: 600;
   font-family: 'IBM Plex Sans', sans-serif;
   background: #fff;
+}
+
+.new-order-toast {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--navy);
+  color: #fff;
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-size: 13.5px;
+  font-weight: 600;
+  margin-bottom: 14px;
+  animation: toastSlide .3s ease;
+}
+
+@keyframes toastSlide {
+  from { transform: translateY(-10px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
 }

@@ -1425,3 +1425,111 @@ textarea.bid-input2 {
   opacity: .6;
   cursor: not-allowed;
 }
+
+/* --- earnings screen --- */
+
+.earn-hero {
+  background: var(--navy);
+  border-radius: 16px;
+  padding: 18px;
+  color: #fff;
+  margin-bottom: 16px;
+  background-image: radial-gradient(circle at 90% -10%, rgba(255,122,41,.35), transparent 60%);
+}
+
+.earn-hero .lbl {
+  font-size: 11px;
+  color: #9FB0C8;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  font-family: 'Oswald', sans-serif;
+}
+
+.earn-hero .amt {
+  font-family: 'Oswald', sans-serif;
+  font-size: 30px;
+  font-weight: 600;
+  margin-top: 4px;
+}
+
+.earn-hero .row {
+  display: flex;
+  gap: 18px;
+  margin-top: 14px;
+}
+
+.earn-hero .row div {
+  font-size: 12px;
+  color: #C7D0DE;
+}
+
+.earn-hero .row b {
+  display: block;
+  color: #fff;
+  font-size: 15px;
+  font-family: 'Oswald', sans-serif;
+  margin-top: 2px;
+}
+
+.hist-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.hist-item .id {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  color: var(--text-soft);
+}
+
+.hist-item .p {
+  font-family: 'Oswald', sans-serif;
+  font-weight: 600;
+  color: #2E7D5B;
+}
+
+.filter-apply {
+  width: 100%;
+  background: var(--orange);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 13px;
+  font-family: 'Oswald', sans-serif;
+  font-size: 13.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.filter-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15,34,64,.45);
+  z-index: 80;
+  display: none;
+  align-items: flex-end;
+}
+
+.filter-overlay.show {
+  display: flex;
+}
+
+.filter-panel {
+  background: #fff;
+  width: 100%;
+  border-radius: 20px 20px 0 0;
+  padding: 18px 18px 22px;
+}
+
+.filter-panel h4 {
+  font-family: 'Oswald', sans-serif;
+  color: var(--navy);
+  margin: 0 0 12px;
+  font-size: 14px;
+}

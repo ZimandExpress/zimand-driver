@@ -216,12 +216,24 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
   )
 }
 
+function statusClass(status) {
+  switch (status) {
+    case 'open': return 'new'
+    case 'assigned': return 'progress'
+    case 'done': return 'done'
+    case 'cancelled': return 'cancelled'
+    default: return 'new'
+  }
+}
+
 function statusLabel(status, lang) {
-  if (!status) return t('statusNew', lang)
-  const s = status.toLowerCase()
-  if (s.includes('deliver') || s.includes('done') || s.includes('complet')) return t('statusDone', lang)
-  if (s.includes('progress') || s.includes('transit') || s.includes('pickup')) return t('statusInProgress', lang)
-  return t('statusNew', lang)
+  switch (status) {
+    case 'open': return t('statusOpen', lang)
+    case 'assigned': return t('statusAssigned', lang)
+    case 'done': return t('statusDone', lang)
+    case 'cancelled': return t('statusCancelled', lang)
+    default: return t('statusOpen', lang)
+  }
 }
 
 function RidesScreen({ profile, lang }) {
@@ -294,7 +306,7 @@ function RidesScreen({ profile, lang }) {
         <div className="ride-card" key={o.id} onClick={() => setSelectedId(o.id)}>
           <div className="ride-top">
             <span className="ride-ref">{t('orderRef', lang)} {o.order_number || o.reference || o.id.slice(0, 8)}</span>
-            <span className={`ride-badge ${statusLabel(o.status, lang) === t('statusDone', lang) ? 'done' : statusLabel(o.status, lang) === t('statusInProgress', lang) ? 'progress' : 'new'}`}>
+            <span className={`ride-badge ${statusClass(o.status)}`}>
               {statusLabel(o.status, lang)}
             </span>
           </div>
@@ -395,7 +407,7 @@ function RideDetailScreen({ order, lang, onBack }) {
 
       <div className="ride-detail-header">
         <span className="ride-ref">{t('orderRef', lang)} {order.order_number || order.reference || order.id.slice(0, 8)}</span>
-        <span className={`ride-badge ${statusLabel(order.status, lang) === t('statusDone', lang) ? 'done' : statusLabel(order.status, lang) === t('statusInProgress', lang) ? 'progress' : 'new'}`}>
+        <span className={`ride-badge ${statusClass(order.status)}`}>
           {statusLabel(order.status, lang)}
         </span>
       </div>

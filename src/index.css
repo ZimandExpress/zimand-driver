@@ -1,3 +1,171 @@
+:root {
+  --navy: #0F2240;
+  --navy-light: #1B3358;
+  --orange: #FF7A29;
+  --cream: #F6F4F0;
+  --line: #E4E1DA;
+  --text: #1B2430;
+  --text-soft: #6B7280;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: 'IBM Plex Sans', sans-serif;
+  background: var(--cream);
+  color: var(--text);
+}
+
+.phone-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.center-content {
+  align-items: center;
+  justify-content: center;
+}
+
+.brand-mark {
+  font-family: 'Oswald', sans-serif;
+  font-size: 20px;
+  color: var(--navy);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #57D38C;
+  display: inline-block;
+}
+
+.login-card {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 28px 26px;
+  width: 320px;
+  max-width: 90vw;
+  box-shadow: 0 20px 40px rgba(15, 34, 64, .12);
+}
+
+.login-sub {
+  font-size: 13px;
+  color: var(--text-soft);
+  margin: 8px 0 20px;
+}
+
+.login-card form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.login-card label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--navy);
+  margin-top: 8px;
+}
+
+.login-card input {
+  border: 1.5px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-family: 'IBM Plex Sans', sans-serif;
+}
+
+.login-card input:focus {
+  outline: none;
+  border-color: var(--orange);
+}
+
+.login-error {
+  color: #C0392B;
+  font-size: 12.5px;
+  margin-top: 6px;
+}
+
+.btn {
+  margin-top: 18px;
+  background: var(--orange);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 13px;
+  font-family: 'Oswald', sans-serif;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: .03em;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn:disabled { opacity: .6; cursor: default; }
+
+.topbar {
+  background: var(--navy);
+  color: #fff;
+  padding: 14px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.topbar .brand-mark { color: #fff; }
+
+.logout-btn {
+  background: rgba(255,255,255,.12);
+  border: none;
+  color: #fff;
+  border-radius: 8px;
+  padding: 7px 12px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.screen-body { flex: 1; padding: 20px; }
+
+.placeholder-screen h2 {
+  font-family: 'Oswald', sans-serif;
+  color: var(--navy);
+}
+
+.placeholder-screen p {
+  color: var(--text-soft);
+  font-size: 14px;
+}
+
+.bottomnav {
+  display: flex;
+  background: #fff;
+  border-top: 1px solid var(--line);
+  padding: 10px 8px 16px;
+}
+
+.bottomnav button {
+  flex: 1;
+  background: none;
+  border: none;
+  padding: 8px 4px;
+  font-size: 12px;
+  color: var(--text-soft);
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.bottomnav button.active {
+  color: var(--orange);
+  font-weight: 700;
+}
+
 .lang-switch {
   display: flex;
   gap: 4px;

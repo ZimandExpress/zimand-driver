@@ -262,7 +262,6 @@ function RidesScreen({ profile, lang }) {
       .from('orders')
       .select('*')
       .eq('assigned_driver_id', profile.id)
-      .order('pickup_date', { ascending: true })
       .then(({ data, error }) => {
         if (error) console.error('orders fetch error:', error.message)
         if (active) {
@@ -299,49 +298,88 @@ function RidesScreen({ profile, lang }) {
 
   if (loading) return <PlaceholderScreen title={t('tabRides', lang)} note={t('loadingRides', lang)} />
 
-  if (orders.length === 0) {
-    return <PlaceholderScreen title={t('tabRides', lang)} note={t('noRides', lang)} />
-  }
-
   const selected = orders.find((o) => o.id === selectedId)
   if (selected) {
     return <RideDetailScreen order={selected} lang={lang} onBack={() => setSelectedId(null)} onStatusChange={() => {}} />
   }
 
+  const activeOrders = orders
+    .filter((o) => o.status === 'assigned')
+    .sort((a, b) => (a.pickup_date || '').localeCompare(b.pickup_date || ''))
+
+  const doneOrders = orders
+    .filter((o) => o.status === 'done')
+    .sort((a, b) => {
+      const da = a.delivery_confirmed_at || a.delivery_date || ''
+      const db = b.delivery_confirmed_at || b.delivery_date || ''
+      return db.localeCompare(da) // most recent first
+    })
+
+  if (orders.length === 0) {
+    return <PlaceholderScreen title={t('tabRides', lang)} note={t('noRides', lang)} />
+  }
+
   return (
     <div className="rides-list">
       <h2 className="screen-title">{t('tabRides', lang)}</h2>
-      {orders.map((o) => (
-        <div className="ride-card" key={o.id} onClick={() => setSelectedId(o.id)}>
-          <div className="ride-top">
-            <span className="ride-ref">{t('orderRef', lang)} {o.order_number || o.reference || o.id.slice(0, 8)}</span>
-            <span className={`ride-badge ${statusClass(o.status)}`}>
-              {statusLabel(o.status, lang)}
+
+      {activeOrders.length > 0 && (
+        <>
+          <div className="section-label">{t('sectionActive', lang)}</div>
+          {activeOrders.map((o) => (
+            <RideCard key={o.id} order={o} lang={lang} onClick={() => setSelectedId(o.id)} />
+          ))}
+        </>
+      )}
+
+      {activeOrders.length === 0 && (
+        <div className="empty-note">{t('noActiveRides', lang)}</div>
+      )}
+
+      {doneOrders.length > 0 && (
+        <>
+          <div className="section-label">{t('sectionHistory', lang)}</div>
+          {doneOrders.map((o) => (
+            <RideCard key={o.id} order={o} lang={lang} onClick={() => setSelectedId(o.id)} compact />
+          ))}
+        </>
+      )}
+    </div>
+  )
+}
+
+function RideCard({ order, lang, onClick, compact }) {
+  return (
+    <div className={`ride-card ${compact ? 'compact' : ''}`} onClick={onClick}>
+      <div className="ride-top">
+        <span className="ride-ref">{t('orderRef', lang)} {order.order_number || order.reference || order.id.slice(0, 8)}</span>
+        <span className={`ride-badge ${statusClass(order.status)}`}>
+          {statusLabel(order.status, lang)}
+        </span>
+      </div>
+      <div className="ride-route">
+        <div className="ride-stop">
+          <span className="ride-stop-label">{t('pickup', lang)}</span>
+          <span className="ride-stop-addr">{order.pickup_address}</span>
+          {order.pickup_date && (
+            <span className="ride-stop-time">
+              {order.pickup_date}{order.pickup_from ? ` · ${order.pickup_from}` : ''}{order.pickup_to ? `–${order.pickup_to}` : ''}
             </span>
-          </div>
-          <div className="ride-route">
-            <div className="ride-stop">
-              <span className="ride-stop-label">{t('pickup', lang)}</span>
-              <span className="ride-stop-addr">{o.pickup_address}</span>
-              {o.pickup_date && (
-                <span className="ride-stop-time">
-                  {o.pickup_date}{o.pickup_from ? ` · ${o.pickup_from}` : ''}{o.pickup_to ? `–${o.pickup_to}` : ''}
-                </span>
-              )}
-            </div>
-            <div className="ride-stop">
-              <span className="ride-stop-label">{t('delivery', lang)}</span>
-              <span className="ride-stop-addr">{o.delivery_address}</span>
-              {o.delivery_date && (
-                <span className="ride-stop-time">
-                  {o.delivery_date}{o.delivery_from ? ` · ${o.delivery_from}` : ''}{o.delivery_to ? `–${o.delivery_to}` : ''}
-                </span>
-              )}
-            </div>
-          </div>
-          {o.cargo_desc && <div className="ride-cargo">{o.cargo_desc}</div>}
+          )}
         </div>
-      ))}
+        <div className="ride-stop">
+          <span className="ride-stop-label">{t('delivery', lang)}</span>
+          <span className="ride-stop-addr">{order.delivery_address}</span>
+          {order.delivery_confirmed_at ? (
+            <span className="ride-stop-time">✓ {new Date(order.delivery_confirmed_at).toLocaleDateString()}</span>
+          ) : order.delivery_date ? (
+            <span className="ride-stop-time">
+              {order.delivery_date}{order.delivery_from ? ` · ${order.delivery_from}` : ''}{order.delivery_to ? `–${order.delivery_to}` : ''}
+            </span>
+          ) : null}
+        </div>
+      </div>
+      {!compact && order.cargo_desc && <div className="ride-cargo">{order.cargo_desc}</div>}
     </div>
   )
 }

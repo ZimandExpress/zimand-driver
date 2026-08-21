@@ -227,6 +227,7 @@ function statusLabel(status, lang) {
 function RidesScreen({ profile, lang }) {
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
+  const [selectedId, setSelectedId] = useState(null)
 
   useEffect(() => {
     if (!profile?.id) {
@@ -281,11 +282,16 @@ function RidesScreen({ profile, lang }) {
     return <PlaceholderScreen title={t('tabRides', lang)} note={t('noRides', lang)} />
   }
 
+  const selected = orders.find((o) => o.id === selectedId)
+  if (selected) {
+    return <RideDetailScreen order={selected} lang={lang} onBack={() => setSelectedId(null)} />
+  }
+
   return (
     <div className="rides-list">
       <h2 className="screen-title">{t('tabRides', lang)}</h2>
       {orders.map((o) => (
-        <div className="ride-card" key={o.id}>
+        <div className="ride-card" key={o.id} onClick={() => setSelectedId(o.id)}>
           <div className="ride-top">
             <span className="ride-ref">{t('orderRef', lang)} {o.order_number || o.reference || o.id.slice(0, 8)}</span>
             <span className={`ride-badge ${statusLabel(o.status, lang) === t('statusDone', lang) ? 'done' : statusLabel(o.status, lang) === t('statusInProgress', lang) ? 'progress' : 'new'}`}>
@@ -315,6 +321,124 @@ function RidesScreen({ profile, lang }) {
           {o.cargo_desc && <div className="ride-cargo">{o.cargo_desc}</div>}
         </div>
       ))}
+    </div>
+  )
+}
+
+function useGeocode(address) {
+  const [coords, setCoords] = useState(null)
+
+  useEffect(() => {
+    if (!address) return
+    let active = true
+    fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(address)}`)
+      .then((r) => r.json())
+      .then((results) => {
+        if (!active || !results || !results[0]) return
+        setCoords([parseFloat(results[0].lat), parseFloat(results[0].lon)])
+      })
+      .catch((err) => console.error('geocode error:', err.message))
+    return () => {
+      active = false
+    }
+  }, [address])
+
+  return coords
+}
+
+function RideDetailScreen({ order, lang, onBack }) {
+  const mapRef = useRef(null)
+  const mapInstanceRef = useRef(null)
+  const pickupCoords = useGeocode(order.pickup_address)
+  const deliveryCoords = useGeocode(order.delivery_address)
+
+  useEffect(() => {
+    if (!mapRef.current || mapInstanceRef.current) return
+    mapInstanceRef.current = window.L.map(mapRef.current, { zoomControl: false, attributionControl: false }).setView([49.45, 11.07], 9)
+    window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(mapInstanceRef.current)
+    return () => {
+      mapInstanceRef.current?.remove()
+      mapInstanceRef.current = null
+    }
+  }, [])
+
+  useEffect(() => {
+    const map = mapInstanceRef.current
+    if (!map) return
+
+    map.eachLayer((layer) => {
+      if (layer instanceof window.L.Marker || layer instanceof window.L.Polyline) map.removeLayer(layer)
+    })
+
+    const points = []
+    if (pickupCoords) {
+      const icon = window.L.divIcon({ className: '', html: '<div class="pin-icon pk"><span>A</span></div>', iconSize: [22, 22], iconAnchor: [11, 20] })
+      window.L.marker(pickupCoords, { icon }).addTo(map)
+      points.push(pickupCoords)
+    }
+    if (deliveryCoords) {
+      const icon = window.L.divIcon({ className: '', html: '<div class="pin-icon dl"><span>B</span></div>', iconSize: [22, 22], iconAnchor: [11, 20] })
+      window.L.marker(deliveryCoords, { icon }).addTo(map)
+      points.push(deliveryCoords)
+    }
+    if (points.length === 2) {
+      window.L.polyline(points, { color: '#FF7A29', weight: 3, dashArray: '1,8' }).addTo(map)
+      map.fitBounds(window.L.latLngBounds(points), { padding: [30, 30] })
+    } else if (points.length === 1) {
+      map.setView(points[0], 12)
+    }
+  }, [pickupCoords, deliveryCoords])
+
+  return (
+    <div className="ride-detail">
+      <button className="back-btn" onClick={onBack}>← {t('back', lang)}</button>
+
+      <div className="ride-detail-header">
+        <span className="ride-ref">{t('orderRef', lang)} {order.order_number || order.reference || order.id.slice(0, 8)}</span>
+        <span className={`ride-badge ${statusLabel(order.status, lang) === t('statusDone', lang) ? 'done' : statusLabel(order.status, lang) === t('statusInProgress', lang) ? 'progress' : 'new'}`}>
+          {statusLabel(order.status, lang)}
+        </span>
+      </div>
+
+      <div className="live-map">
+        <div ref={mapRef} style={{ width: '100%', height: '100%' }} />
+      </div>
+
+      <div className="info-card">
+        <div className="info-card-head">🅐 {t('pickup', lang)}</div>
+        <div className="info-card-body">
+          <div className="info-row"><span>{order.pickup_address}</span></div>
+          {order.pickup_date && (
+            <div className="info-row-time">
+              {order.pickup_date}{order.pickup_from ? ` · ${order.pickup_from}` : ''}{order.pickup_to ? `–${order.pickup_to}` : ''}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="info-card">
+        <div className="info-card-head">🅑 {t('delivery', lang)}</div>
+        <div className="info-card-body">
+          <div className="info-row"><span>{order.delivery_address}</span></div>
+          {order.delivery_date && (
+            <div className="info-row-time">
+              {order.delivery_date}{order.delivery_from ? ` · ${order.delivery_from}` : ''}{order.delivery_to ? `–${order.delivery_to}` : ''}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="info-card">
+        <div className="info-card-head">📦 {t('cargoLabel', lang)}</div>
+        <div className="info-card-body">
+          {order.cargo_desc && <div className="info-row"><span className="k">{t('cargoLabel', lang)}</span><span className="v">{order.cargo_desc}</span></div>}
+          {order.weight && <div className="info-row"><span className="k">{t('weightLabel', lang)}</span><span className="v">{order.weight} kg</span></div>}
+          {order.dims && <div className="info-row"><span className="k">{t('dimsLabel', lang)}</span><span className="v">{order.dims}</span></div>}
+          {order.km && <div className="info-row"><span className="k">{t('kmLabel', lang)}</span><span className="v">{order.km} km</span></div>}
+          {order.reference && <div className="info-row"><span className="k">{t('referenceLabel', lang)}</span><span className="v">{order.reference}</span></div>}
+          {order.notes && <div className="info-note">{order.notes}</div>}
+        </div>
+      </div>
     </div>
   )
 }

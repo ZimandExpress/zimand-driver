@@ -183,7 +183,7 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
 
       <div className="screen-body">
         {tab === 'curse' && <RidesScreen profile={profile} isOwner={isOwner} lang={lang} />}
-        {tab === 'licitatii' && isOwner && <BiddingScreen profile={profile} lang={lang} />}
+        {tab === 'licitatii' && isOwner && <BiddingScreen profile={profile} session={session} lang={lang} />}
         {tab === 'castiguri' && isOwner && <EarningsScreen profile={profile} lang={lang} />}
         {tab === 'profil' && (
           <ProfileScreen
@@ -921,6 +921,21 @@ function CompletedOrderDetail({ order, isOwner, lang, onBack }) {
   )
 }
 
+function useCompanyProfileId(session, profile) {
+  const [id, setId] = useState(profile?.company_id || null)
+  useEffect(() => {
+    if (profile?.company_id) { setId(profile.company_id); return }
+    if (!session?.user?.email) return
+    supabase
+      .from('profiles')
+      .select('id')
+      .ilike('email', session.user.email)
+      .single()
+      .then(({ data }) => setId(data?.id || null))
+  }, [profile?.company_id, session?.user?.email])
+  return id
+}
+
 function isToday(dateStr) {
   if (!dateStr) return false
   const today = new Date().toISOString().slice(0, 10)
@@ -1055,10 +1070,11 @@ function EarningsScreen({ profile, lang }) {
   )
 }
 
-function BiddingScreen({ profile, lang }) {
+function BiddingScreen({ profile, session, lang }) {
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
   const [openId, setOpenId] = useState(null)
+  const courierProfileId = useCompanyProfileId(session, profile)
 
   useEffect(() => {
     let active = true
@@ -1089,13 +1105,13 @@ function BiddingScreen({ profile, lang }) {
     <div className="rides-list">
       <h2 className="screen-title">{t('tabBidding', lang)}</h2>
       {orders.map((o) => (
-        <BidCard key={o.id} order={o} lang={lang} profile={profile} open={openId === o.id} onToggle={() => setOpenId(openId === o.id ? null : o.id)} />
+        <BidCard key={o.id} order={o} lang={lang} courierProfileId={courierProfileId} open={openId === o.id} onToggle={() => setOpenId(openId === o.id ? null : o.id)} />
       ))}
     </div>
   )
 }
 
-function BidCard({ order, lang, profile, open, onToggle }) {
+function BidCard({ order, lang, courierProfileId, open, onToggle }) {
   const [ownPrice, setOwnPrice] = useState('')
   const [message, setMessage] = useState('')
   const [respectInterval, setRespectInterval] = useState(true)
@@ -1104,15 +1120,19 @@ function BidCard({ order, lang, profile, open, onToggle }) {
   const today = isToday(order.pickup_date)
 
   async function submitBid(amount) {
+    if (!courierProfileId) {
+      console.error('bid submit error: no courier profile id resolved yet')
+      return
+    }
     setBusy(true)
     try {
-      // NOTE: adjust field names below to match the real `bids` table schema
-      // once confirmed (order_id, price/amount, message, driver/profile reference).
       const { error } = await supabase.from('bids').insert({
         order_id: order.id,
+        courier_id: courierProfileId,
         price: amount,
         message: message || null,
-        profile_id: null, // TODO: set to the bidding company's profiles.id once schema is confirmed
+        eta_from: respectInterval ? order.pickup_from : null,
+        eta_to: respectInterval ? order.pickup_to : null,
       })
       if (error) throw error
       setDone(true)
@@ -1174,7 +1194,7 @@ function BidCard({ order, lang, profile, open, onToggle }) {
 
               <button
                 className="submit-bid-btn"
-                disabled={busy || !ownPrice}
+                disabled={busy || !ownPrice || !courierProfileId}
                 onClick={(e) => { e.stopPropagation(); submitBid(parseFloat(ownPrice)) }}
               >
                 {busy ? '…' : t('tabBidding', lang)}
@@ -1192,6 +1212,36 @@ function ProfileScreen({ session, profile, isOwner, lang, onProfileChange }) {
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
   const photoInputRef = useRef(null)
   const isOnline = !!profile?.is_online
+  const companyProfileId = useCompanyProfileId(session, profile)
+  const [vehicles, setVehicles] = useState([])
+  const [savingVehicle, setSavingVehicle] = useState(false)
+
+  useEffect(() => {
+    if (!companyProfileId) return
+    supabase
+      .from('vehicles')
+      .select('*')
+      .eq('company_id', companyProfileId)
+      .then(({ data, error }) => {
+        if (error) console.error('vehicles fetch error:', error.message)
+        setVehicles(data || [])
+      })
+  }, [companyProfileId])
+
+  async function selectVehicle(vehicleId) {
+    if (!profile?.id) return
+    setSavingVehicle(true)
+    const { error } = await supabase
+      .from('drivers')
+      .update({ vehicle_id: vehicleId || null })
+      .eq('id', profile.id)
+    setSavingVehicle(false)
+    if (error) {
+      console.error('vehicle select error:', error.message)
+      return
+    }
+    onProfileChange()
+  }
 
   async function toggleOnline() {
     if (!profile?.id) return
@@ -1268,6 +1318,25 @@ function ProfileScreen({ session, profile, isOwner, lang, onProfileChange }) {
           disabled={busy}
         />
       </div>
+
+      {vehicles.length > 0 && (
+        <div className="prof-row">
+          <span>🚐 {t('vehicleLabel', lang)}</span>
+          <select
+            className="vehicle-select"
+            value={profile?.vehicle_id || ''}
+            onChange={(e) => selectVehicle(e.target.value)}
+            disabled={savingVehicle}
+          >
+            <option value="">—</option>
+            {vehicles.map((v) => (
+              <option key={v.id} value={v.id}>
+                {v.model}{v.plate ? ` · ${v.plate}` : ''}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
     </div>
   )
 }

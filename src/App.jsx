@@ -182,8 +182,8 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
       </div>
 
       <div className="screen-body">
-        {tab === 'curse' && <RidesScreen profile={profile} isOwner={isOwner} lang={lang} />}
-        {tab === 'licitatii' && isOwner && <BiddingScreen profile={profile} session={session} lang={lang} />}
+        {tab === 'curse' && <RidesScreen profile={profile} isOwner={isOwner} session={session} lang={lang} />}
+        {tab === 'abgeschlossen' && <CompletedOrdersListScreen profile={profile} isOwner={isOwner} lang={lang} />}
         {tab === 'castiguri' && isOwner && <EarningsScreen profile={profile} lang={lang} />}
         {tab === 'profil' && (
           <ProfileScreen
@@ -191,6 +191,7 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
             profile={profile}
             isOwner={isOwner}
             lang={lang}
+            onChangeLang={onChangeLang}
             onProfileChange={onProfileChange}
           />
         )}
@@ -204,11 +205,9 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
           <button className={`menu-item ${tab === 'curse' ? 'active' : ''}`} onClick={() => navTo('curse')}>
             <span className="ic">🚚</span>{t('tabRides', lang)}
           </button>
-          {isOwner && (
-            <button className={`menu-item ${tab === 'licitatii' ? 'active' : ''}`} onClick={() => navTo('licitatii')}>
-              <span className="ic">🏷️</span>{t('tabBidding', lang)}
-            </button>
-          )}
+          <button className={`menu-item ${tab === 'abgeschlossen' ? 'active' : ''}`} onClick={() => navTo('abgeschlossen')}>
+            <span className="ic">✅</span>{t('menuCompleted', lang)}
+          </button>
           {isOwner && (
             <button className={`menu-item ${tab === 'castiguri' ? 'active' : ''}`} onClick={() => navTo('castiguri')}>
               <span className="ic">💶</span>{t('tabEarnings', lang)}
@@ -252,7 +251,7 @@ function statusLabel(status, lang) {
   }
 }
 
-function RidesScreen({ profile, isOwner, lang }) {
+function RidesScreen({ profile, isOwner, session, lang }) {
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
   const [selectedId, setSelectedIdState] = useState(() => sessionStorage.getItem('zd-open-order') || null)
@@ -325,7 +324,6 @@ function RidesScreen({ profile, isOwner, lang }) {
   }
 
   const activeOrders = orders.filter((o) => o.status === 'assigned')
-  const doneOrders = orders.filter((o) => o.status === 'done')
 
   function sortByDate(list, dateKey) {
     return [...list].sort((a, b) => {
@@ -336,10 +334,8 @@ function RidesScreen({ profile, isOwner, lang }) {
   }
 
   const sortedActive = sortByDate(activeOrders, 'pickup_date')
-  const sortedDone = sortByDate(doneOrders, 'delivery_date')
 
-  // employees don't see bidding, so they never land on the 'available' tab
-  const tabs = isOwner ? ['available', 'mine', 'done'] : ['mine', 'done']
+  const tabs = isOwner ? ['available', 'mine'] : ['mine']
   const currentTab = tabs.includes(activeTab) ? activeTab : 'mine'
 
   return (
@@ -353,41 +349,86 @@ function RidesScreen({ profile, isOwner, lang }) {
           >
             {tabKey === 'available' && t('tabAvailable', lang)}
             {tabKey === 'mine' && t('tabMine', lang)}
-            {tabKey === 'done' && t('tabDoneTab', lang)}
-            <span className="rides-tab-count">
-              {tabKey === 'available' ? 0 : tabKey === 'mine' ? activeOrders.length : doneOrders.length}
-            </span>
+            {tabKey === 'mine' && <span className="rides-tab-count">{activeOrders.length}</span>}
           </button>
         ))}
       </div>
 
-      <div className="rides-toolbar">
-        <button className="filter-btn" disabled title={t('comingSoon', lang)}>
-          ⏷ {t('filter', lang)}
-        </button>
-        <button className="sort-btn" onClick={() => setSortAsc((v) => !v)}>
-          {t('sortLabel', lang)}: {sortAsc ? t('sortOldest', lang) : t('sortNewest', lang)}
-        </button>
-      </div>
-
-      {currentTab === 'available' && (
-        <div className="empty-note">{t('biddingComingSoon', lang)}</div>
-      )}
+      {currentTab === 'available' && <BiddingScreen profile={profile} session={session} lang={lang} embedded />}
 
       {currentTab === 'mine' && (
-        sortedActive.length === 0
-          ? <div className="empty-note">{t('noActiveRides', lang)}</div>
-          : sortedActive.map((o) => (
+        <>
+          <div className="rides-toolbar">
+            <button className="filter-btn" disabled title={t('comingSoon', lang)}>
+              ⏷ {t('filter', lang)}
+            </button>
+            <button className="sort-btn" onClick={() => setSortAsc((v) => !v)}>
+              {t('sortLabel', lang)}: {sortAsc ? t('sortOldest', lang) : t('sortNewest', lang)}
+            </button>
+          </div>
+          {sortedActive.length === 0 ? (
+            <div className="empty-note">{t('noActiveRides', lang)}</div>
+          ) : (
+            sortedActive.map((o) => (
               <RideCard key={o.id} order={o} isOwner={isOwner} lang={lang} onClick={() => setSelectedId(o.id)} />
             ))
+          )}
+        </>
       )}
+    </div>
+  )
+}
 
-      {currentTab === 'done' && (
-        sortedDone.length === 0
-          ? <div className="empty-note">{t('noRides', lang)}</div>
-          : sortedDone.map((o) => (
-              <RideCard key={o.id} order={o} isOwner={isOwner} lang={lang} onClick={() => setSelectedId(o.id)} compact />
-            ))
+function CompletedOrdersListScreen({ profile, isOwner, lang }) {
+  const [orders, setOrders] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [selectedId, setSelectedIdState] = useState(() => sessionStorage.getItem('zd-open-completed') || null)
+
+  function setSelectedId(id) {
+    setSelectedIdState(id)
+    if (id) {
+      sessionStorage.setItem('zd-open-completed', id)
+    } else {
+      sessionStorage.removeItem('zd-open-completed')
+    }
+  }
+
+  useEffect(() => {
+    if (!profile?.id) { setLoading(false); return }
+    supabase
+      .from('orders')
+      .select('*')
+      .eq('assigned_driver_id', profile.id)
+      .eq('status', 'done')
+      .then(({ data, error }) => {
+        if (error) console.error('completed orders fetch error:', error.message)
+        setOrders(data || [])
+        setLoading(false)
+      })
+  }, [profile?.id])
+
+  if (loading) return <PlaceholderScreen title={t('menuCompleted', lang)} note={t('loadingRides', lang)} />
+
+  const selected = orders.find((o) => o.id === selectedId)
+  if (selected) {
+    return <CompletedOrderDetail order={selected} isOwner={isOwner} lang={lang} onBack={() => setSelectedId(null)} />
+  }
+
+  const sorted = [...orders].sort((a, b) => {
+    const da = a.delivery_confirmed_at || a.delivery_date || ''
+    const db = b.delivery_confirmed_at || b.delivery_date || ''
+    return db.localeCompare(da)
+  })
+
+  return (
+    <div className="rides-list">
+      <h2 className="screen-title">{t('menuCompleted', lang)}</h2>
+      {sorted.length === 0 ? (
+        <div className="empty-note">{t('noRides', lang)}</div>
+      ) : (
+        sorted.map((o) => (
+          <RideCard key={o.id} order={o} isOwner={isOwner} lang={lang} onClick={() => setSelectedId(o.id)} compact />
+        ))
       )}
     </div>
   )
@@ -1070,10 +1111,11 @@ function EarningsScreen({ profile, lang }) {
   )
 }
 
-function BiddingScreen({ profile, session, lang }) {
+function BiddingScreen({ profile, session, lang, embedded }) {
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
   const [openId, setOpenId] = useState(null)
+  const [debugInfo, setDebugInfo] = useState('')
   const courierProfileId = useCompanyProfileId(session, profile)
 
   useEffect(() => {
@@ -1083,8 +1125,13 @@ function BiddingScreen({ profile, session, lang }) {
       .select('*')
       .eq('status', 'open')
       .order('pickup_date', { ascending: true })
-      .then(({ data, error }) => {
-        if (error) console.error('open orders fetch error:', error.message)
+      .then(({ data, error, status, statusText }) => {
+        if (error) {
+          console.error('open orders fetch error:', error.message)
+          setDebugInfo(`Fehler: ${error.message} (code: ${error.code || '—'})`)
+        } else {
+          setDebugInfo(`OK · HTTP ${status} · ${data?.length ?? 0} Zeilen empfangen`)
+        }
         if (active) { setOrders(data || []); setLoading(false) }
       })
 
@@ -1098,12 +1145,23 @@ function BiddingScreen({ profile, session, lang }) {
     return () => { active = false; supabase.removeChannel(channel) }
   }, [])
 
-  if (loading) return <PlaceholderScreen title={t('tabBidding', lang)} note={t('loadingRides', lang)} />
-  if (orders.length === 0) return <PlaceholderScreen title={t('tabBidding', lang)} note={t('biddingPlaceholder', lang)} />
+  if (loading) return <PlaceholderScreen title={embedded ? '' : t('tabBidding', lang)} note={t('loadingRides', lang)} />
+  if (orders.length === 0) {
+    return (
+      <div className={embedded ? '' : 'rides-list'}>
+        <PlaceholderScreen title={embedded ? '' : t('tabBidding', lang)} note={t('biddingPlaceholder', lang)} />
+        <div style={{ marginTop: 20, padding: 12, background: '#fff', border: '1px dashed #ccc', borderRadius: 10, fontSize: 11, fontFamily: 'monospace', color: '#666' }}>
+          DEBUG: {debugInfo}<br />
+          courierProfileId: {courierProfileId || '(noch nicht geladen)'}<br />
+          account_type: {profile?.account_type || '—'}
+        </div>
+      </div>
+    )
+  }
 
   return (
-    <div className="rides-list">
-      <h2 className="screen-title">{t('tabBidding', lang)}</h2>
+    <div className={embedded ? '' : 'rides-list'}>
+      {!embedded && <h2 className="screen-title">{t('tabBidding', lang)}</h2>}
       {orders.map((o) => (
         <BidCard key={o.id} order={o} lang={lang} courierProfileId={courierProfileId} open={openId === o.id} onToggle={() => setOpenId(openId === o.id ? null : o.id)} />
       ))}
@@ -1207,7 +1265,7 @@ function BidCard({ order, lang, courierProfileId, open, onToggle }) {
   )
 }
 
-function ProfileScreen({ session, profile, isOwner, lang, onProfileChange }) {
+function ProfileScreen({ session, profile, isOwner, lang, onChangeLang, onProfileChange }) {
   const [busy, setBusy] = useState(false)
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
   const photoInputRef = useRef(null)
@@ -1287,6 +1345,8 @@ function ProfileScreen({ session, profile, isOwner, lang, onProfileChange }) {
   return (
     <div className="placeholder-screen">
       <h2>{t('tabProfile', lang)}</h2>
+
+      <LangSwitcher lang={lang} onChangeLang={onChangeLang} />
 
       <div className="profile-photo-row">
         {profile?.photo_url ? (

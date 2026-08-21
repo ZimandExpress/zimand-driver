@@ -1426,6 +1426,72 @@ textarea.bid-input2 {
   cursor: not-allowed;
 }
 
+.bid-extra-row {
+  font-size: 12.5px;
+  color: var(--text-soft);
+  margin-bottom: 10px;
+}
+
+.flex-time-note {
+  background: #FBF6D8;
+  border: 1.5px solid #E6C64A;
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 14px;
+  font-size: 12.5px;
+  color: #7A6210;
+}
+
+.existing-bid-box {
+  background: var(--green-bg, #E7F3ED);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 8px;
+}
+
+.existing-bid-price {
+  font-family: 'Oswald', sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  color: #1F7A50;
+  margin-bottom: 10px;
+}
+
+.existing-bid-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.existing-bid-actions .btn {
+  flex: 1;
+  padding: 9px;
+  font-size: 12.5px;
+}
+
+.btn.danger {
+  background: #fff;
+  color: #B03A3A;
+  border: 1.5px solid #B03A3A;
+}
+
+.custom-interval-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.custom-interval-row .bid-input2 {
+  margin-bottom: 0;
+}
+
+.bid-footnote {
+  font-size: 10.5px;
+  color: var(--text-soft);
+  text-align: center;
+  line-height: 1.4;
+  margin-top: 8px;
+}
+
 /* --- earnings screen --- */
 
 .earn-hero {

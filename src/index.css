@@ -1309,12 +1309,20 @@ body {
 
 .pill-label {
   color: var(--text-soft);
-  font-size: 12.5px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.pill-date {
+  color: var(--navy);
+  font-size: 14px;
+  font-weight: 700;
 }
 
 .pill-time {
   color: var(--text-soft);
-  font-size: 12.5px;
+  font-size: 14px;
+  font-weight: 500;
 }
 
 .status-row {
@@ -1330,14 +1338,15 @@ body {
   color: var(--orange);
 }
 
-.chev {
-  color: var(--text-soft);
-  font-size: 13px;
-  transition: transform .2s ease;
-}
-
-.bid-card2.open .chev {
-  transform: rotate(180deg);
+.new-dot {
+  background: var(--orange);
+  color: #fff;
+  font-family: 'Oswald', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  padding: 3px 9px;
+  border-radius: 20px;
 }
 
 .bid-order-id {

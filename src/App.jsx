@@ -363,18 +363,6 @@ function RideDetailScreen({ order, lang, onBack, onStatusChange }) {
   const mapInstanceRef = useRef(null)
   const pickupCoords = useGeocode(order.pickup_address)
   const deliveryCoords = useGeocode(order.delivery_address)
-  const [busy, setBusy] = useState(false)
-
-  async function markDone() {
-    setBusy(true)
-    const { error } = await supabase.from('orders').update({ status: 'done' }).eq('id', order.id)
-    setBusy(false)
-    if (error) {
-      console.error('status update error:', error.message)
-      return
-    }
-    onStatusChange()
-  }
 
   useEffect(() => {
     if (!mapRef.current || mapInstanceRef.current) return
@@ -413,6 +401,12 @@ function RideDetailScreen({ order, lang, onBack, onStatusChange }) {
     }
   }, [pickupCoords, deliveryCoords])
 
+  // which leg are we on: pickup or delivery
+  const leg = !order.pickup_confirmed_at ? 'pickup' : 'delivery'
+  const startedAt = leg === 'pickup' ? order.pickup_started_at : order.delivery_started_at
+  const arrivedAt = leg === 'pickup' ? order.pickup_arrived_at : order.delivery_arrived_at
+  const confirmedAt = leg === 'pickup' ? order.pickup_confirmed_at : order.delivery_confirmed_at
+
   return (
     <div className="ride-detail">
       <button className="back-btn" onClick={onBack}>← {t('back', lang)}</button>
@@ -428,6 +422,12 @@ function RideDetailScreen({ order, lang, onBack, onStatusChange }) {
         <div ref={mapRef} style={{ width: '100%', height: '100%' }} />
       </div>
 
+      {order.status === 'assigned' && !confirmedAt && (
+        <LegWorkflow order={order} leg={leg} lang={lang} startedAt={startedAt} arrivedAt={arrivedAt} onStatusChange={onStatusChange} />
+      )}
+
+      {order.status === 'assigned' && order.pickup_confirmed_at && !order.delivery_confirmed_at && leg === 'delivery' && null}
+
       <div className="info-card">
         <div className="info-card-head">🅐 {t('pickup', lang)}</div>
         <div className="info-card-body">
@@ -437,6 +437,7 @@ function RideDetailScreen({ order, lang, onBack, onStatusChange }) {
               {order.pickup_date}{order.pickup_from ? ` · ${order.pickup_from}` : ''}{order.pickup_to ? `–${order.pickup_to}` : ''}
             </div>
           )}
+          {order.pickup_confirmed_at && <div className="info-row-time">✓ {new Date(order.pickup_confirmed_at).toLocaleString()}</div>}
         </div>
       </div>
 
@@ -449,6 +450,7 @@ function RideDetailScreen({ order, lang, onBack, onStatusChange }) {
               {order.delivery_date}{order.delivery_from ? ` · ${order.delivery_from}` : ''}{order.delivery_to ? `–${order.delivery_to}` : ''}
             </div>
           )}
+          {order.delivery_confirmed_at && <div className="info-row-time">✓ {new Date(order.delivery_confirmed_at).toLocaleString()}</div>}
         </div>
       </div>
 
@@ -463,14 +465,153 @@ function RideDetailScreen({ order, lang, onBack, onStatusChange }) {
           {order.notes && <div className="info-note">{order.notes}</div>}
         </div>
       </div>
+    </div>
+  )
+}
 
-      {order.status === 'assigned' && (
-        <div className="action-bar">
-          <button className="btn" onClick={markDone} disabled={busy}>
-            {busy ? '…' : t('markDone', lang)}
-          </button>
-        </div>
+function ElapsedTimer({ startedAt }) {
+  const [now, setNow] = useState(Date.now())
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(id)
+  }, [])
+
+  const seconds = Math.max(0, Math.floor((now - new Date(startedAt).getTime()) / 1000))
+  const hh = String(Math.floor(seconds / 3600)).padStart(2, '0')
+  const mm = String(Math.floor((seconds % 3600) / 60)).padStart(2, '0')
+  const ss = String(seconds % 60).padStart(2, '0')
+
+  return <div className="timer">{hh}:{mm}:{ss}</div>
+}
+
+async function uploadPodFile(orderId, leg, file) {
+  const ext = file.name.split('.').pop()
+  const path = `${orderId}/${leg}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+  const { error } = await supabase.storage.from('proof-of-delivery').upload(path, file)
+  if (error) throw error
+  return path
+}
+
+function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange }) {
+  const [busy, setBusy] = useState(false)
+  const [photos, setPhotos] = useState([])
+  const [cmrFile, setCmrFile] = useState(null)
+  const fileInputRef = useRef(null)
+  const cmrInputRef = useRef(null)
+
+  const startFn = leg === 'pickup' ? 'driver_mark_pickup_started' : 'driver_mark_delivery_started'
+  const arriveFn = leg === 'pickup' ? 'driver_mark_pickup_arrived' : 'driver_mark_delivery_arrived'
+  const confirmFn = leg === 'pickup' ? 'driver_confirm_pickup' : 'driver_confirm_delivery'
+  const legLabel = leg === 'pickup' ? t('pickup', lang) : t('delivery', lang)
+
+  async function callRpc(fn) {
+    setBusy(true)
+    const { error } = await supabase.rpc(fn, { p_order_id: order.id })
+    setBusy(false)
+    if (error) {
+      console.error(fn, error.message)
+      return
+    }
+    onStatusChange()
+  }
+
+  function addPhotos(e) {
+    const files = Array.from(e.target.files || [])
+    setPhotos((prev) => [...prev, ...files].slice(0, 6))
+    e.target.value = ''
+  }
+
+  function removePhoto(idx) {
+    setPhotos((prev) => prev.filter((_, i) => i !== idx))
+  }
+
+  async function confirmLeg() {
+    setBusy(true)
+    try {
+      const photoPaths = []
+      for (const file of photos) {
+        photoPaths.push(await uploadPodFile(order.id, leg, file))
+      }
+      let cmrPath = null
+      if (cmrFile) {
+        cmrPath = await uploadPodFile(order.id, leg, cmrFile)
+      }
+      const { error } = await supabase.rpc(confirmFn, { p_order_id: order.id, p_photos: photoPaths, p_cmr_url: cmrPath })
+      if (error) throw error
+      onStatusChange()
+    } catch (err) {
+      console.error('confirm leg error:', err.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  if (!startedAt) {
+    return (
+      <div className="leg-workflow">
+        <div className="leg-title">{legLabel}</div>
+        <button className="btn" onClick={() => callRpc(startFn)} disabled={busy}>
+          {t('startDriving', lang)}
+        </button>
+      </div>
+    )
+  }
+
+  if (!arrivedAt) {
+    return (
+      <div className="leg-workflow">
+        <div className="leg-title">{legLabel}</div>
+        <ElapsedTimer startedAt={startedAt} />
+        <button className="btn" onClick={() => callRpc(arriveFn)} disabled={busy}>
+          {t('arrived', lang)}
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="leg-workflow">
+      <div className="leg-title">{legLabel} · {t('confirmStep', lang)}</div>
+
+      <div className="pod-label">{t('photosLabel', lang)} ({photos.length}/6)</div>
+      <div className="photo-grid">
+        {photos.map((f, i) => (
+          <div className="photo-slot filled" key={i} onClick={() => removePhoto(i)}>
+            <img src={URL.createObjectURL(f)} alt="" />
+          </div>
+        ))}
+        {photos.length < 6 && (
+          <div className="photo-slot" onClick={() => fileInputRef.current?.click()}>+</div>
+        )}
+      </div>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        multiple
+        style={{ display: 'none' }}
+        onChange={addPhotos}
+      />
+
+      <div className="pod-label">{t('cmrLabel', lang)}</div>
+      {cmrFile ? (
+        <div className="cmr-chip" onClick={() => setCmrFile(null)}>{cmrFile.name} ✕</div>
+      ) : (
+        <button className="btn secondary" onClick={() => cmrInputRef.current?.click()}>{t('uploadCmr', lang)}</button>
       )}
+      <input
+        ref={cmrInputRef}
+        type="file"
+        accept="image/*,application/pdf"
+        style={{ display: 'none' }}
+        onChange={(e) => setCmrFile(e.target.files?.[0] || null)}
+      />
+
+      <button className="btn" onClick={confirmLeg} disabled={busy} style={{ marginTop: 14 }}>
+        {busy ? '…' : leg === 'pickup' ? t('confirmPickup', lang) : t('confirmDelivery', lang)}
+      </button>
     </div>
   )
 }

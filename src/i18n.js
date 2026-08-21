@@ -48,6 +48,9 @@ const translations = {
     uploadCmr: 'CMR hochladen',
     confirmPickup: 'Abholung bestätigen',
     confirmDelivery: 'Lieferung bestätigen',
+    sectionActive: 'Aktive Fahrten',
+    sectionHistory: 'Verlauf · Erledigte Fahrten',
+    noActiveRides: 'Aktuell keine aktiven Fahrten.',
   },
   en: {
     appName: 'Zimand Driver',
@@ -98,6 +101,9 @@ const translations = {
     uploadCmr: 'Upload CMR',
     confirmPickup: 'Confirm pickup',
     confirmDelivery: 'Confirm delivery',
+    sectionActive: 'Active rides',
+    sectionHistory: 'History · Completed rides',
+    noActiveRides: 'No active rides right now.',
   },
 }
 

@@ -316,6 +316,7 @@ body {
 .ride-badge.new { background: #FBF0DC; color: #B9770E; }
 .ride-badge.progress { background: #E7F3ED; color: #2E7D5B; }
 .ride-badge.done { background: #E9E9EE; color: #5B5F6B; }
+.ride-badge.cancelled { background: #FBE7E7; color: #B03A3A; }
 
 .ride-route {
   display: flex;

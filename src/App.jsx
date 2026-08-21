@@ -124,6 +124,7 @@ function LoginScreen({ lang, onChangeLang }) {
 
 function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) {
   const [tab, setTab] = useState('curse')
+  const [menuOpen, setMenuOpen] = useState(false)
   const isOwner = profile?.account_type === 'owner_operator'
   const watchIdRef = useRef(null)
 
@@ -168,20 +169,21 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
     }
   }, [profile?.is_online, profile?.id])
 
+  function navTo(tabId) {
+    setTab(tabId)
+    setMenuOpen(false)
+  }
+
   return (
     <div className="phone-shell">
-      <div className="topbar">
-        <div className="brand-mark"><span className="live-dot" /> {t('appName', lang)}</div>
-        <div className="topbar-right">
-          <LangSwitcher lang={lang} onChangeLang={onChangeLang} dark />
-          <button className="logout-btn" onClick={() => supabase.auth.signOut()}>{t('logout', lang)}</button>
-          <div className="avatar">{initials(profile?.name || session.user.email)}</div>
-        </div>
+      <div className="brand-strip">
+        <span className="brand-strip-name"><span className="live-dot" /> Zimand Express</span>
+        <button className="hbtn" aria-label="menu" onClick={() => setMenuOpen(true)}>☰</button>
       </div>
 
       <div className="screen-body">
         {tab === 'curse' && <RidesScreen profile={profile} isOwner={isOwner} lang={lang} />}
-        {tab === 'licitatii' && isOwner && <PlaceholderScreen title={t('tabBidding', lang)} note={t('biddingPlaceholder', lang)} />}
+        {tab === 'licitatii' && isOwner && <BiddingScreen profile={profile} lang={lang} />}
         {tab === 'castiguri' && isOwner && <PlaceholderScreen title={t('tabEarnings', lang)} note={t('earningsPlaceholder', lang)} />}
         {tab === 'profil' && (
           <ProfileScreen
@@ -194,23 +196,37 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
         )}
       </div>
 
-      <div className="bottomnav">
-        <button className={tab === 'curse' ? 'active' : ''} onClick={() => setTab('curse')}>
-          <span className="nav-ic">🚚</span>{t('tabRides', lang)}
-        </button>
-        {isOwner && (
-          <button className={tab === 'licitatii' ? 'active' : ''} onClick={() => setTab('licitatii')}>
-            <span className="nav-ic">🏷️</span>{t('tabBidding', lang)}
+      <div className={`menu-overlay ${menuOpen ? 'show' : ''}`} onClick={(e) => { if (e.target === e.currentTarget) setMenuOpen(false) }}>
+        <div className="menu-drawer">
+          <div className="menu-header">
+            <span className="live-dot" /><span className="menu-header-name">Zimand Express</span>
+          </div>
+          <button className={`menu-item ${tab === 'curse' ? 'active' : ''}`} onClick={() => navTo('curse')}>
+            <span className="ic">🚚</span>{t('tabRides', lang)}
           </button>
-        )}
-        {isOwner && (
-          <button className={tab === 'castiguri' ? 'active' : ''} onClick={() => setTab('castiguri')}>
-            <span className="nav-ic">💶</span>{t('tabEarnings', lang)}
+          {isOwner && (
+            <button className={`menu-item ${tab === 'licitatii' ? 'active' : ''}`} onClick={() => navTo('licitatii')}>
+              <span className="ic">🏷️</span>{t('tabBidding', lang)}
+            </button>
+          )}
+          {isOwner && (
+            <button className={`menu-item ${tab === 'castiguri' ? 'active' : ''}`} onClick={() => navTo('castiguri')}>
+              <span className="ic">💶</span>{t('tabEarnings', lang)}
+            </button>
+          )}
+          <button className={`menu-item ${tab === 'profil' ? 'active' : ''}`} onClick={() => navTo('profil')}>
+            <span className="ic">👤</span>{t('tabProfile', lang)}
           </button>
-        )}
-        <button className={tab === 'profil' ? 'active' : ''} onClick={() => setTab('profil')}>
-          <span className="nav-ic">👤</span>{t('tabProfile', lang)}
-        </button>
+
+          <div className="menu-divider" />
+
+          <div className="menu-lang">
+            <LangSwitcher lang={lang} onChangeLang={onChangeLang} />
+          </div>
+          <button className="menu-item logout" onClick={() => supabase.auth.signOut()}>
+            <span className="ic">🚪</span>{t('logout', lang)}
+          </button>
+        </div>
       </div>
     </div>
   )
@@ -301,6 +317,9 @@ function RidesScreen({ profile, isOwner, lang }) {
   if (loading) return <PlaceholderScreen title={t('tabRides', lang)} note={t('loadingRides', lang)} />
 
   const selected = orders.find((o) => o.id === selectedId)
+  if (selected && selected.status === 'done') {
+    return <CompletedOrderDetail order={selected} isOwner={isOwner} lang={lang} onBack={() => setSelectedId(null)} />
+  }
   if (selected) {
     return <RideDetailScreen order={selected} isOwner={isOwner} lang={lang} onBack={() => setSelectedId(null)} onStatusChange={() => {}} />
   }
@@ -719,6 +738,316 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange })
       <button className="btn" onClick={confirmLeg} disabled={busy} style={{ marginTop: 14 }}>
         {busy ? '…' : leg === 'pickup' ? t('confirmPickup', lang) : t('confirmDelivery', lang)}
       </button>
+    </div>
+  )
+}
+
+function useCompanyName(createdBy) {
+  const [name, setName] = useState(null)
+  useEffect(() => {
+    if (!createdBy) return
+    supabase
+      .from('profiles')
+      .select('name')
+      .eq('id', createdBy)
+      .single()
+      .then(({ data }) => setName(data?.name || null))
+      .catch(() => {})
+  }, [createdBy])
+  return name
+}
+
+function useSignedUrls(paths) {
+  const [urls, setUrls] = useState([])
+  useEffect(() => {
+    if (!paths || paths.length === 0) {
+      setUrls([])
+      return
+    }
+    let active = true
+    Promise.all(
+      paths.map((p) =>
+        supabase.storage.from('proof-of-delivery').createSignedUrl(p, 3600).then((r) => r.data?.signedUrl)
+      )
+    ).then((results) => {
+      if (active) setUrls(results.filter(Boolean))
+    })
+    return () => { active = false }
+  }, [JSON.stringify(paths)])
+  return urls
+}
+
+function useSignedUrl(path) {
+  const [url, setUrl] = useState(null)
+  useEffect(() => {
+    if (!path) { setUrl(null); return }
+    let active = true
+    supabase.storage.from('proof-of-delivery').createSignedUrl(path, 3600).then((r) => {
+      if (active) setUrl(r.data?.signedUrl || null)
+    })
+    return () => { active = false }
+  }, [path])
+  return url
+}
+
+function durationLabel(fromIso, toIso) {
+  if (!fromIso || !toIso) return ''
+  const mins = Math.round((new Date(toIso) - new Date(fromIso)) / 60000)
+  if (mins < 60) return `${mins} min`
+  return `${Math.floor(mins / 60)}h ${mins % 60}min`
+}
+
+function TimelineLeg({ leg, order, lang }) {
+  const startedAt = leg === 'pickup' ? order.pickup_started_at : order.delivery_started_at
+  const arrivedAt = leg === 'pickup' ? order.pickup_arrived_at : order.delivery_arrived_at
+  const confirmedAt = leg === 'pickup' ? order.pickup_confirmed_at : order.delivery_confirmed_at
+  const photoPaths = leg === 'pickup' ? order.pickup_photos : order.delivery_photos
+  const cmrPath = leg === 'pickup' ? order.pickup_cmr_url : order.delivery_cmr_url
+  const photoUrls = useSignedUrls(photoPaths || [])
+  const cmrUrl = useSignedUrl(cmrPath)
+
+  if (!startedAt) return null
+
+  return (
+    <>
+      <div className="tl-leg-label">{leg === 'pickup' ? '🅐 ' + t('pickup', lang) : '🅑 ' + t('delivery', lang)}</div>
+      <div className="tl-step">
+        <div className="tl-title">{t('startDriving', lang)}</div>
+        <div className="tl-time">{new Date(startedAt).toLocaleString()}</div>
+      </div>
+      {arrivedAt && (
+        <div className="tl-step">
+          <div className="tl-title">{t('arrived', lang)}</div>
+          <div className="tl-time">{new Date(arrivedAt).toLocaleString()} · {durationLabel(startedAt, arrivedAt)}</div>
+        </div>
+      )}
+      {confirmedAt && (
+        <div className="tl-step">
+          <div className="tl-title">{leg === 'pickup' ? t('confirmPickup', lang) : t('confirmDelivery', lang)}</div>
+          <div className="tl-time">{new Date(confirmedAt).toLocaleString()} · {durationLabel(arrivedAt, confirmedAt)}</div>
+          {photoUrls.length > 0 && (
+            <div className="tl-photos">
+              {photoUrls.map((u, i) => <img key={i} src={u} alt="" className="tl-photo" />)}
+            </div>
+          )}
+          {cmrUrl && <div className="tl-sig">📄 <a href={cmrUrl} target="_blank" rel="noreferrer">{t('cmrLabel', lang)}</a></div>}
+        </div>
+      )}
+    </>
+  )
+}
+
+function CompletedOrderDetail({ order, isOwner, lang, onBack }) {
+  const mapRef = useRef(null)
+  const mapInstanceRef = useRef(null)
+  const pickupCoords = useGeocode(order.pickup_address)
+  const deliveryCoords = useGeocode(order.delivery_address)
+  const companyName = useCompanyName(order.created_by)
+
+  useEffect(() => {
+    if (!mapRef.current || mapInstanceRef.current) return
+    mapInstanceRef.current = window.L.map(mapRef.current, { zoomControl: false, attributionControl: false }).setView([49.45, 11.07], 9)
+    window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(mapInstanceRef.current)
+    return () => { mapInstanceRef.current?.remove(); mapInstanceRef.current = null }
+  }, [])
+
+  useEffect(() => {
+    const map = mapInstanceRef.current
+    if (!map) return
+    map.eachLayer((layer) => {
+      if (layer instanceof window.L.Marker || layer instanceof window.L.Polyline) map.removeLayer(layer)
+    })
+    const points = []
+    if (pickupCoords) {
+      window.L.marker(pickupCoords, { icon: window.L.divIcon({ className: '', html: '<div class="pin-icon pk"><span>A</span></div>', iconSize: [22, 22], iconAnchor: [11, 20] }) }).addTo(map)
+      points.push(pickupCoords)
+    }
+    if (deliveryCoords) {
+      window.L.marker(deliveryCoords, { icon: window.L.divIcon({ className: '', html: '<div class="pin-icon dl"><span>B</span></div>', iconSize: [22, 22], iconAnchor: [11, 20] }) }).addTo(map)
+      points.push(deliveryCoords)
+    }
+    if (points.length === 2) {
+      window.L.polyline(points, { color: '#2E7D5B', weight: 3 }).addTo(map)
+      map.fitBounds(window.L.latLngBounds(points), { padding: [30, 30] })
+    } else if (points.length === 1) {
+      map.setView(points[0], 12)
+    }
+  }, [pickupCoords, deliveryCoords])
+
+  const net = order.estimated_price
+  const vat = net != null ? net * 0.19 : null
+
+  return (
+    <div className="ride-detail">
+      <button className="back-btn" onClick={onBack}>← {t('back', lang)}</button>
+
+      <div className="ride-detail-header">
+        <span className="ride-ref">{t('orderRef', lang)} {order.order_number || order.reference || order.id.slice(0, 8)}</span>
+        <span className={`ride-badge ${statusClass(order.status)}`}>{statusLabel(order.status, lang)}</span>
+      </div>
+
+      {isOwner && net != null && (
+        <div className="summary-box">
+          <div className="route">{order.pickup_address} → {order.delivery_address}</div>
+          <div className="summary-grid">
+            <div>{t('kmLabel', lang)}<b>{order.km ? `${order.km} km` : '—'}</b></div>
+            <div>{t('priceLabel', lang)}<b>{net.toFixed(2)} €</b></div>
+            <div>MwSt (19%)<b>{vat.toFixed(2)} €</b></div>
+            <div>Gesamt<b>{(net + vat).toFixed(2)} €</b></div>
+          </div>
+        </div>
+      )}
+
+      {companyName && (
+        <div className="info-card">
+          <div className="info-card-head">🏢 {companyName}</div>
+        </div>
+      )}
+
+      <div className="live-map"><div ref={mapRef} style={{ width: '100%', height: '100%' }} /></div>
+
+      <div className="timeline">
+        <TimelineLeg leg="pickup" order={order} lang={lang} />
+        <TimelineLeg leg="delivery" order={order} lang={lang} />
+      </div>
+    </div>
+  )
+}
+
+function isToday(dateStr) {
+  if (!dateStr) return false
+  const today = new Date().toISOString().slice(0, 10)
+  return dateStr === today
+}
+
+function BiddingScreen({ profile, lang }) {
+  const [orders, setOrders] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [openId, setOpenId] = useState(null)
+
+  useEffect(() => {
+    let active = true
+    supabase
+      .from('orders')
+      .select('*')
+      .eq('status', 'open')
+      .order('pickup_date', { ascending: true })
+      .then(({ data, error }) => {
+        if (error) console.error('open orders fetch error:', error.message)
+        if (active) { setOrders(data || []); setLoading(false) }
+      })
+
+    const channel = supabase
+      .channel('bidding-open-orders')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: 'status=eq.open' }, () => {
+        supabase.from('orders').select('*').eq('status', 'open').then(({ data }) => setOrders(data || []))
+      })
+      .subscribe()
+
+    return () => { active = false; supabase.removeChannel(channel) }
+  }, [])
+
+  if (loading) return <PlaceholderScreen title={t('tabBidding', lang)} note={t('loadingRides', lang)} />
+  if (orders.length === 0) return <PlaceholderScreen title={t('tabBidding', lang)} note={t('biddingPlaceholder', lang)} />
+
+  return (
+    <div className="rides-list">
+      <h2 className="screen-title">{t('tabBidding', lang)}</h2>
+      {orders.map((o) => (
+        <BidCard key={o.id} order={o} lang={lang} profile={profile} open={openId === o.id} onToggle={() => setOpenId(openId === o.id ? null : o.id)} />
+      ))}
+    </div>
+  )
+}
+
+function BidCard({ order, lang, profile, open, onToggle }) {
+  const [ownPrice, setOwnPrice] = useState('')
+  const [message, setMessage] = useState('')
+  const [respectInterval, setRespectInterval] = useState(true)
+  const [busy, setBusy] = useState(false)
+  const [done, setDone] = useState(false)
+  const today = isToday(order.pickup_date)
+
+  async function submitBid(amount) {
+    setBusy(true)
+    try {
+      // NOTE: adjust field names below to match the real `bids` table schema
+      // once confirmed (order_id, price/amount, message, driver/profile reference).
+      const { error } = await supabase.from('bids').insert({
+        order_id: order.id,
+        price: amount,
+        message: message || null,
+        profile_id: null, // TODO: set to the bidding company's profiles.id once schema is confirmed
+      })
+      if (error) throw error
+      setDone(true)
+    } catch (err) {
+      console.error('bid submit error:', err.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className={`bid-card2 ${open ? 'open' : ''}`}>
+      <div className="bid-card2-head" onClick={onToggle}>
+        <div className="bid-top-row">
+          <span className={`pill ${today ? 'heute' : ''}`}>{today ? 'HEUTE' : order.pickup_date}</span>
+          <span className="pill-label">{t('pickup', lang)}</span>
+          <span className="pill-time">{order.pickup_from}{order.pickup_to ? `–${order.pickup_to}` : ''}</span>
+        </div>
+        <div className="status-row">
+          <span className="pill deschisa">{statusLabel(order.status, lang)}</span>
+          <span className="chev">▼</span>
+        </div>
+        <div className="bid-order-id">{t('orderRef', lang)} {order.order_number || order.id.slice(0, 8)}</div>
+        <div className="bid-stop"><span className="addr">📍 {order.pickup_address}</span>{order.km && <span className="val">{order.km} km</span>}</div>
+        <div className="bid-stop"><span className="addr">🏁 {order.delivery_address}</span>{order.weight && <span className="val">⚖ {order.weight} kg</span>}</div>
+      </div>
+
+      <div className="bid-card2-body">
+        <div className="bid-body-inner">
+          <div className="bid-divider" />
+          <div className="bid-zustellung-label">{t('delivery', lang)}</div>
+          <div className="bid-zustellung-val">{order.delivery_date} · {order.delivery_from}{order.delivery_to ? `–${order.delivery_to}` : ''}</div>
+
+          {done ? (
+            <div className="empty-note">✓ {t('confirmStep', lang)}</div>
+          ) : (
+            <>
+              {order.estimated_price != null && (
+                <div className="price-box">
+                  <div><div className="lbl">{t('priceLabel', lang)}</div><div className="val">{order.estimated_price} €</div></div>
+                  <button className="accept-btn" onClick={(e) => { e.stopPropagation(); submitBid(order.estimated_price) }} disabled={busy}>✓</button>
+                </div>
+              )}
+
+              <label className="bid-field-label">{t('priceLabel', lang)} (€)</label>
+              <input className="bid-input2" type="number" value={ownPrice} onChange={(e) => setOwnPrice(e.target.value)} />
+
+              {today && (
+                <div className="interval-note">
+                  <div className="txt">{t('pickup', lang)}: {order.pickup_from}{order.pickup_to ? `–${order.pickup_to}` : ''}</div>
+                  <label>
+                    <input type="checkbox" checked={respectInterval} onChange={(e) => setRespectInterval(e.target.checked)} />
+                    {' '}{t('confirmStep', lang)}
+                  </label>
+                </div>
+              )}
+
+              <textarea className="bid-input2" value={message} onChange={(e) => setMessage(e.target.value)} placeholder="" />
+
+              <button
+                className="submit-bid-btn"
+                disabled={busy || !ownPrice}
+                onClick={(e) => { e.stopPropagation(); submitBid(parseFloat(ownPrice)) }}
+              >
+                {busy ? '…' : t('tabBidding', lang)}
+              </button>
+            </>
+          )}
+        </div>
+      </div>
     </div>
   )
 }

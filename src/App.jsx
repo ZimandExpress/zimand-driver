@@ -180,7 +180,7 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
       </div>
 
       <div className="screen-body">
-        {tab === 'curse' && <RidesScreen profile={profile} lang={lang} />}
+        {tab === 'curse' && <RidesScreen profile={profile} isOwner={isOwner} lang={lang} />}
         {tab === 'licitatii' && isOwner && <PlaceholderScreen title={t('tabBidding', lang)} note={t('biddingPlaceholder', lang)} />}
         {tab === 'castiguri' && isOwner && <PlaceholderScreen title={t('tabEarnings', lang)} note={t('earningsPlaceholder', lang)} />}
         {tab === 'profil' && (
@@ -236,7 +236,7 @@ function statusLabel(status, lang) {
   }
 }
 
-function RidesScreen({ profile, lang }) {
+function RidesScreen({ profile, isOwner, lang }) {
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
   const [selectedId, setSelectedIdState] = useState(() => sessionStorage.getItem('zd-open-order') || null)
@@ -300,7 +300,7 @@ function RidesScreen({ profile, lang }) {
 
   const selected = orders.find((o) => o.id === selectedId)
   if (selected) {
-    return <RideDetailScreen order={selected} lang={lang} onBack={() => setSelectedId(null)} onStatusChange={() => {}} />
+    return <RideDetailScreen order={selected} isOwner={isOwner} lang={lang} onBack={() => setSelectedId(null)} onStatusChange={() => {}} />
   }
 
   const activeOrders = orders
@@ -312,7 +312,7 @@ function RidesScreen({ profile, lang }) {
     .sort((a, b) => {
       const da = a.delivery_confirmed_at || a.delivery_date || ''
       const db = b.delivery_confirmed_at || b.delivery_date || ''
-      return db.localeCompare(da) // most recent first
+      return db.localeCompare(da)
     })
 
   if (orders.length === 0) {
@@ -321,26 +321,27 @@ function RidesScreen({ profile, lang }) {
 
   return (
     <div className="rides-list">
-      <h2 className="screen-title">{t('tabRides', lang)}</h2>
+      <div className="rides-header">
+        <h2 className="screen-title">{t('tabRides', lang)}</h2>
+      </div>
 
-      {activeOrders.length > 0 && (
-        <>
-          <div className="section-label">{t('sectionActive', lang)}</div>
-          {activeOrders.map((o) => (
-            <RideCard key={o.id} order={o} lang={lang} onClick={() => setSelectedId(o.id)} />
-          ))}
-        </>
-      )}
+      <div className="section-heading">
+        {t('sectionActive', lang)} <span className="count-pill">{activeOrders.length}</span>
+      </div>
 
-      {activeOrders.length === 0 && (
-        <div className="empty-note">{t('noActiveRides', lang)}</div>
-      )}
+      {activeOrders.length === 0 && <div className="empty-note">{t('noActiveRides', lang)}</div>}
+
+      {activeOrders.map((o) => (
+        <RideCard key={o.id} order={o} isOwner={isOwner} lang={lang} onClick={() => setSelectedId(o.id)} />
+      ))}
 
       {doneOrders.length > 0 && (
         <>
-          <div className="section-label">{t('sectionHistory', lang)}</div>
+          <div className="section-heading">
+            {t('sectionHistory', lang)} <span className="count-pill">{doneOrders.length}</span>
+          </div>
           {doneOrders.map((o) => (
-            <RideCard key={o.id} order={o} lang={lang} onClick={() => setSelectedId(o.id)} compact />
+            <RideCard key={o.id} order={o} isOwner={isOwner} lang={lang} onClick={() => setSelectedId(o.id)} compact />
           ))}
         </>
       )}
@@ -348,38 +349,69 @@ function RidesScreen({ profile, lang }) {
   )
 }
 
-function RideCard({ order, lang, onClick, compact }) {
-  return (
-    <div className={`ride-card ${compact ? 'compact' : ''}`} onClick={onClick}>
-      <div className="ride-top">
-        <span className="ride-ref">{t('orderRef', lang)} {order.order_number || order.reference || order.id.slice(0, 8)}</span>
-        <span className={`ride-badge ${statusClass(order.status)}`}>
-          {statusLabel(order.status, lang)}
-        </span>
-      </div>
-      <div className="ride-route">
-        <div className="ride-stop">
-          <span className="ride-stop-label">{t('pickup', lang)}</span>
-          <span className="ride-stop-addr">{order.pickup_address}</span>
-          {order.pickup_date && (
-            <span className="ride-stop-time">
-              {order.pickup_date}{order.pickup_from ? ` · ${order.pickup_from}` : ''}{order.pickup_to ? `–${order.pickup_to}` : ''}
-            </span>
+function RideCard({ order, isOwner, lang, onClick, compact }) {
+  if (compact) {
+    return (
+      <div className="ride-row-compact" onClick={onClick}>
+        <div className="ride-row-icon done">✓</div>
+        <div className="ride-row-body">
+          <span className="ride-row-id">{order.order_number || order.reference || order.id.slice(0, 8)}</span>
+          <span className="ride-row-route">{order.pickup_address} → {order.delivery_address}</span>
+          {order.delivery_confirmed_at && (
+            <span className="ride-row-date">{t('delivery', lang)}: {new Date(order.delivery_confirmed_at).toLocaleDateString()}</span>
           )}
         </div>
-        <div className="ride-stop">
-          <span className="ride-stop-label">{t('delivery', lang)}</span>
-          <span className="ride-stop-addr">{order.delivery_address}</span>
-          {order.delivery_confirmed_at ? (
-            <span className="ride-stop-time">✓ {new Date(order.delivery_confirmed_at).toLocaleDateString()}</span>
-          ) : order.delivery_date ? (
-            <span className="ride-stop-time">
-              {order.delivery_date}{order.delivery_from ? ` · ${order.delivery_from}` : ''}{order.delivery_to ? `–${order.delivery_to}` : ''}
-            </span>
-          ) : null}
-        </div>
+        <div className="ride-row-chev">›</div>
       </div>
-      {!compact && order.cargo_desc && <div className="ride-cargo">{order.cargo_desc}</div>}
+    )
+  }
+
+  return (
+    <div className="ride-card2">
+      <div className="ride-card2-top">
+        <div className="ride-card2-id">
+          <span className="ride-card2-icon">🚚</span>
+          <span className="ride-card2-num">{order.order_number || order.reference || order.id.slice(0, 8)}</span>
+        </div>
+        <span className={`ride-badge ${statusClass(order.status)}`}>{statusLabel(order.status, lang)}</span>
+      </div>
+
+      <div className="ride-card2-route">{order.pickup_address} → {order.delivery_address}</div>
+
+      <div className="ride-card2-rows">
+        <div className="ride-card2-row">
+          <span className="ric">📅</span>
+          <span className="rik">{t('pickup', lang)}</span>
+          <span className="riv">
+            {order.pickup_date}{order.pickup_from ? `, ${order.pickup_from}` : ''}{order.pickup_to ? `–${order.pickup_to}` : ''}
+          </span>
+        </div>
+        <div className="ride-card2-row">
+          <span className="ric">📅</span>
+          <span className="rik">{t('delivery', lang)}</span>
+          <span className="riv">
+            {order.delivery_date}{order.delivery_from ? `, ${order.delivery_from}` : ''}{order.delivery_to ? `–${order.delivery_to}` : ''}
+          </span>
+        </div>
+        {order.cargo_desc && (
+          <div className="ride-card2-row">
+            <span className="ric">📦</span>
+            <span className="rik">{t('cargoLabel', lang)}</span>
+            <span className="riv">{order.cargo_desc}{order.weight ? `, ${order.weight} kg` : ''}</span>
+          </div>
+        )}
+        {isOwner && order.estimated_price != null && (
+          <div className="ride-card2-row">
+            <span className="ric">🏷️</span>
+            <span className="rik">{t('priceLabel', lang)}</span>
+            <span className="riv price">{order.estimated_price} €</span>
+          </div>
+        )}
+      </div>
+
+      <button className="ride-card2-action" onClick={onClick}>
+        👁 {t('viewDetails', lang)}
+      </button>
     </div>
   )
 }
@@ -405,7 +437,7 @@ function useGeocode(address) {
   return coords
 }
 
-function RideDetailScreen({ order, lang, onBack, onStatusChange }) {
+function RideDetailScreen({ order, isOwner, lang, onBack, onStatusChange }) {
   const mapRef = useRef(null)
   const mapInstanceRef = useRef(null)
   const pickupCoords = useGeocode(order.pickup_address)
@@ -508,6 +540,9 @@ function RideDetailScreen({ order, lang, onBack, onStatusChange }) {
           {order.weight && <div className="info-row"><span className="k">{t('weightLabel', lang)}</span><span className="v">{order.weight} kg</span></div>}
           {order.dims && <div className="info-row"><span className="k">{t('dimsLabel', lang)}</span><span className="v">{order.dims}</span></div>}
           {order.km && <div className="info-row"><span className="k">{t('kmLabel', lang)}</span><span className="v">{order.km} km</span></div>}
+          {isOwner && order.estimated_price != null && (
+            <div className="info-row"><span className="k">{t('priceLabel', lang)}</span><span className="v price">{order.estimated_price} €</span></div>
+          )}
           {order.reference && <div className="info-row"><span className="k">{t('referenceLabel', lang)}</span><span className="v">{order.reference}</span></div>}
           {order.notes && <div className="info-note">{order.notes}</div>}
         </div>

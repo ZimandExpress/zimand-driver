@@ -1,11 +1,18 @@
 import { useEffect, useState } from 'react'
 import { supabase } from './supabaseClient'
+import { t, getLang, setLang, availableLangs } from './i18n'
 import './index.css'
 
 export default function App() {
   const [session, setSession] = useState(null)
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [lang, setLangState] = useState(getLang())
+
+  function changeLang(l) {
+    setLang(l)
+    setLangState(l)
+  }
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -36,22 +43,38 @@ export default function App() {
       })
   }, [session])
 
-  if (loading) return <SplashScreen />
-  if (!session) return <LoginScreen />
-  return <DriverShell session={session} profile={profile} />
+  if (loading) return <SplashScreen lang={lang} />
+  if (!session) return <LoginScreen lang={lang} onChangeLang={changeLang} />
+  return <DriverShell session={session} profile={profile} lang={lang} onChangeLang={changeLang} />
 }
 
-function SplashScreen() {
+function LangSwitcher({ lang, onChangeLang, dark }) {
+  return (
+    <div className={`lang-switch ${dark ? 'dark' : ''}`}>
+      {availableLangs.map((l) => (
+        <button
+          key={l}
+          className={l === lang ? 'active' : ''}
+          onClick={() => onChangeLang(l)}
+        >
+          {l.toUpperCase()}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+function SplashScreen({ lang }) {
   return (
     <div className="phone-shell center-content">
       <div className="brand-mark">
-        <span className="live-dot" /> Zimand Driver
+        <span className="live-dot" /> {t('appName', lang)}
       </div>
     </div>
   )
 }
 
-function LoginScreen() {
+function LoginScreen({ lang, onChangeLang }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -63,22 +86,23 @@ function LoginScreen() {
     setBusy(true)
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     setBusy(false)
-    if (error) setError('Email sau parolă greșită.')
+    if (error) setError(t('loginError', lang))
   }
 
   return (
     <div className="phone-shell center-content">
+      <LangSwitcher lang={lang} onChangeLang={onChangeLang} />
       <div className="login-card">
-        <div className="brand-mark"><span className="live-dot" /> Zimand Driver</div>
-        <p className="login-sub">Autentifică-te cu contul primit de la dispecerat</p>
+        <div className="brand-mark"><span className="live-dot" /> {t('appName', lang)}</div>
+        <p className="login-sub">{t('loginSubtitle', lang)}</p>
         <form onSubmit={handleLogin}>
-          <label>Email</label>
+          <label>{t('email', lang)}</label>
           <input type="email" value={email} onChange={e => setEmail(e.target.value)} required />
-          <label>Parolă</label>
+          <label>{t('password', lang)}</label>
           <input type="password" value={password} onChange={e => setPassword(e.target.value)} required />
           {error && <div className="login-error">{error}</div>}
           <button className="btn" type="submit" disabled={busy}>
-            {busy ? 'Se conectează…' : 'Conectare'}
+            {busy ? t('loggingIn', lang) : t('loginButton', lang)}
           </button>
         </form>
       </div>
@@ -86,34 +110,37 @@ function LoginScreen() {
   )
 }
 
-function DriverShell({ session, profile }) {
+function DriverShell({ session, profile, lang, onChangeLang }) {
   const [tab, setTab] = useState('curse')
   const isOwner = profile?.account_type === 'owner_operator'
 
   return (
     <div className="phone-shell">
       <div className="topbar">
-        <div className="brand-mark"><span className="live-dot" /> Zimand Driver</div>
-        <button className="logout-btn" onClick={() => supabase.auth.signOut()}>Ieși din cont</button>
+        <div className="brand-mark"><span className="live-dot" /> {t('appName', lang)}</div>
+        <div className="topbar-right">
+          <LangSwitcher lang={lang} onChangeLang={onChangeLang} dark />
+          <button className="logout-btn" onClick={() => supabase.auth.signOut()}>{t('logout', lang)}</button>
+        </div>
       </div>
 
       <div className="screen-body">
-        {tab === 'curse' && <PlaceholderScreen title="Curse" note="Aici vine lista de comenzi live din Supabase — sprintul următor." />}
-        {tab === 'licitatii' && isOwner && <PlaceholderScreen title="Licitații" note="Comenzi disponibile pentru licitare directă." />}
-        {tab === 'castiguri' && isOwner && <PlaceholderScreen title="Câștiguri" note="Sumele tale, per zi și per perioadă." />}
+        {tab === 'curse' && <PlaceholderScreen title={t('tabRides', lang)} note={t('ridesPlaceholder', lang)} />}
+        {tab === 'licitatii' && isOwner && <PlaceholderScreen title={t('tabBidding', lang)} note={t('biddingPlaceholder', lang)} />}
+        {tab === 'castiguri' && isOwner && <PlaceholderScreen title={t('tabEarnings', lang)} note={t('earningsPlaceholder', lang)} />}
         {tab === 'profil' && (
           <PlaceholderScreen
-            title="Profil"
-            note={`Cont: ${profile?.name || session.user.email} · Tip: ${isOwner ? 'Firmă proprie' : 'Șofer angajat'}`}
+            title={t('tabProfile', lang)}
+            note={`${t('accountLabel', lang)}: ${profile?.name || session.user.email} · ${t('typeLabel', lang)}: ${isOwner ? t('typeOwnerOperator', lang) : t('typeEmployee', lang)}`}
           />
         )}
       </div>
 
       <div className="bottomnav">
-        <button className={tab === 'curse' ? 'active' : ''} onClick={() => setTab('curse')}>Curse</button>
-        {isOwner && <button className={tab === 'licitatii' ? 'active' : ''} onClick={() => setTab('licitatii')}>Licitații</button>}
-        {isOwner && <button className={tab === 'castiguri' ? 'active' : ''} onClick={() => setTab('castiguri')}>Câștiguri</button>}
-        <button className={tab === 'profil' ? 'active' : ''} onClick={() => setTab('profil')}>Profil</button>
+        <button className={tab === 'curse' ? 'active' : ''} onClick={() => setTab('curse')}>{t('tabRides', lang)}</button>
+        {isOwner && <button className={tab === 'licitatii' ? 'active' : ''} onClick={() => setTab('licitatii')}>{t('tabBidding', lang)}</button>}
+        {isOwner && <button className={tab === 'castiguri' ? 'active' : ''} onClick={() => setTab('castiguri')}>{t('tabEarnings', lang)}</button>}
+        <button className={tab === 'profil' ? 'active' : ''} onClick={() => setTab('profil')}>{t('tabProfile', lang)}</button>
       </div>
     </div>
   )

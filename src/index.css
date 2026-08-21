@@ -546,3 +546,89 @@ body {
   opacity: .7;
   cursor: default;
 }
+
+/* --- leg workflow: start/arrive/confirm with photos + CMR --- */
+
+.leg-workflow {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.leg-title {
+  font-family: 'Oswald', sans-serif;
+  font-size: 13px;
+  color: var(--navy);
+  font-weight: 600;
+  letter-spacing: .02em;
+}
+
+.timer {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 28px;
+  font-weight: 600;
+  color: var(--navy);
+  text-align: center;
+  padding: 6px 0;
+}
+
+.pod-label {
+  font-family: 'Oswald', sans-serif;
+  font-size: 11px;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--text-soft);
+  margin-top: 6px;
+}
+
+.photo-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.photo-slot {
+  aspect-ratio: 1;
+  border-radius: 10px;
+  border: 1.5px dashed #C7CCD6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--cream);
+  font-size: 22px;
+  color: #B7BEC9;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.photo-slot.filled {
+  border-style: solid;
+  border-color: var(--line);
+  padding: 0;
+}
+
+.photo-slot.filled img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.cmr-chip {
+  background: var(--cream);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 12.5px;
+  color: var(--navy);
+  cursor: pointer;
+}
+
+.btn.secondary {
+  background: #fff;
+  color: var(--navy);
+  border: 1.5px solid var(--navy);
+}

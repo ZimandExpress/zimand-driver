@@ -632,3 +632,24 @@ body {
   color: var(--navy);
   border: 1.5px solid var(--navy);
 }
+
+.ride-card.compact {
+  opacity: .8;
+  padding: 11px 14px;
+}
+
+.ride-card.compact .ride-route {
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.ride-card.compact .ride-stop-addr {
+  font-size: 12.5px;
+}
+
+.empty-note {
+  margin: 0 4px 14px;
+  font-size: 13px;
+  color: var(--text-soft);
+}

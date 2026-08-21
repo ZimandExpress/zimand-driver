@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from './supabaseClient'
 import { t, getLang, setLang, availableLangs } from './i18n'
-import { Truck, CheckCircle2, Wallet, User, LogOut, Menu, Bell } from 'lucide-react'
+import { Truck, CheckCircle2, Wallet, User, LogOut, Menu, Bell, MapPin, FlagTriangleRight } from 'lucide-react'
 import './index.css'
 
 export default function App() {
@@ -1070,6 +1070,13 @@ function isToday(dateStr) {
   return dateStr === today
 }
 
+function isTomorrow(dateStr) {
+  if (!dateStr) return false
+  const t = new Date()
+  t.setDate(t.getDate() + 1)
+  return dateStr === t.toISOString().slice(0, 10)
+}
+
 function getWeekStart(dateStr) {
   const d = new Date(dateStr)
   const day = d.getDay() // 0=Sun..6=Sat
@@ -1256,6 +1263,19 @@ function BiddingScreen({ profile, session, lang, embedded }) {
   )
 }
 
+function VehicleChips({ vehicles }) {
+  if (!vehicles || vehicles.length === 0) return null
+  return (
+    <div className="veh-chips">
+      {vehicles.map((v, i) => (
+        <span className="veh-chip" key={i}>
+          <Truck size={13} strokeWidth={1.8} /> {v.charAt(0).toUpperCase() + v.slice(1)}
+        </span>
+      ))}
+    </div>
+  )
+}
+
 function BidCard({ order, lang, courierProfileId, open, onToggle }) {
   const [ownPrice, setOwnPrice] = useState('')
   const [message, setMessage] = useState('')
@@ -1266,6 +1286,7 @@ function BidCard({ order, lang, courierProfileId, open, onToggle }) {
   const [existingBid, setExistingBid] = useState(null)
   const [editing, setEditing] = useState(false)
   const today = isToday(order.pickup_date)
+  const tomorrow = isTomorrow(order.pickup_date)
 
   useEffect(() => {
     if (!courierProfileId) return
@@ -1345,24 +1366,31 @@ function BidCard({ order, lang, courierProfileId, open, onToggle }) {
     }
   }
 
-  const showForm = !existingBid || editing
+  const idParts = [
+    order.order_number || order.id.slice(0, 8),
+    order.reference,
+    order.cargo_desc,
+  ].filter(Boolean)
 
   return (
     <div className={`bid-card2 ${open ? 'open' : ''}`}>
       <div className="bid-card2-head" onClick={onToggle}>
         <div className="bid-top-row">
-          {today && <span className="pill heute">HEUTE</span>}
+          {today && <span className="pill heute">{t('todayBadge', lang)}</span>}
+          {!today && tomorrow && <span className="pill morgen">{t('tomorrowBadge', lang)}</span>}
           <span className="pill-label">{t('pickup', lang)}</span>
           <span className="pill-date">{fmtDate(order.pickup_date)}</span>
           <span className="pill-time">{fmtTime(order.pickup_from)}{order.pickup_to ? `–${fmtTime(order.pickup_to)}` : ''}</span>
         </div>
         <div className="status-row">
           <span className={`pill ${order.status === 'open' ? 'deschisa' : ''}`}>{statusLabel(order.status, lang)}</span>
+          {existingBid && <span className="pill geboten">✓ {t('bidPlaced', lang)}: {existingBid.price} €</span>}
           <span className="chev">▼</span>
         </div>
-        <div className="bid-order-id">{t('orderRef', lang)} {order.order_number || order.id.slice(0, 8)}</div>
-        <div className="bid-stop"><span className="addr">📍 {order.pickup_address}</span>{order.km && <span className="val">{order.km} km</span>}</div>
-        <div className="bid-stop"><span className="addr">🏁 {order.delivery_address}</span>{order.weight && <span className="val">⚖ {order.weight} kg</span>}</div>
+        <div className="bid-order-id">{t('orderRef', lang)} {idParts.join(' · ')}</div>
+        <div className="bid-stop"><span className="addr"><MapPin size={13} strokeWidth={1.8} /> {order.pickup_address}</span>{order.km && <span className="val">{order.km} km</span>}</div>
+        <div className="bid-stop"><span className="addr"><FlagTriangleRight size={13} strokeWidth={1.8} /> {order.delivery_address}</span>{order.weight && <span className="val">⚖ {order.weight} kg</span>}</div>
+        <VehicleChips vehicles={order.vehicles} />
       </div>
 
       <div className="bid-card2-body">
@@ -1377,6 +1405,13 @@ function BidCard({ order, lang, courierProfileId, open, onToggle }) {
 
           {order.flexible_time_notes && (
             <div className="flex-time-note">⏱ {order.flexible_time_notes}</div>
+          )}
+
+          {order.notes && (
+            <div className="order-notes-box">
+              <div className="order-notes-label">{t('notesLabel', lang)}</div>
+              <div className="order-notes-text">{order.notes}</div>
+            </div>
           )}
 
           {existingBid && !editing ? (

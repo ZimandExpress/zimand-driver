@@ -327,11 +327,6 @@ function RidesScreen({ profile, isOwner, lang }) {
     <div className="rides-list">
       <div className="rides-topbar">
         <button className="icon-btn" aria-label="menu">☰</button>
-        <h2 className="rides-topbar-title">{t('tabRides', lang)}</h2>
-        <button className="icon-btn bell">
-          🔔
-          {activeOrders.length > 0 && <span className="bell-badge">{activeOrders.length}</span>}
-        </button>
       </div>
 
       <div className="rides-tabs">

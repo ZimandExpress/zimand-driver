@@ -1113,7 +1113,7 @@ function useCourierBids(courierProfileId) {
 }
 
 function MeineAngeboteScreen({ profile, session, lang }) {
-  const courierProfileId = useCompanyProfileId(session, profile)
+  const courierProfileId = session?.user?.id || null
   const { bids, loading } = useCourierBids(courierProfileId)
 
   if (loading) return <PlaceholderScreen title={t('menuOffers', lang)} note={t('loadingRides', lang)} />
@@ -1135,7 +1135,7 @@ function MeineAngeboteScreen({ profile, session, lang }) {
 }
 
 function NichtAngenommenScreen({ profile, session, lang }) {
-  const courierProfileId = useCompanyProfileId(session, profile)
+  const courierProfileId = session?.user?.id || null
   const { bids, loading } = useCourierBids(courierProfileId)
 
   if (loading) return <PlaceholderScreen title={t('menuNotAccepted', lang)} note={t('loadingRides', lang)} />
@@ -1327,7 +1327,7 @@ function BiddingScreen({ profile, session, lang, embedded }) {
   const [loading, setLoading] = useState(true)
   const [openId, setOpenId] = useState(null)
   const [debugInfo, setDebugInfo] = useState('')
-  const courierProfileId = useCompanyProfileId(session, profile)
+  const courierProfileId = session?.user?.id || null
 
   useEffect(() => {
     let active = true

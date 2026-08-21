@@ -1175,6 +1175,12 @@ function isTomorrow(dateStr) {
   return dateStr === t.toISOString().slice(0, 10)
 }
 
+function isRecentlyNew(createdAtIso) {
+  if (!createdAtIso) return false
+  const ageMs = Date.now() - new Date(createdAtIso).getTime()
+  return ageMs < 2 * 60 * 60 * 1000 // 2 hours
+}
+
 // order.notes is built line-by-line by disponent (buildOrderNotesFromRequest);
 // each line has a known prefix. Some are internal/billing (never shown to a driver),
 // the rest are genuine client instructions the driver should see.
@@ -1487,17 +1493,15 @@ function BidCard({ order, lang, courierProfileId, open, onToggle }) {
     <div className={`bid-card2 ${open ? 'open' : ''}`}>
       <div className="bid-card2-head" onClick={onToggle}>
         <div className="bid-top-row">
-          <div className="bid-top-left">
-            {today && <span className="pill heute">{t('todayBadge', lang)}</span>}
-            {!today && tomorrow && <span className="pill morgen">{t('tomorrowBadge', lang)}</span>}
-            <span className="pill-label">{t('pickup', lang)}</span>
-            <span className="pill-date">{fmtDate(order.pickup_date)}</span>
-            <span className="pill-time">{fmtTime(order.pickup_from)}{order.pickup_to ? `–${fmtTime(order.pickup_to)}` : ''}</span>
-          </div>
-          <div className="bid-top-right">
-            <span className={`pill ${order.status === 'open' ? 'deschisa' : ''}`}>{statusLabel(order.status, lang)}</span>
-            <span className="chev">▼</span>
-          </div>
+          {today && <span className="pill heute">{t('todayBadge', lang)}</span>}
+          {!today && tomorrow && <span className="pill morgen">{t('tomorrowBadge', lang)}</span>}
+          <span className="pill-label">{t('pickup', lang)}</span>
+          <span className="pill-date">{fmtDate(order.pickup_date)}</span>
+          <span className="pill-time">{fmtTime(order.pickup_from)}{order.pickup_to ? `–${fmtTime(order.pickup_to)}` : ''}</span>
+        </div>
+        <div className="status-row">
+          <span className={`pill ${order.status === 'open' ? 'deschisa' : ''}`}>{statusLabel(order.status, lang)}</span>
+          {isRecentlyNew(order.created_at) && <span className="new-dot">{t('newBadge', lang)}</span>}
         </div>
         {existingBid && (
           <div className="geboten-row">

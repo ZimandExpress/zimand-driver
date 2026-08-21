@@ -1173,9 +1173,29 @@ function BidCard({ order, lang, courierProfileId, open, onToggle }) {
   const [ownPrice, setOwnPrice] = useState('')
   const [message, setMessage] = useState('')
   const [respectInterval, setRespectInterval] = useState(true)
+  const [customFrom, setCustomFrom] = useState('')
+  const [customTo, setCustomTo] = useState('')
   const [busy, setBusy] = useState(false)
-  const [done, setDone] = useState(false)
+  const [existingBid, setExistingBid] = useState(null)
+  const [editing, setEditing] = useState(false)
   const today = isToday(order.pickup_date)
+
+  useEffect(() => {
+    if (!courierProfileId) return
+    supabase
+      .from('bids')
+      .select('*')
+      .eq('order_id', order.id)
+      .eq('courier_id', courierProfileId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) {
+          setExistingBid(data)
+          setOwnPrice(String(data.price ?? ''))
+          setMessage(data.message || '')
+        }
+      })
+  }, [courierProfileId, order.id])
 
   async function submitBid(amount) {
     if (!courierProfileId) {
@@ -1184,33 +1204,73 @@ function BidCard({ order, lang, courierProfileId, open, onToggle }) {
     }
     setBusy(true)
     try {
-      const { error } = await supabase.from('bids').insert({
-        order_id: order.id,
-        courier_id: courierProfileId,
-        price: amount,
-        message: message || null,
-        eta_from: respectInterval ? order.pickup_from : null,
-        eta_to: respectInterval ? order.pickup_to : null,
-      })
-      if (error) throw error
-      setDone(true)
+      const etaFrom = respectInterval ? order.pickup_from : (customFrom || null)
+      const etaTo = respectInterval ? order.pickup_to : (customTo || null)
+
+      if (existingBid) {
+        const { data, error } = await supabase
+          .from('bids')
+          .update({ price: amount, message: message || null, eta_from: etaFrom, eta_to: etaTo })
+          .eq('id', existingBid.id)
+          .select()
+          .single()
+        if (error) throw error
+        setExistingBid(data)
+      } else {
+        const { data, error } = await supabase
+          .from('bids')
+          .insert({
+            order_id: order.id,
+            courier_id: courierProfileId,
+            price: amount,
+            message: message || null,
+            eta_from: etaFrom,
+            eta_to: etaTo,
+          })
+          .select()
+          .single()
+        if (error) throw error
+        setExistingBid(data)
+      }
+      setEditing(false)
     } catch (err) {
       console.error('bid submit error:', err.message)
+      alert(err.message)
     } finally {
       setBusy(false)
     }
   }
 
+  async function withdrawBid() {
+    if (!existingBid) return
+    setBusy(true)
+    try {
+      const { error } = await supabase.from('bids').delete().eq('id', existingBid.id)
+      if (error) throw error
+      setExistingBid(null)
+      setOwnPrice('')
+      setMessage('')
+    } catch (err) {
+      console.error('bid withdraw error:', err.message)
+      alert(err.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const showForm = !existingBid || editing
+
   return (
     <div className={`bid-card2 ${open ? 'open' : ''}`}>
       <div className="bid-card2-head" onClick={onToggle}>
         <div className="bid-top-row">
-          <span className={`pill ${today ? 'heute' : ''}`}>{today ? 'HEUTE' : order.pickup_date}</span>
+          {today && <span className="pill heute">HEUTE</span>}
           <span className="pill-label">{t('pickup', lang)}</span>
+          <span className="pill-date">{order.pickup_date}</span>
           <span className="pill-time">{order.pickup_from}{order.pickup_to ? `–${order.pickup_to}` : ''}</span>
         </div>
         <div className="status-row">
-          <span className="pill deschisa">{statusLabel(order.status, lang)}</span>
+          <span className={`pill ${order.status === 'open' ? 'deschisa' : ''}`}>{statusLabel(order.status, lang)}</span>
           <span className="chev">▼</span>
         </div>
         <div className="bid-order-id">{t('orderRef', lang)} {order.order_number || order.id.slice(0, 8)}</div>
@@ -1224,8 +1284,22 @@ function BidCard({ order, lang, courierProfileId, open, onToggle }) {
           <div className="bid-zustellung-label">{t('delivery', lang)}</div>
           <div className="bid-zustellung-val">{order.delivery_date} · {order.delivery_from}{order.delivery_to ? `–${order.delivery_to}` : ''}</div>
 
-          {done ? (
-            <div className="empty-note">✓ {t('confirmStep', lang)}</div>
+          {order.dims && (
+            <div className="bid-extra-row">📐 {order.dims} cm</div>
+          )}
+
+          {order.flexible_time_notes && (
+            <div className="flex-time-note">⏱ {order.flexible_time_notes}</div>
+          )}
+
+          {existingBid && !editing ? (
+            <div className="existing-bid-box">
+              <div className="existing-bid-price">{existingBid.price} €</div>
+              <div className="existing-bid-actions">
+                <button className="btn secondary" onClick={(e) => { e.stopPropagation(); setEditing(true) }}>{t('editBid', lang)}</button>
+                <button className="btn danger" onClick={(e) => { e.stopPropagation(); withdrawBid() }} disabled={busy}>{t('withdrawBid', lang)}</button>
+              </div>
+            </div>
           ) : (
             <>
               {order.estimated_price != null && (
@@ -1235,30 +1309,39 @@ function BidCard({ order, lang, courierProfileId, open, onToggle }) {
                 </div>
               )}
 
+              <div className="or-own">{t('orOwnOffer', lang)}</div>
               <label className="bid-field-label">{t('priceLabel', lang)} (€)</label>
               <input className="bid-input2" type="number" value={ownPrice} onChange={(e) => setOwnPrice(e.target.value)} />
 
               {today && (
                 <div className="interval-note">
-                  <div className="txt">{t('pickup', lang)}: {order.pickup_from}{order.pickup_to ? `–${order.pickup_to}` : ''}</div>
+                  <div className="txt">{t('pickupWindowNote', lang)}: {order.pickup_from}{order.pickup_to ? `–${order.pickup_to}` : ''}</div>
                   <label>
                     <input type="checkbox" checked={respectInterval} onChange={(e) => setRespectInterval(e.target.checked)} />
-                    {' '}{t('confirmStep', lang)}
+                    {' '}{t('canRespectInterval', lang)}
                   </label>
+                  {!respectInterval && (
+                    <div className="custom-interval-row">
+                      <input className="bid-input2" type="time" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} placeholder={t('fromLabel', lang)} />
+                      <input className="bid-input2" type="time" value={customTo} onChange={(e) => setCustomTo(e.target.value)} placeholder={t('toLabel', lang)} />
+                    </div>
+                  )}
                 </div>
               )}
 
-              <textarea className="bid-input2" value={message} onChange={(e) => setMessage(e.target.value)} placeholder="" />
+              <textarea className="bid-input2" value={message} onChange={(e) => setMessage(e.target.value)} placeholder={t('messageToDispatcher', lang)} />
 
               <button
                 className="submit-bid-btn"
                 disabled={busy || !ownPrice || !courierProfileId}
                 onClick={(e) => { e.stopPropagation(); submitBid(parseFloat(ownPrice)) }}
               >
-                {busy ? '…' : t('tabBidding', lang)}
+                {busy ? '…' : t('submitBid', lang)}
               </button>
             </>
           )}
+
+          <div className="bid-footnote">{t('bidFootnote', lang)}</div>
         </div>
       </div>
     </div>

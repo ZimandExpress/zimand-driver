@@ -240,6 +240,8 @@ function RidesScreen({ profile, isOwner, lang }) {
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
   const [selectedId, setSelectedIdState] = useState(() => sessionStorage.getItem('zd-open-order') || null)
+  const [activeTab, setActiveTab] = useState('mine')
+  const [sortAsc, setSortAsc] = useState(true)
 
   function setSelectedId(id) {
     setSelectedIdState(id)
@@ -303,47 +305,79 @@ function RidesScreen({ profile, isOwner, lang }) {
     return <RideDetailScreen order={selected} isOwner={isOwner} lang={lang} onBack={() => setSelectedId(null)} onStatusChange={() => {}} />
   }
 
-  const activeOrders = orders
-    .filter((o) => o.status === 'assigned')
-    .sort((a, b) => (a.pickup_date || '').localeCompare(b.pickup_date || ''))
+  const activeOrders = orders.filter((o) => o.status === 'assigned')
+  const doneOrders = orders.filter((o) => o.status === 'done')
 
-  const doneOrders = orders
-    .filter((o) => o.status === 'done')
-    .sort((a, b) => {
-      const da = a.delivery_confirmed_at || a.delivery_date || ''
-      const db = b.delivery_confirmed_at || b.delivery_date || ''
-      return db.localeCompare(da)
+  function sortByDate(list, dateKey) {
+    return [...list].sort((a, b) => {
+      const da = a[dateKey] || ''
+      const db = b[dateKey] || ''
+      return sortAsc ? da.localeCompare(db) : db.localeCompare(da)
     })
-
-  if (orders.length === 0) {
-    return <PlaceholderScreen title={t('tabRides', lang)} note={t('noRides', lang)} />
   }
+
+  const sortedActive = sortByDate(activeOrders, 'pickup_date')
+  const sortedDone = sortByDate(doneOrders, 'delivery_date')
+
+  // employees don't see bidding, so they never land on the 'available' tab
+  const tabs = isOwner ? ['available', 'mine', 'done'] : ['mine', 'done']
+  const currentTab = tabs.includes(activeTab) ? activeTab : 'mine'
 
   return (
     <div className="rides-list">
-      <div className="rides-header">
-        <h2 className="screen-title">{t('tabRides', lang)}</h2>
+      <div className="rides-topbar">
+        <button className="icon-btn" aria-label="menu">☰</button>
+        <h2 className="rides-topbar-title">{t('tabRides', lang)}</h2>
+        <button className="icon-btn bell">
+          🔔
+          {activeOrders.length > 0 && <span className="bell-badge">{activeOrders.length}</span>}
+        </button>
       </div>
 
-      <div className="section-heading">
-        {t('sectionActive', lang)} <span className="count-pill">{activeOrders.length}</span>
+      <div className="rides-tabs">
+        {tabs.map((tabKey) => (
+          <button
+            key={tabKey}
+            className={`rides-tab ${currentTab === tabKey ? 'active' : ''}`}
+            onClick={() => setActiveTab(tabKey)}
+          >
+            {tabKey === 'available' && t('tabAvailable', lang)}
+            {tabKey === 'mine' && t('tabMine', lang)}
+            {tabKey === 'done' && t('tabDoneTab', lang)}
+            <span className="rides-tab-count">
+              {tabKey === 'available' ? 0 : tabKey === 'mine' ? activeOrders.length : doneOrders.length}
+            </span>
+          </button>
+        ))}
       </div>
 
-      {activeOrders.length === 0 && <div className="empty-note">{t('noActiveRides', lang)}</div>}
+      <div className="rides-toolbar">
+        <button className="filter-btn" disabled title={t('comingSoon', lang)}>
+          ⏷ {t('filter', lang)}
+        </button>
+        <button className="sort-btn" onClick={() => setSortAsc((v) => !v)}>
+          {t('sortLabel', lang)}: {sortAsc ? t('sortOldest', lang) : t('sortNewest', lang)}
+        </button>
+      </div>
 
-      {activeOrders.map((o) => (
-        <RideCard key={o.id} order={o} isOwner={isOwner} lang={lang} onClick={() => setSelectedId(o.id)} />
-      ))}
+      {currentTab === 'available' && (
+        <div className="empty-note">{t('biddingComingSoon', lang)}</div>
+      )}
 
-      {doneOrders.length > 0 && (
-        <>
-          <div className="section-heading">
-            {t('sectionHistory', lang)} <span className="count-pill">{doneOrders.length}</span>
-          </div>
-          {doneOrders.map((o) => (
-            <RideCard key={o.id} order={o} isOwner={isOwner} lang={lang} onClick={() => setSelectedId(o.id)} compact />
-          ))}
-        </>
+      {currentTab === 'mine' && (
+        sortedActive.length === 0
+          ? <div className="empty-note">{t('noActiveRides', lang)}</div>
+          : sortedActive.map((o) => (
+              <RideCard key={o.id} order={o} isOwner={isOwner} lang={lang} onClick={() => setSelectedId(o.id)} />
+            ))
+      )}
+
+      {currentTab === 'done' && (
+        sortedDone.length === 0
+          ? <div className="empty-note">{t('noRides', lang)}</div>
+          : sortedDone.map((o) => (
+              <RideCard key={o.id} order={o} isOwner={isOwner} lang={lang} onClick={() => setSelectedId(o.id)} compact />
+            ))
       )}
     </div>
   )

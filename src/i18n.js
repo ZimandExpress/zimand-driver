@@ -39,6 +39,7 @@ const translations = {
     kmLabel: 'Entfernung',
     loadingMap: 'Karte wird geladen…',
     contact: 'Kontakt',
+    markDone: 'Fahrt abschließen',
   },
   en: {
     appName: 'Zimand Driver',
@@ -80,6 +81,7 @@ const translations = {
     kmLabel: 'Distance',
     loadingMap: 'Loading map…',
     contact: 'Contact',
+    markDone: 'Complete ride',
   },
 }
 

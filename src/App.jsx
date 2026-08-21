@@ -247,8 +247,8 @@ function fmtDate(dateStr) {
   if (isNaN(d.getTime())) return dateStr
   const dd = String(d.getDate()).padStart(2, '0')
   const mm = String(d.getMonth() + 1).padStart(2, '0')
-  const yyyy = d.getFullYear()
-  return `${dd}.${mm}.${yyyy}`
+  const yy = String(d.getFullYear()).slice(-2)
+  return `${dd}.${mm}.${yy}`
 }
 
 function fmtTime(timeStr) {
@@ -1493,15 +1493,17 @@ function BidCard({ order, lang, courierProfileId, open, onToggle }) {
     <div className={`bid-card2 ${open ? 'open' : ''}`}>
       <div className="bid-card2-head" onClick={onToggle}>
         <div className="bid-top-row">
-          {today && <span className="pill heute">{t('todayBadge', lang)}</span>}
-          {!today && tomorrow && <span className="pill morgen">{t('tomorrowBadge', lang)}</span>}
-          <span className="pill-label">{t('pickup', lang)}</span>
-          <span className="pill-date">{fmtDate(order.pickup_date)}</span>
-          <span className="pill-time">{fmtTime(order.pickup_from)}{order.pickup_to ? `–${fmtTime(order.pickup_to)}` : ''}</span>
-        </div>
-        <div className="status-row">
-          <span className={`pill ${order.status === 'open' ? 'deschisa' : ''}`}>{statusLabel(order.status, lang)}</span>
-          {isRecentlyNew(order.created_at) && <span className="new-dot">{t('newBadge', lang)}</span>}
+          <div className="bid-top-left">
+            {today && <span className="pill heute">{t('todayBadge', lang)}</span>}
+            {!today && tomorrow && <span className="pill morgen">{t('tomorrowBadge', lang)}</span>}
+            <span className="pill-label">{t('pickup', lang)}</span>
+            <span className="pill-date">{fmtDate(order.pickup_date)}</span>
+            <span className="pill-time">{order.pickup_from ? `${fmtTime(order.pickup_from)}${order.pickup_to ? `–${fmtTime(order.pickup_to)}` : ''}` : '—'}</span>
+          </div>
+          <div className="bid-top-right">
+            <span className={`pill ${order.status === 'open' ? 'deschisa' : ''}`}>{statusLabel(order.status, lang)}</span>
+            {isRecentlyNew(order.created_at) && <span className="new-dot">{t('newBadge', lang)}</span>}
+          </div>
         </div>
         {existingBid && (
           <div className="geboten-row">

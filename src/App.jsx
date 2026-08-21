@@ -175,6 +175,7 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
         <div className="topbar-right">
           <LangSwitcher lang={lang} onChangeLang={onChangeLang} dark />
           <button className="logout-btn" onClick={() => supabase.auth.signOut()}>{t('logout', lang)}</button>
+          <div className="avatar">{initials(profile?.name || session.user.email)}</div>
         </div>
       </div>
 
@@ -194,10 +195,22 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
       </div>
 
       <div className="bottomnav">
-        <button className={tab === 'curse' ? 'active' : ''} onClick={() => setTab('curse')}>{t('tabRides', lang)}</button>
-        {isOwner && <button className={tab === 'licitatii' ? 'active' : ''} onClick={() => setTab('licitatii')}>{t('tabBidding', lang)}</button>}
-        {isOwner && <button className={tab === 'castiguri' ? 'active' : ''} onClick={() => setTab('castiguri')}>{t('tabEarnings', lang)}</button>}
-        <button className={tab === 'profil' ? 'active' : ''} onClick={() => setTab('profil')}>{t('tabProfile', lang)}</button>
+        <button className={tab === 'curse' ? 'active' : ''} onClick={() => setTab('curse')}>
+          <span className="nav-ic">🚚</span>{t('tabRides', lang)}
+        </button>
+        {isOwner && (
+          <button className={tab === 'licitatii' ? 'active' : ''} onClick={() => setTab('licitatii')}>
+            <span className="nav-ic">🏷️</span>{t('tabBidding', lang)}
+          </button>
+        )}
+        {isOwner && (
+          <button className={tab === 'castiguri' ? 'active' : ''} onClick={() => setTab('castiguri')}>
+            <span className="nav-ic">💶</span>{t('tabEarnings', lang)}
+          </button>
+        )}
+        <button className={tab === 'profil' ? 'active' : ''} onClick={() => setTab('profil')}>
+          <span className="nav-ic">👤</span>{t('tabProfile', lang)}
+        </button>
       </div>
     </div>
   )
@@ -346,6 +359,14 @@ function ProfileScreen({ session, profile, isOwner, lang, onProfileChange }) {
       </div>
     </div>
   )
+}
+
+function initials(nameOrEmail) {
+  if (!nameOrEmail) return '?'
+  const base = nameOrEmail.includes('@') ? nameOrEmail.split('@')[0] : nameOrEmail
+  const parts = base.trim().split(/\s+/)
+  const chars = parts.slice(0, 2).map((p) => p[0]?.toUpperCase() || '')
+  return chars.join('') || '?'
 }
 
 function PlaceholderScreen({ title, note }) {

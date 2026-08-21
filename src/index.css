@@ -1,968 +1,1155 @@
-:root {
-  --navy: #0F2240;
-  --navy-light: #1B3358;
-  --orange: #FF7A29;
-  --cream: #F6F4F0;
-  --line: #E4E1DA;
-  --text: #1B2430;
-  --text-soft: #6B7280;
-}
+import { useEffect, useRef, useState } from 'react'
+import { supabase } from './supabaseClient'
+import { t, getLang, setLang, availableLangs } from './i18n'
+import './index.css'
 
-* { box-sizing: border-box; }
+export default function App() {
+  const [session, setSession] = useState(null)
+  const [profile, setProfile] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [lang, setLangState] = useState(getLang())
 
-body {
-  margin: 0;
-  font-family: 'IBM Plex Sans', sans-serif;
-  background: var(--cream);
-  color: var(--text);
-}
-
-.phone-shell {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-}
-
-.center-content {
-  align-items: center;
-  justify-content: center;
-}
-
-.brand-mark {
-  font-family: 'Oswald', sans-serif;
-  font-size: 20px;
-  color: var(--navy);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.live-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #57D38C;
-  display: inline-block;
-}
-
-.login-card {
-  background: #fff;
-  border: 1px solid var(--line);
-  border-radius: 20px;
-  padding: 28px 26px;
-  width: 320px;
-  max-width: 90vw;
-  box-shadow: 0 20px 40px rgba(15, 34, 64, .12);
-}
-
-.login-sub {
-  font-size: 13px;
-  color: var(--text-soft);
-  margin: 8px 0 20px;
-}
-
-.login-card form {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.login-card label {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--navy);
-  margin-top: 8px;
-}
-
-.login-card input {
-  border: 1.5px solid var(--line);
-  border-radius: 10px;
-  padding: 10px 12px;
-  font-size: 14px;
-  font-family: 'IBM Plex Sans', sans-serif;
-}
-
-.login-card input:focus {
-  outline: none;
-  border-color: var(--orange);
-}
-
-.login-error {
-  color: #C0392B;
-  font-size: 12.5px;
-  margin-top: 6px;
-}
-
-.btn {
-  margin-top: 18px;
-  background: var(--orange);
-  color: #fff;
-  border: none;
-  border-radius: 12px;
-  padding: 13px;
-  font-family: 'Oswald', sans-serif;
-  font-size: 14px;
-  text-transform: uppercase;
-  letter-spacing: .03em;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.btn:disabled { opacity: .6; cursor: default; }
-
-.topbar {
-  background: var(--navy);
-  color: #fff;
-  padding: 14px 20px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.topbar .brand-mark { color: #fff; }
-
-.logout-btn {
-  background: rgba(255,255,255,.12);
-  border: none;
-  color: #fff;
-  border-radius: 8px;
-  padding: 7px 12px;
-  font-size: 12px;
-  cursor: pointer;
-}
-
-.screen-body { flex: 1; padding: 20px; }
-
-.placeholder-screen h2 {
-  font-family: 'Oswald', sans-serif;
-  color: var(--navy);
-}
-
-.placeholder-screen p {
-  color: var(--text-soft);
-  font-size: 14px;
-}
-
-.bottomnav {
-  display: flex;
-  background: #fff;
-  border-top: 1px solid var(--line);
-  padding: 10px 8px 16px;
-}
-
-.bottomnav button {
-  flex: 1;
-  background: none;
-  border: none;
-  padding: 8px 4px;
-  font-size: 12px;
-  color: var(--text-soft);
-  cursor: pointer;
-  font-weight: 500;
-}
-
-.bottomnav button.active {
-  color: var(--orange);
-  font-weight: 700;
-}
-
-.lang-switch {
-  display: flex;
-  gap: 4px;
-  background: #fff;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 3px;
-  margin-bottom: 16px;
-}
-
-.lang-switch button {
-  border: none;
-  background: none;
-  padding: 5px 12px;
-  border-radius: 7px;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: .03em;
-  color: var(--text-soft);
-  cursor: pointer;
-}
-
-.lang-switch button.active {
-  background: var(--navy);
-  color: #fff;
-}
-
-.lang-switch.dark {
-  background: rgba(255,255,255,.08);
-  border-color: rgba(255,255,255,.15);
-}
-
-.lang-switch.dark button {
-  color: #C7D0DE;
-}
-
-.lang-switch.dark button.active {
-  background: var(--orange);
-  color: #fff;
-}
-
-.topbar-right {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.toggle-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: #fff;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 13px 14px;
-  margin-top: 16px;
-  gap: 12px;
-}
-
-.toggle-row .txt {
-  font-size: 13.5px;
-  color: var(--text);
-}
-
-.toggle-row .txt small {
-  display: block;
-  color: var(--text-soft);
-  font-size: 11px;
-  margin-top: 2px;
-  font-weight: 400;
-}
-
-.switch {
-  width: 44px;
-  height: 26px;
-  border-radius: 20px;
-  background: var(--line);
-  position: relative;
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: background .2s ease;
-  border: none;
-}
-
-.switch::after {
-  content: '';
-  position: absolute;
-  top: 3px;
-  left: 3px;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 1px 3px rgba(0,0,0,.3);
-  transition: transform .2s ease;
-}
-
-.switch.on {
-  background: #2E7D5B;
-}
-
-.switch.on::after {
-  transform: translateX(18px);
-}
-
-.screen-title {
-  font-family: 'Oswald', sans-serif;
-  color: var(--navy);
-  margin: 0 0 14px;
-}
-
-.rides-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.ride-card {
-  background: #fff;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  padding: 14px 16px;
-}
-
-.ride-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 10px;
-}
-
-.ride-ref {
-  font-family: monospace;
-  font-size: 11.5px;
-  color: var(--text-soft);
-}
-
-.ride-badge {
-  font-family: 'Oswald', sans-serif;
-  font-size: 10.5px;
-  letter-spacing: .04em;
-  text-transform: uppercase;
-  padding: 4px 9px;
-  border-radius: 20px;
-  font-weight: 600;
-}
-
-.ride-badge.new { background: #FBF0DC; color: #B9770E; }
-.ride-badge.progress { background: #E7F3ED; color: #2E7D5B; }
-.ride-badge.done { background: #E9E9EE; color: #5B5F6B; }
-.ride-badge.cancelled { background: #FBE7E7; color: #B03A3A; }
-
-.ride-route {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.ride-stop {
-  display: flex;
-  flex-direction: column;
-}
-
-.ride-stop-label {
-  font-family: 'Oswald', sans-serif;
-  font-size: 10px;
-  letter-spacing: .06em;
-  text-transform: uppercase;
-  color: var(--text-soft);
-}
-
-.ride-stop-addr {
-  font-size: 13.5px;
-  font-weight: 500;
-  color: var(--text);
-}
-
-.ride-stop-time {
-  font-size: 11.5px;
-  color: var(--text-soft);
-}
-
-.ride-cargo {
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px dashed var(--line);
-  font-size: 12.5px;
-  color: var(--text-soft);
-}
-
-/* --- modernization pass 1: menu + shell --- */
-
-@keyframes zd-pulse {
-  0% { box-shadow: 0 0 0 0 rgba(87,211,140,.55); }
-  70% { box-shadow: 0 0 0 8px rgba(87,211,140,0); }
-  100% { box-shadow: 0 0 0 0 rgba(87,211,140,0); }
-}
-
-.live-dot {
-  animation: zd-pulse 1.8s infinite;
-}
-
-html, body, #root {
-  height: 100%;
-}
-
-body {
-  background: var(--cream);
-}
-
-@media (min-width: 480px) {
-  body {
-    background: linear-gradient(180deg, #e9e4da 0%, #d9d3c6 100%);
-    display: flex;
-    justify-content: center;
-    padding: 24px 0;
+  function changeLang(l) {
+    setLang(l)
+    setLangState(l)
   }
 
-  #root {
-    width: 390px;
-    max-height: 844px;
-    border-radius: 40px;
-    overflow: hidden;
-    box-shadow: 0 30px 60px rgba(15,34,64,.35);
-    border: 10px solid var(--navy);
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session)
+      setLoading(false)
+    })
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session)
+    })
+    return () => sub.subscription.unsubscribe()
+  }, [])
+
+  useEffect(() => {
+    if (!session) {
+      setProfile(null)
+      return
+    }
+    supabase
+      .from('drivers')
+      .select('*')
+      .eq('auth_user_id', session.user.id)
+      .single()
+      .then(({ data, error }) => {
+        if (error) console.error('drivers fetch error:', error.message)
+        setProfile(data || null)
+      })
+  }, [session])
+
+  function refreshProfile() {
+    if (!session) return
+    supabase
+      .from('drivers')
+      .select('*')
+      .eq('auth_user_id', session.user.id)
+      .single()
+      .then(({ data }) => setProfile(data || null))
   }
 
-  .phone-shell {
-    min-height: 844px;
+  if (loading) return <SplashScreen lang={lang} />
+  if (!session) return <LoginScreen lang={lang} onChangeLang={changeLang} />
+  return (
+    <DriverShell
+      session={session}
+      profile={profile}
+      onProfileChange={refreshProfile}
+      lang={lang}
+      onChangeLang={changeLang}
+    />
+  )
+}
+
+function LangSwitcher({ lang, onChangeLang, dark }) {
+  return (
+    <div className={`lang-switch ${dark ? 'dark' : ''}`}>
+      {availableLangs.map((l) => (
+        <button key={l} className={l === lang ? 'active' : ''} onClick={() => onChangeLang(l)}>
+          {l.toUpperCase()}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+function SplashScreen({ lang }) {
+  return (
+    <div className="phone-shell center-content">
+      <div className="brand-mark">
+        <span className="live-dot" /> {t('appName', lang)}
+      </div>
+    </div>
+  )
+}
+
+function LoginScreen({ lang, onChangeLang }) {
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  async function handleLogin(e) {
+    e.preventDefault()
+    setError('')
+    setBusy(true)
+    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    setBusy(false)
+    if (error) setError(t('loginError', lang))
+  }
+
+  return (
+    <div className="phone-shell center-content">
+      <LangSwitcher lang={lang} onChangeLang={onChangeLang} />
+      <div className="login-card">
+        <div className="brand-mark"><span className="live-dot" /> {t('appName', lang)}</div>
+        <p className="login-sub">{t('loginSubtitle', lang)}</p>
+        <form onSubmit={handleLogin}>
+          <label>{t('email', lang)}</label>
+          <input type="email" value={email} onChange={e => setEmail(e.target.value)} required />
+          <label>{t('password', lang)}</label>
+          <input type="password" value={password} onChange={e => setPassword(e.target.value)} required />
+          {error && <div className="login-error">{error}</div>}
+          <button className="btn" type="submit" disabled={busy}>
+            {busy ? t('loggingIn', lang) : t('loginButton', lang)}
+          </button>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) {
+  const [tab, setTab] = useState('curse')
+  const [menuOpen, setMenuOpen] = useState(false)
+  const isOwner = profile?.account_type === 'owner_operator'
+  const watchIdRef = useRef(null)
+
+  // Send GPS position continuously while profile.is_online is true —
+  // starts/stops automatically whenever the toggle in Profile changes it.
+  useEffect(() => {
+    if (!profile?.is_online || !profile?.id) {
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current)
+        watchIdRef.current = null
+      }
+      return
+    }
+
+    if (!('geolocation' in navigator)) return
+
+    const sendPosition = (coords) => {
+      supabase
+        .from('drivers')
+        .update({
+          last_lat: coords.latitude,
+          last_lng: coords.longitude,
+          last_location_at: new Date().toISOString(),
+        })
+        .eq('id', profile.id)
+        .then(({ error }) => {
+          if (error) console.error('location update error:', error.message)
+        })
+    }
+
+    watchIdRef.current = navigator.geolocation.watchPosition(
+      (pos) => sendPosition(pos.coords),
+      (err) => console.error('geolocation error:', err.message),
+      { enableHighAccuracy: true, maximumAge: 15000, timeout: 20000 }
+    )
+
+    return () => {
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current)
+        watchIdRef.current = null
+      }
+    }
+  }, [profile?.is_online, profile?.id])
+
+  function navTo(tabId) {
+    setTab(tabId)
+    setMenuOpen(false)
+  }
+
+  return (
+    <div className="phone-shell">
+      <div className="brand-strip">
+        <span className="brand-strip-name"><span className="live-dot" /> Zimand Express</span>
+        <button className="hbtn" aria-label="menu" onClick={() => setMenuOpen(true)}>☰</button>
+      </div>
+
+      <div className="screen-body">
+        {tab === 'curse' && <RidesScreen profile={profile} isOwner={isOwner} lang={lang} />}
+        {tab === 'licitatii' && isOwner && <BiddingScreen profile={profile} lang={lang} />}
+        {tab === 'castiguri' && isOwner && <PlaceholderScreen title={t('tabEarnings', lang)} note={t('earningsPlaceholder', lang)} />}
+        {tab === 'profil' && (
+          <ProfileScreen
+            session={session}
+            profile={profile}
+            isOwner={isOwner}
+            lang={lang}
+            onProfileChange={onProfileChange}
+          />
+        )}
+      </div>
+
+      <div className={`menu-overlay ${menuOpen ? 'show' : ''}`} onClick={(e) => { if (e.target === e.currentTarget) setMenuOpen(false) }}>
+        <div className="menu-drawer">
+          <div className="menu-header">
+            <span className="live-dot" /><span className="menu-header-name">Zimand Express</span>
+          </div>
+          <button className={`menu-item ${tab === 'curse' ? 'active' : ''}`} onClick={() => navTo('curse')}>
+            <span className="ic">🚚</span>{t('tabRides', lang)}
+          </button>
+          {isOwner && (
+            <button className={`menu-item ${tab === 'licitatii' ? 'active' : ''}`} onClick={() => navTo('licitatii')}>
+              <span className="ic">🏷️</span>{t('tabBidding', lang)}
+            </button>
+          )}
+          {isOwner && (
+            <button className={`menu-item ${tab === 'castiguri' ? 'active' : ''}`} onClick={() => navTo('castiguri')}>
+              <span className="ic">💶</span>{t('tabEarnings', lang)}
+            </button>
+          )}
+          <button className={`menu-item ${tab === 'profil' ? 'active' : ''}`} onClick={() => navTo('profil')}>
+            <span className="ic">👤</span>{t('tabProfile', lang)}
+          </button>
+
+          <div className="menu-divider" />
+
+          <div className="menu-lang">
+            <LangSwitcher lang={lang} onChangeLang={onChangeLang} />
+          </div>
+          <button className="menu-item logout" onClick={() => supabase.auth.signOut()}>
+            <span className="ic">🚪</span>{t('logout', lang)}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function statusClass(status) {
+  switch (status) {
+    case 'open': return 'new'
+    case 'assigned': return 'progress'
+    case 'done': return 'done'
+    case 'cancelled': return 'cancelled'
+    default: return 'new'
   }
 }
 
-.avatar {
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  background: var(--orange);
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: 'Oswald', sans-serif;
-  font-weight: 600;
-  font-size: 13px;
-  flex-shrink: 0;
-}
-
-.bottomnav button {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 3px;
-}
-
-.nav-ic {
-  font-size: 17px;
-  line-height: 1;
-}
-
-/* --- ride detail screen --- */
-
-.ride-detail {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.back-btn {
-  align-self: flex-start;
-  background: rgba(15,34,64,.08);
-  border: none;
-  color: var(--navy);
-  font-size: 13px;
-  font-weight: 600;
-  padding: 8px 14px;
-  border-radius: 10px;
-  cursor: pointer;
-}
-
-.ride-detail-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.live-map {
-  height: 220px;
-  border-radius: 14px;
-  overflow: hidden;
-  border: 1px solid var(--line);
-  background: #EDF2F7;
-}
-
-.pin-icon {
-  width: 22px;
-  height: 22px;
-  border-radius: 50% 50% 50% 0;
-  transform: rotate(-45deg);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  font-size: 10px;
-  box-shadow: 0 2px 6px rgba(0,0,0,.25);
-}
-
-.pin-icon span { transform: rotate(45deg); }
-.pin-icon.pk { background: var(--navy); }
-.pin-icon.dl { background: var(--orange); }
-
-.info-card {
-  background: #fff;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  overflow: hidden;
-}
-
-.info-card-head {
-  padding: 10px 14px;
-  background: var(--cream);
-  font-family: 'Oswald', sans-serif;
-  font-size: 11.5px;
-  letter-spacing: .05em;
-  text-transform: uppercase;
-  color: var(--navy);
-  font-weight: 600;
-}
-
-.info-card-body {
-  padding: 12px 14px;
-}
-
-.info-row {
-  display: flex;
-  justify-content: space-between;
-  font-size: 13px;
-  padding: 4px 0;
-}
-
-.info-row .k { color: var(--text-soft); }
-.info-row .v { font-weight: 500; text-align: right; max-width: 60%; }
-
-.info-row-time {
-  font-size: 11.5px;
-  color: var(--text-soft);
-  margin-top: 2px;
-}
-
-.info-note {
-  margin-top: 8px;
-  padding: 8px 10px;
-  background: #FBF6EE;
-  border-radius: 8px;
-  font-size: 12px;
-  color: #8A6417;
-}
-
-.action-bar {
-  padding: 4px 0 8px;
-}
-
-.action-bar .btn {
-  width: 100%;
-  padding: 14px;
-  border: none;
-  border-radius: 12px;
-  font-family: 'Oswald', sans-serif;
-  font-size: 14.5px;
-  letter-spacing: .03em;
-  font-weight: 600;
-  text-transform: uppercase;
-  cursor: pointer;
-  background: var(--orange);
-  color: #fff;
-}
-
-.action-bar .btn:disabled {
-  opacity: .7;
-  cursor: default;
-}
-
-/* --- leg workflow: start/arrive/confirm with photos + CMR --- */
-
-.leg-workflow {
-  background: #fff;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.leg-title {
-  font-family: 'Oswald', sans-serif;
-  font-size: 13px;
-  color: var(--navy);
-  font-weight: 600;
-  letter-spacing: .02em;
-}
-
-.timer {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 28px;
-  font-weight: 600;
-  color: var(--navy);
-  text-align: center;
-  padding: 6px 0;
-}
-
-.pod-label {
-  font-family: 'Oswald', sans-serif;
-  font-size: 11px;
-  letter-spacing: .05em;
-  text-transform: uppercase;
-  color: var(--text-soft);
-  margin-top: 6px;
-}
-
-.photo-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-}
-
-.photo-slot {
-  aspect-ratio: 1;
-  border-radius: 10px;
-  border: 1.5px dashed #C7CCD6;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--cream);
-  font-size: 22px;
-  color: #B7BEC9;
-  cursor: pointer;
-  overflow: hidden;
-}
-
-.photo-slot.filled {
-  border-style: solid;
-  border-color: var(--line);
-  padding: 0;
-}
-
-.photo-slot.filled img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.cmr-chip {
-  background: var(--cream);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 10px 12px;
-  font-size: 12.5px;
-  color: var(--navy);
-  cursor: pointer;
-}
-
-.btn.secondary {
-  background: #fff;
-  color: var(--navy);
-  border: 1.5px solid var(--navy);
-}
-
-.ride-card.compact {
-  opacity: .8;
-  padding: 11px 14px;
-}
-
-.ride-card.compact .ride-route {
-  flex-direction: row;
-  justify-content: space-between;
-  align-items: flex-end;
-}
-
-.ride-card.compact .ride-stop-addr {
-  font-size: 12.5px;
-}
-
-.empty-note {
-  margin: 0 4px 14px;
-  font-size: 13px;
-  color: var(--text-soft);
-}
-
-/* --- rides screen v2 (screenshot-matched design) --- */
-
-.rides-header {
-  margin-bottom: 4px;
-}
-
-.section-heading {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-family: 'Oswald', sans-serif;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--navy);
-  margin: 18px 0 10px;
-}
-
-.count-pill {
-  background: var(--cream);
-  color: var(--text-soft);
-  font-family: 'IBM Plex Sans', sans-serif;
-  font-size: 11px;
-  font-weight: 600;
-  padding: 2px 8px;
-  border-radius: 20px;
-}
-
-.ride-card2 {
-  background: #fff;
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  padding: 14px 16px;
-  margin-bottom: 12px;
-}
-
-.ride-card2-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 6px;
-}
-
-.ride-card2-id {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.ride-card2-icon {
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  background: var(--cream);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-}
-
-.ride-card2-num {
-  font-family: 'Oswald', sans-serif;
-  font-weight: 600;
-  color: var(--orange);
-  font-size: 14px;
-}
-
-.ride-card2-route {
-  font-size: 12.5px;
-  color: var(--text-soft);
-  margin: 2px 0 10px 38px;
-}
-
-.ride-card2-rows {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-bottom: 12px;
-}
-
-.ride-card2-row {
-  display: grid;
-  grid-template-columns: 20px 76px 1fr;
-  align-items: center;
-  font-size: 12.5px;
-}
-
-.ride-card2-row .ric { font-size: 13px; }
-.ride-card2-row .rik { color: var(--text-soft); }
-.ride-card2-row .riv { color: var(--text); font-weight: 500; text-align: right; }
-.ride-card2-row .riv.price { color: var(--orange); font-family: 'Oswald', sans-serif; font-weight: 600; }
-
-.ride-card2-action {
-  width: 100%;
-  background: var(--cream);
-  border: none;
-  border-radius: 10px;
-  padding: 10px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--navy);
-  cursor: pointer;
-}
-
-.ride-row-compact {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  background: #fff;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 10px 12px;
-  margin-bottom: 8px;
-  cursor: pointer;
-  opacity: .85;
-}
-
-.ride-row-icon {
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 13px;
-  flex-shrink: 0;
-}
-
-.ride-row-icon.done {
-  background: #E7F3ED;
-  color: #2E7D5B;
-}
-
-.ride-row-body {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.ride-row-id {
-  font-family: 'Oswald', sans-serif;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--navy);
-}
-
-.ride-row-route {
-  font-size: 11.5px;
-  color: var(--text-soft);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.ride-row-date {
-  font-size: 10.5px;
-  color: var(--text-soft);
-}
-
-.ride-row-chev {
-  color: var(--text-soft);
-  font-size: 18px;
-}
-
-/* --- rides screen v3: topbar + tabs + toolbar --- */
-
-.rides-topbar {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  margin-bottom: 14px;
-}
-
-.icon-btn {
-  background: none;
-  border: none;
-  font-size: 18px;
-  cursor: pointer;
-  color: var(--navy);
-  position: relative;
-  padding: 4px;
-}
-
-.rides-topbar-title {
-  font-family: 'Oswald', sans-serif;
-  font-size: 17px;
-  color: var(--navy);
-  margin: 0;
-}
-
-.bell-badge {
-  position: absolute;
-  top: -2px;
-  right: -4px;
-  background: var(--orange);
-  color: #fff;
-  font-size: 9px;
-  font-weight: 700;
-  min-width: 15px;
-  height: 15px;
-  border-radius: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 3px;
-}
-
-.rides-tabs {
-  display: flex;
-  border-bottom: 1px solid var(--line);
-  margin-bottom: 14px;
-}
-
-.rides-tab {
-  flex: 1;
-  background: none;
-  border: none;
-  padding: 8px 4px 10px;
-  font-size: 12.5px;
-  font-weight: 600;
-  color: var(--text-soft);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
-}
-
-.rides-tab.active {
-  color: var(--navy);
-  border-bottom-color: var(--orange);
-}
-
-.rides-tab-count {
-  background: var(--cream);
-  color: var(--text-soft);
-  font-size: 10px;
-  padding: 1px 6px;
-  border-radius: 20px;
-}
-
-.rides-tab.active .rides-tab-count {
-  background: var(--orange);
-  color: #fff;
-}
-
-.rides-toolbar {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 16px;
-}
-
-.filter-btn, .sort-btn {
-  flex: 1;
-  background: #fff;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 9px 10px;
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--navy);
-  cursor: pointer;
-}
-
-.filter-btn:disabled {
-  color: var(--text-soft);
-  cursor: not-allowed;
-  opacity: .6;
-}
-
-.profile-photo-row {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  margin-bottom: 16px;
-}
-
-.profile-photo {
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-  object-fit: cover;
-  cursor: pointer;
-  border: 2px solid var(--line);
-}
-
-.profile-photo-placeholder {
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-  background: var(--cream);
-  border: 1.5px dashed #C7CCD6;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 24px;
-  color: #B7BEC9;
-  cursor: pointer;
-}
-
-.profile-photo-btn {
-  background: none;
-  border: 1.5px solid var(--navy);
-  color: var(--navy);
-  border-radius: 10px;
-  padding: 8px 14px;
-  font-size: 12.5px;
-  font-weight: 600;
-  cursor: pointer;
+function statusLabel(status, lang) {
+  switch (status) {
+    case 'open': return t('statusOpen', lang)
+    case 'assigned': return t('statusAssigned', lang)
+    case 'done': return t('statusDone', lang)
+    case 'cancelled': return t('statusCancelled', lang)
+    default: return t('statusOpen', lang)
+  }
+}
+
+function RidesScreen({ profile, isOwner, lang }) {
+  const [orders, setOrders] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [selectedId, setSelectedIdState] = useState(() => sessionStorage.getItem('zd-open-order') || null)
+  const [activeTab, setActiveTab] = useState('mine')
+  const [sortAsc, setSortAsc] = useState(true)
+
+  function setSelectedId(id) {
+    setSelectedIdState(id)
+    if (id) {
+      sessionStorage.setItem('zd-open-order', id)
+    } else {
+      sessionStorage.removeItem('zd-open-order')
+    }
+  }
+
+  useEffect(() => {
+    if (!profile?.id) {
+      setLoading(false)
+      return
+    }
+
+    let active = true
+
+    supabase
+      .from('orders')
+      .select('*')
+      .eq('assigned_driver_id', profile.id)
+      .then(({ data, error }) => {
+        if (error) console.error('orders fetch error:', error.message)
+        if (active) {
+          setOrders(data || [])
+          setLoading(false)
+        }
+      })
+
+    const channel = supabase
+      .channel('driver-orders-' + profile.id)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'orders', filter: `assigned_driver_id=eq.${profile.id}` },
+        (payload) => {
+          setOrders((current) => {
+            if (payload.eventType === 'DELETE') {
+              return current.filter((o) => o.id !== payload.old.id)
+            }
+            const exists = current.some((o) => o.id === payload.new.id)
+            if (exists) {
+              return current.map((o) => (o.id === payload.new.id ? payload.new : o))
+            }
+            return [...current, payload.new]
+          })
+        }
+      )
+      .subscribe()
+
+    return () => {
+      active = false
+      supabase.removeChannel(channel)
+    }
+  }, [profile?.id])
+
+  if (loading) return <PlaceholderScreen title={t('tabRides', lang)} note={t('loadingRides', lang)} />
+
+  const selected = orders.find((o) => o.id === selectedId)
+  if (selected && selected.status === 'done') {
+    return <CompletedOrderDetail order={selected} isOwner={isOwner} lang={lang} onBack={() => setSelectedId(null)} />
+  }
+  if (selected) {
+    return <RideDetailScreen order={selected} isOwner={isOwner} lang={lang} onBack={() => setSelectedId(null)} onStatusChange={() => {}} />
+  }
+
+  const activeOrders = orders.filter((o) => o.status === 'assigned')
+  const doneOrders = orders.filter((o) => o.status === 'done')
+
+  function sortByDate(list, dateKey) {
+    return [...list].sort((a, b) => {
+      const da = a[dateKey] || ''
+      const db = b[dateKey] || ''
+      return sortAsc ? da.localeCompare(db) : db.localeCompare(da)
+    })
+  }
+
+  const sortedActive = sortByDate(activeOrders, 'pickup_date')
+  const sortedDone = sortByDate(doneOrders, 'delivery_date')
+
+  // employees don't see bidding, so they never land on the 'available' tab
+  const tabs = isOwner ? ['available', 'mine', 'done'] : ['mine', 'done']
+  const currentTab = tabs.includes(activeTab) ? activeTab : 'mine'
+
+  return (
+    <div className="rides-list">
+      <div className="rides-tabs">
+        {tabs.map((tabKey) => (
+          <button
+            key={tabKey}
+            className={`rides-tab ${currentTab === tabKey ? 'active' : ''}`}
+            onClick={() => setActiveTab(tabKey)}
+          >
+            {tabKey === 'available' && t('tabAvailable', lang)}
+            {tabKey === 'mine' && t('tabMine', lang)}
+            {tabKey === 'done' && t('tabDoneTab', lang)}
+            <span className="rides-tab-count">
+              {tabKey === 'available' ? 0 : tabKey === 'mine' ? activeOrders.length : doneOrders.length}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      <div className="rides-toolbar">
+        <button className="filter-btn" disabled title={t('comingSoon', lang)}>
+          ⏷ {t('filter', lang)}
+        </button>
+        <button className="sort-btn" onClick={() => setSortAsc((v) => !v)}>
+          {t('sortLabel', lang)}: {sortAsc ? t('sortOldest', lang) : t('sortNewest', lang)}
+        </button>
+      </div>
+
+      {currentTab === 'available' && (
+        <div className="empty-note">{t('biddingComingSoon', lang)}</div>
+      )}
+
+      {currentTab === 'mine' && (
+        sortedActive.length === 0
+          ? <div className="empty-note">{t('noActiveRides', lang)}</div>
+          : sortedActive.map((o) => (
+              <RideCard key={o.id} order={o} isOwner={isOwner} lang={lang} onClick={() => setSelectedId(o.id)} />
+            ))
+      )}
+
+      {currentTab === 'done' && (
+        sortedDone.length === 0
+          ? <div className="empty-note">{t('noRides', lang)}</div>
+          : sortedDone.map((o) => (
+              <RideCard key={o.id} order={o} isOwner={isOwner} lang={lang} onClick={() => setSelectedId(o.id)} compact />
+            ))
+      )}
+    </div>
+  )
+}
+
+function RideCard({ order, isOwner, lang, onClick, compact }) {
+  if (compact) {
+    return (
+      <div className="ride-row-compact" onClick={onClick}>
+        <div className="ride-row-icon done">✓</div>
+        <div className="ride-row-body">
+          <span className="ride-row-id">{order.order_number || order.reference || order.id.slice(0, 8)}</span>
+          <span className="ride-row-route">{order.pickup_address} → {order.delivery_address}</span>
+          {order.delivery_confirmed_at && (
+            <span className="ride-row-date">{t('delivery', lang)}: {new Date(order.delivery_confirmed_at).toLocaleDateString()}</span>
+          )}
+        </div>
+        <div className="ride-row-chev">›</div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="ride-card2">
+      <div className="ride-card2-top">
+        <div className="ride-card2-id">
+          <span className="ride-card2-icon">🚚</span>
+          <span className="ride-card2-num">{order.order_number || order.reference || order.id.slice(0, 8)}</span>
+        </div>
+        <span className={`ride-badge ${statusClass(order.status)}`}>{statusLabel(order.status, lang)}</span>
+      </div>
+
+      <div className="ride-card2-route">{order.pickup_address} → {order.delivery_address}</div>
+
+      <div className="ride-card2-rows">
+        <div className="ride-card2-row">
+          <span className="ric">📅</span>
+          <span className="rik">{t('pickup', lang)}</span>
+          <span className="riv">
+            {order.pickup_date}{order.pickup_from ? `, ${order.pickup_from}` : ''}{order.pickup_to ? `–${order.pickup_to}` : ''}
+          </span>
+        </div>
+        <div className="ride-card2-row">
+          <span className="ric">📅</span>
+          <span className="rik">{t('delivery', lang)}</span>
+          <span className="riv">
+            {order.delivery_date}{order.delivery_from ? `, ${order.delivery_from}` : ''}{order.delivery_to ? `–${order.delivery_to}` : ''}
+          </span>
+        </div>
+        {order.cargo_desc && (
+          <div className="ride-card2-row">
+            <span className="ric">📦</span>
+            <span className="rik">{t('cargoLabel', lang)}</span>
+            <span className="riv">{order.cargo_desc}{order.weight ? `, ${order.weight} kg` : ''}</span>
+          </div>
+        )}
+        {isOwner && order.estimated_price != null && (
+          <div className="ride-card2-row">
+            <span className="ric">🏷️</span>
+            <span className="rik">{t('priceLabel', lang)}</span>
+            <span className="riv price">{order.estimated_price} €</span>
+          </div>
+        )}
+      </div>
+
+      <button className="ride-card2-action" onClick={onClick}>
+        👁 {t('viewDetails', lang)}
+      </button>
+    </div>
+  )
+}
+
+function useGeocode(address) {
+  const [coords, setCoords] = useState(null)
+
+  useEffect(() => {
+    if (!address) return
+    let active = true
+    fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(address)}`)
+      .then((r) => r.json())
+      .then((results) => {
+        if (!active || !results || !results[0]) return
+        setCoords([parseFloat(results[0].lat), parseFloat(results[0].lon)])
+      })
+      .catch((err) => console.error('geocode error:', err.message))
+    return () => {
+      active = false
+    }
+  }, [address])
+
+  return coords
+}
+
+function RideDetailScreen({ order, isOwner, lang, onBack, onStatusChange }) {
+  const mapRef = useRef(null)
+  const mapInstanceRef = useRef(null)
+  const pickupCoords = useGeocode(order.pickup_address)
+  const deliveryCoords = useGeocode(order.delivery_address)
+
+  useEffect(() => {
+    if (!mapRef.current || mapInstanceRef.current) return
+    mapInstanceRef.current = window.L.map(mapRef.current, { zoomControl: false, attributionControl: false }).setView([49.45, 11.07], 9)
+    window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(mapInstanceRef.current)
+    return () => {
+      mapInstanceRef.current?.remove()
+      mapInstanceRef.current = null
+    }
+  }, [])
+
+  useEffect(() => {
+    const map = mapInstanceRef.current
+    if (!map) return
+
+    map.eachLayer((layer) => {
+      if (layer instanceof window.L.Marker || layer instanceof window.L.Polyline) map.removeLayer(layer)
+    })
+
+    const points = []
+    if (pickupCoords) {
+      const icon = window.L.divIcon({ className: '', html: '<div class="pin-icon pk"><span>A</span></div>', iconSize: [22, 22], iconAnchor: [11, 20] })
+      window.L.marker(pickupCoords, { icon }).addTo(map)
+      points.push(pickupCoords)
+    }
+    if (deliveryCoords) {
+      const icon = window.L.divIcon({ className: '', html: '<div class="pin-icon dl"><span>B</span></div>', iconSize: [22, 22], iconAnchor: [11, 20] })
+      window.L.marker(deliveryCoords, { icon }).addTo(map)
+      points.push(deliveryCoords)
+    }
+    if (points.length === 2) {
+      window.L.polyline(points, { color: '#FF7A29', weight: 3, dashArray: '1,8' }).addTo(map)
+      map.fitBounds(window.L.latLngBounds(points), { padding: [30, 30] })
+    } else if (points.length === 1) {
+      map.setView(points[0], 12)
+    }
+  }, [pickupCoords, deliveryCoords])
+
+  // which leg are we on: pickup or delivery
+  const leg = !order.pickup_confirmed_at ? 'pickup' : 'delivery'
+  const startedAt = leg === 'pickup' ? order.pickup_started_at : order.delivery_started_at
+  const arrivedAt = leg === 'pickup' ? order.pickup_arrived_at : order.delivery_arrived_at
+  const confirmedAt = leg === 'pickup' ? order.pickup_confirmed_at : order.delivery_confirmed_at
+
+  return (
+    <div className="ride-detail">
+      <button className="back-btn" onClick={onBack}>← {t('back', lang)}</button>
+
+      <div className="ride-detail-header">
+        <span className="ride-ref">{t('orderRef', lang)} {order.order_number || order.reference || order.id.slice(0, 8)}</span>
+        <span className={`ride-badge ${statusClass(order.status)}`}>
+          {statusLabel(order.status, lang)}
+        </span>
+      </div>
+
+      <div className="live-map">
+        <div ref={mapRef} style={{ width: '100%', height: '100%' }} />
+      </div>
+
+      {order.status === 'assigned' && !confirmedAt && (
+        <LegWorkflow order={order} leg={leg} lang={lang} startedAt={startedAt} arrivedAt={arrivedAt} onStatusChange={onStatusChange} />
+      )}
+
+      {order.status === 'assigned' && order.pickup_confirmed_at && !order.delivery_confirmed_at && leg === 'delivery' && null}
+
+      <div className="info-card">
+        <div className="info-card-head">🅐 {t('pickup', lang)}</div>
+        <div className="info-card-body">
+          <div className="info-row"><span>{order.pickup_address}</span></div>
+          {order.pickup_date && (
+            <div className="info-row-time">
+              {order.pickup_date}{order.pickup_from ? ` · ${order.pickup_from}` : ''}{order.pickup_to ? `–${order.pickup_to}` : ''}
+            </div>
+          )}
+          {order.pickup_confirmed_at && <div className="info-row-time">✓ {new Date(order.pickup_confirmed_at).toLocaleString()}</div>}
+        </div>
+      </div>
+
+      <div className="info-card">
+        <div className="info-card-head">🅑 {t('delivery', lang)}</div>
+        <div className="info-card-body">
+          <div className="info-row"><span>{order.delivery_address}</span></div>
+          {order.delivery_date && (
+            <div className="info-row-time">
+              {order.delivery_date}{order.delivery_from ? ` · ${order.delivery_from}` : ''}{order.delivery_to ? `–${order.delivery_to}` : ''}
+            </div>
+          )}
+          {order.delivery_confirmed_at && <div className="info-row-time">✓ {new Date(order.delivery_confirmed_at).toLocaleString()}</div>}
+        </div>
+      </div>
+
+      <div className="info-card">
+        <div className="info-card-head">📦 {t('cargoLabel', lang)}</div>
+        <div className="info-card-body">
+          {order.cargo_desc && <div className="info-row"><span className="k">{t('cargoLabel', lang)}</span><span className="v">{order.cargo_desc}</span></div>}
+          {order.weight && <div className="info-row"><span className="k">{t('weightLabel', lang)}</span><span className="v">{order.weight} kg</span></div>}
+          {order.dims && <div className="info-row"><span className="k">{t('dimsLabel', lang)}</span><span className="v">{order.dims}</span></div>}
+          {order.km && <div className="info-row"><span className="k">{t('kmLabel', lang)}</span><span className="v">{order.km} km</span></div>}
+          {isOwner && order.estimated_price != null && (
+            <div className="info-row"><span className="k">{t('priceLabel', lang)}</span><span className="v price">{order.estimated_price} €</span></div>
+          )}
+          {order.reference && <div className="info-row"><span className="k">{t('referenceLabel', lang)}</span><span className="v">{order.reference}</span></div>}
+          {order.notes && <div className="info-note">{order.notes}</div>}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ElapsedTimer({ startedAt }) {
+  const [now, setNow] = useState(Date.now())
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(id)
+  }, [])
+
+  const seconds = Math.max(0, Math.floor((now - new Date(startedAt).getTime()) / 1000))
+  const hh = String(Math.floor(seconds / 3600)).padStart(2, '0')
+  const mm = String(Math.floor((seconds % 3600) / 60)).padStart(2, '0')
+  const ss = String(seconds % 60).padStart(2, '0')
+
+  return <div className="timer">{hh}:{mm}:{ss}</div>
+}
+
+async function uploadPodFile(orderId, leg, file) {
+  const ext = file.name.split('.').pop()
+  const path = `${orderId}/${leg}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+  const { error } = await supabase.storage.from('proof-of-delivery').upload(path, file)
+  if (error) throw error
+  return path
+}
+
+function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange }) {
+  const [busy, setBusy] = useState(false)
+  const [photos, setPhotos] = useState([])
+  const [cmrFile, setCmrFile] = useState(null)
+  const fileInputRef = useRef(null)
+  const cmrInputRef = useRef(null)
+
+  const startFn = leg === 'pickup' ? 'driver_mark_pickup_started' : 'driver_mark_delivery_started'
+  const arriveFn = leg === 'pickup' ? 'driver_mark_pickup_arrived' : 'driver_mark_delivery_arrived'
+  const confirmFn = leg === 'pickup' ? 'driver_confirm_pickup' : 'driver_confirm_delivery'
+  const legLabel = leg === 'pickup' ? t('pickup', lang) : t('delivery', lang)
+
+  async function callRpc(fn) {
+    setBusy(true)
+    const { error } = await supabase.rpc(fn, { p_order_id: order.id })
+    setBusy(false)
+    if (error) {
+      console.error(fn, error.message)
+      return
+    }
+    onStatusChange()
+  }
+
+  function addPhotos(e) {
+    const files = Array.from(e.target.files || [])
+    setPhotos((prev) => [...prev, ...files].slice(0, 6))
+    e.target.value = ''
+  }
+
+  function removePhoto(idx) {
+    setPhotos((prev) => prev.filter((_, i) => i !== idx))
+  }
+
+  async function confirmLeg() {
+    setBusy(true)
+    try {
+      const photoPaths = []
+      for (const file of photos) {
+        photoPaths.push(await uploadPodFile(order.id, leg, file))
+      }
+      let cmrPath = null
+      if (cmrFile) {
+        cmrPath = await uploadPodFile(order.id, leg, cmrFile)
+      }
+      const { error } = await supabase.rpc(confirmFn, { p_order_id: order.id, p_photos: photoPaths, p_cmr_url: cmrPath })
+      if (error) throw error
+      onStatusChange()
+    } catch (err) {
+      console.error('confirm leg error:', err.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  if (!startedAt) {
+    return (
+      <div className="leg-workflow">
+        <div className="leg-title">{legLabel}</div>
+        <button className="btn" onClick={() => callRpc(startFn)} disabled={busy}>
+          {t('startDriving', lang)}
+        </button>
+      </div>
+    )
+  }
+
+  if (!arrivedAt) {
+    return (
+      <div className="leg-workflow">
+        <div className="leg-title">{legLabel}</div>
+        <ElapsedTimer startedAt={startedAt} />
+        <button className="btn" onClick={() => callRpc(arriveFn)} disabled={busy}>
+          {t('arrived', lang)}
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="leg-workflow">
+      <div className="leg-title">{legLabel} · {t('confirmStep', lang)}</div>
+
+      <div className="pod-label">{t('photosLabel', lang)} ({photos.length}/6)</div>
+      <div className="photo-grid">
+        {photos.map((f, i) => (
+          <div className="photo-slot filled" key={i} onClick={() => removePhoto(i)}>
+            <img src={URL.createObjectURL(f)} alt="" />
+          </div>
+        ))}
+        {photos.length < 6 && (
+          <div className="photo-slot" onClick={() => fileInputRef.current?.click()}>+</div>
+        )}
+      </div>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        multiple
+        style={{ display: 'none' }}
+        onChange={addPhotos}
+      />
+
+      <div className="pod-label">{t('cmrLabel', lang)}</div>
+      {cmrFile ? (
+        <div className="cmr-chip" onClick={() => setCmrFile(null)}>{cmrFile.name} ✕</div>
+      ) : (
+        <button className="btn secondary" onClick={() => cmrInputRef.current?.click()}>{t('uploadCmr', lang)}</button>
+      )}
+      <input
+        ref={cmrInputRef}
+        type="file"
+        accept="image/*,application/pdf"
+        style={{ display: 'none' }}
+        onChange={(e) => setCmrFile(e.target.files?.[0] || null)}
+      />
+
+      <button className="btn" onClick={confirmLeg} disabled={busy} style={{ marginTop: 14 }}>
+        {busy ? '…' : leg === 'pickup' ? t('confirmPickup', lang) : t('confirmDelivery', lang)}
+      </button>
+    </div>
+  )
+}
+
+function useCompanyName(createdBy) {
+  const [name, setName] = useState(null)
+  useEffect(() => {
+    if (!createdBy) return
+    supabase
+      .from('profiles')
+      .select('name')
+      .eq('id', createdBy)
+      .single()
+      .then(({ data }) => setName(data?.name || null))
+      .catch(() => {})
+  }, [createdBy])
+  return name
+}
+
+function useSignedUrls(paths) {
+  const [urls, setUrls] = useState([])
+  useEffect(() => {
+    if (!paths || paths.length === 0) {
+      setUrls([])
+      return
+    }
+    let active = true
+    Promise.all(
+      paths.map((p) =>
+        supabase.storage.from('proof-of-delivery').createSignedUrl(p, 3600).then((r) => r.data?.signedUrl)
+      )
+    ).then((results) => {
+      if (active) setUrls(results.filter(Boolean))
+    })
+    return () => { active = false }
+  }, [JSON.stringify(paths)])
+  return urls
+}
+
+function useSignedUrl(path) {
+  const [url, setUrl] = useState(null)
+  useEffect(() => {
+    if (!path) { setUrl(null); return }
+    let active = true
+    supabase.storage.from('proof-of-delivery').createSignedUrl(path, 3600).then((r) => {
+      if (active) setUrl(r.data?.signedUrl || null)
+    })
+    return () => { active = false }
+  }, [path])
+  return url
+}
+
+function durationLabel(fromIso, toIso) {
+  if (!fromIso || !toIso) return ''
+  const mins = Math.round((new Date(toIso) - new Date(fromIso)) / 60000)
+  if (mins < 60) return `${mins} min`
+  return `${Math.floor(mins / 60)}h ${mins % 60}min`
+}
+
+function TimelineLeg({ leg, order, lang }) {
+  const startedAt = leg === 'pickup' ? order.pickup_started_at : order.delivery_started_at
+  const arrivedAt = leg === 'pickup' ? order.pickup_arrived_at : order.delivery_arrived_at
+  const confirmedAt = leg === 'pickup' ? order.pickup_confirmed_at : order.delivery_confirmed_at
+  const photoPaths = leg === 'pickup' ? order.pickup_photos : order.delivery_photos
+  const cmrPath = leg === 'pickup' ? order.pickup_cmr_url : order.delivery_cmr_url
+  const photoUrls = useSignedUrls(photoPaths || [])
+  const cmrUrl = useSignedUrl(cmrPath)
+
+  if (!startedAt) return null
+
+  return (
+    <>
+      <div className="tl-leg-label">{leg === 'pickup' ? '🅐 ' + t('pickup', lang) : '🅑 ' + t('delivery', lang)}</div>
+      <div className="tl-step">
+        <div className="tl-title">{t('startDriving', lang)}</div>
+        <div className="tl-time">{new Date(startedAt).toLocaleString()}</div>
+      </div>
+      {arrivedAt && (
+        <div className="tl-step">
+          <div className="tl-title">{t('arrived', lang)}</div>
+          <div className="tl-time">{new Date(arrivedAt).toLocaleString()} · {durationLabel(startedAt, arrivedAt)}</div>
+        </div>
+      )}
+      {confirmedAt && (
+        <div className="tl-step">
+          <div className="tl-title">{leg === 'pickup' ? t('confirmPickup', lang) : t('confirmDelivery', lang)}</div>
+          <div className="tl-time">{new Date(confirmedAt).toLocaleString()} · {durationLabel(arrivedAt, confirmedAt)}</div>
+          {photoUrls.length > 0 && (
+            <div className="tl-photos">
+              {photoUrls.map((u, i) => <img key={i} src={u} alt="" className="tl-photo" />)}
+            </div>
+          )}
+          {cmrUrl && <div className="tl-sig">📄 <a href={cmrUrl} target="_blank" rel="noreferrer">{t('cmrLabel', lang)}</a></div>}
+        </div>
+      )}
+    </>
+  )
+}
+
+function CompletedOrderDetail({ order, isOwner, lang, onBack }) {
+  const mapRef = useRef(null)
+  const mapInstanceRef = useRef(null)
+  const pickupCoords = useGeocode(order.pickup_address)
+  const deliveryCoords = useGeocode(order.delivery_address)
+  const companyName = useCompanyName(order.created_by)
+
+  useEffect(() => {
+    if (!mapRef.current || mapInstanceRef.current) return
+    mapInstanceRef.current = window.L.map(mapRef.current, { zoomControl: false, attributionControl: false }).setView([49.45, 11.07], 9)
+    window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(mapInstanceRef.current)
+    return () => { mapInstanceRef.current?.remove(); mapInstanceRef.current = null }
+  }, [])
+
+  useEffect(() => {
+    const map = mapInstanceRef.current
+    if (!map) return
+    map.eachLayer((layer) => {
+      if (layer instanceof window.L.Marker || layer instanceof window.L.Polyline) map.removeLayer(layer)
+    })
+    const points = []
+    if (pickupCoords) {
+      window.L.marker(pickupCoords, { icon: window.L.divIcon({ className: '', html: '<div class="pin-icon pk"><span>A</span></div>', iconSize: [22, 22], iconAnchor: [11, 20] }) }).addTo(map)
+      points.push(pickupCoords)
+    }
+    if (deliveryCoords) {
+      window.L.marker(deliveryCoords, { icon: window.L.divIcon({ className: '', html: '<div class="pin-icon dl"><span>B</span></div>', iconSize: [22, 22], iconAnchor: [11, 20] }) }).addTo(map)
+      points.push(deliveryCoords)
+    }
+    if (points.length === 2) {
+      window.L.polyline(points, { color: '#2E7D5B', weight: 3 }).addTo(map)
+      map.fitBounds(window.L.latLngBounds(points), { padding: [30, 30] })
+    } else if (points.length === 1) {
+      map.setView(points[0], 12)
+    }
+  }, [pickupCoords, deliveryCoords])
+
+  const net = order.estimated_price
+  const vat = net != null ? net * 0.19 : null
+
+  return (
+    <div className="ride-detail">
+      <button className="back-btn" onClick={onBack}>← {t('back', lang)}</button>
+
+      <div className="ride-detail-header">
+        <span className="ride-ref">{t('orderRef', lang)} {order.order_number || order.reference || order.id.slice(0, 8)}</span>
+        <span className={`ride-badge ${statusClass(order.status)}`}>{statusLabel(order.status, lang)}</span>
+      </div>
+
+      {isOwner && net != null && (
+        <div className="summary-box">
+          <div className="route">{order.pickup_address} → {order.delivery_address}</div>
+          <div className="summary-grid">
+            <div>{t('kmLabel', lang)}<b>{order.km ? `${order.km} km` : '—'}</b></div>
+            <div>{t('priceLabel', lang)}<b>{net.toFixed(2)} €</b></div>
+            <div>MwSt (19%)<b>{vat.toFixed(2)} €</b></div>
+            <div>Gesamt<b>{(net + vat).toFixed(2)} €</b></div>
+          </div>
+        </div>
+      )}
+
+      {companyName && (
+        <div className="info-card">
+          <div className="info-card-head">🏢 {companyName}</div>
+        </div>
+      )}
+
+      <div className="live-map"><div ref={mapRef} style={{ width: '100%', height: '100%' }} /></div>
+
+      <div className="timeline">
+        <TimelineLeg leg="pickup" order={order} lang={lang} />
+        <TimelineLeg leg="delivery" order={order} lang={lang} />
+      </div>
+    </div>
+  )
+}
+
+function isToday(dateStr) {
+  if (!dateStr) return false
+  const today = new Date().toISOString().slice(0, 10)
+  return dateStr === today
+}
+
+function BiddingScreen({ profile, lang }) {
+  const [orders, setOrders] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [openId, setOpenId] = useState(null)
+
+  useEffect(() => {
+    let active = true
+    supabase
+      .from('orders')
+      .select('*')
+      .eq('status', 'open')
+      .order('pickup_date', { ascending: true })
+      .then(({ data, error }) => {
+        if (error) console.error('open orders fetch error:', error.message)
+        if (active) { setOrders(data || []); setLoading(false) }
+      })
+
+    const channel = supabase
+      .channel('bidding-open-orders')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: 'status=eq.open' }, () => {
+        supabase.from('orders').select('*').eq('status', 'open').then(({ data }) => setOrders(data || []))
+      })
+      .subscribe()
+
+    return () => { active = false; supabase.removeChannel(channel) }
+  }, [])
+
+  if (loading) return <PlaceholderScreen title={t('tabBidding', lang)} note={t('loadingRides', lang)} />
+  if (orders.length === 0) return <PlaceholderScreen title={t('tabBidding', lang)} note={t('biddingPlaceholder', lang)} />
+
+  return (
+    <div className="rides-list">
+      <h2 className="screen-title">{t('tabBidding', lang)}</h2>
+      {orders.map((o) => (
+        <BidCard key={o.id} order={o} lang={lang} profile={profile} open={openId === o.id} onToggle={() => setOpenId(openId === o.id ? null : o.id)} />
+      ))}
+    </div>
+  )
+}
+
+function BidCard({ order, lang, profile, open, onToggle }) {
+  const [ownPrice, setOwnPrice] = useState('')
+  const [message, setMessage] = useState('')
+  const [respectInterval, setRespectInterval] = useState(true)
+  const [busy, setBusy] = useState(false)
+  const [done, setDone] = useState(false)
+  const today = isToday(order.pickup_date)
+
+  async function submitBid(amount) {
+    setBusy(true)
+    try {
+      // NOTE: adjust field names below to match the real `bids` table schema
+      // once confirmed (order_id, price/amount, message, driver/profile reference).
+      const { error } = await supabase.from('bids').insert({
+        order_id: order.id,
+        price: amount,
+        message: message || null,
+        profile_id: null, // TODO: set to the bidding company's profiles.id once schema is confirmed
+      })
+      if (error) throw error
+      setDone(true)
+    } catch (err) {
+      console.error('bid submit error:', err.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className={`bid-card2 ${open ? 'open' : ''}`}>
+      <div className="bid-card2-head" onClick={onToggle}>
+        <div className="bid-top-row">
+          <span className={`pill ${today ? 'heute' : ''}`}>{today ? 'HEUTE' : order.pickup_date}</span>
+          <span className="pill-label">{t('pickup', lang)}</span>
+          <span className="pill-time">{order.pickup_from}{order.pickup_to ? `–${order.pickup_to}` : ''}</span>
+        </div>
+        <div className="status-row">
+          <span className="pill deschisa">{statusLabel(order.status, lang)}</span>
+          <span className="chev">▼</span>
+        </div>
+        <div className="bid-order-id">{t('orderRef', lang)} {order.order_number || order.id.slice(0, 8)}</div>
+        <div className="bid-stop"><span className="addr">📍 {order.pickup_address}</span>{order.km && <span className="val">{order.km} km</span>}</div>
+        <div className="bid-stop"><span className="addr">🏁 {order.delivery_address}</span>{order.weight && <span className="val">⚖ {order.weight} kg</span>}</div>
+      </div>
+
+      <div className="bid-card2-body">
+        <div className="bid-body-inner">
+          <div className="bid-divider" />
+          <div className="bid-zustellung-label">{t('delivery', lang)}</div>
+          <div className="bid-zustellung-val">{order.delivery_date} · {order.delivery_from}{order.delivery_to ? `–${order.delivery_to}` : ''}</div>
+
+          {done ? (
+            <div className="empty-note">✓ {t('confirmStep', lang)}</div>
+          ) : (
+            <>
+              {order.estimated_price != null && (
+                <div className="price-box">
+                  <div><div className="lbl">{t('priceLabel', lang)}</div><div className="val">{order.estimated_price} €</div></div>
+                  <button className="accept-btn" onClick={(e) => { e.stopPropagation(); submitBid(order.estimated_price) }} disabled={busy}>✓</button>
+                </div>
+              )}
+
+              <label className="bid-field-label">{t('priceLabel', lang)} (€)</label>
+              <input className="bid-input2" type="number" value={ownPrice} onChange={(e) => setOwnPrice(e.target.value)} />
+
+              {today && (
+                <div className="interval-note">
+                  <div className="txt">{t('pickup', lang)}: {order.pickup_from}{order.pickup_to ? `–${order.pickup_to}` : ''}</div>
+                  <label>
+                    <input type="checkbox" checked={respectInterval} onChange={(e) => setRespectInterval(e.target.checked)} />
+                    {' '}{t('confirmStep', lang)}
+                  </label>
+                </div>
+              )}
+
+              <textarea className="bid-input2" value={message} onChange={(e) => setMessage(e.target.value)} placeholder="" />
+
+              <button
+                className="submit-bid-btn"
+                disabled={busy || !ownPrice}
+                onClick={(e) => { e.stopPropagation(); submitBid(parseFloat(ownPrice)) }}
+              >
+                {busy ? '…' : t('tabBidding', lang)}
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ProfileScreen({ session, profile, isOwner, lang, onProfileChange }) {
+  const [busy, setBusy] = useState(false)
+  const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  const photoInputRef = useRef(null)
+  const isOnline = !!profile?.is_online
+
+  async function toggleOnline() {
+    if (!profile?.id) return
+    setBusy(true)
+    const { error } = await supabase
+      .from('drivers')
+      .update({ is_online: !isOnline })
+      .eq('id', profile.id)
+    setBusy(false)
+    if (error) {
+      console.error('toggle online error:', error.message)
+      return
+    }
+    onProfileChange()
+  }
+
+  async function uploadPhoto(e) {
+    const file = e.target.files?.[0]
+    if (!file || !profile?.id) return
+    setUploadingPhoto(true)
+    try {
+      const ext = file.name.split('.').pop()
+      const path = `${profile.id}/profile.${ext}`
+      const { error: upErr } = await supabase.storage
+        .from('driver-photos')
+        .upload(path, file, { upsert: true })
+      if (upErr) throw upErr
+      const { data } = supabase.storage.from('driver-photos').getPublicUrl(path)
+      const { error: dbErr } = await supabase
+        .from('drivers')
+        .update({ photo_url: data.publicUrl })
+        .eq('id', profile.id)
+      if (dbErr) throw dbErr
+      onProfileChange()
+    } catch (err) {
+      console.error('photo upload error:', err.message)
+    } finally {
+      setUploadingPhoto(false)
+      e.target.value = ''
+    }
+  }
+
+  return (
+    <div className="placeholder-screen">
+      <h2>{t('tabProfile', lang)}</h2>
+
+      <div className="profile-photo-row">
+        {profile?.photo_url ? (
+          <img src={profile.photo_url} alt="" className="profile-photo" onClick={() => photoInputRef.current?.click()} />
+        ) : (
+          <div className="profile-photo-placeholder" onClick={() => photoInputRef.current?.click()}>
+            {uploadingPhoto ? '…' : '+'}
+          </div>
+        )}
+        <input ref={photoInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={uploadPhoto} />
+        <button className="profile-photo-btn" onClick={() => photoInputRef.current?.click()} disabled={uploadingPhoto}>
+          {uploadingPhoto ? '…' : t('changePhoto', lang)}
+        </button>
+      </div>
+
+      <p>
+        {t('accountLabel', lang)}: {profile?.name || session.user.email} · {t('typeLabel', lang)}:{' '}
+        {isOwner ? t('typeOwnerOperator', lang) : t('typeEmployee', lang)}
+      </p>
+
+      <div className="toggle-row">
+        <div className="txt">
+          {t('onlineToggle', lang)}
+          <small>{t('onlineToggleNote', lang)}</small>
+        </div>
+        <button
+          className={`switch ${isOnline ? 'on' : ''}`}
+          onClick={toggleOnline}
+          disabled={busy}
+        />
+      </div>
+    </div>
+  )
+}
+
+function initials(nameOrEmail) {
+  if (!nameOrEmail) return '?'
+  const base = nameOrEmail.includes('@') ? nameOrEmail.split('@')[0] : nameOrEmail
+  const parts = base.trim().split(/\s+/)
+  const chars = parts.slice(0, 2).map((p) => p[0]?.toUpperCase() || '')
+  return chars.join('') || '?'
+}
+
+function PlaceholderScreen({ title, note }) {
+  return (
+    <div className="placeholder-screen">
+      <h2>{title}</h2>
+      <p>{note}</p>
+    </div>
+  )
 }

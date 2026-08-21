@@ -788,6 +788,43 @@ body {
   color: #2E7D5B;
 }
 
+.ride-row-icon.cancelled {
+  background: #FBE7E7;
+  color: #B03A3A;
+}
+
+.cancel-box {
+  background: #FBE7E7;
+  border: 1px solid #E38069;
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+
+.cancel-title {
+  font-family: 'Oswald', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: #B03A3A;
+  margin-bottom: 6px;
+}
+
+.cancel-note {
+  font-size: 12.5px;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+
+.cancel-comp {
+  font-size: 13px;
+  color: var(--text);
+}
+
+.cancel-comp b {
+  color: #B03A3A;
+  font-family: 'Oswald', sans-serif;
+}
+
 .ride-row-body {
   flex: 1;
   display: flex;
@@ -1228,7 +1265,27 @@ body {
 .bid-top-row {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 8px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.bid-top-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.bid-top-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.geboten-row {
   margin-bottom: 10px;
 }
 

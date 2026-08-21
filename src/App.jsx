@@ -725,6 +725,8 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange })
 
 function ProfileScreen({ session, profile, isOwner, lang, onProfileChange }) {
   const [busy, setBusy] = useState(false)
+  const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  const photoInputRef = useRef(null)
   const isOnline = !!profile?.is_online
 
   async function toggleOnline() {
@@ -742,9 +744,50 @@ function ProfileScreen({ session, profile, isOwner, lang, onProfileChange }) {
     onProfileChange()
   }
 
+  async function uploadPhoto(e) {
+    const file = e.target.files?.[0]
+    if (!file || !profile?.id) return
+    setUploadingPhoto(true)
+    try {
+      const ext = file.name.split('.').pop()
+      const path = `${profile.id}/profile.${ext}`
+      const { error: upErr } = await supabase.storage
+        .from('driver-photos')
+        .upload(path, file, { upsert: true })
+      if (upErr) throw upErr
+      const { data } = supabase.storage.from('driver-photos').getPublicUrl(path)
+      const { error: dbErr } = await supabase
+        .from('drivers')
+        .update({ photo_url: data.publicUrl })
+        .eq('id', profile.id)
+      if (dbErr) throw dbErr
+      onProfileChange()
+    } catch (err) {
+      console.error('photo upload error:', err.message)
+    } finally {
+      setUploadingPhoto(false)
+      e.target.value = ''
+    }
+  }
+
   return (
     <div className="placeholder-screen">
       <h2>{t('tabProfile', lang)}</h2>
+
+      <div className="profile-photo-row">
+        {profile?.photo_url ? (
+          <img src={profile.photo_url} alt="" className="profile-photo" onClick={() => photoInputRef.current?.click()} />
+        ) : (
+          <div className="profile-photo-placeholder" onClick={() => photoInputRef.current?.click()}>
+            {uploadingPhoto ? '…' : '+'}
+          </div>
+        )}
+        <input ref={photoInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={uploadPhoto} />
+        <button className="profile-photo-btn" onClick={() => photoInputRef.current?.click()} disabled={uploadingPhoto}>
+          {uploadingPhoto ? '…' : t('changePhoto', lang)}
+        </button>
+      </div>
+
       <p>
         {t('accountLabel', lang)}: {profile?.name || session.user.email} · {t('typeLabel', lang)}:{' '}
         {isOwner ? t('typeOwnerOperator', lang) : t('typeEmployee', lang)}

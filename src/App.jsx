@@ -325,10 +325,6 @@ function RidesScreen({ profile, isOwner, lang }) {
 
   return (
     <div className="rides-list">
-      <div className="rides-topbar">
-        <button className="icon-btn" aria-label="menu">☰</button>
-      </div>
-
       <div className="rides-tabs">
         {tabs.map((tabKey) => (
           <button

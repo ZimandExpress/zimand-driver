@@ -459,6 +459,9 @@ body {
   overflow: hidden;
   border: 1px solid var(--line);
   background: #EDF2F7;
+  position: relative;
+  z-index: 0;
+  isolation: isolate;
 }
 
 .pin-icon {
@@ -1041,7 +1044,7 @@ body {
   position: fixed;
   inset: 0;
   background: rgba(15,34,64,.45);
-  z-index: 70;
+  z-index: 9999;
   display: none;
 }
 
@@ -1268,7 +1271,20 @@ body {
   justify-content: space-between;
   gap: 8px;
   margin-bottom: 8px;
+}
+
+.bid-top-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   flex-wrap: wrap;
+}
+
+.bid-top-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
 }
 
 .bid-top-left {

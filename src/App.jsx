@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from './supabaseClient'
 import { t, getLang, setLang, availableLangs } from './i18n'
+import { Truck, CheckCircle2, Wallet, User, LogOut, Menu, Bell } from 'lucide-react'
 import './index.css'
 
 export default function App() {
@@ -178,7 +179,7 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
     <div className="phone-shell">
       <div className="brand-strip">
         <span className="brand-strip-name"><span className="live-dot" /> Zimand Express</span>
-        <button className="hbtn" aria-label="menu" onClick={() => setMenuOpen(true)}>☰</button>
+        <button className="hbtn" aria-label="menu" onClick={() => setMenuOpen(true)}><Menu size={20} strokeWidth={2} /></button>
       </div>
 
       <div className="screen-body">
@@ -203,32 +204,56 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
             <span className="live-dot" /><span className="menu-header-name">Zimand Express</span>
           </div>
           <button className={`menu-item ${tab === 'curse' ? 'active' : ''}`} onClick={() => navTo('curse')}>
-            <span className="ic">🚚</span>{t('tabRides', lang)}
+            <span className="ic"><Truck size={19} strokeWidth={1.75} /></span>{t('tabRides', lang)}
           </button>
           <button className={`menu-item ${tab === 'abgeschlossen' ? 'active' : ''}`} onClick={() => navTo('abgeschlossen')}>
-            <span className="ic">✅</span>{t('menuCompleted', lang)}
+            <span className="ic"><CheckCircle2 size={19} strokeWidth={1.75} /></span>{t('menuCompleted', lang)}
           </button>
           {isOwner && (
             <button className={`menu-item ${tab === 'castiguri' ? 'active' : ''}`} onClick={() => navTo('castiguri')}>
-              <span className="ic">💶</span>{t('tabEarnings', lang)}
+              <span className="ic"><Wallet size={19} strokeWidth={1.75} /></span>{t('tabEarnings', lang)}
             </button>
           )}
           <button className={`menu-item ${tab === 'profil' ? 'active' : ''}`} onClick={() => navTo('profil')}>
-            <span className="ic">👤</span>{t('tabProfile', lang)}
+            <span className="ic"><User size={19} strokeWidth={1.75} /></span>{t('tabProfile', lang)}
           </button>
 
           <div className="menu-divider" />
 
-          <div className="menu-lang">
-            <LangSwitcher lang={lang} onChangeLang={onChangeLang} />
-          </div>
           <button className="menu-item logout" onClick={() => supabase.auth.signOut()}>
-            <span className="ic">🚪</span>{t('logout', lang)}
+            <span className="ic"><LogOut size={19} strokeWidth={1.75} /></span>{t('logout', lang)}
           </button>
         </div>
       </div>
     </div>
   )
+}
+
+function fmtDate(dateStr) {
+  if (!dateStr) return ''
+  const d = new Date(dateStr)
+  if (isNaN(d.getTime())) return dateStr
+  const dd = String(d.getDate()).padStart(2, '0')
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const yyyy = d.getFullYear()
+  return `${dd}.${mm}.${yyyy}`
+}
+
+function fmtTime(timeStr) {
+  if (!timeStr) return ''
+  return timeStr.slice(0, 5)
+}
+
+function fmtDateTime(isoStr) {
+  if (!isoStr) return ''
+  const d = new Date(isoStr)
+  if (isNaN(d.getTime())) return isoStr
+  const dd = String(d.getDate()).padStart(2, '0')
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const yyyy = d.getFullYear()
+  const hh = String(d.getHours()).padStart(2, '0')
+  const mi = String(d.getMinutes()).padStart(2, '0')
+  return `${dd}.${mm}.${yyyy} · ${hh}:${mi}`
 }
 
 function statusClass(status) {
@@ -251,12 +276,68 @@ function statusLabel(status, lang) {
   }
 }
 
+function playBusinessChime() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)()
+    const now = ctx.currentTime
+    const playTone = (freq, start, duration, gain = 0.14) => {
+      const osc = ctx.createOscillator()
+      const g = ctx.createGain()
+      osc.type = 'sine'
+      osc.frequency.value = freq
+      g.gain.setValueAtTime(0, now + start)
+      g.gain.linearRampToValueAtTime(gain, now + start + 0.02)
+      g.gain.exponentialRampToValueAtTime(0.001, now + start + duration)
+      osc.connect(g)
+      g.connect(ctx.destination)
+      osc.start(now + start)
+      osc.stop(now + start + duration + 0.05)
+    }
+    playTone(880, 0, 0.16)
+    playTone(1174.66, 0.15, 0.24)
+  } catch (err) {
+    console.error('sound error:', err.message)
+  }
+}
+
 function RidesScreen({ profile, isOwner, session, lang }) {
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
   const [selectedId, setSelectedIdState] = useState(() => sessionStorage.getItem('zd-open-order') || null)
   const [activeTab, setActiveTab] = useState('mine')
   const [sortAsc, setSortAsc] = useState(true)
+  const [openCount, setOpenCount] = useState(0)
+  const [newOrderToast, setNewOrderToast] = useState(false)
+  const openCountLoaded = useRef(false)
+
+  useEffect(() => {
+    if (!isOwner) return
+
+    function refreshOpenCount() {
+      supabase
+        .from('orders')
+        .select('id', { count: 'exact', head: true })
+        .eq('status', 'open')
+        .then(({ count }) => setOpenCount(count || 0))
+    }
+
+    refreshOpenCount()
+    openCountLoaded.current = true
+
+    const channel = supabase
+      .channel('rides-open-count')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: 'status=eq.open' }, (payload) => {
+        refreshOpenCount()
+        if (payload.eventType === 'INSERT' && openCountLoaded.current) {
+          playBusinessChime()
+          setNewOrderToast(true)
+          setTimeout(() => setNewOrderToast(false), 4000)
+        }
+      })
+      .subscribe()
+
+    return () => supabase.removeChannel(channel)
+  }, [isOwner])
 
   function setSelectedId(id) {
     setSelectedIdState(id)
@@ -340,6 +421,11 @@ function RidesScreen({ profile, isOwner, session, lang }) {
 
   return (
     <div className="rides-list">
+      {newOrderToast && (
+        <div className="new-order-toast">
+          <Bell size={16} strokeWidth={2} /> {t('newOrderAlert', lang)}
+        </div>
+      )}
       <div className="rides-tabs">
         {tabs.map((tabKey) => (
           <button
@@ -348,6 +434,7 @@ function RidesScreen({ profile, isOwner, session, lang }) {
             onClick={() => setActiveTab(tabKey)}
           >
             {tabKey === 'available' && t('tabAvailable', lang)}
+            {tabKey === 'available' && <span className="rides-tab-count">{openCount}</span>}
             {tabKey === 'mine' && t('tabMine', lang)}
             {tabKey === 'mine' && <span className="rides-tab-count">{activeOrders.length}</span>}
           </button>
@@ -443,7 +530,7 @@ function RideCard({ order, isOwner, lang, onClick, compact }) {
           <span className="ride-row-id">{order.order_number || order.reference || order.id.slice(0, 8)}</span>
           <span className="ride-row-route">{order.pickup_address} → {order.delivery_address}</span>
           {order.delivery_confirmed_at && (
-            <span className="ride-row-date">{t('delivery', lang)}: {new Date(order.delivery_confirmed_at).toLocaleDateString()}</span>
+            <span className="ride-row-date">{t('delivery', lang)}: {fmtDate(order.delivery_confirmed_at)}</span>
           )}
         </div>
         <div className="ride-row-chev">›</div>
@@ -468,14 +555,14 @@ function RideCard({ order, isOwner, lang, onClick, compact }) {
           <span className="ric">📅</span>
           <span className="rik">{t('pickup', lang)}</span>
           <span className="riv">
-            {order.pickup_date}{order.pickup_from ? `, ${order.pickup_from}` : ''}{order.pickup_to ? `–${order.pickup_to}` : ''}
+            {fmtDate(order.pickup_date)}{order.pickup_from ? `, ${fmtTime(order.pickup_from)}` : ''}{order.pickup_to ? `–${fmtTime(order.pickup_to)}` : ''}
           </span>
         </div>
         <div className="ride-card2-row">
           <span className="ric">📅</span>
           <span className="rik">{t('delivery', lang)}</span>
           <span className="riv">
-            {order.delivery_date}{order.delivery_from ? `, ${order.delivery_from}` : ''}{order.delivery_to ? `–${order.delivery_to}` : ''}
+            {fmtDate(order.delivery_date)}{order.delivery_from ? `, ${fmtTime(order.delivery_from)}` : ''}{order.delivery_to ? `–${fmtTime(order.delivery_to)}` : ''}
           </span>
         </div>
         {order.cargo_desc && (
@@ -605,10 +692,10 @@ function RideDetailScreen({ order, isOwner, lang, onBack, onStatusChange }) {
           <div className="info-row"><span>{order.pickup_address}</span></div>
           {order.pickup_date && (
             <div className="info-row-time">
-              {order.pickup_date}{order.pickup_from ? ` · ${order.pickup_from}` : ''}{order.pickup_to ? `–${order.pickup_to}` : ''}
+              {fmtDate(order.pickup_date)}{order.pickup_from ? ` · ${fmtTime(order.pickup_from)}` : ''}{order.pickup_to ? `–${fmtTime(order.pickup_to)}` : ''}
             </div>
           )}
-          {order.pickup_confirmed_at && <div className="info-row-time">✓ {new Date(order.pickup_confirmed_at).toLocaleString()}</div>}
+          {order.pickup_confirmed_at && <div className="info-row-time">✓ {fmtDateTime(order.pickup_confirmed_at)}</div>}
         </div>
       </div>
 
@@ -618,10 +705,10 @@ function RideDetailScreen({ order, isOwner, lang, onBack, onStatusChange }) {
           <div className="info-row"><span>{order.delivery_address}</span></div>
           {order.delivery_date && (
             <div className="info-row-time">
-              {order.delivery_date}{order.delivery_from ? ` · ${order.delivery_from}` : ''}{order.delivery_to ? `–${order.delivery_to}` : ''}
+              {fmtDate(order.delivery_date)}{order.delivery_from ? ` · ${fmtTime(order.delivery_from)}` : ''}{order.delivery_to ? `–${fmtTime(order.delivery_to)}` : ''}
             </div>
           )}
-          {order.delivery_confirmed_at && <div className="info-row-time">✓ {new Date(order.delivery_confirmed_at).toLocaleString()}</div>}
+          {order.delivery_confirmed_at && <div className="info-row-time">✓ {fmtDateTime(order.delivery_confirmed_at)}</div>}
         </div>
       </div>
 
@@ -861,18 +948,18 @@ function TimelineLeg({ leg, order, lang }) {
       <div className="tl-leg-label">{leg === 'pickup' ? '🅐 ' + t('pickup', lang) : '🅑 ' + t('delivery', lang)}</div>
       <div className="tl-step">
         <div className="tl-title">{t('startDriving', lang)}</div>
-        <div className="tl-time">{new Date(startedAt).toLocaleString()}</div>
+        <div className="tl-time">{fmtDateTime(startedAt)}</div>
       </div>
       {arrivedAt && (
         <div className="tl-step">
           <div className="tl-title">{t('arrived', lang)}</div>
-          <div className="tl-time">{new Date(arrivedAt).toLocaleString()} · {durationLabel(startedAt, arrivedAt)}</div>
+          <div className="tl-time">{fmtDateTime(arrivedAt)} · {durationLabel(startedAt, arrivedAt)}</div>
         </div>
       )}
       {confirmedAt && (
         <div className="tl-step">
           <div className="tl-title">{leg === 'pickup' ? t('confirmPickup', lang) : t('confirmDelivery', lang)}</div>
-          <div className="tl-time">{new Date(confirmedAt).toLocaleString()} · {durationLabel(arrivedAt, confirmedAt)}</div>
+          <div className="tl-time">{fmtDateTime(confirmedAt)} · {durationLabel(arrivedAt, confirmedAt)}</div>
           {photoUrls.length > 0 && (
             <div className="tl-photos">
               {photoUrls.map((u, i) => <img key={i} src={u} alt="" className="tl-photo" />)}
@@ -1266,8 +1353,8 @@ function BidCard({ order, lang, courierProfileId, open, onToggle }) {
         <div className="bid-top-row">
           {today && <span className="pill heute">HEUTE</span>}
           <span className="pill-label">{t('pickup', lang)}</span>
-          <span className="pill-date">{order.pickup_date}</span>
-          <span className="pill-time">{order.pickup_from}{order.pickup_to ? `–${order.pickup_to}` : ''}</span>
+          <span className="pill-date">{fmtDate(order.pickup_date)}</span>
+          <span className="pill-time">{fmtTime(order.pickup_from)}{order.pickup_to ? `–${fmtTime(order.pickup_to)}` : ''}</span>
         </div>
         <div className="status-row">
           <span className={`pill ${order.status === 'open' ? 'deschisa' : ''}`}>{statusLabel(order.status, lang)}</span>
@@ -1282,7 +1369,7 @@ function BidCard({ order, lang, courierProfileId, open, onToggle }) {
         <div className="bid-body-inner">
           <div className="bid-divider" />
           <div className="bid-zustellung-label">{t('delivery', lang)}</div>
-          <div className="bid-zustellung-val">{order.delivery_date} · {order.delivery_from}{order.delivery_to ? `–${order.delivery_to}` : ''}</div>
+          <div className="bid-zustellung-val">{fmtDate(order.delivery_date)} · {fmtTime(order.delivery_from)}{order.delivery_to ? `–${fmtTime(order.delivery_to)}` : ''}</div>
 
           {order.dims && (
             <div className="bid-extra-row">📐 {order.dims} cm</div>
@@ -1315,7 +1402,7 @@ function BidCard({ order, lang, courierProfileId, open, onToggle }) {
 
               {today && (
                 <div className="interval-note">
-                  <div className="txt">{t('pickupWindowNote', lang)}: {order.pickup_from}{order.pickup_to ? `–${order.pickup_to}` : ''}</div>
+                  <div className="txt">{t('pickupWindowNote', lang)}: {fmtTime(order.pickup_from)}{order.pickup_to ? `–${fmtTime(order.pickup_to)}` : ''}</div>
                   <label>
                     <input type="checkbox" checked={respectInterval} onChange={(e) => setRespectInterval(e.target.checked)} />
                     {' '}{t('canRespectInterval', lang)}

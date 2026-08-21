@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from './supabaseClient'
 import { t, getLang, setLang, availableLangs } from './i18n'
 import './index.css'
@@ -30,8 +30,6 @@ export default function App() {
       setProfile(null)
       return
     }
-    // drivers table (existing, extended): auth_user_id links to this login,
-    // account_type is 'owner_operator' or 'employee', plus is_online / last_lat / last_lng for tracking
     supabase
       .from('drivers')
       .select('*')
@@ -43,20 +41,34 @@ export default function App() {
       })
   }, [session])
 
+  function refreshProfile() {
+    if (!session) return
+    supabase
+      .from('drivers')
+      .select('*')
+      .eq('auth_user_id', session.user.id)
+      .single()
+      .then(({ data }) => setProfile(data || null))
+  }
+
   if (loading) return <SplashScreen lang={lang} />
   if (!session) return <LoginScreen lang={lang} onChangeLang={changeLang} />
-  return <DriverShell session={session} profile={profile} lang={lang} onChangeLang={changeLang} />
+  return (
+    <DriverShell
+      session={session}
+      profile={profile}
+      onProfileChange={refreshProfile}
+      lang={lang}
+      onChangeLang={changeLang}
+    />
+  )
 }
 
 function LangSwitcher({ lang, onChangeLang, dark }) {
   return (
     <div className={`lang-switch ${dark ? 'dark' : ''}`}>
       {availableLangs.map((l) => (
-        <button
-          key={l}
-          className={l === lang ? 'active' : ''}
-          onClick={() => onChangeLang(l)}
-        >
+        <button key={l} className={l === lang ? 'active' : ''} onClick={() => onChangeLang(l)}>
           {l.toUpperCase()}
         </button>
       ))}
@@ -110,9 +122,51 @@ function LoginScreen({ lang, onChangeLang }) {
   )
 }
 
-function DriverShell({ session, profile, lang, onChangeLang }) {
+function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) {
   const [tab, setTab] = useState('curse')
   const isOwner = profile?.account_type === 'owner_operator'
+  const watchIdRef = useRef(null)
+
+  // Send GPS position continuously while profile.is_online is true —
+  // starts/stops automatically whenever the toggle in Profile changes it.
+  useEffect(() => {
+    if (!profile?.is_online || !profile?.id) {
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current)
+        watchIdRef.current = null
+      }
+      return
+    }
+
+    if (!('geolocation' in navigator)) return
+
+    const sendPosition = (coords) => {
+      supabase
+        .from('drivers')
+        .update({
+          last_lat: coords.latitude,
+          last_lng: coords.longitude,
+          last_location_at: new Date().toISOString(),
+        })
+        .eq('id', profile.id)
+        .then(({ error }) => {
+          if (error) console.error('location update error:', error.message)
+        })
+    }
+
+    watchIdRef.current = navigator.geolocation.watchPosition(
+      (pos) => sendPosition(pos.coords),
+      (err) => console.error('geolocation error:', err.message),
+      { enableHighAccuracy: true, maximumAge: 15000, timeout: 20000 }
+    )
+
+    return () => {
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current)
+        watchIdRef.current = null
+      }
+    }
+  }, [profile?.is_online, profile?.id])
 
   return (
     <div className="phone-shell">
@@ -125,13 +179,16 @@ function DriverShell({ session, profile, lang, onChangeLang }) {
       </div>
 
       <div className="screen-body">
-        {tab === 'curse' && <PlaceholderScreen title={t('tabRides', lang)} note={t('ridesPlaceholder', lang)} />}
+        {tab === 'curse' && <RidesScreen profile={profile} lang={lang} />}
         {tab === 'licitatii' && isOwner && <PlaceholderScreen title={t('tabBidding', lang)} note={t('biddingPlaceholder', lang)} />}
         {tab === 'castiguri' && isOwner && <PlaceholderScreen title={t('tabEarnings', lang)} note={t('earningsPlaceholder', lang)} />}
         {tab === 'profil' && (
-          <PlaceholderScreen
-            title={t('tabProfile', lang)}
-            note={`${t('accountLabel', lang)}: ${profile?.name || session.user.email} · ${t('typeLabel', lang)}: ${isOwner ? t('typeOwnerOperator', lang) : t('typeEmployee', lang)}`}
+          <ProfileScreen
+            session={session}
+            profile={profile}
+            isOwner={isOwner}
+            lang={lang}
+            onProfileChange={onProfileChange}
           />
         )}
       </div>
@@ -141,6 +198,151 @@ function DriverShell({ session, profile, lang, onChangeLang }) {
         {isOwner && <button className={tab === 'licitatii' ? 'active' : ''} onClick={() => setTab('licitatii')}>{t('tabBidding', lang)}</button>}
         {isOwner && <button className={tab === 'castiguri' ? 'active' : ''} onClick={() => setTab('castiguri')}>{t('tabEarnings', lang)}</button>}
         <button className={tab === 'profil' ? 'active' : ''} onClick={() => setTab('profil')}>{t('tabProfile', lang)}</button>
+      </div>
+    </div>
+  )
+}
+
+function statusLabel(status, lang) {
+  if (!status) return t('statusNew', lang)
+  const s = status.toLowerCase()
+  if (s.includes('deliver') || s.includes('done') || s.includes('complet')) return t('statusDone', lang)
+  if (s.includes('progress') || s.includes('transit') || s.includes('pickup')) return t('statusInProgress', lang)
+  return t('statusNew', lang)
+}
+
+function RidesScreen({ profile, lang }) {
+  const [orders, setOrders] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    if (!profile?.id) {
+      setLoading(false)
+      return
+    }
+
+    let active = true
+
+    supabase
+      .from('orders')
+      .select('*')
+      .eq('assigned_driver_id', profile.id)
+      .order('pickup_date', { ascending: true })
+      .then(({ data, error }) => {
+        if (error) console.error('orders fetch error:', error.message)
+        if (active) {
+          setOrders(data || [])
+          setLoading(false)
+        }
+      })
+
+    const channel = supabase
+      .channel('driver-orders-' + profile.id)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'orders', filter: `assigned_driver_id=eq.${profile.id}` },
+        (payload) => {
+          setOrders((current) => {
+            if (payload.eventType === 'DELETE') {
+              return current.filter((o) => o.id !== payload.old.id)
+            }
+            const exists = current.some((o) => o.id === payload.new.id)
+            if (exists) {
+              return current.map((o) => (o.id === payload.new.id ? payload.new : o))
+            }
+            return [...current, payload.new]
+          })
+        }
+      )
+      .subscribe()
+
+    return () => {
+      active = false
+      supabase.removeChannel(channel)
+    }
+  }, [profile?.id])
+
+  if (loading) return <PlaceholderScreen title={t('tabRides', lang)} note={t('loadingRides', lang)} />
+
+  if (orders.length === 0) {
+    return <PlaceholderScreen title={t('tabRides', lang)} note={t('noRides', lang)} />
+  }
+
+  return (
+    <div className="rides-list">
+      <h2 className="screen-title">{t('tabRides', lang)}</h2>
+      {orders.map((o) => (
+        <div className="ride-card" key={o.id}>
+          <div className="ride-top">
+            <span className="ride-ref">{t('orderRef', lang)} {o.order_number || o.reference || o.id.slice(0, 8)}</span>
+            <span className={`ride-badge ${statusLabel(o.status, lang) === t('statusDone', lang) ? 'done' : statusLabel(o.status, lang) === t('statusInProgress', lang) ? 'progress' : 'new'}`}>
+              {statusLabel(o.status, lang)}
+            </span>
+          </div>
+          <div className="ride-route">
+            <div className="ride-stop">
+              <span className="ride-stop-label">{t('pickup', lang)}</span>
+              <span className="ride-stop-addr">{o.pickup_address}</span>
+              {o.pickup_date && (
+                <span className="ride-stop-time">
+                  {o.pickup_date}{o.pickup_from ? ` · ${o.pickup_from}` : ''}{o.pickup_to ? `–${o.pickup_to}` : ''}
+                </span>
+              )}
+            </div>
+            <div className="ride-stop">
+              <span className="ride-stop-label">{t('delivery', lang)}</span>
+              <span className="ride-stop-addr">{o.delivery_address}</span>
+              {o.delivery_date && (
+                <span className="ride-stop-time">
+                  {o.delivery_date}{o.delivery_from ? ` · ${o.delivery_from}` : ''}{o.delivery_to ? `–${o.delivery_to}` : ''}
+                </span>
+              )}
+            </div>
+          </div>
+          {o.cargo_desc && <div className="ride-cargo">{o.cargo_desc}</div>}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function ProfileScreen({ session, profile, isOwner, lang, onProfileChange }) {
+  const [busy, setBusy] = useState(false)
+  const isOnline = !!profile?.is_online
+
+  async function toggleOnline() {
+    if (!profile?.id) return
+    setBusy(true)
+    const { error } = await supabase
+      .from('drivers')
+      .update({ is_online: !isOnline })
+      .eq('id', profile.id)
+    setBusy(false)
+    if (error) {
+      console.error('toggle online error:', error.message)
+      return
+    }
+    onProfileChange()
+  }
+
+  return (
+    <div className="placeholder-screen">
+      <h2>{t('tabProfile', lang)}</h2>
+      <p>
+        {t('accountLabel', lang)}: {profile?.name || session.user.email} · {t('typeLabel', lang)}:{' '}
+        {isOwner ? t('typeOwnerOperator', lang) : t('typeEmployee', lang)}
+      </p>
+
+      <div className="toggle-row">
+        <div className="txt">
+          {t('onlineToggle', lang)}
+          <small>{t('onlineToggleNote', lang)}</small>
+        </div>
+        <button
+          className={`switch ${isOnline ? 'on' : ''}`}
+          onClick={toggleOnline}
+          disabled={busy}
+        />
       </div>
     </div>
   )

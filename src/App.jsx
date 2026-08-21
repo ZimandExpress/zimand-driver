@@ -296,7 +296,7 @@ function RidesScreen({ profile, lang }) {
 
   const selected = orders.find((o) => o.id === selectedId)
   if (selected) {
-    return <RideDetailScreen order={selected} lang={lang} onBack={() => setSelectedId(null)} />
+    return <RideDetailScreen order={selected} lang={lang} onBack={() => setSelectedId(null)} onStatusChange={() => setSelectedId(null)} />
   }
 
   return (
@@ -358,11 +358,23 @@ function useGeocode(address) {
   return coords
 }
 
-function RideDetailScreen({ order, lang, onBack }) {
+function RideDetailScreen({ order, lang, onBack, onStatusChange }) {
   const mapRef = useRef(null)
   const mapInstanceRef = useRef(null)
   const pickupCoords = useGeocode(order.pickup_address)
   const deliveryCoords = useGeocode(order.delivery_address)
+  const [busy, setBusy] = useState(false)
+
+  async function markDone() {
+    setBusy(true)
+    const { error } = await supabase.from('orders').update({ status: 'done' }).eq('id', order.id)
+    setBusy(false)
+    if (error) {
+      console.error('status update error:', error.message)
+      return
+    }
+    onStatusChange()
+  }
 
   useEffect(() => {
     if (!mapRef.current || mapInstanceRef.current) return
@@ -451,6 +463,14 @@ function RideDetailScreen({ order, lang, onBack }) {
           {order.notes && <div className="info-note">{order.notes}</div>}
         </div>
       </div>
+
+      {order.status === 'assigned' && (
+        <div className="action-bar">
+          <button className="btn" onClick={markDone} disabled={busy}>
+            {busy ? '…' : t('markDone', lang)}
+          </button>
+        </div>
+      )}
     </div>
   )
 }

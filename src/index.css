@@ -1299,6 +1299,12 @@ body {
   padding: 3px 0;
 }
 
+.bid-stop .addr {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .bid-stop .val {
   color: var(--text-soft);
   font-size: 12.5px;
@@ -1501,6 +1507,60 @@ textarea.bid-input2 {
   text-align: center;
   line-height: 1.4;
   margin-top: 8px;
+}
+
+.pill.morgen {
+  background: var(--navy);
+  color: #fff;
+}
+
+.pill.geboten {
+  background: var(--green-bg, #E7F3ED);
+  color: #1F7A50;
+  font-family: 'Oswald', sans-serif;
+  font-weight: 700;
+  font-size: 10.5px;
+}
+
+.veh-chips {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.veh-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 4px 11px;
+  font-size: 11.5px;
+  color: var(--navy);
+}
+
+.order-notes-box {
+  background: #F0F1F3;
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 14px;
+}
+
+.order-notes-label {
+  font-family: 'Oswald', sans-serif;
+  font-size: 10px;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--text-soft);
+  margin-bottom: 4px;
+}
+
+.order-notes-text {
+  font-size: 12.5px;
+  color: var(--text);
+  white-space: pre-line;
+  line-height: 1.4;
 }
 
 /* --- earnings screen --- */

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from './supabaseClient'
 import { t, getLang, setLang, availableLangs } from './i18n'
-import { Truck, CheckCircle2, Wallet, User, LogOut, Menu, Bell, MapPin, FlagTriangleRight } from 'lucide-react'
+import { Truck, CheckCircle2, Wallet, User, LogOut, Menu, Bell, MapPin, FlagTriangleRight, Tag, XCircle } from 'lucide-react'
 import './index.css'
 
 export default function App() {
@@ -184,7 +184,9 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
 
       <div className="screen-body">
         {tab === 'curse' && <RidesScreen profile={profile} isOwner={isOwner} session={session} lang={lang} />}
+        {tab === 'angebote' && isOwner && <MeineAngeboteScreen profile={profile} session={session} lang={lang} />}
         {tab === 'abgeschlossen' && <CompletedOrdersListScreen profile={profile} isOwner={isOwner} lang={lang} />}
+        {tab === 'nichtangenommen' && isOwner && <NichtAngenommenScreen profile={profile} session={session} lang={lang} />}
         {tab === 'castiguri' && isOwner && <EarningsScreen profile={profile} lang={lang} />}
         {tab === 'profil' && (
           <ProfileScreen
@@ -206,9 +208,19 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
           <button className={`menu-item ${tab === 'curse' ? 'active' : ''}`} onClick={() => navTo('curse')}>
             <span className="ic"><Truck size={19} strokeWidth={1.75} /></span>{t('tabRides', lang)}
           </button>
+          {isOwner && (
+            <button className={`menu-item ${tab === 'angebote' ? 'active' : ''}`} onClick={() => navTo('angebote')}>
+              <span className="ic"><Tag size={19} strokeWidth={1.75} /></span>{t('menuOffers', lang)}
+            </button>
+          )}
           <button className={`menu-item ${tab === 'abgeschlossen' ? 'active' : ''}`} onClick={() => navTo('abgeschlossen')}>
             <span className="ic"><CheckCircle2 size={19} strokeWidth={1.75} /></span>{t('menuCompleted', lang)}
           </button>
+          {isOwner && (
+            <button className={`menu-item ${tab === 'nichtangenommen' ? 'active' : ''}`} onClick={() => navTo('nichtangenommen')}>
+              <span className="ic"><XCircle size={19} strokeWidth={1.75} /></span>{t('menuNotAccepted', lang)}
+            </button>
+          )}
           {isOwner && (
             <button className={`menu-item ${tab === 'castiguri' ? 'active' : ''}`} onClick={() => navTo('castiguri')}>
               <span className="ic"><Wallet size={19} strokeWidth={1.75} /></span>{t('tabEarnings', lang)}
@@ -397,7 +409,7 @@ function RidesScreen({ profile, isOwner, session, lang }) {
   if (loading) return <PlaceholderScreen title={t('tabRides', lang)} note={t('loadingRides', lang)} />
 
   const selected = orders.find((o) => o.id === selectedId)
-  if (selected && selected.status === 'done') {
+  if (selected && (selected.status === 'done' || selected.status === 'cancelled')) {
     return <CompletedOrderDetail order={selected} isOwner={isOwner} lang={lang} onBack={() => setSelectedId(null)} />
   }
   if (selected) {
@@ -486,7 +498,7 @@ function CompletedOrdersListScreen({ profile, isOwner, lang }) {
       .from('orders')
       .select('*')
       .eq('assigned_driver_id', profile.id)
-      .eq('status', 'done')
+      .in('status', ['done', 'cancelled'])
       .then(({ data, error }) => {
         if (error) console.error('completed orders fetch error:', error.message)
         setOrders(data || [])
@@ -523,13 +535,16 @@ function CompletedOrdersListScreen({ profile, isOwner, lang }) {
 
 function RideCard({ order, isOwner, lang, onClick, compact }) {
   if (compact) {
+    const isCancelled = order.status === 'cancelled'
     return (
       <div className="ride-row-compact" onClick={onClick}>
-        <div className="ride-row-icon done">✓</div>
+        <div className={`ride-row-icon ${isCancelled ? 'cancelled' : 'done'}`}>{isCancelled ? '✕' : '✓'}</div>
         <div className="ride-row-body">
           <span className="ride-row-id">{order.order_number || order.reference || order.id.slice(0, 8)}</span>
           <span className="ride-row-route">{order.pickup_address} → {order.delivery_address}</span>
-          {order.delivery_confirmed_at && (
+          {isCancelled ? (
+            <span className="ride-row-date">{statusLabel(order.status, lang)}</span>
+          ) : order.delivery_confirmed_at && (
             <span className="ride-row-date">{t('delivery', lang)}: {fmtDate(order.delivery_confirmed_at)}</span>
           )}
         </div>
@@ -723,7 +738,7 @@ function RideDetailScreen({ order, isOwner, lang, onBack, onStatusChange }) {
             <div className="info-row"><span className="k">{t('priceLabel', lang)}</span><span className="v price">{order.estimated_price} €</span></div>
           )}
           {order.reference && <div className="info-row"><span className="k">{t('referenceLabel', lang)}</span><span className="v">{order.reference}</span></div>}
-          {order.notes && <div className="info-note">{order.notes}</div>}
+          {order.notes && driverSafeNotes(order.notes) && <div className="info-note">{driverSafeNotes(order.notes)}</div>}
         </div>
       </div>
     </div>
@@ -1021,6 +1036,16 @@ function CompletedOrderDetail({ order, isOwner, lang, onBack }) {
         <span className={`ride-badge ${statusClass(order.status)}`}>{statusLabel(order.status, lang)}</span>
       </div>
 
+      {order.status === 'cancelled' && (
+        <div className="cancel-box">
+          <div className="cancel-title">{t('cancelledLabel', lang)}</div>
+          {order.cancellation_note && <div className="cancel-note">{order.cancellation_note}</div>}
+          {order.compensation_amount != null && order.compensation_amount > 0 && (
+            <div className="cancel-comp">{t('compensationLabel', lang)}: <b>{order.compensation_amount.toFixed(2)} €</b></div>
+          )}
+        </div>
+      )}
+
       {isOwner && net != null && (
         <div className="summary-box">
           <div className="route">{order.pickup_address} → {order.delivery_address}</div>
@@ -1041,10 +1066,12 @@ function CompletedOrderDetail({ order, isOwner, lang, onBack }) {
 
       <div className="live-map"><div ref={mapRef} style={{ width: '100%', height: '100%' }} /></div>
 
-      <div className="timeline">
-        <TimelineLeg leg="pickup" order={order} lang={lang} />
-        <TimelineLeg leg="delivery" order={order} lang={lang} />
-      </div>
+      {order.status !== 'cancelled' && (
+        <div className="timeline">
+          <TimelineLeg leg="pickup" order={order} lang={lang} />
+          <TimelineLeg leg="delivery" order={order} lang={lang} />
+        </div>
+      )}
     </div>
   )
 }
@@ -1064,6 +1091,77 @@ function useCompanyProfileId(session, profile) {
   return id
 }
 
+function useCourierBids(courierProfileId) {
+  const [bids, setBids] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    if (!courierProfileId) { setLoading(false); return }
+    let active = true
+    supabase
+      .from('bids')
+      .select('*, orders(*)')
+      .eq('courier_id', courierProfileId)
+      .then(({ data, error }) => {
+        if (error) console.error('bids fetch error:', error.message)
+        if (active) { setBids(data || []); setLoading(false) }
+      })
+    return () => { active = false }
+  }, [courierProfileId])
+
+  return { bids, loading }
+}
+
+function MeineAngeboteScreen({ profile, session, lang }) {
+  const courierProfileId = useCompanyProfileId(session, profile)
+  const { bids, loading } = useCourierBids(courierProfileId)
+
+  if (loading) return <PlaceholderScreen title={t('menuOffers', lang)} note={t('loadingRides', lang)} />
+
+  const pending = bids.filter((b) => b.orders && b.orders.status === 'open')
+
+  if (pending.length === 0) {
+    return <PlaceholderScreen title={t('menuOffers', lang)} note={t('noOffersPending', lang)} />
+  }
+
+  return (
+    <div className="rides-list">
+      <h2 className="screen-title">{t('menuOffers', lang)}</h2>
+      {pending.map((b) => (
+        <BidCard key={b.id} order={b.orders} lang={lang} courierProfileId={courierProfileId} open={false} onToggle={() => {}} />
+      ))}
+    </div>
+  )
+}
+
+function NichtAngenommenScreen({ profile, session, lang }) {
+  const courierProfileId = useCompanyProfileId(session, profile)
+  const { bids, loading } = useCourierBids(courierProfileId)
+
+  if (loading) return <PlaceholderScreen title={t('menuNotAccepted', lang)} note={t('loadingRides', lang)} />
+
+  const lost = bids.filter((b) => b.orders && b.orders.status !== 'open' && b.orders.winner_bid_id !== b.id)
+
+  if (lost.length === 0) {
+    return <PlaceholderScreen title={t('menuNotAccepted', lang)} note={t('noLostBids', lang)} />
+  }
+
+  return (
+    <div className="rides-list">
+      <h2 className="screen-title">{t('menuNotAccepted', lang)}</h2>
+      {lost.map((b) => (
+        <div className="hist-item" key={b.id} style={{ opacity: 0.75, cursor: 'default' }}>
+          <div>
+            <div className="id">{b.orders.order_number || b.orders.id.slice(0, 8)}</div>
+            {b.orders.pickup_address} → {b.orders.delivery_address}
+          </div>
+          <div className="p" style={{ color: 'var(--text-soft)' }}>{b.price} €</div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function isToday(dateStr) {
   if (!dateStr) return false
   const today = new Date().toISOString().slice(0, 10)
@@ -1075,6 +1173,19 @@ function isTomorrow(dateStr) {
   const t = new Date()
   t.setDate(t.getDate() + 1)
   return dateStr === t.toISOString().slice(0, 10)
+}
+
+// order.notes is built line-by-line by disponent (buildOrderNotesFromRequest);
+// each line has a known prefix. Some are internal/billing (never shown to a driver),
+// the rest are genuine client instructions the driver should see.
+const NOTES_HIDDEN_PREFIXES = ['— Von Kundenanfrage', 'Rechnung:', 'Weitere Benachrichtigung:', 'Warenempfänger informieren:']
+function driverSafeNotes(notesText) {
+  if (!notesText) return ''
+  return notesText
+    .split('\n')
+    .filter((line) => !NOTES_HIDDEN_PREFIXES.some((p) => line.startsWith(p)))
+    .join('\n')
+    .trim()
 }
 
 function getWeekStart(dateStr) {
@@ -1376,17 +1487,23 @@ function BidCard({ order, lang, courierProfileId, open, onToggle }) {
     <div className={`bid-card2 ${open ? 'open' : ''}`}>
       <div className="bid-card2-head" onClick={onToggle}>
         <div className="bid-top-row">
-          {today && <span className="pill heute">{t('todayBadge', lang)}</span>}
-          {!today && tomorrow && <span className="pill morgen">{t('tomorrowBadge', lang)}</span>}
-          <span className="pill-label">{t('pickup', lang)}</span>
-          <span className="pill-date">{fmtDate(order.pickup_date)}</span>
-          <span className="pill-time">{fmtTime(order.pickup_from)}{order.pickup_to ? `–${fmtTime(order.pickup_to)}` : ''}</span>
+          <div className="bid-top-left">
+            {today && <span className="pill heute">{t('todayBadge', lang)}</span>}
+            {!today && tomorrow && <span className="pill morgen">{t('tomorrowBadge', lang)}</span>}
+            <span className="pill-label">{t('pickup', lang)}</span>
+            <span className="pill-date">{fmtDate(order.pickup_date)}</span>
+            <span className="pill-time">{fmtTime(order.pickup_from)}{order.pickup_to ? `–${fmtTime(order.pickup_to)}` : ''}</span>
+          </div>
+          <div className="bid-top-right">
+            <span className={`pill ${order.status === 'open' ? 'deschisa' : ''}`}>{statusLabel(order.status, lang)}</span>
+            <span className="chev">▼</span>
+          </div>
         </div>
-        <div className="status-row">
-          <span className={`pill ${order.status === 'open' ? 'deschisa' : ''}`}>{statusLabel(order.status, lang)}</span>
-          {existingBid && <span className="pill geboten">✓ {t('bidPlaced', lang)}: {existingBid.price} €</span>}
-          <span className="chev">▼</span>
-        </div>
+        {existingBid && (
+          <div className="geboten-row">
+            <span className="pill geboten">✓ {t('bidPlaced', lang)}: {existingBid.price} €</span>
+          </div>
+        )}
         <div className="bid-order-id">{t('orderRef', lang)} {idParts.join(' · ')}</div>
         <div className="bid-stop"><span className="addr"><MapPin size={13} strokeWidth={1.8} /> {order.pickup_address}</span>{order.km && <span className="val">{order.km} km</span>}</div>
         <div className="bid-stop"><span className="addr"><FlagTriangleRight size={13} strokeWidth={1.8} /> {order.delivery_address}</span>{order.weight && <span className="val">⚖ {order.weight} kg</span>}</div>
@@ -1407,10 +1524,10 @@ function BidCard({ order, lang, courierProfileId, open, onToggle }) {
             <div className="flex-time-note">⏱ {order.flexible_time_notes}</div>
           )}
 
-          {order.notes && (
+          {order.notes && driverSafeNotes(order.notes) && (
             <div className="order-notes-box">
               <div className="order-notes-label">{t('notesLabel', lang)}</div>
-              <div className="order-notes-text">{order.notes}</div>
+              <div className="order-notes-text">{driverSafeNotes(order.notes)}</div>
             </div>
           )}
 

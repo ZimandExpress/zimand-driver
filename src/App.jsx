@@ -239,7 +239,16 @@ function statusLabel(status, lang) {
 function RidesScreen({ profile, lang }) {
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
-  const [selectedId, setSelectedId] = useState(null)
+  const [selectedId, setSelectedIdState] = useState(() => sessionStorage.getItem('zd-open-order') || null)
+
+  function setSelectedId(id) {
+    setSelectedIdState(id)
+    if (id) {
+      sessionStorage.setItem('zd-open-order', id)
+    } else {
+      sessionStorage.removeItem('zd-open-order')
+    }
+  }
 
   useEffect(() => {
     if (!profile?.id) {
@@ -296,7 +305,7 @@ function RidesScreen({ profile, lang }) {
 
   const selected = orders.find((o) => o.id === selectedId)
   if (selected) {
-    return <RideDetailScreen order={selected} lang={lang} onBack={() => setSelectedId(null)} onStatusChange={() => setSelectedId(null)} />
+    return <RideDetailScreen order={selected} lang={lang} onBack={() => setSelectedId(null)} onStatusChange={() => {}} />
   }
 
   return (

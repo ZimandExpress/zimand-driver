@@ -1690,6 +1690,13 @@ textarea.bid-input2 {
   color: #7A6210;
 }
 
+.flex-time-extra {
+  margin-top: 4px;
+  font-style: italic;
+  font-size: 11.5px;
+  opacity: .85;
+}
+
 .existing-bid-box {
   background: var(--green-bg, #E7F3ED);
   border-radius: 12px;

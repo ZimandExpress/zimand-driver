@@ -1698,6 +1698,7 @@ const PRE_WIN_HIDDEN_PREFIXES = [
   'Notiz Abholung:',
   'Notiz Zustellung:',
   'Kundenbemerkung:',
+  'Auftraggeber (Gast):',
 ]
 function preWinSafeNotes(notesText) {
   if (!notesText) return ''

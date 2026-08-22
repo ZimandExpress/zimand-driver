@@ -9,6 +9,9 @@ export default function App() {
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
   const [lang, setLangState] = useState(getLang())
+  const [needsPassword, setNeedsPassword] = useState(
+    () => new URLSearchParams(window.location.search).get('invite') === '1'
+  )
 
   function changeLang(l) {
     setLang(l)
@@ -52,8 +55,14 @@ export default function App() {
       .then(({ data }) => setProfile(data || null))
   }
 
+  function onPasswordSet() {
+    setNeedsPassword(false)
+    window.history.replaceState({}, '', window.location.pathname)
+  }
+
   if (loading) return <SplashScreen lang={lang} />
   if (!session) return <LoginScreen lang={lang} onChangeLang={changeLang} />
+  if (needsPassword) return <SetPasswordScreen lang={lang} onDone={onPasswordSet} />
   return (
     <DriverShell
       session={session}
@@ -116,6 +125,53 @@ function LoginScreen({ lang, onChangeLang }) {
           {error && <div className="login-error">{error}</div>}
           <button className="btn" type="submit" disabled={busy}>
             {busy ? t('loggingIn', lang) : t('loginButton', lang)}
+          </button>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+function SetPasswordScreen({ lang, onDone }) {
+  const [password, setPassword] = useState('')
+  const [confirm, setConfirm] = useState('')
+  const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    setError('')
+    if (password.length < 8) {
+      setError(t('passwordTooShort', lang))
+      return
+    }
+    if (password !== confirm) {
+      setError(t('passwordsDontMatch', lang))
+      return
+    }
+    setBusy(true)
+    const { error } = await supabase.auth.updateUser({ password })
+    setBusy(false)
+    if (error) {
+      setError(error.message)
+      return
+    }
+    onDone()
+  }
+
+  return (
+    <div className="phone-shell center-content">
+      <div className="login-card">
+        <div className="brand-mark"><span className="live-dot" /> {t('appName', lang)}</div>
+        <p className="login-sub">{t('welcomeSetPassword', lang)}</p>
+        <form onSubmit={handleSubmit}>
+          <label>{t('newPassword', lang)}</label>
+          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} />
+          <label>{t('confirmPassword', lang)}</label>
+          <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required minLength={8} />
+          {error && <div className="login-error">{error}</div>}
+          <button className="btn" type="submit" disabled={busy}>
+            {busy ? '…' : t('setPasswordButton', lang)}
           </button>
         </form>
       </div>

@@ -806,6 +806,105 @@ function useGeocode(address) {
   return coords
 }
 
+function mapsNavUrl(address) {
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`
+}
+
+function useGoogleMapsKey() {
+  const [key, setKey] = useState(null)
+  useEffect(() => {
+    supabase.rpc('get_driver_maps_key').then(({ data, error }) => {
+      if (error) { console.error('maps key fetch error:', error.message); return }
+      setKey(data || null)
+    })
+  }, [])
+  return key
+}
+
+let googleMapsLoadPromise = null
+function loadGoogleMaps(apiKey) {
+  if (window.google?.maps) return Promise.resolve()
+  if (googleMapsLoadPromise) return googleMapsLoadPromise
+  googleMapsLoadPromise = new Promise((resolve, reject) => {
+    const script = document.createElement('script')
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=geometry`
+    script.async = true
+    script.onload = resolve
+    script.onerror = reject
+    document.head.appendChild(script)
+  })
+  return googleMapsLoadPromise
+}
+
+function GoogleLiveMap({ pickupCoords, deliveryCoords }) {
+  const mapRef = useRef(null)
+  const mapInstanceRef = useRef(null)
+  const directionsRendererRef = useRef(null)
+  const mapsKey = useGoogleMapsKey()
+  const [ready, setReady] = useState(false)
+
+  useEffect(() => {
+    if (!mapsKey) return
+    loadGoogleMaps(mapsKey).then(() => setReady(true)).catch((err) => console.error('google maps load error:', err))
+  }, [mapsKey])
+
+  useEffect(() => {
+    if (!ready || !mapRef.current || mapInstanceRef.current) return
+    mapInstanceRef.current = new window.google.maps.Map(mapRef.current, {
+      center: { lat: 49.45, lng: 11.07 },
+      zoom: 9,
+      disableDefaultUI: true,
+      zoomControl: true,
+    })
+    directionsRendererRef.current = new window.google.maps.DirectionsRenderer({
+      suppressMarkers: false,
+      polylineOptions: { strokeColor: '#FF7A29', strokeWeight: 4 },
+    })
+    directionsRendererRef.current.setMap(mapInstanceRef.current)
+  }, [ready])
+
+  useEffect(() => {
+    const map = mapInstanceRef.current
+    const renderer = directionsRendererRef.current
+    if (!map || !renderer) return
+
+    if (pickupCoords && deliveryCoords) {
+      const directionsService = new window.google.maps.DirectionsService()
+      directionsService.route(
+        {
+          origin: { lat: pickupCoords[0], lng: pickupCoords[1] },
+          destination: { lat: deliveryCoords[0], lng: deliveryCoords[1] },
+          travelMode: window.google.maps.TravelMode.DRIVING,
+        },
+        (result, status) => {
+          if (status === 'OK') {
+            renderer.setDirections(result)
+          } else {
+            // fără rută (adrese prea departe una de alta, ex. peste graniță
+            // fără drum direct calculabil) — arătăm măcar cele două puncte
+            const bounds = new window.google.maps.LatLngBounds()
+            bounds.extend({ lat: pickupCoords[0], lng: pickupCoords[1] })
+            bounds.extend({ lat: deliveryCoords[0], lng: deliveryCoords[1] })
+            map.fitBounds(bounds, 40)
+            new window.google.maps.Marker({ position: { lat: pickupCoords[0], lng: pickupCoords[1] }, map, label: 'A' })
+            new window.google.maps.Marker({ position: { lat: deliveryCoords[0], lng: deliveryCoords[1] }, map, label: 'B' })
+          }
+        }
+      )
+    } else if (pickupCoords) {
+      map.setCenter({ lat: pickupCoords[0], lng: pickupCoords[1] })
+      map.setZoom(12)
+      new window.google.maps.Marker({ position: { lat: pickupCoords[0], lng: pickupCoords[1] }, map, label: 'A' })
+    }
+  }, [pickupCoords, deliveryCoords, ready])
+
+  if (!mapsKey || !ready) {
+    return <div className="live-map"><div className="live-map-loading">🗺️</div></div>
+  }
+
+  return <div className="live-map"><div ref={mapRef} style={{ width: '100%', height: '100%' }} /></div>
+}
+
 function ContactRow({ contact, lang }) {
   if (!contact) return null
   const phone = extractPhone(contact)
@@ -822,8 +921,6 @@ function ContactRow({ contact, lang }) {
 }
 
 function RideDetailScreen({ order, isOwner, session, lang, onBack, onStatusChange }) {
-  const mapRef = useRef(null)
-  const mapInstanceRef = useRef(null)
   const pickupCoords = useGeocode(order.pickup_address)
   const deliveryCoords = useGeocode(order.delivery_address)
   const companyName = useCompanyName(order.created_by)
@@ -860,43 +957,6 @@ function RideDetailScreen({ order, isOwner, session, lang, onBack, onStatusChang
     onBack()
   }
 
-  useEffect(() => {
-    if (!mapRef.current || mapInstanceRef.current) return
-    mapInstanceRef.current = window.L.map(mapRef.current, { zoomControl: false, attributionControl: false }).setView([49.45, 11.07], 9)
-    window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(mapInstanceRef.current)
-    return () => {
-      mapInstanceRef.current?.remove()
-      mapInstanceRef.current = null
-    }
-  }, [])
-
-  useEffect(() => {
-    const map = mapInstanceRef.current
-    if (!map) return
-
-    map.eachLayer((layer) => {
-      if (layer instanceof window.L.Marker || layer instanceof window.L.Polyline) map.removeLayer(layer)
-    })
-
-    const points = []
-    if (pickupCoords) {
-      const icon = window.L.divIcon({ className: '', html: '<div class="pin-icon pk"><span>A</span></div>', iconSize: [22, 22], iconAnchor: [11, 20] })
-      window.L.marker(pickupCoords, { icon }).addTo(map)
-      points.push(pickupCoords)
-    }
-    if (deliveryCoords) {
-      const icon = window.L.divIcon({ className: '', html: '<div class="pin-icon dl"><span>B</span></div>', iconSize: [22, 22], iconAnchor: [11, 20] })
-      window.L.marker(deliveryCoords, { icon }).addTo(map)
-      points.push(deliveryCoords)
-    }
-    if (points.length === 2) {
-      window.L.polyline(points, { color: '#FF7A29', weight: 3, dashArray: '1,8' }).addTo(map)
-      map.fitBounds(window.L.latLngBounds(points), { padding: [30, 30] })
-    } else if (points.length === 1) {
-      map.setView(points[0], 12)
-    }
-  }, [pickupCoords, deliveryCoords])
-
   // which leg are we on: pickup or delivery
   const leg = !order.pickup_confirmed_at ? 'pickup' : 'delivery'
   const startedAt = leg === 'pickup' ? order.pickup_started_at : order.delivery_started_at
@@ -914,30 +974,11 @@ function RideDetailScreen({ order, isOwner, session, lang, onBack, onStatusChang
         </span>
       </div>
 
-      <div className="live-map">
-        <div ref={mapRef} style={{ width: '100%', height: '100%' }} />
-      </div>
+      <GoogleLiveMap pickupCoords={pickupCoords} deliveryCoords={deliveryCoords} />
 
       {companyName && (
         <div className="info-card">
           <div className="info-card-head">🏢 {companyName}</div>
-        </div>
-      )}
-
-      {isOwner && companyDrivers.length > 0 && !order.pickup_started_at && (
-        <div className="prof-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 8 }}>
-          <span>{t('reassignLabel', lang)}</span>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <select className="doc-type-select" value={reassignTo} onChange={(e) => setReassignTo(e.target.value)}>
-              <option value="">— {t('defaultDriverNone', lang)} —</option>
-              {companyDrivers.map((d) => (
-                <option key={d.id} value={d.id}>{d.name}{d.plate ? ` · ${d.plate}` : ''}</option>
-              ))}
-            </select>
-            <button className="doc-add-btn btn secondary" disabled={!reassignTo || reassigning} onClick={reassignDriver}>
-              {reassigning ? '…' : t('reassignButton', lang)}
-            </button>
-          </div>
         </div>
       )}
 
@@ -951,7 +992,7 @@ function RideDetailScreen({ order, isOwner, session, lang, onBack, onStatusChang
         <div className="info-card-head">🅐 {t('pickup', lang)}</div>
         <div className="info-card-body">
           <ContactRow contact={pickupContact} lang={lang} />
-          <div className="info-row"><span>{order.pickup_address}</span></div>
+          <div className="info-row"><span>{order.pickup_address}</span><a className="maps-nav-btn" href={mapsNavUrl(order.pickup_address)} target="_blank" rel="noreferrer">🧭 {t('navigateButton', lang)}</a></div>
           <LegTime order={order} prefix="pickup" lang={lang} />
           {order.pickup_confirmed_at && <div className="info-row-time">✓ {fmtDateTime(order.pickup_confirmed_at)}</div>}
           {order.flexible_time_notes && (
@@ -966,7 +1007,7 @@ function RideDetailScreen({ order, isOwner, session, lang, onBack, onStatusChang
         <div className="info-card-head">🅑 {t('delivery', lang)}</div>
         <div className="info-card-body">
           <ContactRow contact={deliveryContact} lang={lang} />
-          <div className="info-row"><span>{order.delivery_address}</span></div>
+          <div className="info-row"><span>{order.delivery_address}</span><a className="maps-nav-btn" href={mapsNavUrl(order.delivery_address)} target="_blank" rel="noreferrer">🧭 {t('navigateButton', lang)}</a></div>
           <LegTime order={order} prefix="delivery" lang={lang} />
           {order.delivery_confirmed_at && <div className="info-row-time">✓ {fmtDateTime(order.delivery_confirmed_at)}</div>}
         </div>
@@ -987,6 +1028,31 @@ function RideDetailScreen({ order, isOwner, session, lang, onBack, onStatusChang
           {order.notes && driverSafeNotesWithoutContacts(order.notes) && <div className="info-note">{driverSafeNotesWithoutContacts(order.notes)}</div>}
         </div>
       </div>
+
+      {isOwner && companyDrivers.length > 0 && !order.pickup_started_at && (
+        <div className="reassign-footer">
+          {!reassigning && !reassignTo ? (
+            <button className="reassign-toggle" onClick={() => setReassignTo(' ')}>
+              🔄 {t('reassignLabel', lang)}
+            </button>
+          ) : (
+            <div className="reassign-open">
+              <span>{t('reassignLabel', lang)}</span>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <select className="doc-type-select" value={reassignTo.trim()} onChange={(e) => setReassignTo(e.target.value)}>
+                  <option value="">— {t('defaultDriverNone', lang)} —</option>
+                  {companyDrivers.map((d) => (
+                    <option key={d.id} value={d.id}>{d.name}{d.plate ? ` · ${d.plate}` : ''}</option>
+                  ))}
+                </select>
+                <button className="doc-add-btn btn secondary" disabled={!reassignTo.trim() || reassigning} onClick={reassignDriver}>
+                  {reassigning ? '…' : t('reassignButton', lang)}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
@@ -1178,7 +1244,7 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange })
     return (
       <div className="leg-workflow">
         <div className="leg-title">{legLabel}</div>
-        <button className="btn" onClick={() => callRpc(startFn)} disabled={busy}>
+        <button className="btn sticky-cta" onClick={() => callRpc(startFn)} disabled={busy}>
           {t('startDriving', lang)}
         </button>
       </div>
@@ -1190,7 +1256,7 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange })
       <div className="leg-workflow">
         <div className="leg-title">{legLabel}</div>
         <ElapsedTimer startedAt={startedAt} />
-        <button className="btn" onClick={() => callRpc(arriveFn)} disabled={busy}>
+        <button className="btn sticky-cta" onClick={() => callRpc(arriveFn)} disabled={busy}>
           {t('arrived', lang)}
         </button>
       </div>
@@ -1387,41 +1453,9 @@ function TimelineLeg({ leg, order, lang }) {
 }
 
 function CompletedOrderDetail({ order, isOwner, lang, onBack }) {
-  const mapRef = useRef(null)
-  const mapInstanceRef = useRef(null)
   const pickupCoords = useGeocode(order.pickup_address)
   const deliveryCoords = useGeocode(order.delivery_address)
   const companyName = useCompanyName(order.created_by)
-
-  useEffect(() => {
-    if (!mapRef.current || mapInstanceRef.current) return
-    mapInstanceRef.current = window.L.map(mapRef.current, { zoomControl: false, attributionControl: false }).setView([49.45, 11.07], 9)
-    window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(mapInstanceRef.current)
-    return () => { mapInstanceRef.current?.remove(); mapInstanceRef.current = null }
-  }, [])
-
-  useEffect(() => {
-    const map = mapInstanceRef.current
-    if (!map) return
-    map.eachLayer((layer) => {
-      if (layer instanceof window.L.Marker || layer instanceof window.L.Polyline) map.removeLayer(layer)
-    })
-    const points = []
-    if (pickupCoords) {
-      window.L.marker(pickupCoords, { icon: window.L.divIcon({ className: '', html: '<div class="pin-icon pk"><span>A</span></div>', iconSize: [22, 22], iconAnchor: [11, 20] }) }).addTo(map)
-      points.push(pickupCoords)
-    }
-    if (deliveryCoords) {
-      window.L.marker(deliveryCoords, { icon: window.L.divIcon({ className: '', html: '<div class="pin-icon dl"><span>B</span></div>', iconSize: [22, 22], iconAnchor: [11, 20] }) }).addTo(map)
-      points.push(deliveryCoords)
-    }
-    if (points.length === 2) {
-      window.L.polyline(points, { color: '#2E7D5B', weight: 3 }).addTo(map)
-      map.fitBounds(window.L.latLngBounds(points), { padding: [30, 30] })
-    } else if (points.length === 1) {
-      map.setView(points[0], 12)
-    }
-  }, [pickupCoords, deliveryCoords])
 
   const net = order.estimated_price
   const vat = net != null ? net * 0.19 : null
@@ -1463,7 +1497,7 @@ function CompletedOrderDetail({ order, isOwner, lang, onBack }) {
         </div>
       )}
 
-      <div className="live-map"><div ref={mapRef} style={{ width: '100%', height: '100%' }} /></div>
+      <GoogleLiveMap pickupCoords={pickupCoords} deliveryCoords={deliveryCoords} />
 
       {order.status !== 'cancelled' && (
         <div className="timeline">

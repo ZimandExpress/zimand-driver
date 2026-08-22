@@ -1986,3 +1986,22 @@ textarea.bid-input2 {
   padding: 2px;
   flex-shrink: 0;
 }
+
+.fixed-time-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.fixed-time-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--navy);
+  color: #fff;
+  border-radius: 20px;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 700;
+}

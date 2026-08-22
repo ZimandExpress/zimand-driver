@@ -96,10 +96,11 @@ export default function App() {
           setProfile(null)
           return
         }
+        const { data: companyName } = await supabase.rpc('get_company_name', { p_profile_id: courierProfileId })
         const { data: created, error: createErr } = await supabase
           .from('drivers')
           .insert({
-            name: session.user.email,
+            name: companyName || session.user.email,
             auth_user_id: session.user.id,
             company_id: courierProfileId,
           })
@@ -594,7 +595,7 @@ function RidesScreen({ profile, isOwner, session, lang }) {
     return <CompletedOrderDetail order={selected} isOwner={isOwner} lang={lang} onBack={() => setSelectedId(null)} />
   }
   if (selected) {
-    return <RideDetailScreen order={selected} isOwner={isOwner} lang={lang} onBack={() => setSelectedId(null)} onStatusChange={() => {}} />
+    return <RideDetailScreen order={selected} isOwner={isOwner} session={session} lang={lang} onBack={() => setSelectedId(null)} onStatusChange={() => {}} />
   }
 
   const activeOrders = orders.filter((o) => o.status === 'assigned')
@@ -805,12 +806,42 @@ function useGeocode(address) {
   return coords
 }
 
-function RideDetailScreen({ order, isOwner, lang, onBack, onStatusChange }) {
+function RideDetailScreen({ order, isOwner, session, lang, onBack, onStatusChange }) {
   const mapRef = useRef(null)
   const mapInstanceRef = useRef(null)
   const pickupCoords = useGeocode(order.pickup_address)
   const deliveryCoords = useGeocode(order.delivery_address)
   const companyName = useCompanyName(order.created_by)
+  const companyProfileId = useCompanyProfileId(session, null)
+  const [companyDrivers, setCompanyDrivers] = useState([])
+  const [reassigning, setReassigning] = useState(false)
+  const [reassignTo, setReassignTo] = useState('')
+
+  useEffect(() => {
+    if (!isOwner || !companyProfileId) return
+    supabase
+      .from('drivers')
+      .select('id, name, plate, active')
+      .eq('company_id', companyProfileId)
+      .then(({ data }) => setCompanyDrivers((data || []).filter((d) => d.active !== false && d.id !== order.assigned_driver_id)))
+  }, [isOwner, companyProfileId, order.assigned_driver_id])
+
+  async function reassignDriver() {
+    if (!reassignTo) return
+    setReassigning(true)
+    const { error } = await supabase
+      .from('orders')
+      .update({ assigned_driver_id: reassignTo })
+      .eq('id', order.id)
+    setReassigning(false)
+    if (error) {
+      console.error('reassign error:', error.message)
+      alert(error.message)
+      return
+    }
+    onStatusChange()
+    onBack()
+  }
 
   useEffect(() => {
     if (!mapRef.current || mapInstanceRef.current) return
@@ -873,6 +904,23 @@ function RideDetailScreen({ order, isOwner, lang, onBack, onStatusChange }) {
       {companyName && (
         <div className="info-card">
           <div className="info-card-head">🏢 {companyName}</div>
+        </div>
+      )}
+
+      {isOwner && companyDrivers.length > 0 && !order.pickup_started_at && (
+        <div className="prof-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 8 }}>
+          <span>{t('reassignLabel', lang)}</span>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <select className="doc-type-select" value={reassignTo} onChange={(e) => setReassignTo(e.target.value)}>
+              <option value="">— {t('defaultDriverNone', lang)} —</option>
+              {companyDrivers.map((d) => (
+                <option key={d.id} value={d.id}>{d.name}{d.plate ? ` · ${d.plate}` : ''}</option>
+              ))}
+            </select>
+            <button className="doc-add-btn btn secondary" disabled={!reassignTo || reassigning} onClick={reassignDriver}>
+              {reassigning ? '…' : t('reassignButton', lang)}
+            </button>
+          </div>
         </div>
       )}
 
@@ -1993,7 +2041,6 @@ function ProfileScreen({ session, profile, isOwner, lang, onChangeLang, onProfil
   const [savingVehicle, setSavingVehicle] = useState(false)
   const [companyDrivers, setCompanyDrivers] = useState([])
   const [autoAssignEnabled, setAutoAssignEnabled] = useState(true)
-  const [defaultDriverId, setDefaultDriverId] = useState('')
   const [savingAssignPrefs, setSavingAssignPrefs] = useState(false)
 
   useEffect(() => {
@@ -2020,14 +2067,11 @@ function ProfileScreen({ session, profile, isOwner, lang, onChangeLang, onProfil
       })
     supabase
       .from('profiles')
-      .select('auto_assign_enabled, default_driver_id')
+      .select('auto_assign_enabled')
       .eq('id', companyProfileId)
       .single()
       .then(({ data }) => {
-        if (data) {
-          setAutoAssignEnabled(data.auto_assign_enabled !== false)
-          setDefaultDriverId(data.default_driver_id || '')
-        }
+        if (data) setAutoAssignEnabled(data.auto_assign_enabled !== false)
       })
   }, [companyProfileId, isOwner])
 
@@ -2154,7 +2198,7 @@ function ProfileScreen({ session, profile, isOwner, lang, onChangeLang, onProfil
         </div>
       )}
 
-      {isOwner && companyDrivers.length > 1 && (
+      {isOwner && companyDrivers.length > 0 && (
         <>
           <h3 className="settings-subheading">{t('autoAssignHeading', lang)}</h3>
           <div className="toggle-row">
@@ -2168,22 +2212,6 @@ function ProfileScreen({ session, profile, isOwner, lang, onChangeLang, onProfil
               disabled={savingAssignPrefs}
             />
           </div>
-          {autoAssignEnabled && (
-            <div className="prof-row">
-              <span>👤 {t('defaultDriverLabel', lang)}</span>
-              <select
-                className="vehicle-select"
-                value={defaultDriverId}
-                onChange={(e) => { setDefaultDriverId(e.target.value); saveAssignPrefs({ default_driver_id: e.target.value || null }) }}
-                disabled={savingAssignPrefs}
-              >
-                <option value="">{t('defaultDriverNone', lang)}</option>
-                {companyDrivers.map((d) => (
-                  <option key={d.id} value={d.id}>{d.name}{d.plate ? ` · ${d.plate}` : ''}</option>
-                ))}
-              </select>
-            </div>
-          )}
         </>
       )}
     </div>

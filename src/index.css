@@ -1521,6 +1521,13 @@ body {
   margin-bottom: 10px;
 }
 
+.shipment-type-row {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--navy);
+  margin-bottom: 8px;
+}
+
 .bid-stop {
   display: flex;
   justify-content: space-between;

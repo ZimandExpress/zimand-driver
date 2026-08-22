@@ -2108,8 +2108,42 @@ textarea.bid-input2 {
   flex: 1;
 }
 
+.leg-head-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  transition: background .3s ease;
+}
+
+.leg-head-line.en-route {
+  background: #E7F4EE;
+}
+
+.leg-head-left {
+  display: flex;
+  align-items: baseline;
+}
+
+.leg-head-time {
+  font-size: 12.5px;
+  color: var(--text-soft);
+  font-weight: 400;
+  margin-left: 4px;
+}
+
+.leg-en-route-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #1F7A50;
+  overflow: hidden;
+}
+
 .leg-done-badge {
-  margin-left: 8px;
   font-size: 10.5px;
   font-weight: 700;
   background: #E7F4EE;
@@ -2119,14 +2153,14 @@ textarea.bid-input2 {
 }
 
 .moving-van {
-  margin-left: 8px;
   display: inline-block;
-  animation: vanDrive 1.4s ease-in-out infinite;
+  animation: vanDrive 1.8s ease-in-out infinite;
 }
 
 @keyframes vanDrive {
-  0%, 100% { transform: translateX(0); }
-  50% { transform: translateX(4px); }
+  0% { transform: translateX(-3px); }
+  50% { transform: translateX(9px); }
+  100% { transform: translateX(-3px); }
 }
 
 .leg-notiz {

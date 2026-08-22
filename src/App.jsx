@@ -1314,6 +1314,15 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange })
       })
       if (error) throw error
       onStatusChange()
+
+      // Trimite pozele/documentele/semnătura către portalul de client —
+      // dacă eșuează, nu blocăm confirmarea (deja salvată cu succes mai sus).
+      const { data: sessionData } = await supabase.auth.getSession()
+      fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sync-delivery-documents`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sessionData?.session?.access_token}` },
+        body: JSON.stringify({ order_id: order.id, leg }),
+      }).catch((syncErr) => console.error('sync-delivery-documents error:', syncErr.message))
     } catch (err) {
       console.error('confirm leg error:', err.message)
     } finally {

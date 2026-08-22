@@ -958,6 +958,15 @@ function RideDetailScreen({ order, isOwner, session, lang, onBack, onStatusChang
             </div>
           )}
           {order.pickup_confirmed_at && <div className="info-row-time">✓ {fmtDateTime(order.pickup_confirmed_at)}</div>}
+          {order.flexible_time_notes && (() => {
+            const parsed = formatFlexibleTimeNote(order.flexible_time_notes)
+            return (
+              <div className="flex-time-note" style={{ marginTop: 8 }}>
+                <div>⏱ {parsed.main}</div>
+                {parsed.extra && <div className="flex-time-extra">„{parsed.extra}"</div>}
+              </div>
+            )
+          })()}
         </div>
       </div>
 
@@ -1689,6 +1698,34 @@ function driverSafeNotesWithoutContacts(notesText) {
     .trim()
 }
 
+// Înainte de a câștiga o licitație, firma nu trebuie să vadă deloc datele de
+// contact ale clientului sau notele specifice per etapă — doar informația
+// logistică generală (ADR, stivuire, ajutor încărcare, referințe) e utilă
+// ca să decidă dacă licitează.
+const PRE_WIN_HIDDEN_PREFIXES = [
+  ...NOTES_HIDDEN_PREFIXES,
+  'Kontakt Abholung:',
+  'Kontakt Zustellung:',
+  'Notiz Abholung:',
+  'Notiz Zustellung:',
+  'Kundenbemerkung:',
+]
+function preWinSafeNotes(notesText) {
+  if (!notesText) return ''
+  return notesText
+    .split('\n')
+    .filter((line) => !PRE_WIN_HIDDEN_PREFIXES.some((p) => line.startsWith(p)))
+    .join('\n')
+    .trim()
+}
+
+function formatFlexibleTimeNote(text) {
+  if (!text) return null
+  const idx = text.indexOf(' - ')
+  if (idx === -1) return { main: text, extra: null }
+  return { main: text.slice(0, idx).trim(), extra: text.slice(idx + 3).trim() }
+}
+
 function getWeekStart(dateStr) {
   const d = new Date(dateStr)
   const day = d.getDay() // 0=Sun..6=Sat
@@ -2010,14 +2047,20 @@ function BidCard({ order, lang, courierProfileId, open, onToggle }) {
             <div className="bid-extra-row">📐 {order.dims} cm</div>
           )}
 
-          {order.flexible_time_notes && (
-            <div className="flex-time-note">⏱ {order.flexible_time_notes}</div>
-          )}
+          {order.flexible_time_notes && (() => {
+            const parsed = formatFlexibleTimeNote(order.flexible_time_notes)
+            return (
+              <div className="flex-time-note">
+                <div>⏱ {parsed.main}</div>
+                {parsed.extra && <div className="flex-time-extra">„{parsed.extra}"</div>}
+              </div>
+            )
+          })()}
 
-          {order.notes && driverSafeNotes(order.notes) && (
+          {order.notes && preWinSafeNotes(order.notes) && (
             <div className="order-notes-box">
               <div className="order-notes-label">{t('notesLabel', lang)}</div>
-              <div className="order-notes-text">{driverSafeNotes(order.notes)}</div>
+              <div className="order-notes-text">{preWinSafeNotes(order.notes)}</div>
             </div>
           )}
 

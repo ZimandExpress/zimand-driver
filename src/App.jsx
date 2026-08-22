@@ -806,6 +806,21 @@ function useGeocode(address) {
   return coords
 }
 
+function ContactRow({ contact, lang }) {
+  if (!contact) return null
+  const phone = extractPhone(contact)
+  return (
+    <div className="contact-row">
+      <span className="contact-text">👤 {contact}</span>
+      {phone && (
+        <a className="contact-call" href={`tel:${phone.replace(/[\s\-()\/]/g, '')}`}>
+          📞 {t('callButton', lang)}
+        </a>
+      )}
+    </div>
+  )
+}
+
 function RideDetailScreen({ order, isOwner, session, lang, onBack, onStatusChange }) {
   const mapRef = useRef(null)
   const mapInstanceRef = useRef(null)
@@ -814,6 +829,8 @@ function RideDetailScreen({ order, isOwner, session, lang, onBack, onStatusChang
   const companyName = useCompanyName(order.created_by)
   const companyProfileId = useCompanyProfileId(session, null)
   const [companyDrivers, setCompanyDrivers] = useState([])
+  const pickupContact = extractContact(order.notes, 'Kontakt Abholung: ')
+  const deliveryContact = extractContact(order.notes, 'Kontakt Zustellung: ')
   const [reassigning, setReassigning] = useState(false)
   const [reassignTo, setReassignTo] = useState('')
 
@@ -933,6 +950,7 @@ function RideDetailScreen({ order, isOwner, session, lang, onBack, onStatusChang
       <div className="info-card">
         <div className="info-card-head">🅐 {t('pickup', lang)}</div>
         <div className="info-card-body">
+          <ContactRow contact={pickupContact} lang={lang} />
           <div className="info-row"><span>{order.pickup_address}</span></div>
           {order.pickup_date && (
             <div className="info-row-time">
@@ -946,6 +964,7 @@ function RideDetailScreen({ order, isOwner, session, lang, onBack, onStatusChang
       <div className="info-card">
         <div className="info-card-head">🅑 {t('delivery', lang)}</div>
         <div className="info-card-body">
+          <ContactRow contact={deliveryContact} lang={lang} />
           <div className="info-row"><span>{order.delivery_address}</span></div>
           {order.delivery_date && (
             <div className="info-row-time">
@@ -967,7 +986,7 @@ function RideDetailScreen({ order, isOwner, session, lang, onBack, onStatusChang
             <div className="info-row"><span className="k">{t('priceLabel', lang)}</span><span className="v price">{order.estimated_price} €</span></div>
           )}
           {order.reference && <div className="info-row"><span className="k">{t('referenceLabel', lang)}</span><span className="v">{order.reference}</span></div>}
-          {order.notes && driverSafeNotes(order.notes) && <div className="info-note">{driverSafeNotes(order.notes)}</div>}
+          {order.notes && driverSafeNotesWithoutContacts(order.notes) && <div className="info-note">{driverSafeNotesWithoutContacts(order.notes)}</div>}
         </div>
       </div>
     </div>
@@ -1639,6 +1658,33 @@ function driverSafeNotes(notesText) {
   return notesText
     .split('\n')
     .filter((line) => !NOTES_HIDDEN_PREFIXES.some((p) => line.startsWith(p)))
+    .join('\n')
+    .trim()
+}
+
+function extractContact(notesText, prefix) {
+  if (!notesText) return null
+  const line = notesText.split('\n').find((l) => l.startsWith(prefix))
+  if (!line) return null
+  const value = line.slice(prefix.length).trim()
+  return value || null
+}
+
+function extractPhone(contactText) {
+  if (!contactText) return null
+  const match = contactText.match(/(\+?\d[\d\s\-\/()]{5,}\d)/)
+  return match ? match[1].replace(/\s+/g, ' ').trim() : null
+}
+
+function driverSafeNotesWithoutContacts(notesText) {
+  if (!notesText) return ''
+  return notesText
+    .split('\n')
+    .filter((line) =>
+      !NOTES_HIDDEN_PREFIXES.some((p) => line.startsWith(p)) &&
+      !line.startsWith('Kontakt Abholung:') &&
+      !line.startsWith('Kontakt Zustellung:')
+    )
     .join('\n')
     .trim()
 }

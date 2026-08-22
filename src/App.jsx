@@ -1443,24 +1443,94 @@ function useCourierBids(courierProfileId) {
   return { bids, loading }
 }
 
+function AssignDriverCard({ order, lang, companyDrivers, onAssigned }) {
+  const [selected, setSelected] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  async function assign() {
+    if (!selected) return
+    setSaving(true)
+    const { error } = await supabase
+      .from('orders')
+      .update({ assigned_driver_id: selected })
+      .eq('id', order.id)
+    setSaving(false)
+    if (error) {
+      console.error('assign driver error:', error.message)
+      alert(error.message)
+      return
+    }
+    onAssigned()
+  }
+
+  return (
+    <div className="bid-card2 open">
+      <div className="bid-body-inner" style={{ paddingTop: 16 }}>
+        <div className="bid-order-id">{t('orderRef', lang)} {order.order_number || order.id.slice(0, 8)}</div>
+        <div className="bid-stop"><span className="addr"><MapPin size={13} strokeWidth={1.8} /> {order.pickup_address}</span></div>
+        <div className="bid-stop"><span className="addr"><FlagTriangleRight size={13} strokeWidth={1.8} /> {order.delivery_address}</span></div>
+        <label className="bid-field-label">{t('assignDriverLabel', lang)}</label>
+        <select className="doc-type-select" style={{ marginBottom: 10 }} value={selected} onChange={(e) => setSelected(e.target.value)}>
+          <option value="">— {t('defaultDriverNone', lang)} —</option>
+          {companyDrivers.map((d) => (
+            <option key={d.id} value={d.id}>{d.name}{d.plate ? ` · ${d.plate}` : ''}</option>
+          ))}
+        </select>
+        <button className="submit-bid-btn" disabled={!selected || saving} onClick={assign}>
+          {saving ? '…' : t('assignDriverButton', lang)}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function MeineAngeboteScreen({ profile, session, lang }) {
   const courierProfileId = session?.user?.id || null
   const { bids, loading } = useCourierBids(courierProfileId)
+  const [companyDrivers, setCompanyDrivers] = useState([])
+  const [refreshKey, setRefreshKey] = useState(0)
+
+  useEffect(() => {
+    if (!courierProfileId) return
+    supabase
+      .from('drivers')
+      .select('id, name, plate, active')
+      .eq('company_id', courierProfileId)
+      .then(({ data }) => setCompanyDrivers((data || []).filter((d) => d.active !== false)))
+  }, [courierProfileId, refreshKey])
 
   if (loading) return <PlaceholderScreen title={t('menuOffers', lang)} note={t('loadingRides', lang)} />
 
   const pending = bids.filter((b) => b.orders && b.orders.status === 'open')
+  const needsAssignment = bids.filter(
+    (b) => b.orders && b.orders.status === 'assigned' && b.orders.winner_bid_id === b.id && !b.orders.assigned_driver_id
+  )
 
-  if (pending.length === 0) {
+  if (pending.length === 0 && needsAssignment.length === 0) {
     return <PlaceholderScreen title={t('menuOffers', lang)} note={t('noOffersPending', lang)} />
   }
 
   return (
     <div className="rides-list">
       <h2 className="screen-title">{t('menuOffers', lang)}</h2>
-      {pending.map((b) => (
-        <BidCard key={b.id} order={b.orders} lang={lang} courierProfileId={courierProfileId} open={false} onToggle={() => {}} />
-      ))}
+
+      {needsAssignment.length > 0 && (
+        <>
+          <div className="section-heading">{t('needsAssignmentHeading', lang)} <span className="count-pill">{needsAssignment.length}</span></div>
+          {needsAssignment.map((b) => (
+            <AssignDriverCard key={b.id} order={b.orders} lang={lang} companyDrivers={companyDrivers} onAssigned={() => setRefreshKey((k) => k + 1)} />
+          ))}
+        </>
+      )}
+
+      {pending.length > 0 && (
+        <>
+          {needsAssignment.length > 0 && <div className="section-heading">{t('menuOffers', lang)}</div>}
+          {pending.map((b) => (
+            <BidCard key={b.id} order={b.orders} lang={lang} courierProfileId={courierProfileId} open={false} onToggle={() => {}} />
+          ))}
+        </>
+      )}
     </div>
   )
 }
@@ -1921,6 +1991,10 @@ function ProfileScreen({ session, profile, isOwner, lang, onChangeLang, onProfil
   const companyProfileId = useCompanyProfileId(session, profile)
   const [vehicles, setVehicles] = useState([])
   const [savingVehicle, setSavingVehicle] = useState(false)
+  const [companyDrivers, setCompanyDrivers] = useState([])
+  const [autoAssignEnabled, setAutoAssignEnabled] = useState(true)
+  const [defaultDriverId, setDefaultDriverId] = useState('')
+  const [savingAssignPrefs, setSavingAssignPrefs] = useState(false)
 
   useEffect(() => {
     if (!companyProfileId) return
@@ -1933,6 +2007,40 @@ function ProfileScreen({ session, profile, isOwner, lang, onChangeLang, onProfil
         setVehicles(data || [])
       })
   }, [companyProfileId])
+
+  useEffect(() => {
+    if (!companyProfileId || !isOwner) return
+    supabase
+      .from('drivers')
+      .select('id, name, plate, active')
+      .eq('company_id', companyProfileId)
+      .then(({ data, error }) => {
+        if (error) console.error('company drivers fetch error:', error.message)
+        setCompanyDrivers((data || []).filter((d) => d.active !== false))
+      })
+    supabase
+      .from('profiles')
+      .select('auto_assign_enabled, default_driver_id')
+      .eq('id', companyProfileId)
+      .single()
+      .then(({ data }) => {
+        if (data) {
+          setAutoAssignEnabled(data.auto_assign_enabled !== false)
+          setDefaultDriverId(data.default_driver_id || '')
+        }
+      })
+  }, [companyProfileId, isOwner])
+
+  async function saveAssignPrefs(patch) {
+    if (!companyProfileId) return
+    setSavingAssignPrefs(true)
+    const { error } = await supabase
+      .from('profiles')
+      .update(patch)
+      .eq('id', companyProfileId)
+    setSavingAssignPrefs(false)
+    if (error) console.error('assign prefs save error:', error.message)
+  }
 
   async function selectVehicle(vehicleId) {
     if (!profile?.id) return
@@ -2044,6 +2152,39 @@ function ProfileScreen({ session, profile, isOwner, lang, onChangeLang, onProfil
             ))}
           </select>
         </div>
+      )}
+
+      {isOwner && companyDrivers.length > 1 && (
+        <>
+          <h3 className="settings-subheading">{t('autoAssignHeading', lang)}</h3>
+          <div className="toggle-row">
+            <div className="txt">
+              {t('autoAssignToggle', lang)}
+              <small>{t('autoAssignToggleNote', lang)}</small>
+            </div>
+            <button
+              className={`switch ${autoAssignEnabled ? 'on' : ''}`}
+              onClick={() => { const v = !autoAssignEnabled; setAutoAssignEnabled(v); saveAssignPrefs({ auto_assign_enabled: v }) }}
+              disabled={savingAssignPrefs}
+            />
+          </div>
+          {autoAssignEnabled && (
+            <div className="prof-row">
+              <span>👤 {t('defaultDriverLabel', lang)}</span>
+              <select
+                className="vehicle-select"
+                value={defaultDriverId}
+                onChange={(e) => { setDefaultDriverId(e.target.value); saveAssignPrefs({ default_driver_id: e.target.value || null }) }}
+                disabled={savingAssignPrefs}
+              >
+                <option value="">{t('defaultDriverNone', lang)}</option>
+                {companyDrivers.map((d) => (
+                  <option key={d.id} value={d.id}>{d.name}{d.plate ? ` · ${d.plate}` : ''}</option>
+                ))}
+              </select>
+            </div>
+          )}
+        </>
       )}
     </div>
   )

@@ -907,11 +907,12 @@ async function uploadPodFile(orderId, leg, file) {
 function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange }) {
   const [busy, setBusy] = useState(false)
   const [photos, setPhotos] = useState([])
-  const [cmrFile, setCmrFile] = useState(null)
+  const [documents, setDocuments] = useState([])
+  const [docType, setDocType] = useState('cmr')
   const [signatureBlob, setSignatureBlob] = useState(null)
   const [signerName, setSignerName] = useState('')
   const fileInputRef = useRef(null)
-  const cmrInputRef = useRef(null)
+  const docInputRef = useRef(null)
 
   const startFn = leg === 'pickup' ? 'driver_mark_pickup_started' : 'driver_mark_delivery_started'
   const arriveFn = leg === 'pickup' ? 'driver_mark_pickup_arrived' : 'driver_mark_delivery_arrived'
@@ -939,6 +940,17 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange })
     setPhotos((prev) => prev.filter((_, i) => i !== idx))
   }
 
+  function addDocument(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setDocuments((prev) => [...prev, { type: docType, file }])
+    e.target.value = ''
+  }
+
+  function removeDocument(idx) {
+    setDocuments((prev) => prev.filter((_, i) => i !== idx))
+  }
+
   async function confirmLeg() {
     setBusy(true)
     try {
@@ -946,9 +958,10 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange })
       for (const file of photos) {
         photoPaths.push(await uploadPodFile(order.id, leg, file))
       }
-      let cmrPath = null
-      if (cmrFile) {
-        cmrPath = await uploadPodFile(order.id, leg, cmrFile)
+      const uploadedDocs = []
+      for (const doc of documents) {
+        const path = await uploadPodFile(order.id, leg, doc.file)
+        uploadedDocs.push({ type: doc.type, path, name: doc.file.name })
       }
       let signaturePath = null
       if (signatureBlob) {
@@ -958,7 +971,7 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange })
       const { error } = await supabase.rpc(confirmFn, {
         p_order_id: order.id,
         p_photos: photoPaths,
-        p_cmr_url: cmrPath,
+        p_documents: uploadedDocs,
         p_signature_url: signaturePath,
         p_signer_name: signerName || null,
       })
@@ -1019,18 +1032,33 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange })
         onChange={addPhotos}
       />
 
-      <div className="pod-label">{t('cmrLabel', lang)}</div>
-      {cmrFile ? (
-        <div className="cmr-chip" onClick={() => setCmrFile(null)}>{cmrFile.name} ✕</div>
-      ) : (
-        <button className="btn secondary" onClick={() => cmrInputRef.current?.click()}>{t('uploadCmr', lang)}</button>
+      <div className="pod-label">{t('documentsLabel', lang)}</div>
+      <div className="doc-type-row">
+        <select className="doc-type-select" value={docType} onChange={(e) => setDocType(e.target.value)}>
+          <option value="cmr">{t('docTypeCmr', lang)}</option>
+          <option value="zustellprotokoll">{t('docTypeProtocol', lang)}</option>
+          <option value="other">{t('docTypeOther', lang)}</option>
+        </select>
+        <button type="button" className="btn secondary doc-add-btn" onClick={() => docInputRef.current?.click()}>
+          {t('addDocument', lang)}
+        </button>
+      </div>
+      {documents.length > 0 && (
+        <div className="doc-chip-list">
+          {documents.map((doc, i) => (
+            <div className="cmr-chip" key={i} onClick={() => removeDocument(i)}>
+              {doc.type === 'cmr' ? t('docTypeCmr', lang) : doc.type === 'zustellprotokoll' ? t('docTypeProtocol', lang) : t('docTypeOther', lang)}
+              {' · '}{doc.file.name} ✕
+            </div>
+          ))}
+        </div>
       )}
       <input
-        ref={cmrInputRef}
+        ref={docInputRef}
         type="file"
         accept="image/*,application/pdf"
         style={{ display: 'none' }}
-        onChange={(e) => setCmrFile(e.target.files?.[0] || null)}
+        onChange={addDocument}
       />
 
       <div className="pod-label">{t('signerNameLabel', lang)}</div>
@@ -1107,16 +1135,31 @@ function durationLabel(fromIso, toIso) {
   return `${Math.floor(mins / 60)}h ${mins % 60}min`
 }
 
+function docTypeLabel(type, lang) {
+  if (type === 'cmr') return t('docTypeCmr', lang)
+  if (type === 'zustellprotokoll') return t('docTypeProtocol', lang)
+  return t('docTypeOther', lang)
+}
+
+function DocumentLink({ doc, lang }) {
+  const url = useSignedUrl(doc.path)
+  if (!url) return null
+  return (
+    <div className="tl-sig">
+      📄 <a href={url} target="_blank" rel="noreferrer">{docTypeLabel(doc.type, lang)}{doc.name ? ` · ${doc.name}` : ''}</a>
+    </div>
+  )
+}
+
 function TimelineLeg({ leg, order, lang }) {
   const startedAt = leg === 'pickup' ? order.pickup_started_at : order.delivery_started_at
   const arrivedAt = leg === 'pickup' ? order.pickup_arrived_at : order.delivery_arrived_at
   const confirmedAt = leg === 'pickup' ? order.pickup_confirmed_at : order.delivery_confirmed_at
   const photoPaths = leg === 'pickup' ? order.pickup_photos : order.delivery_photos
-  const cmrPath = leg === 'pickup' ? order.pickup_cmr_url : order.delivery_cmr_url
+  const documents = (leg === 'pickup' ? order.pickup_documents : order.delivery_documents) || []
   const signaturePath = leg === 'pickup' ? order.pickup_signature_url : order.delivery_signature_url
   const signerName = leg === 'pickup' ? order.pickup_signer_name : order.delivery_signer_name
   const photoUrls = useSignedUrls(photoPaths || [])
-  const cmrUrl = useSignedUrl(cmrPath)
   const signatureUrl = useSignedUrl(signaturePath)
 
   if (!startedAt) return null
@@ -1143,7 +1186,7 @@ function TimelineLeg({ leg, order, lang }) {
               {photoUrls.map((u, i) => <img key={i} src={u} alt="" className="tl-photo" />)}
             </div>
           )}
-          {cmrUrl && <div className="tl-sig">📄 <a href={cmrUrl} target="_blank" rel="noreferrer">{t('cmrLabel', lang)}</a></div>}
+          {documents.map((doc, i) => <DocumentLink key={i} doc={doc} lang={lang} />)}
           {signatureUrl && (
             <div className="tl-signature">
               <img src={signatureUrl} alt="" className="tl-signature-img" />

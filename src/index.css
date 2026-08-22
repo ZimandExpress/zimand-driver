@@ -2044,15 +2044,30 @@ textarea.bid-input2 {
 .maps-nav-btn {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  background: var(--cream);
-  color: var(--navy);
+  gap: 5px;
+  background: var(--navy);
+  color: #fff;
   text-decoration: none;
   border-radius: 20px;
-  padding: 4px 10px;
+  padding: 6px 13px 6px 10px;
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
+  letter-spacing: .02em;
   flex-shrink: 0;
+  margin-left: auto;
+}
+
+.en-route-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #E7F4EE;
+  color: #1F7A50;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  margin: 10px 0;
 }
 
 .reassign-footer {
@@ -2078,4 +2093,17 @@ textarea.bid-input2 {
   gap: 8px;
   font-size: 12.5px;
   color: var(--text-soft);
+}
+
+.address-row {
+  align-items: flex-start !important;
+}
+
+.address-text {
+  font-family: 'Oswald', sans-serif;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--navy);
+  line-height: 1.35;
+  flex: 1;
 }

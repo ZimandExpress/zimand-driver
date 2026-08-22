@@ -95,6 +95,17 @@ body {
   margin-top: 6px;
 }
 
+.link-btn {
+  background: none;
+  border: none;
+  color: var(--navy);
+  font-size: 12.5px;
+  text-decoration: underline;
+  cursor: pointer;
+  width: 100%;
+  text-align: center;
+}
+
 .btn {
   margin-top: 18px;
   background: var(--orange);

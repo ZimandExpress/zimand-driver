@@ -39,9 +39,34 @@ export default function App() {
       .select('*')
       .eq('auth_user_id', session.user.id)
       .single()
-      .then(({ data, error }) => {
-        if (error) console.error('drivers fetch error:', error.message)
-        setProfile(data || null)
+      .then(async ({ data, error }) => {
+        if (data) {
+          setProfile(data)
+          return
+        }
+        // Nu există încă un rând în drivers pentru acest cont — dacă emailul
+        // se potrivește cu un cont de firmă (courier), îl creăm automat,
+        // ca firma să aibă direct acces complet, fără pas manual în plus.
+        const { data: courierProfileId } = await supabase.rpc('get_courier_profile_id')
+        if (!courierProfileId) {
+          setProfile(null)
+          return
+        }
+        const { data: created, error: createErr } = await supabase
+          .from('drivers')
+          .insert({
+            name: session.user.email,
+            auth_user_id: session.user.id,
+            company_id: courierProfileId,
+          })
+          .select()
+          .single()
+        if (createErr) {
+          console.error('auto-provision driver row error:', createErr.message)
+          setProfile(null)
+          return
+        }
+        setProfile(created)
       })
   }, [session])
 

@@ -952,11 +952,7 @@ function RideDetailScreen({ order, isOwner, session, lang, onBack, onStatusChang
         <div className="info-card-body">
           <ContactRow contact={pickupContact} lang={lang} />
           <div className="info-row"><span>{order.pickup_address}</span></div>
-          {order.pickup_date && (
-            <div className="info-row-time">
-              {fmtDate(order.pickup_date)}{order.pickup_from ? ` · ${fmtTime(order.pickup_from)}` : ''}{order.pickup_to ? `–${fmtTime(order.pickup_to)}` : ''}
-            </div>
-          )}
+          <LegTime order={order} prefix="pickup" lang={lang} />
           {order.pickup_confirmed_at && <div className="info-row-time">✓ {fmtDateTime(order.pickup_confirmed_at)}</div>}
           {order.flexible_time_notes && (
             <div className="flex-time-note" style={{ marginTop: 8 }}>
@@ -971,11 +967,7 @@ function RideDetailScreen({ order, isOwner, session, lang, onBack, onStatusChang
         <div className="info-card-body">
           <ContactRow contact={deliveryContact} lang={lang} />
           <div className="info-row"><span>{order.delivery_address}</span></div>
-          {order.delivery_date && (
-            <div className="info-row-time">
-              {fmtDate(order.delivery_date)}{order.delivery_from ? ` · ${fmtTime(order.delivery_from)}` : ''}{order.delivery_to ? `–${fmtTime(order.delivery_to)}` : ''}
-            </div>
-          )}
+          <LegTime order={order} prefix="delivery" lang={lang} />
           {order.delivery_confirmed_at && <div className="info-row-time">✓ {fmtDateTime(order.delivery_confirmed_at)}</div>}
         </div>
       </div>
@@ -1722,6 +1714,30 @@ function formatFlexibleTimeNote(text) {
   return { main: text.slice(0, idx).trim(), extra: text.slice(idx + 3).trim() }
 }
 
+function LegTime({ order, prefix, lang }) {
+  const isFixed = !!order[`${prefix}_fixed`]
+  const date = order[`${prefix}_date`]
+  if (!date) return null
+
+  if (isFixed) {
+    const time = order[`${prefix}_time`]
+    return (
+      <div className="fixed-time-row">
+        <span className="fixed-time-badge">🔒 {t('fixedDeliveryBadge', lang)}</span>
+        <span>{fmtDate(date)}{time ? ` · ${fmtTime(time)}` : ''}</span>
+      </div>
+    )
+  }
+
+  const from = order[`${prefix}_from`]
+  const to = order[`${prefix}_to`]
+  return (
+    <div className="info-row-time">
+      {fmtDate(date)}{from ? ` · ${fmtTime(from)}` : ''}{to ? `–${fmtTime(to)}` : ''}
+    </div>
+  )
+}
+
 function getWeekStart(dateStr) {
   const d = new Date(dateStr)
   const day = d.getDay() // 0=Sun..6=Sat
@@ -2015,7 +2031,7 @@ function BidCard({ order, lang, courierProfileId, open, onToggle }) {
             {!today && tomorrow && <span className="pill morgen">{t('tomorrowBadge', lang)}</span>}
             <span className="pill-label">{t('pickup', lang)}</span>
             <span className="pill-date">{fmtDate(order.pickup_date)}</span>
-            <span className="pill-time">{order.pickup_from ? `${fmtTime(order.pickup_from)}${order.pickup_to ? `–${fmtTime(order.pickup_to)}` : ''}` : '—'}</span>
+            <span className="pill-time">{order.pickup_fixed ? (order.pickup_time ? `🔒 ${fmtTime(order.pickup_time)}` : '🔒') : (order.pickup_from ? `${fmtTime(order.pickup_from)}${order.pickup_to ? `–${fmtTime(order.pickup_to)}` : ''}` : '—')}</span>
           </div>
           <div className="bid-top-right">
             <span className={`pill ${order.status === 'open' ? 'deschisa' : ''}`}>{statusLabel(order.status, lang)}</span>
@@ -2037,7 +2053,13 @@ function BidCard({ order, lang, courierProfileId, open, onToggle }) {
         <div className="bid-body-inner">
           <div className="bid-divider" />
           <div className="bid-zustellung-label">{t('delivery', lang)}</div>
-          <div className="bid-zustellung-val">{fmtDate(order.delivery_date)} · {fmtTime(order.delivery_from)}{order.delivery_to ? `–${fmtTime(order.delivery_to)}` : ''}</div>
+          <div className="bid-zustellung-val">
+            {order.delivery_fixed ? (
+              <span className="fixed-time-badge">🔒 {t('fixedDeliveryBadge', lang)} · {fmtDate(order.delivery_date)}{order.delivery_time ? ` · ${fmtTime(order.delivery_time)}` : ''}</span>
+            ) : (
+              <>{fmtDate(order.delivery_date)} · {fmtTime(order.delivery_from)}{order.delivery_to ? `–${fmtTime(order.delivery_to)}` : ''}</>
+            )}
+          </div>
 
           {order.dims && (
             <div className="bid-extra-row">📐 {order.dims} cm</div>

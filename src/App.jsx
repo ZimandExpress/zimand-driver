@@ -1133,11 +1133,8 @@ function useCompanyName(createdBy) {
   useEffect(() => {
     if (!createdBy) return
     supabase
-      .from('profiles')
-      .select('name')
-      .eq('id', createdBy)
-      .single()
-      .then(({ data }) => setName(data?.name || null))
+      .rpc('get_company_name', { p_profile_id: createdBy })
+      .then(({ data }) => setName(data || null))
       .catch(() => {})
   }, [createdBy])
   return name
@@ -1342,11 +1339,8 @@ function useCompanyProfileId(session, profile) {
     if (profile?.company_id) { setId(profile.company_id); return }
     if (!session?.user?.email) return
     supabase
-      .from('profiles')
-      .select('id')
-      .ilike('email', session.user.email)
-      .single()
-      .then(({ data }) => setId(data?.id || null))
+      .rpc('get_courier_profile_id')
+      .then(({ data }) => setId(data || null))
   }, [profile?.company_id, session?.user?.email])
   return id
 }

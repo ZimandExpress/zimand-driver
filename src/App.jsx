@@ -101,6 +101,7 @@ function LoginScreen({ lang, onChangeLang }) {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const [mode, setMode] = useState('login') // 'login' | 'forgot' | 'sent'
 
   async function handleLogin(e) {
     e.preventDefault()
@@ -109,6 +110,50 @@ function LoginScreen({ lang, onChangeLang }) {
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     setBusy(false)
     if (error) setError(t('loginError', lang))
+  }
+
+  async function handleForgot(e) {
+    e.preventDefault()
+    setError('')
+    setBusy(true)
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin + '/?invite=1',
+    })
+    setBusy(false)
+    if (error) {
+      setError(error.message)
+      return
+    }
+    setMode('sent')
+  }
+
+  if (mode === 'forgot' || mode === 'sent') {
+    return (
+      <div className="phone-shell center-content">
+        <LangSwitcher lang={lang} onChangeLang={onChangeLang} />
+        <div className="login-card">
+          <div className="brand-mark"><span className="live-dot" /> {t('appName', lang)}</div>
+          {mode === 'sent' ? (
+            <p className="login-sub">{t('resetLinkSent', lang)}</p>
+          ) : (
+            <>
+              <p className="login-sub">{t('forgotPasswordSub', lang)}</p>
+              <form onSubmit={handleForgot}>
+                <label>{t('email', lang)}</label>
+                <input type="email" value={email} onChange={e => setEmail(e.target.value)} required />
+                {error && <div className="login-error">{error}</div>}
+                <button className="btn" type="submit" disabled={busy}>
+                  {busy ? '…' : t('sendResetLink', lang)}
+                </button>
+              </form>
+            </>
+          )}
+          <button className="link-btn" onClick={() => setMode('login')} style={{ marginTop: 14 }}>
+            {t('backToLogin', lang)}
+          </button>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -127,6 +172,9 @@ function LoginScreen({ lang, onChangeLang }) {
             {busy ? t('loggingIn', lang) : t('loginButton', lang)}
           </button>
         </form>
+        <button className="link-btn" onClick={() => setMode('forgot')} style={{ marginTop: 12 }}>
+          {t('forgotPassword', lang)}
+        </button>
       </div>
     </div>
   )

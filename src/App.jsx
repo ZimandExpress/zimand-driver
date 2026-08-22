@@ -1,8 +1,52 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from './supabaseClient'
 import { t, getLang, setLang, availableLangs } from './i18n'
-import { Truck, CheckCircle2, Wallet, User, LogOut, Menu, Bell, MapPin, FlagTriangleRight, Tag, XCircle } from 'lucide-react'
+import { Truck, CheckCircle2, Wallet, User, LogOut, Menu, Bell, MapPin, FlagTriangleRight, Tag, XCircle, Download, X } from 'lucide-react'
 import './index.css'
+
+function InstallPrompt({ lang }) {
+  const [deferredPrompt, setDeferredPrompt] = useState(null)
+  const [dismissed, setDismissed] = useState(() => localStorage.getItem('zd-install-dismissed') === '1')
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true
+  const isIOS = /iphone|ipad|ipod/i.test(window.navigator.userAgent)
+
+  useEffect(() => {
+    function handler(e) {
+      e.preventDefault()
+      setDeferredPrompt(e)
+    }
+    window.addEventListener('beforeinstallprompt', handler)
+    return () => window.removeEventListener('beforeinstallprompt', handler)
+  }, [])
+
+  function dismiss() {
+    setDismissed(true)
+    localStorage.setItem('zd-install-dismissed', '1')
+  }
+
+  async function install() {
+    if (!deferredPrompt) return
+    deferredPrompt.prompt()
+    await deferredPrompt.userChoice
+    setDeferredPrompt(null)
+  }
+
+  if (isStandalone || dismissed) return null
+  if (!deferredPrompt && !isIOS) return null
+
+  return (
+    <div className="install-banner">
+      <Download size={18} strokeWidth={1.8} />
+      <span className="install-banner-text">
+        {isIOS ? t('installPromptIOS', lang) : t('installPromptAndroid', lang)}
+      </span>
+      {!isIOS && (
+        <button className="install-banner-btn" onClick={install}>{t('installButton', lang)}</button>
+      )}
+      <button className="install-banner-close" onClick={dismiss}><X size={16} strokeWidth={2} /></button>
+    </div>
+  )
+}
 
 export default function App() {
   const [session, setSession] = useState(null)
@@ -86,16 +130,24 @@ export default function App() {
   }
 
   if (loading) return <SplashScreen lang={lang} />
-  if (!session) return <LoginScreen lang={lang} onChangeLang={changeLang} />
+  if (!session) return (
+    <>
+      <InstallPrompt lang={lang} />
+      <LoginScreen lang={lang} onChangeLang={changeLang} />
+    </>
+  )
   if (needsPassword) return <SetPasswordScreen lang={lang} onDone={onPasswordSet} />
   return (
-    <DriverShell
-      session={session}
-      profile={profile}
-      onProfileChange={refreshProfile}
-      lang={lang}
-      onChangeLang={changeLang}
-    />
+    <>
+      <InstallPrompt lang={lang} />
+      <DriverShell
+        session={session}
+        profile={profile}
+        onProfileChange={refreshProfile}
+        lang={lang}
+        onChangeLang={changeLang}
+      />
+    </>
   )
 }
 

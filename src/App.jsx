@@ -958,15 +958,11 @@ function RideDetailScreen({ order, isOwner, session, lang, onBack, onStatusChang
             </div>
           )}
           {order.pickup_confirmed_at && <div className="info-row-time">✓ {fmtDateTime(order.pickup_confirmed_at)}</div>}
-          {order.flexible_time_notes && (() => {
-            const parsed = formatFlexibleTimeNote(order.flexible_time_notes)
-            return (
-              <div className="flex-time-note" style={{ marginTop: 8 }}>
-                <div>⏱ {parsed.main}</div>
-                {parsed.extra && <div className="flex-time-extra">„{parsed.extra}"</div>}
-              </div>
-            )
-          })()}
+          {order.flexible_time_notes && (
+            <div className="flex-time-note" style={{ marginTop: 8 }}>
+              ⏱ {formatFlexibleTimeNote(order.flexible_time_notes).main}
+            </div>
+          )}
         </div>
       </div>
 
@@ -2047,15 +2043,11 @@ function BidCard({ order, lang, courierProfileId, open, onToggle }) {
             <div className="bid-extra-row">📐 {order.dims} cm</div>
           )}
 
-          {order.flexible_time_notes && (() => {
-            const parsed = formatFlexibleTimeNote(order.flexible_time_notes)
-            return (
-              <div className="flex-time-note">
-                <div>⏱ {parsed.main}</div>
-                {parsed.extra && <div className="flex-time-extra">„{parsed.extra}"</div>}
-              </div>
-            )
-          })()}
+          {order.flexible_time_notes && (
+            <div className="flex-time-note">
+              ⏱ {formatFlexibleTimeNote(order.flexible_time_notes).main}
+            </div>
+          )}
 
           {order.notes && preWinSafeNotes(order.notes) && (
             <div className="order-notes-box">

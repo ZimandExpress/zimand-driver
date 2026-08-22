@@ -1014,10 +1014,15 @@ function RideDetailScreen({ order, isOwner, session, lang, onBack, onStatusChang
       {order.status === 'assigned' && order.pickup_confirmed_at && !order.delivery_confirmed_at && leg === 'delivery' && null}
 
       <div className="info-card">
-        <div className="info-card-head">
-          🅐 {t('pickup', lang)}
+        <div className={`info-card-head leg-head-line ${order.pickup_started_at && !order.pickup_arrived_at ? 'en-route' : ''}`}>
+          <span className="leg-head-left">
+            🅐 {t('pickup', lang)}
+            {order.pickup_date && <span className="leg-head-time"> · {order.pickup_fixed ? fmtTime(order.pickup_time) : fmtTime(order.pickup_from)}</span>}
+          </span>
           {order.pickup_confirmed_at && <span className="leg-done-badge">✓ {t('pickedUpLabel', lang)}</span>}
-          {order.pickup_started_at && !order.pickup_arrived_at && <span className="moving-van">🚚</span>}
+          {order.pickup_started_at && !order.pickup_arrived_at && (
+            <span className="leg-en-route-pill">{t('enRouteLabel', lang)} <span className="moving-van">🚚</span></span>
+          )}
         </div>
         <div className="info-card-body">
           <ContactRow contact={pickupContact} lang={lang} />
@@ -1037,10 +1042,15 @@ function RideDetailScreen({ order, isOwner, session, lang, onBack, onStatusChang
       </div>
 
       <div className="info-card">
-        <div className="info-card-head">
-          🅑 {t('delivery', lang)}
+        <div className={`info-card-head leg-head-line ${order.delivery_started_at && !order.delivery_arrived_at ? 'en-route' : ''}`}>
+          <span className="leg-head-left">
+            🅑 {t('delivery', lang)}
+            {order.delivery_date && <span className="leg-head-time"> · {order.delivery_fixed ? fmtTime(order.delivery_time) : fmtTime(order.delivery_from)}</span>}
+          </span>
           {order.delivery_confirmed_at && <span className="leg-done-badge">✓ {t('deliveredLabel', lang)}</span>}
-          {order.delivery_started_at && !order.delivery_arrived_at && <span className="moving-van">🚚</span>}
+          {order.delivery_started_at && !order.delivery_arrived_at && (
+            <span className="leg-en-route-pill">{t('enRouteLabel', lang)} <span className="moving-van">🚚</span></span>
+          )}
         </div>
         <div className="info-card-body">
           <ContactRow contact={deliveryContact} lang={lang} />
@@ -1066,9 +1076,6 @@ function RideDetailScreen({ order, isOwner, session, lang, onBack, onStatusChang
             {order.weight && <div className="info-row"><span className="k">{t('weightLabel', lang)}</span><span className="v">{order.weight} kg</span></div>}
             {order.dims && <div className="info-row"><span className="k">{t('dimsLabel', lang)}</span><span className="v">{order.dims}</span></div>}
             {order.km && <div className="info-row"><span className="k">{t('kmLabel', lang)}</span><span className="v">{order.km} km</span></div>}
-            {isOwner && order.estimated_price != null && (
-              <div className="info-row"><span className="k">{t('priceLabel', lang)}</span><span className="v price">{order.estimated_price} €</span></div>
-            )}
             {order.reference && <div className="info-row"><span className="k">{t('referenceLabel', lang)}</span><span className="v">{order.reference}</span></div>}
             {order.notes && driverSafeNotesWithoutContacts(order.notes) && <div className="info-note">{driverSafeNotesWithoutContacts(order.notes)}</div>}
           </div>

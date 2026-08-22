@@ -516,6 +516,37 @@ body {
   padding: 12px 14px;
 }
 
+.contact-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: var(--cream);
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.contact-text {
+  font-size: 12.5px;
+  color: var(--navy);
+  font-weight: 600;
+}
+
+.contact-call {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--orange);
+  color: #fff;
+  text-decoration: none;
+  border-radius: 20px;
+  padding: 5px 12px;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
 .info-row {
   display: flex;
   justify-content: space-between;

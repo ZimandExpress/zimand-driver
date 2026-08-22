@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from './supabaseClient'
 import { t, getLang, setLang, availableLangs } from './i18n'
-import { Truck, CheckCircle2, Wallet, User, LogOut, Menu, Bell, MapPin, FlagTriangleRight, Tag, XCircle, Download, X } from 'lucide-react'
+import { Truck, CheckCircle2, Wallet, User, LogOut, Menu, Bell, MapPin, FlagTriangleRight, Tag, XCircle, Download, X, Navigation } from 'lucide-react'
 import './index.css'
 
 function InstallPrompt({ lang }) {
@@ -992,7 +992,10 @@ function RideDetailScreen({ order, isOwner, session, lang, onBack, onStatusChang
         <div className="info-card-head">🅐 {t('pickup', lang)}</div>
         <div className="info-card-body">
           <ContactRow contact={pickupContact} lang={lang} />
-          <div className="info-row"><span>{order.pickup_address}</span><a className="maps-nav-btn" href={mapsNavUrl(order.pickup_address)} target="_blank" rel="noreferrer">🧭 {t('navigateButton', lang)}</a></div>
+          <div className="info-row address-row">
+            <span className="address-text">{order.pickup_address}</span>
+            <a className="maps-nav-btn" href={mapsNavUrl(order.pickup_address)} target="_blank" rel="noreferrer"><Navigation size={13} strokeWidth={2.2} /> {t('navigateButton', lang)}</a>
+          </div>
           <LegTime order={order} prefix="pickup" lang={lang} />
           {order.pickup_confirmed_at && <div className="info-row-time">✓ {fmtDateTime(order.pickup_confirmed_at)}</div>}
           {order.flexible_time_notes && (
@@ -1007,7 +1010,10 @@ function RideDetailScreen({ order, isOwner, session, lang, onBack, onStatusChang
         <div className="info-card-head">🅑 {t('delivery', lang)}</div>
         <div className="info-card-body">
           <ContactRow contact={deliveryContact} lang={lang} />
-          <div className="info-row"><span>{order.delivery_address}</span><a className="maps-nav-btn" href={mapsNavUrl(order.delivery_address)} target="_blank" rel="noreferrer">🧭 {t('navigateButton', lang)}</a></div>
+          <div className="info-row address-row">
+            <span className="address-text">{order.delivery_address}</span>
+            <a className="maps-nav-btn" href={mapsNavUrl(order.delivery_address)} target="_blank" rel="noreferrer"><Navigation size={13} strokeWidth={2.2} /> {t('navigateButton', lang)}</a>
+          </div>
           <LegTime order={order} prefix="delivery" lang={lang} />
           {order.delivery_confirmed_at && <div className="info-row-time">✓ {fmtDateTime(order.delivery_confirmed_at)}</div>}
         </div>
@@ -1255,7 +1261,7 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange })
     return (
       <div className="leg-workflow">
         <div className="leg-title">{legLabel}</div>
-        <ElapsedTimer startedAt={startedAt} />
+        <div className="en-route-badge">🚗 {t('enRouteLabel', lang)}</div>
         <button className="btn sticky-cta" onClick={() => callRpc(arriveFn)} disabled={busy}>
           {t('arrived', lang)}
         </button>

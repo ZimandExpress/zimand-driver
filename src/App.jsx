@@ -1605,7 +1605,6 @@ function BiddingScreen({ profile, session, lang, embedded }) {
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
   const [openId, setOpenId] = useState(null)
-  const [debugInfo, setDebugInfo] = useState('')
   const courierProfileId = session?.user?.id || null
 
   useEffect(() => {
@@ -1615,13 +1614,8 @@ function BiddingScreen({ profile, session, lang, embedded }) {
       .select('*')
       .eq('status', 'open')
       .order('pickup_date', { ascending: true })
-      .then(({ data, error, status, statusText }) => {
-        if (error) {
-          console.error('open orders fetch error:', error.message)
-          setDebugInfo(`Fehler: ${error.message} (code: ${error.code || '—'})`)
-        } else {
-          setDebugInfo(`OK · HTTP ${status} · ${data?.length ?? 0} Zeilen empfangen`)
-        }
+      .then(({ data, error }) => {
+        if (error) console.error('open orders fetch error:', error.message)
         if (active) { setOrders(data || []); setLoading(false) }
       })
 
@@ -1640,11 +1634,6 @@ function BiddingScreen({ profile, session, lang, embedded }) {
     return (
       <div className={embedded ? '' : 'rides-list'}>
         <PlaceholderScreen title={embedded ? '' : t('tabBidding', lang)} note={t('biddingPlaceholder', lang)} />
-        <div style={{ marginTop: 20, padding: 12, background: '#fff', border: '1px dashed #ccc', borderRadius: 10, fontSize: 11, fontFamily: 'monospace', color: '#666' }}>
-          DEBUG: {debugInfo}<br />
-          courierProfileId: {courierProfileId || '(noch nicht geladen)'}<br />
-          account_type: {profile?.account_type || '—'}
-        </div>
       </div>
     )
   }

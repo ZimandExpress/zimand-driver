@@ -975,6 +975,7 @@ function RideDetailScreen({ order, isOwner, session, lang, onBack, onStatusChang
       <div className="info-card">
         <div className="info-card-head">📦 {t('cargoLabel', lang)}</div>
         <div className="info-card-body">
+          {order.shipment_type && <div className="info-row"><span className="k">📦</span><span className="v">{SHIPMENT_TYPE_LABELS[order.shipment_type] || order.shipment_type}{order.quantity ? ` (${order.quantity}×)` : ''}</span></div>}
           {order.cargo_desc && <div className="info-row"><span className="k">{t('cargoLabel', lang)}</span><span className="v">{order.cargo_desc}</span></div>}
           {order.weight && <div className="info-row"><span className="k">{t('weightLabel', lang)}</span><span className="v">{order.weight} kg</span></div>}
           {order.dims && <div className="info-row"><span className="k">{t('dimsLabel', lang)}</span><span className="v">{order.dims}</span></div>}
@@ -1913,6 +1914,17 @@ function BiddingScreen({ profile, session, lang, embedded }) {
   )
 }
 
+const SHIPMENT_TYPE_LABELS = {
+  dokumente: 'Dokumente',
+  pakete: 'Pakete',
+  europaletten: 'Europaletten',
+  paletten: 'Paletten',
+  gitterbox: 'Gitterbox',
+  baumaterialien: 'Baumaterialien',
+  'lkw-komplett': 'Ganzes Fahrzeug',
+  sonstiges: 'Sonstiges',
+}
+
 function VehicleChips({ vehicles }) {
   if (!vehicles || vehicles.length === 0) return null
   return (
@@ -2044,6 +2056,11 @@ function BidCard({ order, lang, courierProfileId, open, onToggle }) {
           </div>
         )}
         <div className="bid-order-id">{t('orderRef', lang)} {idParts.join(' · ')}</div>
+        {order.shipment_type && (
+          <div className="shipment-type-row">
+            📦 {SHIPMENT_TYPE_LABELS[order.shipment_type] || order.shipment_type}{order.quantity ? ` (${order.quantity}×)` : ''}
+          </div>
+        )}
         <div className="bid-stop"><span className="addr"><MapPin size={13} strokeWidth={1.8} /> {order.pickup_address}</span>{order.km && <span className="val">{order.km} km</span>}</div>
         <div className="bid-stop"><span className="addr"><FlagTriangleRight size={13} strokeWidth={1.8} /> {order.delivery_address}</span>{order.weight && <span className="val">⚖ {order.weight} kg</span>}</div>
         <VehicleChips vehicles={order.vehicles} />

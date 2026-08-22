@@ -840,6 +840,7 @@ function GoogleLiveMap({ pickupCoords, deliveryCoords }) {
   const mapRef = useRef(null)
   const mapInstanceRef = useRef(null)
   const directionsRendererRef = useRef(null)
+  const markersRef = useRef([])
   const mapsKey = useGoogleMapsKey()
   const [ready, setReady] = useState(false)
 
@@ -856,8 +857,10 @@ function GoogleLiveMap({ pickupCoords, deliveryCoords }) {
       disableDefaultUI: true,
       zoomControl: true,
     })
+    // suprimăm marcajele implicite ale rutei — punem noi propriile A/B,
+    // ca să fie mereu vizibile, indiferent dacă traseul se calculează sau nu
     directionsRendererRef.current = new window.google.maps.DirectionsRenderer({
-      suppressMarkers: false,
+      suppressMarkers: true,
       polylineOptions: { strokeColor: '#FF7A29', strokeWeight: 4 },
     })
     directionsRendererRef.current.setMap(mapInstanceRef.current)
@@ -867,6 +870,29 @@ function GoogleLiveMap({ pickupCoords, deliveryCoords }) {
     const map = mapInstanceRef.current
     const renderer = directionsRendererRef.current
     if (!map || !renderer) return
+
+    markersRef.current.forEach((m) => m.setMap(null))
+    markersRef.current = []
+
+    function addMarker(coords, label, color) {
+      const marker = new window.google.maps.Marker({
+        position: { lat: coords[0], lng: coords[1] },
+        map,
+        label: { text: label, color: '#fff', fontWeight: '700', fontSize: '12px' },
+        icon: {
+          path: window.google.maps.SymbolPath.CIRCLE,
+          scale: 14,
+          fillColor: color,
+          fillOpacity: 1,
+          strokeColor: '#fff',
+          strokeWeight: 2,
+        },
+      })
+      markersRef.current.push(marker)
+    }
+
+    if (pickupCoords) addMarker(pickupCoords, 'A', '#FF7A29')
+    if (deliveryCoords) addMarker(deliveryCoords, 'B', '#0F2240')
 
     if (pickupCoords && deliveryCoords) {
       const directionsService = new window.google.maps.DirectionsService()
@@ -880,21 +906,17 @@ function GoogleLiveMap({ pickupCoords, deliveryCoords }) {
           if (status === 'OK') {
             renderer.setDirections(result)
           } else {
-            // fără rută (adrese prea departe una de alta, ex. peste graniță
-            // fără drum direct calculabil) — arătăm măcar cele două puncte
+            renderer.setDirections({ routes: [] })
             const bounds = new window.google.maps.LatLngBounds()
             bounds.extend({ lat: pickupCoords[0], lng: pickupCoords[1] })
             bounds.extend({ lat: deliveryCoords[0], lng: deliveryCoords[1] })
             map.fitBounds(bounds, 40)
-            new window.google.maps.Marker({ position: { lat: pickupCoords[0], lng: pickupCoords[1] }, map, label: 'A' })
-            new window.google.maps.Marker({ position: { lat: deliveryCoords[0], lng: deliveryCoords[1] }, map, label: 'B' })
           }
         }
       )
     } else if (pickupCoords) {
       map.setCenter({ lat: pickupCoords[0], lng: pickupCoords[1] })
       map.setZoom(12)
-      new window.google.maps.Marker({ position: { lat: pickupCoords[0], lng: pickupCoords[1] }, map, label: 'A' })
     }
   }, [pickupCoords, deliveryCoords, ready])
 
@@ -928,6 +950,9 @@ function RideDetailScreen({ order, isOwner, session, lang, onBack, onStatusChang
   const [companyDrivers, setCompanyDrivers] = useState([])
   const pickupContact = extractContact(order.notes, 'Kontakt Abholung: ')
   const deliveryContact = extractContact(order.notes, 'Kontakt Zustellung: ')
+  const pickupNotiz = extractContact(order.notes, 'Notiz Abholung: ')
+  const deliveryNotiz = extractContact(order.notes, 'Notiz Zustellung: ')
+  const [cargoOpen, setCargoOpen] = useState(false)
   const [reassigning, setReassigning] = useState(false)
   const [reassignTo, setReassignTo] = useState('')
 
@@ -983,13 +1008,17 @@ function RideDetailScreen({ order, isOwner, session, lang, onBack, onStatusChang
       )}
 
       {order.status === 'assigned' && !confirmedAt && (
-        <LegWorkflow order={order} leg={leg} lang={lang} startedAt={startedAt} arrivedAt={arrivedAt} onStatusChange={onStatusChange} />
+        <LegWorkflow key={leg} order={order} leg={leg} lang={lang} startedAt={startedAt} arrivedAt={arrivedAt} onStatusChange={onStatusChange} />
       )}
 
       {order.status === 'assigned' && order.pickup_confirmed_at && !order.delivery_confirmed_at && leg === 'delivery' && null}
 
       <div className="info-card">
-        <div className="info-card-head">🅐 {t('pickup', lang)}</div>
+        <div className="info-card-head">
+          🅐 {t('pickup', lang)}
+          {order.pickup_confirmed_at && <span className="leg-done-badge">✓ {t('pickedUpLabel', lang)}</span>}
+          {order.pickup_started_at && !order.pickup_arrived_at && <span className="moving-van">🚚</span>}
+        </div>
         <div className="info-card-body">
           <ContactRow contact={pickupContact} lang={lang} />
           <div className="info-row address-row">
@@ -1003,11 +1032,16 @@ function RideDetailScreen({ order, isOwner, session, lang, onBack, onStatusChang
               ⏱ {formatFlexibleTimeNote(order.flexible_time_notes).main}
             </div>
           )}
+          {pickupNotiz && <div className="leg-notiz">📝 {pickupNotiz}</div>}
         </div>
       </div>
 
       <div className="info-card">
-        <div className="info-card-head">🅑 {t('delivery', lang)}</div>
+        <div className="info-card-head">
+          🅑 {t('delivery', lang)}
+          {order.delivery_confirmed_at && <span className="leg-done-badge">✓ {t('deliveredLabel', lang)}</span>}
+          {order.delivery_started_at && !order.delivery_arrived_at && <span className="moving-van">🚚</span>}
+        </div>
         <div className="info-card-body">
           <ContactRow contact={deliveryContact} lang={lang} />
           <div className="info-row address-row">
@@ -1016,23 +1050,29 @@ function RideDetailScreen({ order, isOwner, session, lang, onBack, onStatusChang
           </div>
           <LegTime order={order} prefix="delivery" lang={lang} />
           {order.delivery_confirmed_at && <div className="info-row-time">✓ {fmtDateTime(order.delivery_confirmed_at)}</div>}
+          {deliveryNotiz && <div className="leg-notiz">📝 {deliveryNotiz}</div>}
         </div>
       </div>
 
       <div className="info-card">
-        <div className="info-card-head">📦 {t('cargoLabel', lang)}</div>
-        <div className="info-card-body">
-          {order.shipment_type && <div className="info-row"><span className="k">📦</span><span className="v">{SHIPMENT_TYPE_LABELS[order.shipment_type] || order.shipment_type}{order.quantity ? ` (${order.quantity}×)` : ''}</span></div>}
-          {order.cargo_desc && <div className="info-row"><span className="k">{t('cargoLabel', lang)}</span><span className="v">{order.cargo_desc}</span></div>}
-          {order.weight && <div className="info-row"><span className="k">{t('weightLabel', lang)}</span><span className="v">{order.weight} kg</span></div>}
-          {order.dims && <div className="info-row"><span className="k">{t('dimsLabel', lang)}</span><span className="v">{order.dims}</span></div>}
-          {order.km && <div className="info-row"><span className="k">{t('kmLabel', lang)}</span><span className="v">{order.km} km</span></div>}
-          {isOwner && order.estimated_price != null && (
-            <div className="info-row"><span className="k">{t('priceLabel', lang)}</span><span className="v price">{order.estimated_price} €</span></div>
-          )}
-          {order.reference && <div className="info-row"><span className="k">{t('referenceLabel', lang)}</span><span className="v">{order.reference}</span></div>}
-          {order.notes && driverSafeNotesWithoutContacts(order.notes) && <div className="info-note">{driverSafeNotesWithoutContacts(order.notes)}</div>}
+        <div className="info-card-head cargo-toggle" onClick={() => setCargoOpen((v) => !v)}>
+          <span>📦 {t('cargoLabel', lang)}</span>
+          <span className={`cargo-chev ${cargoOpen ? 'open' : ''}`}>▼</span>
         </div>
+        {cargoOpen && (
+          <div className="info-card-body">
+            {order.shipment_type && <div className="info-row"><span className="k">📦</span><span className="v">{SHIPMENT_TYPE_LABELS[order.shipment_type] || order.shipment_type}{order.quantity ? ` (${order.quantity}×)` : ''}</span></div>}
+            {order.cargo_desc && <div className="info-row"><span className="k">{t('cargoLabel', lang)}</span><span className="v">{order.cargo_desc}</span></div>}
+            {order.weight && <div className="info-row"><span className="k">{t('weightLabel', lang)}</span><span className="v">{order.weight} kg</span></div>}
+            {order.dims && <div className="info-row"><span className="k">{t('dimsLabel', lang)}</span><span className="v">{order.dims}</span></div>}
+            {order.km && <div className="info-row"><span className="k">{t('kmLabel', lang)}</span><span className="v">{order.km} km</span></div>}
+            {isOwner && order.estimated_price != null && (
+              <div className="info-row"><span className="k">{t('priceLabel', lang)}</span><span className="v price">{order.estimated_price} €</span></div>
+            )}
+            {order.reference && <div className="info-row"><span className="k">{t('referenceLabel', lang)}</span><span className="v">{order.reference}</span></div>}
+            {order.notes && driverSafeNotesWithoutContacts(order.notes) && <div className="info-note">{driverSafeNotesWithoutContacts(order.notes)}</div>}
+          </div>
+        )}
       </div>
 
       {isOwner && companyDrivers.length > 0 && !order.pickup_started_at && (
@@ -1060,6 +1100,34 @@ function RideDetailScreen({ order, isOwner, session, lang, onBack, onStatusChang
         </div>
       )}
     </div>
+  )
+}
+
+function SignatureLine({ lang, signatureBlob, onChange }) {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <>
+      <button type="button" className="sig-line-toggle" onClick={() => setOpen(true)}>
+        <span>✍️ {t('signatureLabel', lang)} <span className="sig-optional">({t('optionalLabel', lang)})</span></span>
+        {signatureBlob ? <span className="sig-done">✓</span> : <span className="sig-chev">›</span>}
+      </button>
+
+      {open && (
+        <div className="sig-fullscreen">
+          <div className="sig-fullscreen-header">
+            <span>{t('signatureLabel', lang)}</span>
+            <button type="button" className="sig-fullscreen-close" onClick={() => setOpen(false)}>✕</button>
+          </div>
+          <div className="sig-fullscreen-canvas">
+            <SignaturePad onChange={onChange} />
+          </div>
+          <button type="button" className="btn" style={{ margin: 16 }} onClick={() => setOpen(false)}>
+            {t('doneLabel', lang)}
+          </button>
+        </div>
+      )}
+    </>
   )
 }
 
@@ -1332,8 +1400,7 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange })
         placeholder={t('signerNamePlaceholder', lang)}
       />
 
-      <div className="pod-label">{t('signatureLabel', lang)}</div>
-      <SignaturePad onChange={setSignatureBlob} />
+      <SignatureLine lang={lang} signatureBlob={signatureBlob} onChange={setSignatureBlob} />
 
       <button className="btn" onClick={confirmLeg} disabled={busy} style={{ marginTop: 14 }}>
         {busy ? '…' : leg === 'pickup' ? t('confirmPickup', lang) : t('confirmDelivery', lang)}
@@ -1721,7 +1788,9 @@ function driverSafeNotesWithoutContacts(notesText) {
     .filter((line) =>
       !NOTES_HIDDEN_PREFIXES.some((p) => line.startsWith(p)) &&
       !line.startsWith('Kontakt Abholung:') &&
-      !line.startsWith('Kontakt Zustellung:')
+      !line.startsWith('Kontakt Zustellung:') &&
+      !line.startsWith('Notiz Abholung:') &&
+      !line.startsWith('Notiz Zustellung:')
     )
     .join('\n')
     .trim()

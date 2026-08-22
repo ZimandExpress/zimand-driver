@@ -801,6 +801,85 @@ function RideDetailScreen({ order, isOwner, lang, onBack, onStatusChange }) {
   )
 }
 
+function SignaturePad({ onChange }) {
+  const canvasRef = useRef(null)
+  const drawingRef = useRef(false)
+  const [hasDrawing, setHasDrawing] = useState(false)
+
+  function getPos(e, canvas) {
+    const rect = canvas.getBoundingClientRect()
+    const point = e.touches ? e.touches[0] : e
+    return { x: point.clientX - rect.left, y: point.clientY - rect.top }
+  }
+
+  function start(e) {
+    e.preventDefault()
+    const canvas = canvasRef.current
+    const ctx = canvas.getContext('2d')
+    const { x, y } = getPos(e, canvas)
+    ctx.beginPath()
+    ctx.moveTo(x, y)
+    drawingRef.current = true
+  }
+
+  function move(e) {
+    if (!drawingRef.current) return
+    e.preventDefault()
+    const canvas = canvasRef.current
+    const ctx = canvas.getContext('2d')
+    const { x, y } = getPos(e, canvas)
+    ctx.lineTo(x, y)
+    ctx.strokeStyle = '#0F2240'
+    ctx.lineWidth = 2.2
+    ctx.lineCap = 'round'
+    ctx.stroke()
+    if (!hasDrawing) setHasDrawing(true)
+  }
+
+  function end() {
+    drawingRef.current = false
+    const canvas = canvasRef.current
+    canvas.toBlob((blob) => onChange(blob), 'image/png')
+  }
+
+  function clear() {
+    const canvas = canvasRef.current
+    const ctx = canvas.getContext('2d')
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+    setHasDrawing(false)
+    onChange(null)
+  }
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    const ratio = window.devicePixelRatio || 1
+    const rect = canvas.getBoundingClientRect()
+    canvas.width = rect.width * ratio
+    canvas.height = rect.height * ratio
+    canvas.getContext('2d').scale(ratio, ratio)
+  }, [])
+
+  return (
+    <div className="sig-pad-wrap">
+      <canvas
+        ref={canvasRef}
+        className="sig-pad-canvas"
+        onMouseDown={start}
+        onMouseMove={move}
+        onMouseUp={end}
+        onMouseLeave={() => drawingRef.current && end()}
+        onTouchStart={start}
+        onTouchMove={move}
+        onTouchEnd={end}
+      />
+      {!hasDrawing && <div className="sig-pad-placeholder">{'✍'}</div>}
+      {hasDrawing && (
+        <button type="button" className="sig-pad-clear" onClick={clear}>✕</button>
+      )}
+    </div>
+  )
+}
+
 function ElapsedTimer({ startedAt }) {
   const [now, setNow] = useState(Date.now())
 
@@ -829,6 +908,8 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange })
   const [busy, setBusy] = useState(false)
   const [photos, setPhotos] = useState([])
   const [cmrFile, setCmrFile] = useState(null)
+  const [signatureBlob, setSignatureBlob] = useState(null)
+  const [signerName, setSignerName] = useState('')
   const fileInputRef = useRef(null)
   const cmrInputRef = useRef(null)
 
@@ -869,7 +950,18 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange })
       if (cmrFile) {
         cmrPath = await uploadPodFile(order.id, leg, cmrFile)
       }
-      const { error } = await supabase.rpc(confirmFn, { p_order_id: order.id, p_photos: photoPaths, p_cmr_url: cmrPath })
+      let signaturePath = null
+      if (signatureBlob) {
+        const sigFile = new File([signatureBlob], 'signature.png', { type: 'image/png' })
+        signaturePath = await uploadPodFile(order.id, leg, sigFile)
+      }
+      const { error } = await supabase.rpc(confirmFn, {
+        p_order_id: order.id,
+        p_photos: photoPaths,
+        p_cmr_url: cmrPath,
+        p_signature_url: signaturePath,
+        p_signer_name: signerName || null,
+      })
       if (error) throw error
       onStatusChange()
     } catch (err) {
@@ -941,6 +1033,18 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange })
         onChange={(e) => setCmrFile(e.target.files?.[0] || null)}
       />
 
+      <div className="pod-label">{t('signerNameLabel', lang)}</div>
+      <input
+        className="bid-input2"
+        type="text"
+        value={signerName}
+        onChange={(e) => setSignerName(e.target.value)}
+        placeholder={t('signerNamePlaceholder', lang)}
+      />
+
+      <div className="pod-label">{t('signatureLabel', lang)}</div>
+      <SignaturePad onChange={setSignatureBlob} />
+
       <button className="btn" onClick={confirmLeg} disabled={busy} style={{ marginTop: 14 }}>
         {busy ? '…' : leg === 'pickup' ? t('confirmPickup', lang) : t('confirmDelivery', lang)}
       </button>
@@ -1009,8 +1113,11 @@ function TimelineLeg({ leg, order, lang }) {
   const confirmedAt = leg === 'pickup' ? order.pickup_confirmed_at : order.delivery_confirmed_at
   const photoPaths = leg === 'pickup' ? order.pickup_photos : order.delivery_photos
   const cmrPath = leg === 'pickup' ? order.pickup_cmr_url : order.delivery_cmr_url
+  const signaturePath = leg === 'pickup' ? order.pickup_signature_url : order.delivery_signature_url
+  const signerName = leg === 'pickup' ? order.pickup_signer_name : order.delivery_signer_name
   const photoUrls = useSignedUrls(photoPaths || [])
   const cmrUrl = useSignedUrl(cmrPath)
+  const signatureUrl = useSignedUrl(signaturePath)
 
   if (!startedAt) return null
 
@@ -1037,6 +1144,12 @@ function TimelineLeg({ leg, order, lang }) {
             </div>
           )}
           {cmrUrl && <div className="tl-sig">📄 <a href={cmrUrl} target="_blank" rel="noreferrer">{t('cmrLabel', lang)}</a></div>}
+          {signatureUrl && (
+            <div className="tl-signature">
+              <img src={signatureUrl} alt="" className="tl-signature-img" />
+              {signerName && <div className="tl-signature-name">{signerName}</div>}
+            </div>
+          )}
         </div>
       )}
     </>

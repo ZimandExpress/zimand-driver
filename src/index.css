@@ -781,6 +781,18 @@ body {
   margin: 18px 0 10px;
 }
 
+.settings-subheading {
+  font-family: 'Oswald', sans-serif;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--navy);
+  text-transform: uppercase;
+  letter-spacing: .03em;
+  margin: 22px 0 10px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
 .count-pill {
   background: var(--cream);
   color: var(--text-soft);

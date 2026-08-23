@@ -854,20 +854,19 @@ function loadDocumentScanner() {
   if (window.jscanify && window.cv?.Mat) return Promise.resolve()
   if (documentScannerLoadPromise) return documentScannerLoadPromise
   documentScannerLoadPromise = new Promise((resolve, reject) => {
+    // Găzduite chiar în proiect (public/vendor/) — nu pe niciun server
+    // extern, ca la documente sensibile (acte, demisii etc.) codul care
+    // rulează pe telefon să fie exact cel aprobat de voi, livrat prin
+    // propria infrastructură (GitHub → Vercel), fără intermediari.
     const cvScript = document.createElement('script')
-    cvScript.src = 'https://docs.opencv.org/4.7.0/opencv.js'
+    cvScript.src = '/vendor/opencv.js'
     cvScript.async = true
     cvScript.onerror = reject
     cvScript.onload = () => {
       const readyCheck = () => {
         if (window.cv?.Mat) {
           const jsScript = document.createElement('script')
-          // fixat pe un commit exact (nu @master, care se poate schimba
-          // oricând) + verificare de integritate — browserul refuză să
-          // ruleze scriptul dacă fișierul e vreodată modificat pe GitHub
-          jsScript.src = 'https://raw.githubusercontent.com/ColonelParrot/jscanify/e9af1941e6501dbe17ad66a69bd92178ca12104d/src/jscanify.js'
-          jsScript.integrity = 'sha384-YTylQ37XKKLFLMiLelblsrJT491GRV86DxfF4JXcZt4XtnJzxOKynHWQsogSU1zt'
-          jsScript.crossOrigin = 'anonymous'
+          jsScript.src = '/vendor/jscanify.js'
           jsScript.async = true
           jsScript.onload = resolve
           jsScript.onerror = reject

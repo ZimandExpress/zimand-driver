@@ -1363,35 +1363,13 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange })
     setPhotos((prev) => prev.filter((_, i) => i !== idx))
   }
 
-  const [scanningDoc, setScanningDoc] = useState(false)
-  const [scanPreview, setScanPreview] = useState(null) // { scanned, original, previewUrl }
+  const [docGuideOpen, setDocGuideOpen] = useState(false)
 
-  async function addDocument(e) {
+  function addDocument(e) {
     const file = e.target.files?.[0]
     if (!file) return
     e.target.value = ''
-    setScanningDoc(true)
-    try {
-      await loadDocumentScanner()
-      const { scanned, original } = await scanDocument(file)
-      if (scanned) {
-        setScanPreview({ scanned, original, previewUrl: URL.createObjectURL(scanned) })
-      } else {
-        // scanarea a eșuat sau a ieșit ceva ce nu arată ca o foaie reală —
-        // folosim direct poza originală, fără să mai cerem confirmare
-        setDocuments((prev) => [...prev, { type: docType, file: original }])
-      }
-    } catch (err) {
-      console.error('scanner load/run error:', err.message)
-      setDocuments((prev) => [...prev, { type: docType, file }])
-    }
-    setScanningDoc(false)
-  }
-
-  function confirmScanPreview(useScanned) {
-    setDocuments((prev) => [...prev, { type: docType, file: useScanned ? scanPreview.scanned : scanPreview.original }])
-    URL.revokeObjectURL(scanPreview.previewUrl)
-    setScanPreview(null)
+    setDocuments((prev) => [...prev, { type: docType, file }])
   }
 
   function removeDocument(idx) {
@@ -1482,30 +1460,45 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange })
       />
 
       <div className="pod-label">{t('documentsLabel', lang)}</div>
+      <div className="doc-guide-hint" onClick={() => setDocGuideOpen(true)}>
+        💡 {t('docGuideHint', lang)}
+      </div>
       <div className="doc-type-row">
         <select className="doc-type-select" value={docType} onChange={(e) => setDocType(e.target.value)}>
           <option value="cmr">{t('docTypeCmr', lang)}</option>
           <option value="zustellprotokoll">{t('docTypeProtocol', lang)}</option>
           <option value="other">{t('docTypeOther', lang)}</option>
         </select>
-        <button type="button" className="btn secondary doc-add-btn" onClick={() => docInputRef.current?.click()} disabled={scanningDoc}>
-          {scanningDoc ? `⏳ ${t('scanningDocument', lang)}` : t('addDocument', lang)}
+        <button type="button" className="btn secondary doc-add-btn" onClick={() => docInputRef.current?.click()}>
+          {t('addDocument', lang)}
         </button>
       </div>
 
-      {scanPreview && (
+      {docGuideOpen && (
         <div className="sig-fullscreen">
           <div className="sig-fullscreen-header">
-            <span>{t('scanPreviewTitle', lang)}</span>
-            <button type="button" className="sig-fullscreen-close" onClick={() => confirmScanPreview(false)}>✕</button>
+            <span>{t('docGuideTitle', lang)}</span>
+            <button type="button" className="sig-fullscreen-close" onClick={() => setDocGuideOpen(false)}>✕</button>
           </div>
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, overflow: 'auto' }}>
-            <img src={scanPreview.previewUrl} alt="" style={{ maxWidth: '100%', maxHeight: '100%', borderRadius: 8, boxShadow: '0 4px 20px rgba(0,0,0,.2)' }} />
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+            <svg viewBox="0 0 280 220" style={{ width: '100%', maxWidth: 280 }}>
+              <rect x="10" y="10" width="260" height="200" rx="12" fill="#F6F8FA" stroke="#E7EAF0" strokeWidth="2" />
+              <rect x="55" y="35" width="170" height="150" rx="4" fill="#fff" stroke="#0F2240" strokeWidth="2.5" />
+              <line x1="75" y1="60" x2="195" y2="60" stroke="#C7D0DE" strokeWidth="3" />
+              <line x1="75" y1="80" x2="195" y2="80" stroke="#C7D0DE" strokeWidth="3" />
+              <line x1="75" y1="100" x2="160" y2="100" stroke="#C7D0DE" strokeWidth="3" />
+              <line x1="75" y1="140" x2="195" y2="140" stroke="#C7D0DE" strokeWidth="3" />
+              <line x1="75" y1="160" x2="150" y2="160" stroke="#C7D0DE" strokeWidth="3" />
+              {/* colțuri evidențiate */}
+              <path d="M55 45 v-10 h10" fill="none" stroke="#FF7A29" strokeWidth="3.5" strokeLinecap="round" />
+              <path d="M215 45 v-10 h-10" fill="none" stroke="#FF7A29" strokeWidth="3.5" strokeLinecap="round" />
+              <path d="M55 175 v10 h10" fill="none" stroke="#FF7A29" strokeWidth="3.5" strokeLinecap="round" />
+              <path d="M215 175 v10 h-10" fill="none" stroke="#FF7A29" strokeWidth="3.5" strokeLinecap="round" />
+            </svg>
           </div>
-          <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <p style={{ fontSize: 12.5, color: 'var(--text-soft)', textAlign: 'center', margin: '0 0 4px' }}>{t('scanPreviewHint', lang)}</p>
-            <button type="button" className="btn" onClick={() => confirmScanPreview(true)}>{t('scanUseThis', lang)}</button>
-            <button type="button" className="btn secondary" onClick={() => confirmScanPreview(false)}>{t('scanUseOriginal', lang)}</button>
+          <div style={{ padding: '0 20px 20px' }}>
+            <p style={{ fontSize: 13, color: 'var(--text-soft)', textAlign: 'center', lineHeight: 1.6, margin: '0 0 16px' }}>{t('docGuideText', lang)}</p>
+            <button type="button" className="btn" onClick={() => setDocGuideOpen(false)}>{t('docGuideClose', lang)}</button>
           </div>
         </div>
       )}

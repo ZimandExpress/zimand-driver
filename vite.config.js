@@ -27,6 +27,9 @@ export default defineConfig({
         // Nu punem în cache apelurile către Supabase (date live, nu trebuie
         // servite din cache vechi) — doar fișierele aplicației în sine.
         navigateFallbackDenylist: [/^\/rest\//, /^\/auth\//, /^\/storage\//, /^\/functions\//],
+        // opencv.js (~9 MB) depășește limita implicită de 2 MB — o ridicăm,
+        // exact cum indică mesajul de eroare al build-ului.
+        maximumFileSizeToCacheInBytes: 15 * 1024 * 1024,
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com\//,

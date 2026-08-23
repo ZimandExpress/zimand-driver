@@ -2300,8 +2300,6 @@ function BidCard({ order, lang, courierProfileId, open, onToggle }) {
       <div className="bid-card2-head" onClick={onToggle}>
         <div className="bid-top-row">
           <div className="bid-top-left">
-            {today && <span className="pill heute">{t('todayBadge', lang)}</span>}
-            {!today && tomorrow && <span className="pill morgen">{t('tomorrowBadge', lang)}</span>}
             <span className="pill-label">{t('pickup', lang)}</span>
             <span className="pill-date">{fmtDate(order.pickup_date)}</span>
             <span className="pill-time">{order.pickup_fixed ? (order.pickup_time ? `🔒 ${fmtTime(order.pickup_time)}` : '🔒') : (order.pickup_from ? `${fmtTime(order.pickup_from)}${order.pickup_to ? `–${fmtTime(order.pickup_to)}` : ''}` : '—')}</span>
@@ -2315,7 +2313,11 @@ function BidCard({ order, lang, courierProfileId, open, onToggle }) {
             <span className="pill geboten">✓ {t('bidPlaced', lang)}: {existingBid.price} €</span>
           </div>
         )}
-        <div className="bid-order-id">{t('orderRef', lang)} {idParts.join(' · ')}</div>
+        <div className="bid-order-id">
+          {today && <span className="pill heute" style={{ marginRight: 6 }}>{t('todayBadge', lang)}</span>}
+          {!today && tomorrow && <span className="pill morgen" style={{ marginRight: 6 }}>{t('tomorrowBadge', lang)}</span>}
+          {t('orderRef', lang)} {idParts.join(' · ')}
+        </div>
         {order.shipment_type && (
           <div className="shipment-type-row">
             📦 {SHIPMENT_TYPE_LABELS[order.shipment_type] || order.shipment_type}{order.quantity ? ` (${order.quantity}×)` : ''}

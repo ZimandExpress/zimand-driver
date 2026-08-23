@@ -1630,7 +1630,6 @@ function CompletedOrderDetail({ order, isOwner, lang, onBack }) {
   const companyName = useCompanyName(order.created_by)
 
   const net = order.estimated_price
-  const vat = net != null ? net * 0.19 : null
 
   return (
     <div className="ride-detail">
@@ -1657,8 +1656,6 @@ function CompletedOrderDetail({ order, isOwner, lang, onBack }) {
           <div className="summary-grid">
             <div>{t('kmLabel', lang)}<b>{order.km ? `${order.km} km` : '—'}</b></div>
             <div>{t('priceLabel', lang)}<b>{net.toFixed(2)} €</b></div>
-            <div>MwSt (19%)<b>{vat.toFixed(2)} €</b></div>
-            <div>Gesamt<b>{(net + vat).toFixed(2)} €</b></div>
           </div>
         </div>
       )}
@@ -2022,13 +2019,11 @@ function EarningsScreen({ profile, lang }) {
 
   function openSummary(o) {
     const net = o.estimated_price || 0
-    const vat = net * 0.19
     setSummary({
       id: o.order_number || o.reference || o.id.slice(0, 8),
       route: `${o.pickup_address} → ${o.delivery_address}`,
       km: o.km,
       net,
-      vat,
     })
   }
 
@@ -2078,9 +2073,7 @@ function EarningsScreen({ profile, lang }) {
             <h4>{summary.id}</h4>
             <div className="ride-card2-route" style={{ margin: '0 0 14px' }}>{summary.route}</div>
             <div className="info-row"><span className="k">{t('kmLabel', lang)}</span><span className="v">{summary.km ? `${summary.km} km` : '—'}</span></div>
-            <div className="info-row"><span className="k">{t('priceLabel', lang)}</span><span className="v">{summary.net.toFixed(2)} €</span></div>
-            <div className="info-row"><span className="k">MwSt (19%)</span><span className="v">{summary.vat.toFixed(2)} €</span></div>
-            <div className="info-row"><span className="k">Gesamt</span><span className="v price">{(summary.net + summary.vat).toFixed(2)} €</span></div>
+            <div className="info-row"><span className="k">{t('priceLabel', lang)}</span><span className="v price">{summary.net.toFixed(2)} €</span></div>
             <button className="filter-apply" style={{ marginTop: 16 }} onClick={() => setSummary(null)}>{t('back', lang)}</button>
           </div>
         </div>
@@ -2093,6 +2086,7 @@ function BiddingScreen({ profile, session, lang, embedded }) {
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
   const [openId, setOpenId] = useState(null)
+  const [biddedOrderIds, setBiddedOrderIds] = useState(new Set())
   const courierProfileId = session?.user?.id || null
 
   useEffect(() => {
@@ -2107,18 +2101,33 @@ function BiddingScreen({ profile, session, lang, embedded }) {
         if (active) { setOrders(data || []); setLoading(false) }
       })
 
+    if (courierProfileId) {
+      supabase
+        .from('bids')
+        .select('order_id')
+        .eq('courier_id', courierProfileId)
+        .then(({ data }) => setBiddedOrderIds(new Set((data || []).map((b) => b.order_id))))
+    }
+
     const channel = supabase
       .channel('bidding-open-orders')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: 'status=eq.open' }, () => {
         supabase.from('orders').select('*').eq('status', 'open').then(({ data }) => setOrders(data || []))
       })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'bids', filter: `courier_id=eq.${courierProfileId}` }, () => {
+        supabase.from('bids').select('order_id').eq('courier_id', courierProfileId).then(({ data }) => setBiddedOrderIds(new Set((data || []).map((b) => b.order_id))))
+      })
       .subscribe()
 
     return () => { active = false; supabase.removeChannel(channel) }
-  }, [])
+  }, [courierProfileId])
+
+  // odată ce ai licitat, comanda trece exclusiv la "Meine Angebote" — nu mai
+  // rămâne și în "Verfügbar"
+  const availableOrders = orders.filter((o) => !biddedOrderIds.has(o.id))
 
   if (loading) return <PlaceholderScreen title={embedded ? '' : t('tabBidding', lang)} note={t('loadingRides', lang)} />
-  if (orders.length === 0) {
+  if (availableOrders.length === 0) {
     return (
       <div className={embedded ? '' : 'rides-list'}>
         <PlaceholderScreen title={embedded ? '' : t('tabBidding', lang)} note={t('biddingPlaceholder', lang)} />
@@ -2129,7 +2138,7 @@ function BiddingScreen({ profile, session, lang, embedded }) {
   return (
     <div className={embedded ? '' : 'rides-list'}>
       {!embedded && <h2 className="screen-title">{t('tabBidding', lang)}</h2>}
-      {orders.map((o) => (
+      {availableOrders.map((o) => (
         <BidCard key={o.id} order={o} lang={lang} courierProfileId={courierProfileId} open={openId === o.id} onToggle={() => setOpenId(openId === o.id ? null : o.id)} />
       ))}
     </div>
@@ -2268,7 +2277,6 @@ function BidCard({ order, lang, courierProfileId, open, onToggle }) {
             <span className="pill-time">{order.pickup_fixed ? (order.pickup_time ? `🔒 ${fmtTime(order.pickup_time)}` : '🔒') : (order.pickup_from ? `${fmtTime(order.pickup_from)}${order.pickup_to ? `–${fmtTime(order.pickup_to)}` : ''}` : '—')}</span>
           </div>
           <div className="bid-top-right">
-            <span className={`pill ${order.status === 'open' ? 'deschisa' : ''}`}>{statusLabel(order.status, lang)}</span>
             {isRecentlyNew(order.created_at) && <span className="new-dot">{t('newBadge', lang)}</span>}
           </div>
         </div>

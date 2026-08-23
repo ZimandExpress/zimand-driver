@@ -893,16 +893,24 @@ function scanDocument(file) {
       try {
         const scanner = new window.jscanify()
         const resultCanvas = scanner.extractPaper(img, img.width, img.height)
+        // verificare de sanitate — dacă rezultatul are un raport lățime/înălțime
+        // absurd (detectare eșuată, colțuri greșite), nu are cum să fie o foaie
+        // reală de document — renunțăm automat, păstrăm poza originală
+        const ratio = resultCanvas.width / resultCanvas.height
+        if (!resultCanvas.width || !resultCanvas.height || ratio < 0.35 || ratio > 3) {
+          resolve({ scanned: null, original: file })
+          return
+        }
         resultCanvas.toBlob((blob) => {
-          if (blob) resolve(new File([blob], file.name, { type: 'image/jpeg' }))
-          else resolve(file)
+          if (blob) resolve({ scanned: new File([blob], file.name, { type: 'image/jpeg' }), original: file })
+          else resolve({ scanned: null, original: file })
         }, 'image/jpeg', 0.9)
       } catch (e) {
         console.error('document scan error:', e.message)
-        resolve(file)
+        resolve({ scanned: null, original: file })
       }
     }
-    img.onerror = () => resolve(file)
+    img.onerror = () => resolve({ scanned: null, original: file })
     img.src = URL.createObjectURL(file)
   })
 }
@@ -1356,6 +1364,7 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange })
   }
 
   const [scanningDoc, setScanningDoc] = useState(false)
+  const [scanPreview, setScanPreview] = useState(null) // { scanned, original, previewUrl }
 
   async function addDocument(e) {
     const file = e.target.files?.[0]
@@ -1364,14 +1373,25 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange })
     setScanningDoc(true)
     try {
       await loadDocumentScanner()
-      const scanned = await scanDocument(file)
-      setDocuments((prev) => [...prev, { type: docType, file: scanned }])
+      const { scanned, original } = await scanDocument(file)
+      if (scanned) {
+        setScanPreview({ scanned, original, previewUrl: URL.createObjectURL(scanned) })
+      } else {
+        // scanarea a eșuat sau a ieșit ceva ce nu arată ca o foaie reală —
+        // folosim direct poza originală, fără să mai cerem confirmare
+        setDocuments((prev) => [...prev, { type: docType, file: original }])
+      }
     } catch (err) {
       console.error('scanner load/run error:', err.message)
-      // dacă scanerul nu se încarcă din vreun motiv, folosim poza originală
       setDocuments((prev) => [...prev, { type: docType, file }])
     }
     setScanningDoc(false)
+  }
+
+  function confirmScanPreview(useScanned) {
+    setDocuments((prev) => [...prev, { type: docType, file: useScanned ? scanPreview.scanned : scanPreview.original }])
+    URL.revokeObjectURL(scanPreview.previewUrl)
+    setScanPreview(null)
   }
 
   function removeDocument(idx) {
@@ -1472,6 +1492,23 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange })
           {scanningDoc ? `⏳ ${t('scanningDocument', lang)}` : t('addDocument', lang)}
         </button>
       </div>
+
+      {scanPreview && (
+        <div className="sig-fullscreen">
+          <div className="sig-fullscreen-header">
+            <span>{t('scanPreviewTitle', lang)}</span>
+            <button type="button" className="sig-fullscreen-close" onClick={() => confirmScanPreview(false)}>✕</button>
+          </div>
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, overflow: 'auto' }}>
+            <img src={scanPreview.previewUrl} alt="" style={{ maxWidth: '100%', maxHeight: '100%', borderRadius: 8, boxShadow: '0 4px 20px rgba(0,0,0,.2)' }} />
+          </div>
+          <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <p style={{ fontSize: 12.5, color: 'var(--text-soft)', textAlign: 'center', margin: '0 0 4px' }}>{t('scanPreviewHint', lang)}</p>
+            <button type="button" className="btn" onClick={() => confirmScanPreview(true)}>{t('scanUseThis', lang)}</button>
+            <button type="button" className="btn secondary" onClick={() => confirmScanPreview(false)}>{t('scanUseOriginal', lang)}</button>
+          </div>
+        </div>
+      )}
       {documents.length > 0 && (
         <div className="doc-chip-list">
           {documents.map((doc, i) => (

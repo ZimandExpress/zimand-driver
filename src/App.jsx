@@ -846,6 +846,68 @@ function loadGoogleMaps(apiKey) {
   return googleMapsLoadPromise
 }
 
+// Scaner de documente — încărcat leneș, doar când șoferul chiar încarcă un
+// document (CMR/Zustellprotokoll/Sonstiges), ca să nu încetinească restul
+// aplicației cu un fișier OpenCV de ~8 MB.
+let documentScannerLoadPromise = null
+function loadDocumentScanner() {
+  if (window.jscanify && window.cv?.Mat) return Promise.resolve()
+  if (documentScannerLoadPromise) return documentScannerLoadPromise
+  documentScannerLoadPromise = new Promise((resolve, reject) => {
+    const cvScript = document.createElement('script')
+    cvScript.src = 'https://docs.opencv.org/4.7.0/opencv.js'
+    cvScript.async = true
+    cvScript.onerror = reject
+    cvScript.onload = () => {
+      const readyCheck = () => {
+        if (window.cv?.Mat) {
+          const jsScript = document.createElement('script')
+          // fixat pe un commit exact (nu @master, care se poate schimba
+          // oricând) + verificare de integritate — browserul refuză să
+          // ruleze scriptul dacă fișierul e vreodată modificat pe GitHub
+          jsScript.src = 'https://raw.githubusercontent.com/ColonelParrot/jscanify/e9af1941e6501dbe17ad66a69bd92178ca12104d/src/jscanify.js'
+          jsScript.integrity = 'sha384-YTylQ37XKKLFLMiLelblsrJT491GRV86DxfF4JXcZt4XtnJzxOKynHWQsogSU1zt'
+          jsScript.crossOrigin = 'anonymous'
+          jsScript.async = true
+          jsScript.onload = resolve
+          jsScript.onerror = reject
+          document.head.appendChild(jsScript)
+        } else {
+          setTimeout(readyCheck, 100)
+        }
+      }
+      readyCheck()
+    }
+    document.head.appendChild(cvScript)
+  })
+  return documentScannerLoadPromise
+}
+
+// Detectează automat marginile documentului într-o poză și-l "îndreaptă"
+// (corectare de perspectivă) — ca o scanare adevărată, nu doar o poză.
+// Dacă nu reușește să detecteze o foaie clară, întoarce poza originală
+// neschimbată, ca șoferul să nu rămână blocat.
+function scanDocument(file) {
+  return new Promise((resolve) => {
+    const img = new Image()
+    img.onload = () => {
+      try {
+        const scanner = new window.jscanify()
+        const resultCanvas = scanner.extractPaper(img, img.width, img.height)
+        resultCanvas.toBlob((blob) => {
+          if (blob) resolve(new File([blob], file.name, { type: 'image/jpeg' }))
+          else resolve(file)
+        }, 'image/jpeg', 0.9)
+      } catch (e) {
+        console.error('document scan error:', e.message)
+        resolve(file)
+      }
+    }
+    img.onerror = () => resolve(file)
+    img.src = URL.createObjectURL(file)
+  })
+}
+
 function GoogleLiveMap({ pickupCoords, deliveryCoords }) {
   const mapRef = useRef(null)
   const mapInstanceRef = useRef(null)
@@ -1294,11 +1356,23 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange })
     setPhotos((prev) => prev.filter((_, i) => i !== idx))
   }
 
-  function addDocument(e) {
+  const [scanningDoc, setScanningDoc] = useState(false)
+
+  async function addDocument(e) {
     const file = e.target.files?.[0]
     if (!file) return
-    setDocuments((prev) => [...prev, { type: docType, file }])
     e.target.value = ''
+    setScanningDoc(true)
+    try {
+      await loadDocumentScanner()
+      const scanned = await scanDocument(file)
+      setDocuments((prev) => [...prev, { type: docType, file: scanned }])
+    } catch (err) {
+      console.error('scanner load/run error:', err.message)
+      // dacă scanerul nu se încarcă din vreun motiv, folosim poza originală
+      setDocuments((prev) => [...prev, { type: docType, file }])
+    }
+    setScanningDoc(false)
   }
 
   function removeDocument(idx) {
@@ -1395,8 +1469,8 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange })
           <option value="zustellprotokoll">{t('docTypeProtocol', lang)}</option>
           <option value="other">{t('docTypeOther', lang)}</option>
         </select>
-        <button type="button" className="btn secondary doc-add-btn" onClick={() => docInputRef.current?.click()}>
-          {t('addDocument', lang)}
+        <button type="button" className="btn secondary doc-add-btn" onClick={() => docInputRef.current?.click()} disabled={scanningDoc}>
+          {scanningDoc ? `⏳ ${t('scanningDocument', lang)}` : t('addDocument', lang)}
         </button>
       </div>
       {documents.length > 0 && (

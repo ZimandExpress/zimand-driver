@@ -752,14 +752,24 @@ function RideCard({ order, isOwner, lang, onClick, compact }) {
           <span className="ric">📅</span>
           <span className="rik">{t('pickup', lang)}</span>
           <span className="riv">
-            {fmtDate(order.pickup_date)}{order.pickup_from ? `, ${fmtTime(order.pickup_from)}` : ''}{order.pickup_to ? `–${fmtTime(order.pickup_to)}` : ''}
+            {isToday(order.pickup_date) && <span className="pill heute" style={{ marginRight: 6 }}>{t('todayBadge', lang)}</span>}
+            {!isToday(order.pickup_date) && isTomorrow(order.pickup_date) && <span className="pill morgen" style={{ marginRight: 6 }}>{t('tomorrowBadge', lang)}</span>}
+            {order.pickup_fixed ? (
+              <span className="fixed-time-badge">🔒 {fmtDate(order.pickup_date)}{order.pickup_time ? ` · ${fmtTime(order.pickup_time)}` : ''}</span>
+            ) : (
+              <>{fmtDate(order.pickup_date)}{order.pickup_from ? `, ${fmtTime(order.pickup_from)}` : ''}{order.pickup_to ? `–${fmtTime(order.pickup_to)}` : ''}</>
+            )}
           </span>
         </div>
         <div className="ride-card2-row">
           <span className="ric">📅</span>
           <span className="rik">{t('delivery', lang)}</span>
           <span className="riv">
-            {fmtDate(order.delivery_date)}{order.delivery_from ? `, ${fmtTime(order.delivery_from)}` : ''}{order.delivery_to ? `–${fmtTime(order.delivery_to)}` : ''}
+            {order.delivery_fixed ? (
+              <span className="fixed-time-badge">🔒 {fmtDate(order.delivery_date)}{order.delivery_time ? ` · ${fmtTime(order.delivery_time)}` : ''}</span>
+            ) : (
+              <>{fmtDate(order.delivery_date)}{order.delivery_from ? `, ${fmtTime(order.delivery_from)}` : ''}{order.delivery_to ? `–${fmtTime(order.delivery_to)}` : ''}</>
+            )}
           </span>
         </div>
         {order.cargo_desc && (
@@ -1077,6 +1087,13 @@ function RideDetailScreen({ order, isOwner, session, lang, onBack, onStatusChang
             {order.dims && <div className="info-row"><span className="k">{t('dimsLabel', lang)}</span><span className="v">{order.dims}</span></div>}
             {order.km && <div className="info-row"><span className="k">{t('kmLabel', lang)}</span><span className="v">{order.km} km</span></div>}
             {order.reference && <div className="info-row"><span className="k">{t('referenceLabel', lang)}</span><span className="v">{order.reference}</span></div>}
+            {extractServiceBadges(order.notes).length > 0 && (
+              <div className="service-badges">
+                {extractServiceBadges(order.notes).map(({ icon, key }) => (
+                  <span key={key} className="service-badge">{icon} {t(key, lang)}</span>
+                ))}
+              </div>
+            )}
             {order.notes && driverSafeNotesWithoutContacts(order.notes) && <div className="info-note">{driverSafeNotesWithoutContacts(order.notes)}</div>}
           </div>
         )}
@@ -1332,24 +1349,17 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange })
 
   if (!startedAt) {
     return (
-      <div className="leg-workflow">
-        <div className="leg-title">{legLabel}</div>
-        <button className="btn sticky-cta" onClick={() => callRpc(startFn)} disabled={busy}>
-          {t('startDriving', lang)}
-        </button>
-      </div>
+      <button className="btn sticky-cta" onClick={() => callRpc(startFn)} disabled={busy}>
+        {t('startDriving', lang)}
+      </button>
     )
   }
 
   if (!arrivedAt) {
     return (
-      <div className="leg-workflow">
-        <div className="leg-title">{legLabel}</div>
-        <div className="en-route-badge">🚗 {t('enRouteLabel', lang)}</div>
-        <button className="btn sticky-cta" onClick={() => callRpc(arriveFn)} disabled={busy}>
-          {t('arrived', lang)}
-        </button>
-      </div>
+      <button className="btn sticky-cta" onClick={() => callRpc(arriveFn)} disabled={busy}>
+        {t('arrived', lang)}
+      </button>
     )
   }
 
@@ -1797,6 +1807,18 @@ function extractPhone(contactText) {
   return match ? match[1].replace(/\s+/g, ' ').trim() : null
 }
 
+const SERVICE_BADGE_PREFIXES = [
+  { prefix: 'Verladehilfe gebucht', icon: '📦⬆️', key: 'loadHelpBadge' },
+  { prefix: 'Entladehilfe gebucht', icon: '📦⬇️', key: 'unloadHelpBadge' },
+  { prefix: 'Neutrale Zustellung', icon: '🕶️', key: 'neutralDeliveryBadge' },
+]
+
+function extractServiceBadges(notesText) {
+  if (!notesText) return []
+  const lines = notesText.split('\n')
+  return SERVICE_BADGE_PREFIXES.filter(({ prefix }) => lines.some((l) => l.startsWith(prefix)))
+}
+
 function driverSafeNotesWithoutContacts(notesText) {
   if (!notesText) return ''
   return notesText
@@ -1806,7 +1828,8 @@ function driverSafeNotesWithoutContacts(notesText) {
       !line.startsWith('Kontakt Abholung:') &&
       !line.startsWith('Kontakt Zustellung:') &&
       !line.startsWith('Notiz Abholung:') &&
-      !line.startsWith('Notiz Zustellung:')
+      !line.startsWith('Notiz Zustellung:') &&
+      !SERVICE_BADGE_PREFIXES.some(({ prefix }) => line.startsWith(prefix))
     )
     .join('\n')
     .trim()
@@ -1850,7 +1873,7 @@ function LegTime({ order, prefix, lang }) {
     const time = order[`${prefix}_time`]
     return (
       <div className="fixed-time-row">
-        <span className="fixed-time-badge">🔒 {t('fixedDeliveryBadge', lang)}</span>
+        <span className="fixed-time-badge">🔒 {t(prefix === 'pickup' ? 'fixedPickupBadge' : 'fixedDeliveryBadge', lang)}</span>
         <span>{fmtDate(date)}{time ? ` · ${fmtTime(time)}` : ''}</span>
       </div>
     )
@@ -2206,6 +2229,14 @@ function BidCard({ order, lang, courierProfileId, open, onToggle }) {
 
           {order.dims && (
             <div className="bid-extra-row">📐 {order.dims} cm</div>
+          )}
+
+          {extractServiceBadges(order.notes).length > 0 && (
+            <div className="service-badges">
+              {extractServiceBadges(order.notes).map(({ icon, key }) => (
+                <span key={key} className="service-badge">{icon} {t(key, lang)}</span>
+              ))}
+            </div>
           )}
 
           {order.flexible_time_notes && (

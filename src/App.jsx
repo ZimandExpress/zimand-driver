@@ -1912,7 +1912,7 @@ function useCourierBids(courierProfileId) {
     function load() {
       supabase
         .from('bids')
-        .select('*, orders(*)')
+        .select('*, orders!bids_order_id_fkey(*)')
         .eq('courier_id', courierProfileId)
         .then(({ data, error }) => {
           if (error) console.error('bids fetch error:', error.message)

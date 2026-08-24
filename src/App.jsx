@@ -595,7 +595,7 @@ function RidesScreen({ profile, isOwner, session, lang }) {
     function refreshOpenCount() {
       Promise.all([
         supabase.from('orders').select('id').eq('status', 'open'),
-        supabase.from('bids').select('order_id').eq('courier_id', profile?.id),
+        supabase.from('bids').select('order_id').eq('courier_id', session?.user?.id),
       ]).then(([openRes, bidsRes]) => {
         const biddedIds = new Set((bidsRes.data || []).map((b) => b.order_id))
         const remaining = (openRes.data || []).filter((o) => !biddedIds.has(o.id)).length
@@ -629,11 +629,11 @@ function RidesScreen({ profile, isOwner, session, lang }) {
           }
         }
       })
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'bids', filter: `courier_id=eq.${profile?.id}` }, refreshOpenCount)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'bids', filter: `courier_id=eq.${session?.user?.id}` }, refreshOpenCount)
       .subscribe()
 
     return () => supabase.removeChannel(channel)
-  }, [isOwner, notifyRadiusKm, driverLocationForNotify, mapsKeyForNotify, profile?.id])
+  }, [isOwner, notifyRadiusKm, driverLocationForNotify, mapsKeyForNotify, session?.user?.id])
 
   function setSelectedId(id) {
     setSelectedIdState(id)
@@ -1980,6 +1980,7 @@ function MeineAngeboteScreen({ profile, session, lang }) {
   const { bids, loading } = useCourierBids(courierProfileId)
   const [companyDrivers, setCompanyDrivers] = useState([])
   const [refreshKey, setRefreshKey] = useState(0)
+  const [openBidId, setOpenBidId] = useState(null)
 
   useEffect(() => {
     if (!courierProfileId) return
@@ -2018,7 +2019,7 @@ function MeineAngeboteScreen({ profile, session, lang }) {
         <>
           {needsAssignment.length > 0 && <div className="section-heading">{t('menuOffers', lang)}</div>}
           {pending.map((b) => (
-            <BidCard key={b.id} order={b.orders} lang={lang} courierProfileId={courierProfileId} open={false} onToggle={() => {}} />
+            <BidCard key={b.id} order={b.orders} lang={lang} courierProfileId={courierProfileId} open={openBidId === b.id} onToggle={() => setOpenBidId(openBidId === b.id ? null : b.id)} />
           ))}
         </>
       )}
@@ -2612,7 +2613,6 @@ function BidCard({ order, lang, courierProfileId, open, onToggle, onBidPlaced, d
 
   const idParts = [
     order.order_number || order.id.slice(0, 8),
-    order.reference,
     order.cargo_desc,
   ].filter(Boolean)
 

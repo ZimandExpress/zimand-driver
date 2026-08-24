@@ -1100,7 +1100,14 @@ function RideDetailScreen({ order, isOwner, session, lang, onBack, onStatusChang
         <div className={`info-card-head leg-head-line ${order.pickup_started_at && !order.pickup_arrived_at ? 'en-route' : ''}`}>
           <span className="leg-head-left">
             🅐 {t('pickup', lang)}
-            {order.pickup_date && <span className="leg-head-time"> · {order.pickup_fixed ? fmtTime(order.pickup_time) : fmtTime(order.pickup_from)}</span>}
+            {order.pickup_date && (
+              <span className="leg-head-time">
+                {' · '}
+                {order.pickup_fixed ? `🔒 ${t('fixedPickupBadge', lang)} · ` : ''}
+                {fmtDate(order.pickup_date)}
+                {order.pickup_fixed ? (order.pickup_time ? ` · ${fmtTime(order.pickup_time)}` : '') : (order.pickup_from ? ` · ${fmtTime(order.pickup_from)}${order.pickup_to ? `–${fmtTime(order.pickup_to)}` : ''}` : '')}
+              </span>
+            )}
           </span>
           {order.pickup_confirmed_at && <span className="leg-done-badge">✓ {t('pickedUpLabel', lang)}</span>}
           {order.pickup_started_at && !order.pickup_arrived_at && (
@@ -1113,7 +1120,6 @@ function RideDetailScreen({ order, isOwner, session, lang, onBack, onStatusChang
             <span className="address-text">{order.pickup_address}</span>
             <a className="maps-nav-btn" href={mapsNavUrl(order.pickup_address)} target="_blank" rel="noreferrer"><Navigation size={13} strokeWidth={2.2} /> {t('navigateButton', lang)}</a>
           </div>
-          <LegTime order={order} prefix="pickup" lang={lang} />
           {order.pickup_confirmed_at && <div className="info-row-time">✓ {fmtDateTime(order.pickup_confirmed_at)}</div>}
           {order.flexible_time_notes && (
             <div className="flex-time-note" style={{ marginTop: 8 }}>
@@ -1128,7 +1134,14 @@ function RideDetailScreen({ order, isOwner, session, lang, onBack, onStatusChang
         <div className={`info-card-head leg-head-line ${order.delivery_started_at && !order.delivery_arrived_at ? 'en-route' : ''}`}>
           <span className="leg-head-left">
             🅑 {t('delivery', lang)}
-            {order.delivery_date && <span className="leg-head-time"> · {order.delivery_fixed ? fmtTime(order.delivery_time) : fmtTime(order.delivery_from)}</span>}
+            {order.delivery_date && (
+              <span className="leg-head-time">
+                {' · '}
+                {order.delivery_fixed ? `🔒 ${t('fixedDeliveryBadge', lang)} · ` : ''}
+                {fmtDate(order.delivery_date)}
+                {order.delivery_fixed ? (order.delivery_time ? ` · ${fmtTime(order.delivery_time)}` : '') : (order.delivery_from ? ` · ${fmtTime(order.delivery_from)}${order.delivery_to ? `–${fmtTime(order.delivery_to)}` : ''}` : '')}
+              </span>
+            )}
           </span>
           {order.delivery_confirmed_at && <span className="leg-done-badge">✓ {t('deliveredLabel', lang)}</span>}
           {order.delivery_started_at && !order.delivery_arrived_at && (
@@ -1141,7 +1154,6 @@ function RideDetailScreen({ order, isOwner, session, lang, onBack, onStatusChang
             <span className="address-text">{order.delivery_address}</span>
             <a className="maps-nav-btn" href={mapsNavUrl(order.delivery_address)} target="_blank" rel="noreferrer"><Navigation size={13} strokeWidth={2.2} /> {t('navigateButton', lang)}</a>
           </div>
-          <LegTime order={order} prefix="delivery" lang={lang} />
           {order.delivery_confirmed_at && <div className="info-row-time">✓ {fmtDateTime(order.delivery_confirmed_at)}</div>}
           {deliveryNotiz && <div className="leg-notiz">📝 {deliveryNotiz}</div>}
         </div>

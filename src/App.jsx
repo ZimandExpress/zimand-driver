@@ -2641,6 +2641,7 @@ function BidCard({ order, lang, courierProfileId, open, onToggle, onBidPlaced, d
   return (
     <div className={`bid-card2 ${open ? 'open' : ''}`}>
       <div className="bid-card2-head" onClick={onToggle}>
+        {isRecentlyNew(order.created_at) && <span className="new-corner">{t('newBadge', lang)}</span>}
         <div className="bid-top-row">
           <div className="bid-top-left">
             <span className="pill-label">{t('pickup', lang)}</span>
@@ -2648,9 +2649,8 @@ function BidCard({ order, lang, courierProfileId, open, onToggle, onBidPlaced, d
             <span className="pill-time">{order.pickup_fixed ? (order.pickup_time ? `🔒 ${fmtTime(order.pickup_time)}` : '🔒') : (order.pickup_from ? `${fmtTime(order.pickup_from)}${order.pickup_to ? `–${fmtTime(order.pickup_to)}` : ''}` : '—')}</span>
           </div>
           <div className="bid-top-right">
-            {today && <span className="pill heute" style={{ marginRight: 6 }}>{t('todayBadge', lang)}</span>}
-            {!today && tomorrow && <span className="pill morgen" style={{ marginRight: 6 }}>{t('tomorrowBadge', lang)}</span>}
-            {isRecentlyNew(order.created_at) && <span className="new-dot">{t('newBadge', lang)}</span>}
+            {today && <span className="pill heute">{t('todayBadge', lang)}</span>}
+            {!today && tomorrow && <span className="pill morgen">{t('tomorrowBadge', lang)}</span>}
           </div>
         </div>
         <div className="bid-order-mini">{t('orderRef', lang)} {order.order_number || order.id.slice(0, 8)}</div>
@@ -2660,7 +2660,7 @@ function BidCard({ order, lang, courierProfileId, open, onToggle, onBidPlaced, d
           </div>
         )}
         <div className="bid-stop"><span className="addr"><MapPin size={13} strokeWidth={1.8} /> {order.pickup_address}</span></div>
-        <div className="bid-stop"><span className="addr"><FlagTriangleRight size={13} strokeWidth={1.8} /> {order.delivery_address}</span>{(distanceKm != null || order.km) && <span className="val">📍 {distanceKm ?? order.km} km</span>}</div>
+        <div className="bid-stop"><span className="addr"><FlagTriangleRight size={13} strokeWidth={1.8} /> {order.delivery_address}</span></div>
 
         <div className="bid-divider" />
         <div className="bid-zustellung-label">{t('delivery', lang)}</div>
@@ -2671,7 +2671,14 @@ function BidCard({ order, lang, courierProfileId, open, onToggle, onBidPlaced, d
             <>{fmtDate(order.delivery_date)} · {fmtTime(order.delivery_from)}{order.delivery_to ? `–${fmtTime(order.delivery_to)}` : ''}</>
           )}
         </div>
-        <VehicleChips vehicles={order.vehicles} />
+
+        <div className="bid-cargo-row">
+          <VehicleChips vehicles={order.vehicles} />
+          <div className="bid-cargo-meta">
+            {(distanceKm != null || order.km) && <span className="meta-item">📍 {distanceKm ?? order.km} km</span>}
+            {order.weight && <span className="meta-item">⚖ {order.weight} kg</span>}
+          </div>
+        </div>
       </div>
 
       <div className="bid-card2-body">
@@ -2683,9 +2690,6 @@ function BidCard({ order, lang, courierProfileId, open, onToggle, onBidPlaced, d
           )}
           {order.dims && (
             <div className="bid-extra-row">📐 {order.dims} cm</div>
-          )}
-          {order.weight && (
-            <div className="bid-extra-row">⚖ {order.weight} kg</div>
           )}
 
           {extractServiceBadges(order.notes).length > 0 && (

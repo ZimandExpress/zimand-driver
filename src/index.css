@@ -2287,3 +2287,9 @@ textarea.bid-input2 {
   font-size: 11.5px;
   font-weight: 700;
 }
+
+.service-badge.warn {
+  background: #FCEBE8;
+  border-color: #E4A296;
+  color: #B23A24;
+}

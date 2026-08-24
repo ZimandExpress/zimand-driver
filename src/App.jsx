@@ -2358,17 +2358,26 @@ function useDriverLocation(session) {
   const [position, setPosition] = useState(null) // {lat, lng} | null
   useEffect(() => {
     if (!navigator.geolocation) return
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude }
-        setPosition(coords)
-        if (session?.access_token) {
-          supabase.from('profiles').update({ last_lat: coords.lat, last_lng: coords.lng, last_location_at: new Date().toISOString() }).eq('id', session.user.id).then(() => {})
-        }
-      },
-      () => {}, // dacă utilizatorul refuză locația, pur și simplu nu filtrăm — nicio eroare vizibilă
-      { enableHighAccuracy: false, timeout: 8000 }
-    )
+
+    function capture() {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude }
+          setPosition(coords)
+          if (session?.access_token) {
+            supabase.from('profiles').update({ last_lat: coords.lat, last_lng: coords.lng, last_location_at: new Date().toISOString() }).eq('id', session.user.id).then(() => {})
+          }
+        },
+        () => {}, // dacă utilizatorul refuză locația, pur și simplu nu filtrăm — nicio eroare vizibilă
+        { enableHighAccuracy: false, timeout: 8000 }
+      )
+    }
+
+    capture()
+    // La fiecare 3 minute, cât timp aplicația rămâne deschisă — dispecerul
+    // vede poziția actualizată, nu doar un instantaneu de la deschidere.
+    const interval = setInterval(capture, 3 * 60 * 1000)
+    return () => clearInterval(interval)
   }, [session?.access_token])
   return position
 }

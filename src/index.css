@@ -16,7 +16,7 @@ body {
   font-family: 'IBM Plex Sans', sans-serif;
   background: var(--cream);
   color: var(--text);
-  font-size: 16px;
+  font-size: 20px;
 }
 
 .phone-shell {
@@ -34,7 +34,7 @@ body {
 
 .brand-mark {
   font-family: 'Oswald', sans-serif;
-  font-size: 20px;
+  font-size: 22px;
   color: var(--navy);
   display: flex;
   align-items: center;
@@ -60,7 +60,7 @@ body {
 }
 
 .login-sub {
-  font-size: 14px;
+  font-size: 18px;
   color: var(--text-soft);
   margin: 8px 0 20px;
 }
@@ -72,7 +72,7 @@ body {
 }
 
 .login-card label {
-  font-size: 13px;
+  font-size: 17px;
   font-weight: 600;
   color: var(--navy);
   margin-top: 8px;
@@ -82,7 +82,7 @@ body {
   border: 1.5px solid var(--line);
   border-radius: 10px;
   padding: 10px 12px;
-  font-size: 14px;
+  font-size: 18px;
   font-family: 'IBM Plex Sans', sans-serif;
 }
 
@@ -93,7 +93,7 @@ body {
 
 .login-error {
   color: #C0392B;
-  font-size: 12.5px;
+  font-size: 16.5px;
   margin-top: 6px;
 }
 
@@ -101,7 +101,7 @@ body {
   background: none;
   border: none;
   color: var(--navy);
-  font-size: 12.5px;
+  font-size: 16.5px;
   text-decoration: underline;
   cursor: pointer;
   width: 100%;
@@ -116,7 +116,7 @@ body {
   border-radius: 12px;
   padding: 13px;
   font-family: 'Oswald', sans-serif;
-  font-size: 14px;
+  font-size: 18px;
   text-transform: uppercase;
   letter-spacing: .03em;
   font-weight: 600;
@@ -142,7 +142,7 @@ body {
   color: #fff;
   border-radius: 8px;
   padding: 7px 12px;
-  font-size: 13px;
+  font-size: 17px;
   cursor: pointer;
 }
 
@@ -155,7 +155,7 @@ body {
 
 .placeholder-screen p {
   color: var(--text-soft);
-  font-size: 14px;
+  font-size: 18px;
 }
 
 .bottomnav {
@@ -170,7 +170,7 @@ body {
   background: none;
   border: none;
   padding: 8px 4px;
-  font-size: 13px;
+  font-size: 17px;
   color: var(--text-soft);
   cursor: pointer;
   font-weight: 500;
@@ -196,7 +196,7 @@ body {
   background: none;
   padding: 5px 12px;
   border-radius: 7px;
-  font-size: 12px;
+  font-size: 16px;
   font-weight: 700;
   letter-spacing: .03em;
   color: var(--text-soft);
@@ -241,14 +241,14 @@ body {
 }
 
 .toggle-row .txt {
-  font-size: 13.5px;
+  font-size: 17.5px;
   color: var(--text);
 }
 
 .toggle-row .txt small {
   display: block;
   color: var(--text-soft);
-  font-size: 12px;
+  font-size: 16px;
   margin-top: 2px;
   font-weight: 400;
 }
@@ -314,13 +314,13 @@ body {
 
 .ride-ref {
   font-family: monospace;
-  font-size: 11.5px;
+  font-size: 15.5px;
   color: var(--text-soft);
 }
 
 .ride-badge {
   font-family: 'Oswald', sans-serif;
-  font-size: 10.5px;
+  font-size: 14.5px;
   letter-spacing: .04em;
   text-transform: uppercase;
   padding: 4px 9px;
@@ -346,20 +346,20 @@ body {
 
 .ride-stop-label {
   font-family: 'Oswald', sans-serif;
-  font-size: 11px;
+  font-size: 15px;
   letter-spacing: .06em;
   text-transform: uppercase;
   color: var(--text-soft);
 }
 
 .ride-stop-addr {
-  font-size: 13.5px;
+  font-size: 17.5px;
   font-weight: 500;
   color: var(--text);
 }
 
 .ride-stop-time {
-  font-size: 11.5px;
+  font-size: 15.5px;
   color: var(--text-soft);
 }
 
@@ -367,7 +367,7 @@ body {
   margin-top: 10px;
   padding-top: 10px;
   border-top: 1px dashed var(--line);
-  font-size: 12.5px;
+  font-size: 16.5px;
   color: var(--text-soft);
 }
 
@@ -424,7 +424,7 @@ body {
   justify-content: center;
   font-family: 'Oswald', sans-serif;
   font-weight: 600;
-  font-size: 14px;
+  font-size: 18px;
   flex-shrink: 0;
 }
 
@@ -436,7 +436,7 @@ body {
 }
 
 .nav-ic {
-  font-size: 17px;
+  font-size: 19px;
   line-height: 1;
 }
 
@@ -457,7 +457,7 @@ body {
   margin: 0;
   border-radius: 0;
   padding: 18px;
-  font-size: 16px;
+  font-size: 20px;
   z-index: 60;
   padding-bottom: calc(18px + env(safe-area-inset-bottom));
   box-shadow: 0 -4px 14px rgba(15,34,64,.18);
@@ -468,7 +468,7 @@ body {
   background: rgba(15,34,64,.08);
   border: none;
   color: var(--navy);
-  font-size: 14px;
+  font-size: 18px;
   font-weight: 600;
   padding: 8px 14px;
   border-radius: 10px;
@@ -511,7 +511,7 @@ body {
   align-items: center;
   justify-content: center;
   color: #fff;
-  font-size: 11px;
+  font-size: 15px;
   box-shadow: 0 2px 6px rgba(0,0,0,.25);
 }
 
@@ -530,7 +530,7 @@ body {
   padding: 10px 14px;
   background: var(--cream);
   font-family: 'Oswald', sans-serif;
-  font-size: 11.5px;
+  font-size: 15.5px;
   letter-spacing: .05em;
   text-transform: uppercase;
   color: var(--navy);
@@ -557,13 +557,13 @@ body {
 }
 
 .contact-phone-line {
-  font-size: 13px;
+  font-size: 17px;
   color: var(--text-soft);
   margin-top: 4px;
 }
 
 .contact-text {
-  font-size: 12.5px;
+  font-size: 16.5px;
   color: var(--navy);
   font-weight: 600;
 }
@@ -577,7 +577,7 @@ body {
   text-decoration: none;
   border-radius: 20px;
   padding: 5px 12px;
-  font-size: 11.5px;
+  font-size: 15.5px;
   font-weight: 700;
 }
 
@@ -587,7 +587,7 @@ body {
   align-items: center;
   flex-wrap: wrap;
   gap: 8px;
-  font-size: 14px;
+  font-size: 18px;
   padding: 4px 0;
 }
 
@@ -595,7 +595,7 @@ body {
 .info-row .v { font-weight: 500; text-align: right; max-width: 60%; }
 
 .info-row-time {
-  font-size: 11.5px;
+  font-size: 15.5px;
   color: var(--text-soft);
   margin-top: 2px;
 }
@@ -605,7 +605,7 @@ body {
   padding: 8px 10px;
   background: #FBF6EE;
   border-radius: 8px;
-  font-size: 13px;
+  font-size: 17px;
   color: #8A6417;
 }
 
@@ -619,7 +619,7 @@ body {
   border: none;
   border-radius: 12px;
   font-family: 'Oswald', sans-serif;
-  font-size: 14.5px;
+  font-size: 18.5px;
   letter-spacing: .03em;
   font-weight: 600;
   text-transform: uppercase;
@@ -650,7 +650,7 @@ body {
 
 .leg-title {
   font-family: 'Oswald', sans-serif;
-  font-size: 14px;
+  font-size: 18px;
   color: var(--navy);
   font-weight: 600;
   letter-spacing: .02em;
@@ -667,7 +667,7 @@ body {
 
 .pod-label {
   font-family: 'Oswald', sans-serif;
-  font-size: 12px;
+  font-size: 16px;
   letter-spacing: .05em;
   text-transform: uppercase;
   color: var(--text-soft);
@@ -675,7 +675,7 @@ body {
 }
 
 .doc-guide-hint {
-  font-size: 13px;
+  font-size: 17px;
   color: var(--navy);
   background: var(--cream);
   border-radius: 8px;
@@ -721,7 +721,7 @@ body {
   border: 1px solid var(--line);
   border-radius: 10px;
   padding: 10px 12px;
-  font-size: 12.5px;
+  font-size: 16.5px;
   color: var(--navy);
   cursor: pointer;
 }
@@ -737,7 +737,7 @@ body {
   border: 1.5px solid var(--line);
   border-radius: 10px;
   padding: 10px 12px;
-  font-size: 14px;
+  font-size: 18px;
   color: var(--navy);
   font-family: 'IBM Plex Sans', sans-serif;
   background: #fff;
@@ -747,7 +747,7 @@ body {
   flex-shrink: 0;
   width: auto;
   padding: 10px 16px;
-  font-size: 12.5px;
+  font-size: 16.5px;
 }
 
 .doc-chip-list {
@@ -794,7 +794,7 @@ body {
   border-radius: 50%;
   width: 26px;
   height: 26px;
-  font-size: 14px;
+  font-size: 18px;
   color: var(--navy);
   cursor: pointer;
 }
@@ -813,7 +813,7 @@ body {
 }
 
 .tl-signature-name {
-  font-size: 12px;
+  font-size: 16px;
   color: var(--text-soft);
   margin-top: 3px;
 }
@@ -836,12 +836,12 @@ body {
 }
 
 .ride-card.compact .ride-stop-addr {
-  font-size: 12.5px;
+  font-size: 16.5px;
 }
 
 .empty-note {
   margin: 0 4px 14px;
-  font-size: 14px;
+  font-size: 18px;
   color: var(--text-soft);
 }
 
@@ -856,7 +856,7 @@ body {
   align-items: center;
   gap: 8px;
   font-family: 'Oswald', sans-serif;
-  font-size: 14px;
+  font-size: 18px;
   font-weight: 600;
   color: var(--navy);
   margin: 18px 0 10px;
@@ -864,7 +864,7 @@ body {
 
 .settings-subheading {
   font-family: 'Oswald', sans-serif;
-  font-size: 12.5px;
+  font-size: 16.5px;
   font-weight: 600;
   color: var(--navy);
   text-transform: uppercase;
@@ -878,7 +878,7 @@ body {
   background: var(--cream);
   color: var(--text-soft);
   font-family: 'IBM Plex Sans', sans-serif;
-  font-size: 12px;
+  font-size: 16px;
   font-weight: 600;
   padding: 2px 8px;
   border-radius: 20px;
@@ -913,18 +913,18 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
+  font-size: 18px;
 }
 
 .ride-card2-num {
   font-family: 'Oswald', sans-serif;
   font-weight: 600;
   color: var(--orange);
-  font-size: 15.5px;
+  font-size: 19.5px;
 }
 
 .ride-card2-route {
-  font-size: 13.5px;
+  font-size: 17.5px;
   color: var(--text-soft);
   margin: 2px 0 10px 38px;
 }
@@ -940,10 +940,10 @@ body {
   display: grid;
   grid-template-columns: 20px 76px 1fr;
   align-items: center;
-  font-size: 12.5px;
+  font-size: 16.5px;
 }
 
-.ride-card2-row .ric { font-size: 14px; }
+.ride-card2-row .ric { font-size: 18px; }
 .ride-card2-row .rik { color: var(--text-soft); }
 .ride-card2-row .riv { color: var(--text); font-weight: 500; text-align: right; }
 .ride-card2-row .riv.price { color: var(--orange); font-family: 'Oswald', sans-serif; font-weight: 600; }
@@ -954,7 +954,7 @@ body {
   border: none;
   border-radius: 10px;
   padding: 10px;
-  font-size: 14px;
+  font-size: 18px;
   font-weight: 600;
   color: var(--navy);
   cursor: pointer;
@@ -980,7 +980,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
+  font-size: 18px;
   flex-shrink: 0;
 }
 
@@ -1004,20 +1004,20 @@ body {
 
 .cancel-title {
   font-family: 'Oswald', sans-serif;
-  font-size: 14px;
+  font-size: 18px;
   font-weight: 700;
   color: #B03A3A;
   margin-bottom: 6px;
 }
 
 .cancel-note {
-  font-size: 12.5px;
+  font-size: 16.5px;
   color: var(--text);
   margin-bottom: 8px;
 }
 
 .cancel-comp {
-  font-size: 14px;
+  font-size: 18px;
   color: var(--text);
 }
 
@@ -1035,13 +1035,13 @@ body {
 
 .ride-row-id {
   font-family: 'Oswald', sans-serif;
-  font-size: 13px;
+  font-size: 17px;
   font-weight: 600;
   color: var(--navy);
 }
 
 .ride-row-route {
-  font-size: 11.5px;
+  font-size: 15.5px;
   color: var(--text-soft);
   white-space: nowrap;
   overflow: hidden;
@@ -1049,13 +1049,13 @@ body {
 }
 
 .ride-row-date {
-  font-size: 10.5px;
+  font-size: 14.5px;
   color: var(--text-soft);
 }
 
 .ride-row-chev {
   color: var(--text-soft);
-  font-size: 18px;
+  font-size: 20px;
 }
 
 /* --- rides screen v3: topbar + tabs + toolbar --- */
@@ -1070,7 +1070,7 @@ body {
 .icon-btn {
   background: none;
   border: none;
-  font-size: 18px;
+  font-size: 20px;
   cursor: pointer;
   color: var(--navy);
   position: relative;
@@ -1079,7 +1079,7 @@ body {
 
 .rides-topbar-title {
   font-family: 'Oswald', sans-serif;
-  font-size: 17px;
+  font-size: 19px;
   color: var(--navy);
   margin: 0;
 }
@@ -1090,7 +1090,7 @@ body {
   right: -4px;
   background: var(--orange);
   color: #fff;
-  font-size: 9px;
+  font-size: 13px;
   font-weight: 700;
   min-width: 15px;
   height: 15px;
@@ -1112,7 +1112,7 @@ body {
   background: none;
   border: none;
   padding: 9px 4px 11px;
-  font-size: 13.5px;
+  font-size: 17.5px;
   font-weight: 600;
   color: var(--text-soft);
   cursor: pointer;
@@ -1132,7 +1132,7 @@ body {
 .rides-tab-count {
   background: var(--cream);
   color: var(--text-soft);
-  font-size: 11px;
+  font-size: 15px;
   padding: 1px 6px;
   border-radius: 20px;
 }
@@ -1154,7 +1154,7 @@ body {
   border: 1px solid var(--line);
   border-radius: 10px;
   padding: 9px 10px;
-  font-size: 13px;
+  font-size: 17px;
   font-weight: 500;
   color: var(--navy);
   cursor: pointer;
@@ -1202,7 +1202,7 @@ body {
   color: var(--navy);
   border-radius: 10px;
   padding: 8px 14px;
-  font-size: 12.5px;
+  font-size: 16.5px;
   font-weight: 600;
   cursor: pointer;
 }
@@ -1220,7 +1220,7 @@ body {
 
 .brand-strip-name {
   font-family: 'Oswald', sans-serif;
-  font-size: 15px;
+  font-size: 19px;
   color: #fff;
   letter-spacing: .02em;
   display: flex;
@@ -1276,7 +1276,7 @@ body {
 
 .menu-header-name {
   font-family: 'Oswald', sans-serif;
-  font-size: 15px;
+  font-size: 19px;
   color: var(--navy);
 }
 
@@ -1288,7 +1288,7 @@ body {
   background: none;
   border: none;
   text-align: left;
-  font-size: 14.5px;
+  font-size: 18.5px;
   font-weight: 500;
   color: var(--text);
   cursor: pointer;
@@ -1341,7 +1341,7 @@ body {
 
 .summary-box .route {
   font-family: 'Oswald', sans-serif;
-  font-size: 14px;
+  font-size: 18px;
   margin-bottom: 10px;
 }
 
@@ -1352,14 +1352,14 @@ body {
 }
 
 .summary-grid div {
-  font-size: 12px;
+  font-size: 16px;
   color: #9FB0C8;
 }
 
 .summary-grid b {
   display: block;
   color: #fff;
-  font-size: 14px;
+  font-size: 18px;
   font-family: 'Oswald', sans-serif;
   margin-top: 2px;
 }
@@ -1382,7 +1382,7 @@ body {
 
 .tl-leg-label {
   font-family: 'Oswald', sans-serif;
-  font-size: 13px;
+  font-size: 17px;
   color: var(--navy);
   font-weight: 600;
   margin: 14px 0 8px -22px;
@@ -1409,13 +1409,13 @@ body {
 }
 
 .tl-step .tl-title {
-  font-size: 12.5px;
+  font-size: 16.5px;
   font-weight: 600;
   color: var(--text);
 }
 
 .tl-step .tl-time {
-  font-size: 12px;
+  font-size: 16px;
   color: var(--text-soft);
   margin-top: 1px;
 }
@@ -1441,7 +1441,7 @@ body {
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 8px 10px;
-  font-size: 12px;
+  font-size: 16px;
   color: var(--navy);
 }
 
@@ -1510,7 +1510,7 @@ body {
   padding: 5px 12px;
   border-radius: 20px;
   font-family: 'Oswald', sans-serif;
-  font-size: 12px;
+  font-size: 16px;
   font-weight: 700;
   letter-spacing: .03em;
   background: var(--cream);
@@ -1524,19 +1524,19 @@ body {
 
 .pill-label {
   color: var(--text-soft);
-  font-size: 14px;
+  font-size: 18px;
   font-weight: 500;
 }
 
 .pill-date {
   color: var(--navy);
-  font-size: 14px;
+  font-size: 18px;
   font-weight: 700;
 }
 
 .pill-time {
   color: var(--text-soft);
-  font-size: 14px;
+  font-size: 18px;
   font-weight: 500;
 }
 
@@ -1557,7 +1557,7 @@ body {
   background: var(--orange);
   color: #fff;
   font-family: 'Oswald', sans-serif;
-  font-size: 11px;
+  font-size: 15px;
   font-weight: 700;
   letter-spacing: .04em;
   padding: 3px 9px;
@@ -1566,13 +1566,13 @@ body {
 
 .bid-order-id {
   font-family: 'IBM Plex Mono', monospace;
-  font-size: 14px;
+  font-size: 18px;
   color: var(--text-soft);
   margin-bottom: 10px;
 }
 
 .shipment-type-row {
-  font-size: 12.5px;
+  font-size: 16.5px;
   font-weight: 600;
   color: var(--navy);
   margin-bottom: 8px;
@@ -1582,7 +1582,7 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 13.5px;
+  font-size: 17.5px;
   color: var(--text);
   padding: 3px 0;
 }
@@ -1595,7 +1595,7 @@ body {
 
 .bid-stop .val {
   color: var(--text-soft);
-  font-size: 12.5px;
+  font-size: 16.5px;
 }
 
 .bid-card2-body {
@@ -1619,7 +1619,7 @@ body {
 
 .bid-zustellung-label {
   font-family: 'Oswald', sans-serif;
-  font-size: 10.5px;
+  font-size: 14.5px;
   letter-spacing: .06em;
   text-transform: uppercase;
   color: var(--text-soft);
@@ -1627,7 +1627,7 @@ body {
 }
 
 .bid-zustellung-val {
-  font-size: 13.5px;
+  font-size: 17.5px;
   color: var(--text);
   margin-bottom: 16px;
 }
@@ -1644,7 +1644,7 @@ body {
 
 .price-box .lbl {
   color: #9FB0C8;
-  font-size: 11px;
+  font-size: 15px;
   text-transform: uppercase;
   letter-spacing: .06em;
   font-family: 'Oswald', sans-serif;
@@ -1664,13 +1664,13 @@ body {
   border: none;
   border-radius: 10px;
   padding: 10px 14px;
-  font-size: 14px;
+  font-size: 18px;
   font-weight: 700;
   cursor: pointer;
 }
 
 .bid-field-label {
-  font-size: 13px;
+  font-size: 17px;
   color: var(--text-soft);
   margin-bottom: 5px;
   display: block;
@@ -1681,7 +1681,7 @@ body {
   border: 1.5px solid var(--line);
   border-radius: 10px;
   padding: 10px 12px;
-  font-size: 14px;
+  font-size: 18px;
   margin-bottom: 12px;
   font-family: 'IBM Plex Sans', sans-serif;
 }
@@ -1701,7 +1701,7 @@ textarea.bid-input2 {
 
 .interval-note .txt {
   color: var(--orange-deep);
-  font-size: 12.5px;
+  font-size: 16.5px;
   font-weight: 600;
   margin-bottom: 8px;
 }
@@ -1710,7 +1710,7 @@ textarea.bid-input2 {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 12.5px;
+  font-size: 16.5px;
   color: var(--text);
 }
 
@@ -1721,7 +1721,7 @@ textarea.bid-input2 {
   border: none;
   border-radius: 10px;
   padding: 12px;
-  font-size: 13.5px;
+  font-size: 17.5px;
   font-weight: 700;
   cursor: pointer;
 }
@@ -1732,7 +1732,7 @@ textarea.bid-input2 {
 }
 
 .bid-extra-row {
-  font-size: 12.5px;
+  font-size: 16.5px;
   color: var(--text-soft);
   margin-bottom: 10px;
 }
@@ -1743,14 +1743,14 @@ textarea.bid-input2 {
   border-radius: 10px;
   padding: 10px 12px;
   margin-bottom: 14px;
-  font-size: 12.5px;
+  font-size: 16.5px;
   color: #7A6210;
 }
 
 .flex-time-extra {
   margin-top: 4px;
   font-style: italic;
-  font-size: 11.5px;
+  font-size: 15.5px;
   opacity: .85;
 }
 
@@ -1777,7 +1777,7 @@ textarea.bid-input2 {
 .existing-bid-actions .btn {
   flex: 1;
   padding: 9px;
-  font-size: 12.5px;
+  font-size: 16.5px;
 }
 
 .btn.danger {
@@ -1797,7 +1797,7 @@ textarea.bid-input2 {
 }
 
 .bid-footnote {
-  font-size: 10.5px;
+  font-size: 14.5px;
   color: var(--text-soft);
   text-align: center;
   line-height: 1.4;
@@ -1814,7 +1814,7 @@ textarea.bid-input2 {
   color: #1F7A50;
   font-family: 'Oswald', sans-serif;
   font-weight: 700;
-  font-size: 10.5px;
+  font-size: 14.5px;
 }
 
 .veh-chips {
@@ -1831,7 +1831,7 @@ textarea.bid-input2 {
   border: 1px solid var(--line);
   border-radius: 20px;
   padding: 4px 11px;
-  font-size: 11.5px;
+  font-size: 15.5px;
   color: var(--navy);
 }
 
@@ -1844,7 +1844,7 @@ textarea.bid-input2 {
 
 .order-notes-label {
   font-family: 'Oswald', sans-serif;
-  font-size: 11px;
+  font-size: 15px;
   letter-spacing: .05em;
   text-transform: uppercase;
   color: var(--text-soft);
@@ -1852,7 +1852,7 @@ textarea.bid-input2 {
 }
 
 .order-notes-text {
-  font-size: 12.5px;
+  font-size: 16.5px;
   color: var(--text);
   white-space: pre-line;
   line-height: 1.4;
@@ -1870,7 +1870,7 @@ textarea.bid-input2 {
 }
 
 .earn-hero .lbl {
-  font-size: 12px;
+  font-size: 16px;
   color: #9FB0C8;
   text-transform: uppercase;
   letter-spacing: .08em;
@@ -1891,14 +1891,14 @@ textarea.bid-input2 {
 }
 
 .earn-hero .row div {
-  font-size: 13px;
+  font-size: 17px;
   color: #C7D0DE;
 }
 
 .earn-hero .row b {
   display: block;
   color: #fff;
-  font-size: 15px;
+  font-size: 19px;
   font-family: 'Oswald', sans-serif;
   margin-top: 2px;
 }
@@ -1910,12 +1910,12 @@ textarea.bid-input2 {
   padding: 12px 0;
   border-bottom: 1px solid var(--line);
   cursor: pointer;
-  font-size: 14px;
+  font-size: 18px;
 }
 
 .hist-item .id {
   font-family: 'IBM Plex Mono', monospace;
-  font-size: 12px;
+  font-size: 16px;
   color: var(--text-soft);
 }
 
@@ -1933,7 +1933,7 @@ textarea.bid-input2 {
   border-radius: 12px;
   padding: 13px;
   font-family: 'Oswald', sans-serif;
-  font-size: 13.5px;
+  font-size: 17.5px;
   font-weight: 600;
   text-transform: uppercase;
   cursor: pointer;
@@ -1963,7 +1963,7 @@ textarea.bid-input2 {
   font-family: 'Oswald', sans-serif;
   color: var(--navy);
   margin: 0 0 12px;
-  font-size: 14px;
+  font-size: 18px;
 }
 
 .prof-row {
@@ -1975,14 +1975,14 @@ textarea.bid-input2 {
   padding: 13px 14px;
   border-radius: 12px;
   border: 1px solid var(--line);
-  font-size: 14px;
+  font-size: 18px;
 }
 
 .vehicle-select {
   border: 1.5px solid var(--line);
   border-radius: 8px;
   padding: 6px 10px;
-  font-size: 14px;
+  font-size: 18px;
   color: var(--navy);
   font-weight: 600;
   font-family: 'IBM Plex Sans', sans-serif;
@@ -1997,7 +1997,7 @@ textarea.bid-input2 {
   color: #fff;
   padding: 12px 16px;
   border-radius: 12px;
-  font-size: 13.5px;
+  font-size: 17.5px;
   font-weight: 600;
   margin-bottom: 14px;
   animation: toastSlide .3s ease;
@@ -2015,7 +2015,7 @@ textarea.bid-input2 {
   background: var(--navy);
   color: #fff;
   padding: 10px 14px;
-  font-size: 12.5px;
+  font-size: 16.5px;
 }
 
 .install-banner-text {
@@ -2029,7 +2029,7 @@ textarea.bid-input2 {
   border: none;
   border-radius: 8px;
   padding: 7px 14px;
-  font-size: 13px;
+  font-size: 17px;
   font-weight: 700;
   cursor: pointer;
   flex-shrink: 0;
@@ -2059,7 +2059,7 @@ textarea.bid-input2 {
   color: #fff;
   border-radius: 20px;
   padding: 3px 10px;
-  font-size: 12px;
+  font-size: 16px;
   font-weight: 700;
 }
 
@@ -2072,7 +2072,7 @@ textarea.bid-input2 {
   text-decoration: none;
   border-radius: 20px;
   padding: 6px 13px 6px 10px;
-  font-size: 12px;
+  font-size: 16px;
   font-weight: 700;
   letter-spacing: .02em;
   flex-shrink: 0;
@@ -2087,7 +2087,7 @@ textarea.bid-input2 {
   color: #1F7A50;
   border-radius: 10px;
   padding: 10px 12px;
-  font-size: 14px;
+  font-size: 18px;
   font-weight: 600;
   margin: 10px 0;
 }
@@ -2102,7 +2102,7 @@ textarea.bid-input2 {
   background: none;
   border: none;
   color: var(--text-soft);
-  font-size: 12.5px;
+  font-size: 16.5px;
   padding: 6px 0;
   cursor: pointer;
   width: 100%;
@@ -2113,7 +2113,7 @@ textarea.bid-input2 {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  font-size: 12.5px;
+  font-size: 16.5px;
   color: var(--text-soft);
 }
 
@@ -2123,7 +2123,7 @@ textarea.bid-input2 {
 
 .address-text {
   font-family: 'Oswald', sans-serif;
-  font-size: 15px;
+  font-size: 19px;
   font-weight: 500;
   color: var(--navy);
   line-height: 1.35;
@@ -2149,7 +2149,7 @@ textarea.bid-input2 {
 }
 
 .leg-head-time {
-  font-size: 12.5px;
+  font-size: 16.5px;
   color: var(--text-soft);
   font-weight: 400;
   margin-left: 4px;
@@ -2159,14 +2159,14 @@ textarea.bid-input2 {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
+  font-size: 16px;
   font-weight: 700;
   color: #1F7A50;
   overflow: hidden;
 }
 
 .leg-done-badge {
-  font-size: 10.5px;
+  font-size: 14.5px;
   font-weight: 700;
   background: #E7F4EE;
   color: #1F7A50;
@@ -2190,7 +2190,7 @@ textarea.bid-input2 {
   background: var(--cream);
   border-radius: 8px;
   padding: 8px 10px;
-  font-size: 13px;
+  font-size: 17px;
   color: var(--text);
 }
 
@@ -2202,7 +2202,7 @@ textarea.bid-input2 {
 }
 
 .cargo-chev {
-  font-size: 12px;
+  font-size: 16px;
   color: var(--text-soft);
   transition: transform .2s ease;
 }
@@ -2220,7 +2220,7 @@ textarea.bid-input2 {
   border: 1.5px solid var(--line);
   border-radius: 10px;
   padding: 12px 14px;
-  font-size: 14px;
+  font-size: 18px;
   color: var(--navy);
   cursor: pointer;
   margin-bottom: 14px;
@@ -2229,7 +2229,7 @@ textarea.bid-input2 {
 .sig-optional {
   color: var(--text-soft);
   font-weight: 400;
-  font-size: 12px;
+  font-size: 16px;
 }
 
 .sig-done {
@@ -2239,7 +2239,7 @@ textarea.bid-input2 {
 
 .sig-chev {
   color: var(--text-soft);
-  font-size: 16px;
+  font-size: 20px;
 }
 
 .sig-fullscreen {
@@ -2260,14 +2260,14 @@ textarea.bid-input2 {
   background: var(--navy);
   color: #fff;
   font-family: 'Oswald', sans-serif;
-  font-size: 14px;
+  font-size: 18px;
 }
 
 .sig-fullscreen-close {
   background: none;
   border: none;
   color: #fff;
-  font-size: 18px;
+  font-size: 20px;
   cursor: pointer;
 }
 
@@ -2296,7 +2296,7 @@ textarea.bid-input2 {
   color: #8A5A16;
   border-radius: 20px;
   padding: 5px 12px;
-  font-size: 11.5px;
+  font-size: 15.5px;
   font-weight: 700;
 }
 
@@ -2364,7 +2364,7 @@ textarea.bid-input2 {
 }
 
 .celebration-subtitle {
-  font-size: 14px;
+  font-size: 18px;
   color: var(--text-soft);
   margin: 0 0 20px;
 }
@@ -2392,7 +2392,7 @@ textarea.bid-input2 {
 }
 
 .celebration-earned {
-  font-size: 14px;
+  font-size: 18px;
   color: var(--text-soft);
   margin: 4px 0 22px;
 }
@@ -2408,7 +2408,7 @@ textarea.bid-input2 {
   border: none;
   border-radius: 12px;
   padding: 14px 18px;
-  font-size: 14.5px;
+  font-size: 18.5px;
   font-weight: 700;
   cursor: pointer;
   margin-top: 14px;

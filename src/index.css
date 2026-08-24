@@ -16,7 +16,7 @@ body {
   font-family: 'IBM Plex Sans', sans-serif;
   background: var(--cream);
   color: var(--text);
-  font-size: 15px;
+  font-size: 16px;
 }
 
 .phone-shell {
@@ -60,7 +60,7 @@ body {
 }
 
 .login-sub {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--text-soft);
   margin: 8px 0 20px;
 }
@@ -72,7 +72,7 @@ body {
 }
 
 .login-card label {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--navy);
   margin-top: 8px;
@@ -142,7 +142,7 @@ body {
   color: #fff;
   border-radius: 8px;
   padding: 7px 12px;
-  font-size: 12px;
+  font-size: 13px;
   cursor: pointer;
 }
 
@@ -170,7 +170,7 @@ body {
   background: none;
   border: none;
   padding: 8px 4px;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-soft);
   cursor: pointer;
   font-weight: 500;
@@ -196,7 +196,7 @@ body {
   background: none;
   padding: 5px 12px;
   border-radius: 7px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: .03em;
   color: var(--text-soft);
@@ -248,7 +248,7 @@ body {
 .toggle-row .txt small {
   display: block;
   color: var(--text-soft);
-  font-size: 11px;
+  font-size: 12px;
   margin-top: 2px;
   font-weight: 400;
 }
@@ -346,7 +346,7 @@ body {
 
 .ride-stop-label {
   font-family: 'Oswald', sans-serif;
-  font-size: 10px;
+  font-size: 11px;
   letter-spacing: .06em;
   text-transform: uppercase;
   color: var(--text-soft);
@@ -424,7 +424,7 @@ body {
   justify-content: center;
   font-family: 'Oswald', sans-serif;
   font-weight: 600;
-  font-size: 13px;
+  font-size: 14px;
   flex-shrink: 0;
 }
 
@@ -468,7 +468,7 @@ body {
   background: rgba(15,34,64,.08);
   border: none;
   color: var(--navy);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   padding: 8px 14px;
   border-radius: 10px;
@@ -511,7 +511,7 @@ body {
   align-items: center;
   justify-content: center;
   color: #fff;
-  font-size: 10px;
+  font-size: 11px;
   box-shadow: 0 2px 6px rgba(0,0,0,.25);
 }
 
@@ -557,7 +557,7 @@ body {
 }
 
 .contact-phone-line {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-soft);
   margin-top: 4px;
 }
@@ -587,7 +587,7 @@ body {
   align-items: center;
   flex-wrap: wrap;
   gap: 8px;
-  font-size: 13px;
+  font-size: 14px;
   padding: 4px 0;
 }
 
@@ -605,7 +605,7 @@ body {
   padding: 8px 10px;
   background: #FBF6EE;
   border-radius: 8px;
-  font-size: 12px;
+  font-size: 13px;
   color: #8A6417;
 }
 
@@ -647,7 +647,7 @@ body {
 
 .leg-title {
   font-family: 'Oswald', sans-serif;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--navy);
   font-weight: 600;
   letter-spacing: .02em;
@@ -664,7 +664,7 @@ body {
 
 .pod-label {
   font-family: 'Oswald', sans-serif;
-  font-size: 11px;
+  font-size: 12px;
   letter-spacing: .05em;
   text-transform: uppercase;
   color: var(--text-soft);
@@ -672,7 +672,7 @@ body {
 }
 
 .doc-guide-hint {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--navy);
   background: var(--cream);
   border-radius: 8px;
@@ -734,7 +734,7 @@ body {
   border: 1.5px solid var(--line);
   border-radius: 10px;
   padding: 10px 12px;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--navy);
   font-family: 'IBM Plex Sans', sans-serif;
   background: #fff;
@@ -791,7 +791,7 @@ body {
   border-radius: 50%;
   width: 26px;
   height: 26px;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--navy);
   cursor: pointer;
 }
@@ -810,7 +810,7 @@ body {
 }
 
 .tl-signature-name {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-soft);
   margin-top: 3px;
 }
@@ -838,7 +838,7 @@ body {
 
 .empty-note {
   margin: 0 4px 14px;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--text-soft);
 }
 
@@ -853,7 +853,7 @@ body {
   align-items: center;
   gap: 8px;
   font-family: 'Oswald', sans-serif;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--navy);
   margin: 18px 0 10px;
@@ -875,7 +875,7 @@ body {
   background: var(--cream);
   color: var(--text-soft);
   font-family: 'IBM Plex Sans', sans-serif;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   padding: 2px 8px;
   border-radius: 20px;
@@ -940,7 +940,7 @@ body {
   font-size: 12.5px;
 }
 
-.ride-card2-row .ric { font-size: 13px; }
+.ride-card2-row .ric { font-size: 14px; }
 .ride-card2-row .rik { color: var(--text-soft); }
 .ride-card2-row .riv { color: var(--text); font-weight: 500; text-align: right; }
 .ride-card2-row .riv.price { color: var(--orange); font-family: 'Oswald', sans-serif; font-weight: 600; }
@@ -951,7 +951,7 @@ body {
   border: none;
   border-radius: 10px;
   padding: 10px;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--navy);
   cursor: pointer;
@@ -977,7 +977,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 13px;
+  font-size: 14px;
   flex-shrink: 0;
 }
 
@@ -1001,7 +1001,7 @@ body {
 
 .cancel-title {
   font-family: 'Oswald', sans-serif;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
   color: #B03A3A;
   margin-bottom: 6px;
@@ -1014,7 +1014,7 @@ body {
 }
 
 .cancel-comp {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--text);
 }
 
@@ -1032,7 +1032,7 @@ body {
 
 .ride-row-id {
   font-family: 'Oswald', sans-serif;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--navy);
 }
@@ -1129,7 +1129,7 @@ body {
 .rides-tab-count {
   background: var(--cream);
   color: var(--text-soft);
-  font-size: 10px;
+  font-size: 11px;
   padding: 1px 6px;
   border-radius: 20px;
 }
@@ -1151,7 +1151,7 @@ body {
   border: 1px solid var(--line);
   border-radius: 10px;
   padding: 9px 10px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
   color: var(--navy);
   cursor: pointer;
@@ -1349,7 +1349,7 @@ body {
 }
 
 .summary-grid div {
-  font-size: 11px;
+  font-size: 12px;
   color: #9FB0C8;
 }
 
@@ -1379,7 +1379,7 @@ body {
 
 .tl-leg-label {
   font-family: 'Oswald', sans-serif;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--navy);
   font-weight: 600;
   margin: 14px 0 8px -22px;
@@ -1412,7 +1412,7 @@ body {
 }
 
 .tl-step .tl-time {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-soft);
   margin-top: 1px;
 }
@@ -1438,7 +1438,7 @@ body {
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 8px 10px;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--navy);
 }
 
@@ -1507,7 +1507,7 @@ body {
   padding: 5px 12px;
   border-radius: 20px;
   font-family: 'Oswald', sans-serif;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: .03em;
   background: var(--cream);
@@ -1554,7 +1554,7 @@ body {
   background: var(--orange);
   color: #fff;
   font-family: 'Oswald', sans-serif;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: .04em;
   padding: 3px 9px;
@@ -1563,7 +1563,7 @@ body {
 
 .bid-order-id {
   font-family: 'IBM Plex Mono', monospace;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--text-soft);
   margin-bottom: 10px;
 }
@@ -1641,7 +1641,7 @@ body {
 
 .price-box .lbl {
   color: #9FB0C8;
-  font-size: 10px;
+  font-size: 11px;
   text-transform: uppercase;
   letter-spacing: .06em;
   font-family: 'Oswald', sans-serif;
@@ -1667,7 +1667,7 @@ body {
 }
 
 .bid-field-label {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-soft);
   margin-bottom: 5px;
   display: block;
@@ -1841,7 +1841,7 @@ textarea.bid-input2 {
 
 .order-notes-label {
   font-family: 'Oswald', sans-serif;
-  font-size: 10px;
+  font-size: 11px;
   letter-spacing: .05em;
   text-transform: uppercase;
   color: var(--text-soft);
@@ -1867,7 +1867,7 @@ textarea.bid-input2 {
 }
 
 .earn-hero .lbl {
-  font-size: 11px;
+  font-size: 12px;
   color: #9FB0C8;
   text-transform: uppercase;
   letter-spacing: .08em;
@@ -1888,7 +1888,7 @@ textarea.bid-input2 {
 }
 
 .earn-hero .row div {
-  font-size: 12px;
+  font-size: 13px;
   color: #C7D0DE;
 }
 
@@ -1907,12 +1907,12 @@ textarea.bid-input2 {
   padding: 12px 0;
   border-bottom: 1px solid var(--line);
   cursor: pointer;
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .hist-item .id {
   font-family: 'IBM Plex Mono', monospace;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-soft);
 }
 
@@ -1972,14 +1972,14 @@ textarea.bid-input2 {
   padding: 13px 14px;
   border-radius: 12px;
   border: 1px solid var(--line);
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .vehicle-select {
   border: 1.5px solid var(--line);
   border-radius: 8px;
   padding: 6px 10px;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--navy);
   font-weight: 600;
   font-family: 'IBM Plex Sans', sans-serif;
@@ -2026,7 +2026,7 @@ textarea.bid-input2 {
   border: none;
   border-radius: 8px;
   padding: 7px 14px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   cursor: pointer;
   flex-shrink: 0;
@@ -2056,7 +2056,7 @@ textarea.bid-input2 {
   color: #fff;
   border-radius: 20px;
   padding: 3px 10px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
 }
 
@@ -2069,7 +2069,7 @@ textarea.bid-input2 {
   text-decoration: none;
   border-radius: 20px;
   padding: 6px 13px 6px 10px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: .02em;
   flex-shrink: 0;
@@ -2084,7 +2084,7 @@ textarea.bid-input2 {
   color: #1F7A50;
   border-radius: 10px;
   padding: 10px 12px;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   margin: 10px 0;
 }
@@ -2156,7 +2156,7 @@ textarea.bid-input2 {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   color: #1F7A50;
   overflow: hidden;
@@ -2187,7 +2187,7 @@ textarea.bid-input2 {
   background: var(--cream);
   border-radius: 8px;
   padding: 8px 10px;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text);
 }
 
@@ -2199,7 +2199,7 @@ textarea.bid-input2 {
 }
 
 .cargo-chev {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-soft);
   transition: transform .2s ease;
 }
@@ -2217,7 +2217,7 @@ textarea.bid-input2 {
   border: 1.5px solid var(--line);
   border-radius: 10px;
   padding: 12px 14px;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--navy);
   cursor: pointer;
   margin-bottom: 14px;
@@ -2226,7 +2226,7 @@ textarea.bid-input2 {
 .sig-optional {
   color: var(--text-soft);
   font-weight: 400;
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .sig-done {
@@ -2313,6 +2313,8 @@ textarea.bid-input2 {
   justify-content: center;
   padding: 24px;
   z-index: 500;
+  touch-action: none;
+  overscroll-behavior: contain;
   animation: celebrationFadeIn .25s ease-out;
 }
 
@@ -2387,7 +2389,7 @@ textarea.bid-input2 {
 }
 
 .celebration-earned {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--text-soft);
   margin: 4px 0 22px;
 }

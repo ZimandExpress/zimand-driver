@@ -1571,8 +1571,20 @@ body {
   margin-bottom: 10px;
 }
 
+/* Numărul comenzii pe cardul de licitație — vizibil, dar discret: mai mic
+   decât textul din meniu (18.5px) și cu culoare estompată, nu evidențiat. */
+.bid-order-mini {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: .02em;
+  color: var(--text-soft);
+  opacity: .7;
+  margin-bottom: 8px;
+}
+
 .shipment-type-row {
-  font-size: 16.5px;
+  font-size: 15.5px;
   font-weight: 600;
   color: var(--navy);
   margin-bottom: 8px;

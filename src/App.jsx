@@ -1158,8 +1158,8 @@ function RideDetailScreen({ order, isOwner, session, lang, onBack, onStatusChang
             {order.reference && <div className="info-row"><span className="k">{t('referenceLabel', lang)}</span><span className="v">{order.reference}</span></div>}
             {extractServiceBadges(order.notes).length > 0 && (
               <div className="service-badges">
-                {extractServiceBadges(order.notes).map(({ icon, key }) => (
-                  <span key={key} className="service-badge">{icon} {t(key, lang)}</span>
+                {extractServiceBadges(order.notes).map((b, i) => (
+                  <span key={b.key || i} className={`service-badge${b.warn ? ' warn' : ''}`}>{b.icon} {b.key ? t(b.key, lang) : b.text}</span>
                 ))}
               </div>
             )}
@@ -1916,7 +1916,17 @@ const SERVICE_BADGE_PREFIXES = [
 function extractServiceBadges(notesText) {
   if (!notesText) return []
   const lines = notesText.split('\n')
-  return SERVICE_BADGE_PREFIXES.filter(({ prefix }) => lines.some((l) => l.startsWith(prefix)))
+  const badges = SERVICE_BADGE_PREFIXES.filter(({ prefix }) => lines.some((l) => l.startsWith(prefix)))
+    .map((b) => ({ ...b, text: null, warn: false }))
+
+  for (const line of lines) {
+    if (line.startsWith('ADR: ')) badges.push({ icon: '⚠️', key: null, text: line.replace('ADR: ', 'ADR — '), warn: true })
+    else if (line.startsWith('Stapelbar: Ja')) badges.push({ icon: '📦', key: null, text: 'Stapelbar', warn: false })
+    else if (line.startsWith('Stapelbar: Nein')) badges.push({ icon: '🚫', key: null, text: 'Nicht stapelbar', warn: true })
+    else if (line.includes('frühere Abholung')) badges.push({ icon: '💡', key: null, text: 'Frühere Abholung ggf. möglich', warn: false })
+    else if (line.includes('frühere Zustellung')) badges.push({ icon: '💡', key: null, text: 'Frühere Zustellung ggf. möglich', warn: false })
+  }
+  return badges
 }
 
 function driverSafeNotesWithoutContacts(notesText) {
@@ -1929,6 +1939,10 @@ function driverSafeNotesWithoutContacts(notesText) {
       !line.startsWith('Kontakt Zustellung:') &&
       !line.startsWith('Notiz Abholung:') &&
       !line.startsWith('Notiz Zustellung:') &&
+      !line.startsWith('ADR: ') &&
+      !line.startsWith('Stapelbar: ') &&
+      !line.includes('frühere Abholung') &&
+      !line.includes('frühere Zustellung') &&
       !SERVICE_BADGE_PREFIXES.some(({ prefix }) => line.startsWith(prefix))
     )
     .join('\n')
@@ -1952,7 +1966,14 @@ function preWinSafeNotes(notesText) {
   if (!notesText) return ''
   return notesText
     .split('\n')
-    .filter((line) => !PRE_WIN_HIDDEN_PREFIXES.some((p) => line.startsWith(p)))
+    .filter((line) =>
+      !PRE_WIN_HIDDEN_PREFIXES.some((p) => line.startsWith(p)) &&
+      !line.startsWith('ADR: ') &&
+      !line.startsWith('Stapelbar: ') &&
+      !line.includes('frühere Abholung') &&
+      !line.includes('frühere Zustellung') &&
+      !SERVICE_BADGE_PREFIXES.some(({ prefix }) => line.startsWith(prefix))
+    )
     .join('\n')
     .trim()
 }
@@ -2346,8 +2367,8 @@ function BidCard({ order, lang, courierProfileId, open, onToggle }) {
 
           {extractServiceBadges(order.notes).length > 0 && (
             <div className="service-badges">
-              {extractServiceBadges(order.notes).map(({ icon, key }) => (
-                <span key={key} className="service-badge">{icon} {t(key, lang)}</span>
+              {extractServiceBadges(order.notes).map((b, i) => (
+                <span key={b.key || i} className={`service-badge${b.warn ? ' warn' : ''}`}>{b.icon} {b.key ? t(b.key, lang) : b.text}</span>
               ))}
             </div>
           )}

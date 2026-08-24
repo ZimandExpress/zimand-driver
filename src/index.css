@@ -1462,6 +1462,23 @@ body {
 .bid-card2-head {
   padding: 14px 16px;
   cursor: pointer;
+  position: relative;
+}
+
+/* Etichetă "NEU" ca un colț discret, nu o pastilă la fel de mare ca HEUTE */
+.new-corner {
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: var(--orange);
+  color: #fff;
+  font-family: 'Oswald', sans-serif;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: .05em;
+  padding: 3px 10px;
+  border-radius: 0 14px 0 10px;
+  box-shadow: 0 1px 3px rgba(0,0,0,.15);
 }
 
 .bid-top-row {
@@ -1507,10 +1524,10 @@ body {
 .pill {
   display: inline-flex;
   align-items: center;
-  padding: 5px 12px;
+  padding: 4px 11px;
   border-radius: 20px;
   font-family: 'Oswald', sans-serif;
-  font-size: 16px;
+  font-size: 13px;
   font-weight: 700;
   letter-spacing: .03em;
   background: var(--cream);
@@ -1524,19 +1541,19 @@ body {
 
 .pill-label {
   color: var(--text-soft);
-  font-size: 18px;
+  font-size: 14px;
   font-weight: 500;
 }
 
 .pill-date {
   color: var(--navy);
-  font-size: 18px;
+  font-size: 14px;
   font-weight: 700;
 }
 
 .pill-time {
   color: var(--text-soft);
-  font-size: 18px;
+  font-size: 14px;
   font-weight: 500;
 }
 
@@ -1594,7 +1611,7 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 17.5px;
+  font-size: 15px;
   color: var(--text);
   padding: 3px 0;
 }
@@ -1607,7 +1624,7 @@ body {
 
 .bid-stop .val {
   color: var(--text-soft);
-  font-size: 16.5px;
+  font-size: 14px;
 }
 
 .bid-card2-body {
@@ -1639,9 +1656,31 @@ body {
 }
 
 .bid-zustellung-val {
-  font-size: 17.5px;
+  font-size: 15px;
   color: var(--text);
-  margin-bottom: 16px;
+  margin-bottom: 14px;
+}
+
+.bid-cargo-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.bid-cargo-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+  color: var(--text-soft);
+}
+
+.bid-cargo-meta .meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
 }
 
 .price-box {
@@ -1744,7 +1783,7 @@ textarea.bid-input2 {
 }
 
 .bid-extra-row {
-  font-size: 16.5px;
+  font-size: 14.5px;
   color: var(--text-soft);
   margin-bottom: 10px;
 }
@@ -1832,7 +1871,6 @@ textarea.bid-input2 {
 .veh-chips {
   display: flex;
   gap: 6px;
-  margin-top: 10px;
   flex-wrap: wrap;
 }
 
@@ -1842,8 +1880,8 @@ textarea.bid-input2 {
   gap: 5px;
   border: 1px solid var(--line);
   border-radius: 20px;
-  padding: 4px 11px;
-  font-size: 15.5px;
+  padding: 4px 10px;
+  font-size: 13.5px;
   color: var(--navy);
 }
 
@@ -2071,7 +2109,7 @@ textarea.bid-input2 {
   color: #fff;
   border-radius: 20px;
   padding: 3px 10px;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 700;
 }
 

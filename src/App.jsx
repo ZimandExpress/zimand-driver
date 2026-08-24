@@ -2288,12 +2288,62 @@ function EarningsScreen({ profile, lang }) {
   )
 }
 
+// Distanța (km) între 2 puncte, formula Haversine — matematică simplă,
+// fără niciun apel de rețea.
+function haversineKm(lat1, lng1, lat2, lng2) {
+  const R = 6371
+  const dLat = (lat2 - lat1) * Math.PI / 180
+  const dLng = (lng2 - lng1) * Math.PI / 180
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+}
+
+// Geocodifică o adresă, cu cache simplu în memorie — nu repetăm apeluri
+// pentru aceeași adresă de mai multe ori.
+const geocodeCache = new Map()
+async function geocodeAddressCached(address, mapsKey) {
+  if (geocodeCache.has(address)) return geocodeCache.get(address)
+  try {
+    const res = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${mapsKey}`)
+    const data = await res.json()
+    const loc = data?.results?.[0]?.geometry?.location
+    const result = loc ? { lat: loc.lat, lng: loc.lng } : null
+    geocodeCache.set(address, result)
+    return result
+  } catch {
+    return null
+  }
+}
+
+function useDriverLocation(session) {
+  const [position, setPosition] = useState(null) // {lat, lng} | null
+  useEffect(() => {
+    if (!navigator.geolocation) return
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude }
+        setPosition(coords)
+        if (session?.access_token) {
+          supabase.from('profiles').update({ last_lat: coords.lat, last_lng: coords.lng, last_location_at: new Date().toISOString() }).eq('id', session.user.id).then(() => {})
+        }
+      },
+      () => {}, // dacă utilizatorul refuză locația, pur și simplu nu filtrăm — nicio eroare vizibilă
+      { enableHighAccuracy: false, timeout: 8000 }
+    )
+  }, [session?.access_token])
+  return position
+}
+
 function BiddingScreen({ profile, session, lang, embedded }) {
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
   const [openId, setOpenId] = useState(null)
   const [biddedOrderIds, setBiddedOrderIds] = useState(new Set())
+  const [radiusKm, setRadiusKm] = useState(null) // null = alle
+  const [orderDistances, setOrderDistances] = useState({}) // { orderId: km | null }
   const courierProfileId = session?.user?.id || null
+  const driverLocation = useDriverLocation(session)
+  const mapsKey = useGoogleMapsKey()
 
   useEffect(() => {
     let active = true
@@ -2332,6 +2382,29 @@ function BiddingScreen({ profile, session, lang, embedded }) {
   // rămâne și în "Verfügbar"
   const availableOrders = orders.filter((o) => !biddedOrderIds.has(o.id))
 
+  // Calculăm distanța (geocodificare + Haversine) doar pentru comenzile
+  // vizibile acum, o singură dată fiecare — nu la fiecare randare.
+  useEffect(() => {
+    if (!driverLocation || !mapsKey) return
+    let cancelled = false
+    ;(async () => {
+      for (const o of availableOrders) {
+        if (orderDistances[o.id] !== undefined) continue
+        const point = await geocodeAddressCached(o.pickup_address, mapsKey)
+        if (cancelled) return
+        const km = point ? Math.round(haversineKm(driverLocation.lat, driverLocation.lng, point.lat, point.lng)) : null
+        setOrderDistances((prev) => ({ ...prev, [o.id]: km }))
+      }
+    })()
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [driverLocation, mapsKey, availableOrders.map((o) => o.id).join(',')])
+
+  const filteredOrders = radiusKm == null ? availableOrders : availableOrders.filter((o) => {
+    const km = orderDistances[o.id]
+    return km == null ? true : km <= radiusKm // dacă nu s-a putut calcula, o lăsăm vizibilă (mai bine văzută decât ascunsă din greșeală)
+  })
+
   if (loading) return <PlaceholderScreen title={embedded ? '' : t('tabBidding', lang)} note={t('loadingRides', lang)} />
   if (availableOrders.length === 0) {
     return (
@@ -2344,9 +2417,23 @@ function BiddingScreen({ profile, session, lang, embedded }) {
   return (
     <div className={embedded ? '' : 'rides-list'}>
       {!embedded && <h2 className="screen-title">{t('tabBidding', lang)}</h2>}
-      {availableOrders.map((o) => (
-        <BidCard key={o.id} order={o} lang={lang} courierProfileId={courierProfileId} open={openId === o.id} onToggle={() => setOpenId(openId === o.id ? null : o.id)} onBidPlaced={(orderId) => setBiddedOrderIds((prev) => new Set(prev).add(orderId))} />
-      ))}
+      <div className="radius-filter-row">
+        <span className="radius-filter-label">{t('radiusFilterLabel', lang)}</span>
+        <select className="doc-type-select" value={radiusKm ?? 'all'} onChange={(e) => setRadiusKm(e.target.value === 'all' ? null : Number(e.target.value))}>
+          <option value="100">100 km</option>
+          <option value="200">200 km</option>
+          <option value="350">350 km</option>
+          <option value="600">600 km</option>
+          <option value="all">{t('radiusFilterAll', lang)}</option>
+        </select>
+      </div>
+      {filteredOrders.length === 0 ? (
+        <PlaceholderScreen title="" note={t('radiusFilterEmpty', lang)} />
+      ) : (
+        filteredOrders.map((o) => (
+          <BidCard key={o.id} order={o} lang={lang} courierProfileId={courierProfileId} open={openId === o.id} onToggle={() => setOpenId(openId === o.id ? null : o.id)} onBidPlaced={(orderId) => setBiddedOrderIds((prev) => new Set(prev).add(orderId))} distanceKm={orderDistances[o.id]} />
+        ))
+      )}
     </div>
   )
 }
@@ -2375,7 +2462,7 @@ function VehicleChips({ vehicles }) {
   )
 }
 
-function BidCard({ order, lang, courierProfileId, open, onToggle, onBidPlaced }) {
+function BidCard({ order, lang, courierProfileId, open, onToggle, onBidPlaced, distanceKm }) {
   const [ownPrice, setOwnPrice] = useState('')
   const [message, setMessage] = useState('')
   const [respectInterval, setRespectInterval] = useState(true)
@@ -2494,6 +2581,7 @@ function BidCard({ order, lang, courierProfileId, open, onToggle, onBidPlaced })
           {today && <span className="pill heute" style={{ marginRight: 6 }}>{t('todayBadge', lang)}</span>}
           {!today && tomorrow && <span className="pill morgen" style={{ marginRight: 6 }}>{t('tomorrowBadge', lang)}</span>}
           {t('orderRef', lang)} {idParts.join(' · ')}
+          {distanceKm != null && <span className="distance-badge">📍 ~{distanceKm} km</span>}
         </div>
         {order.shipment_type && (
           <div className="shipment-type-row">

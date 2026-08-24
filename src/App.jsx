@@ -370,6 +370,7 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
         {tab === 'abgeschlossen' && <CompletedOrdersListScreen profile={profile} isOwner={isOwner} lang={lang} />}
         {tab === 'nichtangenommen' && isOwner && <NichtAngenommenScreen profile={profile} session={session} lang={lang} />}
         {tab === 'castiguri' && isOwner && <EarningsScreen profile={profile} lang={lang} />}
+        {tab === 'fahrzeuge' && <VehiclesScreen session={session} isOwner={isOwner} lang={lang} />}
         {tab === 'profil' && (
           <ProfileScreen
             session={session}
@@ -408,6 +409,9 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
               <span className="ic"><Wallet size={19} strokeWidth={1.75} /></span>{t('tabEarnings', lang)}
             </button>
           )}
+          <button className={`menu-item ${tab === 'fahrzeuge' ? 'active' : ''}`} onClick={() => navTo('fahrzeuge')}>
+            <span className="ic"><Truck size={19} strokeWidth={1.75} /></span>{t('menuVehicles', lang)}
+          </button>
           <button className={`menu-item ${tab === 'profil' ? 'active' : ''}`} onClick={() => navTo('profil')}>
             <span className="ic"><User size={19} strokeWidth={1.75} /></span>{t('tabProfile', lang)}
           </button>
@@ -494,6 +498,77 @@ function playBusinessChime() {
   }
 }
 
+function VehiclesScreen({ session, isOwner, lang }) {
+  const companyProfileId = useCompanyProfileId(session, null)
+  const [vehicles, setVehicles] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [form, setForm] = useState({ model: '', plate: '', year: '' })
+  const [saving, setSaving] = useState(false)
+
+  const load = () => {
+    if (!companyProfileId) return
+    supabase
+      .from('vehicles')
+      .select('*')
+      .eq('company_id', companyProfileId)
+      .order('created_at', { ascending: true })
+      .then(({ data }) => { setVehicles(data || []); setLoading(false) })
+  }
+  useEffect(load, [companyProfileId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const addVehicle = async () => {
+    if (!form.model.trim()) return
+    setSaving(true)
+    try {
+      const { error } = await supabase.from('vehicles').insert({
+        company_id: companyProfileId, model: form.model.trim(), plate: form.plate.trim() || null,
+        year: form.year ? Number(form.year) : null,
+        fuel_type: 'Diesel', euro_norm: 'Euro 6', tachograph: 'Digital',
+      })
+      if (error) throw error
+      setForm({ model: '', plate: '', year: '' })
+      load()
+    } catch (e) { alert(e.message) }
+    setSaving(false)
+  }
+
+  const removeVehicle = async (id) => {
+    await supabase.from('vehicles').delete().eq('id', id)
+    setVehicles((vs) => vs.filter((v) => v.id !== id))
+  }
+
+  if (loading) return <PlaceholderScreen title={t('menuVehicles', lang)} note={t('loadingRides', lang)} />
+
+  return (
+    <div className="rides-list">
+      <h2 className="screen-title">{t('menuVehicles', lang)}</h2>
+      {vehicles.length === 0 ? (
+        <div className="empty-note">{t('noVehicles', lang)}</div>
+      ) : (
+        vehicles.map((v) => (
+          <div key={v.id} className="ride-card2" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 14.5 }}>{v.model}</div>
+              <div style={{ fontSize: 12.5, color: 'var(--text-soft)' }}>{v.plate || '—'}{v.year ? ` · ${v.year}` : ''}</div>
+            </div>
+            <button onClick={() => removeVehicle(v.id)} style={{ background: 'none', border: 'none', color: '#B23A24', fontSize: 13, cursor: 'pointer' }}>✕</button>
+          </div>
+        ))
+      )}
+
+      <div className="ride-card2" style={{ marginTop: 14 }}>
+        <div style={{ fontWeight: 700, fontSize: 13.5, marginBottom: 10 }}>{t('addVehicleTitle', lang)}</div>
+        <input className="doc-type-select" style={{ width: '100%', marginBottom: 8 }} placeholder={t('vehicleModelPlaceholder', lang)} value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })} />
+        <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+          <input className="doc-type-select" style={{ flex: 1 }} placeholder={t('vehiclePlatePlaceholder', lang)} value={form.plate} onChange={(e) => setForm({ ...form, plate: e.target.value })} />
+          <input className="doc-type-select" style={{ width: 90 }} type="number" placeholder={t('vehicleYearPlaceholder', lang)} value={form.year} onChange={(e) => setForm({ ...form, year: e.target.value })} />
+        </div>
+        <button className="btn" onClick={addVehicle} disabled={saving || !form.model.trim()}>{saving ? '…' : t('addVehicleButton', lang)}</button>
+      </div>
+    </div>
+  )
+}
+
 function RidesScreen({ profile, isOwner, session, lang }) {
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
@@ -502,6 +577,7 @@ function RidesScreen({ profile, isOwner, session, lang }) {
   const [sortAsc, setSortAsc] = useState(true)
   const [openCount, setOpenCount] = useState(0)
   const [newOrderToast, setNewOrderToast] = useState(false)
+  const [celebration, setCelebration] = useState(null) // number (net earnings) | true (no amount) | null — la nivel de ecran, supraviețuiește comutării spre CompletedOrderDetail
   const openCountLoaded = useRef(false)
 
   useEffect(() => {
@@ -595,7 +671,7 @@ function RidesScreen({ profile, isOwner, session, lang }) {
     return <CompletedOrderDetail order={selected} isOwner={isOwner} lang={lang} onBack={() => setSelectedId(null)} />
   }
   if (selected) {
-    return <RideDetailScreen order={selected} isOwner={isOwner} session={session} lang={lang} onBack={() => setSelectedId(null)} onStatusChange={() => {}} />
+    return <RideDetailScreen order={selected} isOwner={isOwner} session={session} lang={lang} onBack={() => setSelectedId(null)} onStatusChange={() => {}} onDeliveryComplete={(amount) => setCelebration(amount)} />
   }
 
   const activeOrders = orders.filter((o) => o.status === 'assigned')
@@ -614,49 +690,52 @@ function RidesScreen({ profile, isOwner, session, lang }) {
   const currentTab = tabs.includes(activeTab) ? activeTab : 'mine'
 
   return (
-    <div className="rides-list">
-      {newOrderToast && (
-        <div className="new-order-toast">
-          <Bell size={16} strokeWidth={2} /> {t('newOrderAlert', lang)}
-        </div>
-      )}
-      <div className="rides-tabs">
-        {tabs.map((tabKey) => (
-          <button
-            key={tabKey}
-            className={`rides-tab ${currentTab === tabKey ? 'active' : ''}`}
-            onClick={() => setActiveTab(tabKey)}
-          >
-            {tabKey === 'available' && t('tabAvailable', lang)}
-            {tabKey === 'available' && <span className="rides-tab-count">{openCount}</span>}
-            {tabKey === 'mine' && t('tabMine', lang)}
-            {tabKey === 'mine' && <span className="rides-tab-count">{activeOrders.length}</span>}
-          </button>
-        ))}
-      </div>
-
-      {currentTab === 'available' && <BiddingScreen profile={profile} session={session} lang={lang} embedded />}
-
-      {currentTab === 'mine' && (
-        <>
-          <div className="rides-toolbar">
-            <button className="filter-btn" disabled title={t('comingSoon', lang)}>
-              ⏷ {t('filter', lang)}
-            </button>
-            <button className="sort-btn" onClick={() => setSortAsc((v) => !v)}>
-              {t('sortLabel', lang)}: {sortAsc ? t('sortOldest', lang) : t('sortNewest', lang)}
-            </button>
+    <>
+      <div className="rides-list">
+        {newOrderToast && (
+          <div className="new-order-toast">
+            <Bell size={16} strokeWidth={2} /> {t('newOrderAlert', lang)}
           </div>
-          {sortedActive.length === 0 ? (
-            <div className="empty-note">{t('noActiveRides', lang)}</div>
-          ) : (
-            sortedActive.map((o) => (
-              <RideCard key={o.id} order={o} isOwner={isOwner} lang={lang} onClick={() => setSelectedId(o.id)} />
-            ))
-          )}
-        </>
-      )}
-    </div>
+        )}
+        <div className="rides-tabs">
+          {tabs.map((tabKey) => (
+            <button
+              key={tabKey}
+              className={`rides-tab ${currentTab === tabKey ? 'active' : ''}`}
+              onClick={() => setActiveTab(tabKey)}
+            >
+              {tabKey === 'available' && t('tabAvailable', lang)}
+              {tabKey === 'available' && <span className="rides-tab-count">{openCount}</span>}
+              {tabKey === 'mine' && t('tabMine', lang)}
+              {tabKey === 'mine' && <span className="rides-tab-count">{activeOrders.length}</span>}
+            </button>
+          ))}
+        </div>
+
+        {currentTab === 'available' && <BiddingScreen profile={profile} session={session} lang={lang} embedded />}
+
+        {currentTab === 'mine' && (
+          <>
+            <div className="rides-toolbar">
+              <button className="filter-btn" disabled title={t('comingSoon', lang)}>
+                ⏷ {t('filter', lang)}
+              </button>
+              <button className="sort-btn" onClick={() => setSortAsc((v) => !v)}>
+                {t('sortLabel', lang)}: {sortAsc ? t('sortOldest', lang) : t('sortNewest', lang)}
+              </button>
+            </div>
+            {sortedActive.length === 0 ? (
+              <div className="empty-note">{t('noActiveRides', lang)}</div>
+            ) : (
+              sortedActive.map((o) => (
+                <RideCard key={o.id} order={o} isOwner={isOwner} lang={lang} onClick={() => setSelectedId(o.id)} />
+              ))
+            )}
+          </>
+        )}
+      </div>
+      {celebration !== null && <CelebrationScreen amount={typeof celebration === 'number' ? celebration : null} lang={lang} onClose={() => setCelebration(null)} />}
+    </>
   )
 }
 
@@ -1025,13 +1104,12 @@ function ContactRow({ contact, lang }) {
   )
 }
 
-function RideDetailScreen({ order, isOwner, session, lang, onBack, onStatusChange }) {
+function RideDetailScreen({ order, isOwner, session, lang, onBack, onStatusChange, onDeliveryComplete }) {
   const pickupCoords = useGeocode(order.pickup_address)
   const deliveryCoords = useGeocode(order.delivery_address)
   const companyName = useCompanyName(order.created_by)
   const companyProfileId = useCompanyProfileId(session, null)
   const [companyDrivers, setCompanyDrivers] = useState([])
-  const [celebration, setCelebration] = useState(null) // number (net earnings) | true (no amount) | null
   const pickupContact = extractContact(order.notes, 'Kontakt Abholung: ')
   const deliveryContact = extractContact(order.notes, 'Kontakt Zustellung: ')
   const pickupNotiz = extractContact(order.notes, 'Notiz Abholung: ')
@@ -1092,7 +1170,7 @@ function RideDetailScreen({ order, isOwner, session, lang, onBack, onStatusChang
       )}
 
       {order.status === 'assigned' && !confirmedAt && (
-        <LegWorkflow key={leg} order={order} leg={leg} lang={lang} startedAt={startedAt} arrivedAt={arrivedAt} onStatusChange={onStatusChange} isOwner={isOwner} onDeliveryComplete={() => setCelebration(isOwner ? order.estimated_price : true)} />
+        <LegWorkflow key={leg} order={order} leg={leg} lang={lang} startedAt={startedAt} arrivedAt={arrivedAt} onStatusChange={onStatusChange} isOwner={isOwner} onDeliveryComplete={() => onDeliveryComplete(isOwner ? order.estimated_price : true)} />
       )}
 
       {order.status === 'assigned' && order.pickup_confirmed_at && !order.delivery_confirmed_at && leg === 'delivery' && null}
@@ -1209,7 +1287,6 @@ function RideDetailScreen({ order, isOwner, session, lang, onBack, onStatusChang
           )}
         </div>
       )}
-      {celebration !== null && <CelebrationScreen amount={typeof celebration === 'number' ? celebration : null} lang={lang} onClose={() => setCelebration(null)} />}
     </div>
   )
 }
@@ -1347,6 +1424,13 @@ async function uploadPodFile(orderId, leg, file) {
 
 function CelebrationScreen({ amount, lang, onClose }) {
   const [displayAmount, setDisplayAmount] = useState(0)
+
+  useEffect(() => {
+    // Blochează defilarea fundalului cât timp overlay-ul e vizibil.
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = prevOverflow }
+  }, [])
 
   useEffect(() => {
     if (amount == null) return
@@ -2251,7 +2335,7 @@ function BiddingScreen({ profile, session, lang, embedded }) {
     <div className={embedded ? '' : 'rides-list'}>
       {!embedded && <h2 className="screen-title">{t('tabBidding', lang)}</h2>}
       {availableOrders.map((o) => (
-        <BidCard key={o.id} order={o} lang={lang} courierProfileId={courierProfileId} open={openId === o.id} onToggle={() => setOpenId(openId === o.id ? null : o.id)} />
+        <BidCard key={o.id} order={o} lang={lang} courierProfileId={courierProfileId} open={openId === o.id} onToggle={() => setOpenId(openId === o.id ? null : o.id)} onBidPlaced={(orderId) => setBiddedOrderIds((prev) => new Set(prev).add(orderId))} />
       ))}
     </div>
   )
@@ -2281,7 +2365,7 @@ function VehicleChips({ vehicles }) {
   )
 }
 
-function BidCard({ order, lang, courierProfileId, open, onToggle }) {
+function BidCard({ order, lang, courierProfileId, open, onToggle, onBidPlaced }) {
   const [ownPrice, setOwnPrice] = useState('')
   const [message, setMessage] = useState('')
   const [respectInterval, setRespectInterval] = useState(true)
@@ -2344,6 +2428,7 @@ function BidCard({ order, lang, courierProfileId, open, onToggle }) {
           .single()
         if (error) throw error
         setExistingBid(data)
+        if (onBidPlaced) onBidPlaced(order.id)
       }
       setEditing(false)
     } catch (err) {

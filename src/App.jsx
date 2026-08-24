@@ -2611,11 +2611,6 @@ function BidCard({ order, lang, courierProfileId, open, onToggle, onBidPlaced, d
     }
   }
 
-  const idParts = [
-    order.order_number || order.id.slice(0, 8),
-    order.cargo_desc,
-  ].filter(Boolean)
-
   return (
     <div className={`bid-card2 ${open ? 'open' : ''}`}>
       <div className="bid-card2-head" onClick={onToggle}>
@@ -2626,6 +2621,8 @@ function BidCard({ order, lang, courierProfileId, open, onToggle, onBidPlaced, d
             <span className="pill-time">{order.pickup_fixed ? (order.pickup_time ? `🔒 ${fmtTime(order.pickup_time)}` : '🔒') : (order.pickup_from ? `${fmtTime(order.pickup_from)}${order.pickup_to ? `–${fmtTime(order.pickup_to)}` : ''}` : '—')}</span>
           </div>
           <div className="bid-top-right">
+            {today && <span className="pill heute" style={{ marginRight: 6 }}>{t('todayBadge', lang)}</span>}
+            {!today && tomorrow && <span className="pill morgen" style={{ marginRight: 6 }}>{t('tomorrowBadge', lang)}</span>}
             {isRecentlyNew(order.created_at) && <span className="new-dot">{t('newBadge', lang)}</span>}
           </div>
         </div>
@@ -2634,36 +2631,33 @@ function BidCard({ order, lang, courierProfileId, open, onToggle, onBidPlaced, d
             <span className="pill geboten">✓ {t('bidPlaced', lang)}: {existingBid.price} €</span>
           </div>
         )}
-        <div className="bid-order-id">
-          {today && <span className="pill heute" style={{ marginRight: 6 }}>{t('todayBadge', lang)}</span>}
-          {!today && tomorrow && <span className="pill morgen" style={{ marginRight: 6 }}>{t('tomorrowBadge', lang)}</span>}
-          {t('orderRef', lang)} {idParts.join(' · ')}
-          {distanceKm != null && <span className="distance-badge">📍 ~{distanceKm} km</span>}
-        </div>
         {order.shipment_type && (
           <div className="shipment-type-row">
             📦 {SHIPMENT_TYPE_LABELS[order.shipment_type] || order.shipment_type}{order.quantity ? ` (${order.quantity}×)` : ''}
           </div>
         )}
-        <div className="bid-stop"><span className="addr"><MapPin size={13} strokeWidth={1.8} /> {order.pickup_address}</span>{order.km && <span className="val">{order.km} km</span>}</div>
-        <div className="bid-stop"><span className="addr"><FlagTriangleRight size={13} strokeWidth={1.8} /> {order.delivery_address}</span>{order.weight && <span className="val">⚖ {order.weight} kg</span>}</div>
+        <div className="bid-stop"><span className="addr"><MapPin size={13} strokeWidth={1.8} /> {order.pickup_address}</span></div>
+        <div className="bid-stop"><span className="addr"><FlagTriangleRight size={13} strokeWidth={1.8} /> {order.delivery_address}</span>{(distanceKm != null || order.km) && <span className="val">📍 {distanceKm ?? order.km} km</span>}</div>
+
+        <div className="bid-divider" />
+        <div className="bid-zustellung-label">{t('delivery', lang)}</div>
+        <div className="bid-zustellung-val">
+          {order.delivery_fixed ? (
+            <span className="fixed-time-badge">🔒 {t('fixedDeliveryBadge', lang)} · {fmtDate(order.delivery_date)}{order.delivery_time ? ` · ${fmtTime(order.delivery_time)}` : ''}</span>
+          ) : (
+            <>{fmtDate(order.delivery_date)} · {fmtTime(order.delivery_from)}{order.delivery_to ? `–${fmtTime(order.delivery_to)}` : ''}</>
+          )}
+        </div>
         <VehicleChips vehicles={order.vehicles} />
       </div>
 
       <div className="bid-card2-body">
         <div className="bid-body-inner">
-          <div className="bid-divider" />
-          <div className="bid-zustellung-label">{t('delivery', lang)}</div>
-          <div className="bid-zustellung-val">
-            {order.delivery_fixed ? (
-              <span className="fixed-time-badge">🔒 {t('fixedDeliveryBadge', lang)} · {fmtDate(order.delivery_date)}{order.delivery_time ? ` · ${fmtTime(order.delivery_time)}` : ''}</span>
-            ) : (
-              <>{fmtDate(order.delivery_date)} · {fmtTime(order.delivery_from)}{order.delivery_to ? `–${fmtTime(order.delivery_to)}` : ''}</>
-            )}
-          </div>
-
           {order.dims && (
             <div className="bid-extra-row">📐 {order.dims} cm</div>
+          )}
+          {order.weight && (
+            <div className="bid-extra-row">⚖ {order.weight} kg</div>
           )}
 
           {extractServiceBadges(order.notes).length > 0 && (

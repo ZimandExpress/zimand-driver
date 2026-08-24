@@ -1579,6 +1579,16 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
     )
   }
 
+  useEffect(() => {
+    // Blochează defilarea fundalului cât timp formularul de confirmare
+    // (poze, semnătură, notițe) e activ — rămâne o "fereastră" concentrată,
+    // nu se mai poate derula toată pagina din jur.
+    if (!arrivedAt) return
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = prevOverflow }
+  }, [arrivedAt])
+
   return (
     <div className="leg-workflow">
       <div className="leg-title">{legLabel} · {t('confirmStep', lang)}</div>

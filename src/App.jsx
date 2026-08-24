@@ -1525,13 +1525,26 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
 
   function addPhotos(e) {
     const files = Array.from(e.target.files || [])
-    setPhotos((prev) => [...prev, ...files].slice(0, 6))
+    const withPreview = files.map((f) => ({ file: f, previewUrl: URL.createObjectURL(f) }))
+    setPhotos((prev) => [...prev, ...withPreview].slice(0, 6))
     e.target.value = ''
   }
 
   function removePhoto(idx) {
-    setPhotos((prev) => prev.filter((_, i) => i !== idx))
+    setPhotos((prev) => {
+      const removed = prev[idx]
+      if (removed?.previewUrl) URL.revokeObjectURL(removed.previewUrl)
+      return prev.filter((_, i) => i !== idx)
+    })
   }
+
+  // Eliberează toate preview-urile blob rămase când componenta se demontează
+  // (schimbare de etapă pickup/delivery, ieșire din ecran etc.) — evită
+  // scurgeri de memorie și pozele "blocate" din URL-uri vechi neeliberate.
+  useEffect(() => {
+    return () => { photos.forEach((p) => p.previewUrl && URL.revokeObjectURL(p.previewUrl)) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const [docGuideOpen, setDocGuideOpen] = useState(false)
 
@@ -1550,8 +1563,8 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
     setBusy(true)
     try {
       const photoPaths = []
-      for (const file of photos) {
-        photoPaths.push(await uploadPodFile(order.id, leg, file))
+      for (const p of photos) {
+        photoPaths.push(await uploadPodFile(order.id, leg, p.file))
       }
       const uploadedDocs = []
       for (const doc of documents) {
@@ -1589,6 +1602,21 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
     }
   }
 
+  // IMPORTANT: acest hook trebuie apelat necondiționat, ÎNAINTE de orice
+  // `return` din componentă — altfel React primește un număr diferit de
+  // hook-uri între randări (ex. la trecerea de la butonul "Ajuns" la
+  // formularul de confirmare) și randarea se rupe, ceea ce se manifesta ca
+  // interfața/poza rămasă "blocată" imediat după marcarea sosirii.
+  useEffect(() => {
+    // Blochează defilarea fundalului cât timp formularul de confirmare
+    // (poze, semnătură, notițe) e activ — rămâne o "fereastră" concentrată,
+    // nu se mai poate derula toată pagina din jur.
+    if (!arrivedAt) return
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = prevOverflow }
+  }, [arrivedAt])
+
   if (!startedAt) {
     return (
       <button className="btn sticky-cta" onClick={() => callRpc(startFn)} disabled={busy}>
@@ -1605,25 +1633,15 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
     )
   }
 
-  useEffect(() => {
-    // Blochează defilarea fundalului cât timp formularul de confirmare
-    // (poze, semnătură, notițe) e activ — rămâne o "fereastră" concentrată,
-    // nu se mai poate derula toată pagina din jur.
-    if (!arrivedAt) return
-    const prevOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => { document.body.style.overflow = prevOverflow }
-  }, [arrivedAt])
-
   return (
     <div className="leg-workflow">
       <div className="leg-title">{legLabel} · {t('confirmStep', lang)}</div>
 
       <div className="pod-label">{t('photosLabel', lang)} ({photos.length}/6)</div>
       <div className="photo-grid">
-        {photos.map((f, i) => (
+        {photos.map((p, i) => (
           <div className="photo-slot filled" key={i} onClick={() => removePhoto(i)}>
-            <img src={URL.createObjectURL(f)} alt="" />
+            <img src={p.previewUrl} alt="" />
           </div>
         ))}
         {photos.length < 6 && (
@@ -2635,14 +2653,10 @@ function BidCard({ order, lang, courierProfileId, open, onToggle, onBidPlaced, d
             {isRecentlyNew(order.created_at) && <span className="new-dot">{t('newBadge', lang)}</span>}
           </div>
         </div>
+        <div className="bid-order-mini">{t('orderRef', lang)} {order.order_number || order.id.slice(0, 8)}</div>
         {existingBid && (
           <div className="geboten-row">
             <span className="pill geboten">✓ {t('bidPlaced', lang)}: {existingBid.price} €</span>
-          </div>
-        )}
-        {order.shipment_type && (
-          <div className="shipment-type-row">
-            📦 {SHIPMENT_TYPE_LABELS[order.shipment_type] || order.shipment_type}{order.quantity ? ` (${order.quantity}×)` : ''}
           </div>
         )}
         <div className="bid-stop"><span className="addr"><MapPin size={13} strokeWidth={1.8} /> {order.pickup_address}</span></div>
@@ -2662,6 +2676,11 @@ function BidCard({ order, lang, courierProfileId, open, onToggle, onBidPlaced, d
 
       <div className="bid-card2-body">
         <div className="bid-body-inner">
+          {order.shipment_type && (
+            <div className="shipment-type-row">
+              📦 {SHIPMENT_TYPE_LABELS[order.shipment_type] || order.shipment_type}{order.quantity ? ` (${order.quantity}×)` : ''}
+            </div>
+          )}
           {order.dims && (
             <div className="bid-extra-row">📐 {order.dims} cm</div>
           )}

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from './supabaseClient'
 import { t, getLang, setLang, availableLangs } from './i18n'
-import { Truck, CheckCircle2, Wallet, User, LogOut, Menu, Bell, MapPin, FlagTriangleRight, Tag, XCircle, Download, X, Navigation } from 'lucide-react'
+import { Truck, CheckCircle2, Wallet, User, LogOut, Menu, Bell, MapPin, FlagTriangleRight, Tag, XCircle, Download, X, Navigation, Trophy, ThumbsUp } from 'lucide-react'
 import './index.css'
 
 function InstallPrompt({ lang }) {
@@ -1031,6 +1031,7 @@ function RideDetailScreen({ order, isOwner, session, lang, onBack, onStatusChang
   const companyName = useCompanyName(order.created_by)
   const companyProfileId = useCompanyProfileId(session, null)
   const [companyDrivers, setCompanyDrivers] = useState([])
+  const [celebration, setCelebration] = useState(null) // number (net earnings) | true (no amount) | null
   const pickupContact = extractContact(order.notes, 'Kontakt Abholung: ')
   const deliveryContact = extractContact(order.notes, 'Kontakt Zustellung: ')
   const pickupNotiz = extractContact(order.notes, 'Notiz Abholung: ')
@@ -1091,7 +1092,7 @@ function RideDetailScreen({ order, isOwner, session, lang, onBack, onStatusChang
       )}
 
       {order.status === 'assigned' && !confirmedAt && (
-        <LegWorkflow key={leg} order={order} leg={leg} lang={lang} startedAt={startedAt} arrivedAt={arrivedAt} onStatusChange={onStatusChange} />
+        <LegWorkflow key={leg} order={order} leg={leg} lang={lang} startedAt={startedAt} arrivedAt={arrivedAt} onStatusChange={onStatusChange} isOwner={isOwner} onDeliveryComplete={() => setCelebration(isOwner ? order.estimated_price : true)} />
       )}
 
       {order.status === 'assigned' && order.pickup_confirmed_at && !order.delivery_confirmed_at && leg === 'delivery' && null}
@@ -1208,6 +1209,7 @@ function RideDetailScreen({ order, isOwner, session, lang, onBack, onStatusChang
           )}
         </div>
       )}
+      {celebration !== null && <CelebrationScreen amount={typeof celebration === 'number' ? celebration : null} lang={lang} onClose={() => setCelebration(null)} />}
     </div>
   )
 }
@@ -1343,7 +1345,49 @@ async function uploadPodFile(orderId, leg, file) {
   return path
 }
 
-function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange }) {
+function CelebrationScreen({ amount, lang, onClose }) {
+  const [displayAmount, setDisplayAmount] = useState(0)
+
+  useEffect(() => {
+    if (amount == null) return
+    const duration = 900
+    const start = performance.now()
+    let raf
+    const tick = (now) => {
+      const progress = Math.min(1, (now - start) / duration)
+      // ease-out — pornește repede, încetinește spre final, senzație "premium"
+      const eased = 1 - Math.pow(1 - progress, 3)
+      setDisplayAmount(amount * eased)
+      if (progress < 1) raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [amount])
+
+  return (
+    <div className="celebration-overlay">
+      <div className="celebration-card">
+        <div className="celebration-check"><CheckCircle2 size={34} strokeWidth={2.2} /></div>
+        <h2 className="celebration-title">{t('celebrationTitle', lang)}</h2>
+        <p className="celebration-subtitle">{t('celebrationSubtitle', lang)}</p>
+        <div className="celebration-trophy">
+          <Trophy size={64} strokeWidth={1.4} />
+        </div>
+        {amount != null && (
+          <>
+            <div className="celebration-amount">+{displayAmount.toFixed(2)} €</div>
+            <p className="celebration-earned">{t('celebrationEarned', lang)}</p>
+          </>
+        )}
+        <button className="celebration-btn" onClick={onClose}>
+          <ThumbsUp size={18} strokeWidth={2.2} /> {t('celebrationCta', lang)}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, isOwner, onDeliveryComplete }) {
   const [busy, setBusy] = useState(false)
   const [photos, setPhotos] = useState([])
   const [documents, setDocuments] = useState([])
@@ -1418,6 +1462,7 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange })
       })
       if (error) throw error
       onStatusChange()
+      if (leg === 'delivery' && onDeliveryComplete) onDeliveryComplete()
 
       // Trimite pozele/documentele/semnătura către portalul de client —
       // dacă eșuează, nu blocăm confirmarea (deja salvată cu succes mai sus).

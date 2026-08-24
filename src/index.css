@@ -542,15 +542,24 @@ body {
 }
 
 .contact-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
   background: var(--cream);
   border-radius: 8px;
   padding: 8px 10px;
   margin-bottom: 10px;
+}
+
+.contact-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   flex-wrap: wrap;
+}
+
+.contact-phone-line {
+  font-size: 12px;
+  color: var(--text-soft);
+  margin-top: 4px;
 }
 
 .contact-text {

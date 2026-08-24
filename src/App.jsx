@@ -593,11 +593,14 @@ function RidesScreen({ profile, isOwner, session, lang }) {
     if (!isOwner) return
 
     function refreshOpenCount() {
-      supabase
-        .from('orders')
-        .select('id', { count: 'exact', head: true })
-        .eq('status', 'open')
-        .then(({ count }) => setOpenCount(count || 0))
+      Promise.all([
+        supabase.from('orders').select('id').eq('status', 'open'),
+        supabase.from('bids').select('order_id').eq('courier_id', profile?.id),
+      ]).then(([openRes, bidsRes]) => {
+        const biddedIds = new Set((bidsRes.data || []).map((b) => b.order_id))
+        const remaining = (openRes.data || []).filter((o) => !biddedIds.has(o.id)).length
+        setOpenCount(remaining)
+      })
     }
 
     refreshOpenCount()
@@ -626,10 +629,11 @@ function RidesScreen({ profile, isOwner, session, lang }) {
           }
         }
       })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'bids', filter: `courier_id=eq.${profile?.id}` }, refreshOpenCount)
       .subscribe()
 
     return () => supabase.removeChannel(channel)
-  }, [isOwner, notifyRadiusKm, driverLocationForNotify, mapsKeyForNotify])
+  }, [isOwner, notifyRadiusKm, driverLocationForNotify, mapsKeyForNotify, profile?.id])
 
   function setSelectedId(id) {
     setSelectedIdState(id)
@@ -1904,15 +1908,27 @@ function useCourierBids(courierProfileId) {
   useEffect(() => {
     if (!courierProfileId) { setLoading(false); return }
     let active = true
-    supabase
-      .from('bids')
-      .select('*, orders(*)')
-      .eq('courier_id', courierProfileId)
-      .then(({ data, error }) => {
-        if (error) console.error('bids fetch error:', error.message)
-        if (active) { setBids(data || []); setLoading(false) }
-      })
-    return () => { active = false }
+
+    function load() {
+      supabase
+        .from('bids')
+        .select('*, orders(*)')
+        .eq('courier_id', courierProfileId)
+        .then(({ data, error }) => {
+          if (error) console.error('bids fetch error:', error.message)
+          if (active) { setBids(data || []); setLoading(false) }
+        })
+    }
+
+    load()
+
+    const channel = supabase
+      .channel('courier-own-bids')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'bids', filter: `courier_id=eq.${courierProfileId}` }, load)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders' }, load)
+      .subscribe()
+
+    return () => { active = false; supabase.removeChannel(channel) }
   }, [courierProfileId])
 
   return { bids, loading }

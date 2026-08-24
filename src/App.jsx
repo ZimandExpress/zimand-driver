@@ -578,7 +578,16 @@ function RidesScreen({ profile, isOwner, session, lang }) {
   const [openCount, setOpenCount] = useState(0)
   const [newOrderToast, setNewOrderToast] = useState(false)
   const [celebration, setCelebration] = useState(null) // number (net earnings) | true (no amount) | null — la nivel de ecran, supraviețuiește comutării spre CompletedOrderDetail
+  const [notifyRadiusKm, setNotifyRadiusKm] = useState(null)
   const openCountLoaded = useRef(false)
+  const driverLocationForNotify = useDriverLocation(session)
+  const mapsKeyForNotify = useGoogleMapsKey()
+
+  useEffect(() => {
+    if (!isOwner || !profile?.id) return
+    supabase.from('profiles').select('preferred_radius_km').eq('id', profile.id).single()
+      .then(({ data }) => { if (data?.preferred_radius_km) setNotifyRadiusKm(data.preferred_radius_km) })
+  }, [isOwner, profile?.id])
 
   useEffect(() => {
     if (!isOwner) return
@@ -596,18 +605,31 @@ function RidesScreen({ profile, isOwner, session, lang }) {
 
     const channel = supabase
       .channel('rides-open-count')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: 'status=eq.open' }, (payload) => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: 'status=eq.open' }, async (payload) => {
         refreshOpenCount()
         if (payload.eventType === 'INSERT' && openCountLoaded.current) {
-          playBusinessChime()
-          setNewOrderToast(true)
-          setTimeout(() => setNewOrderToast(false), 4000)
+          // Dacă șoferul are o rază preferată setată, notificăm doar pentru
+          // comenzi din acel raion — cele mai îndepărtate rămân vizibile
+          // în listă, dar fără sunet/notificare.
+          let withinRadius = true
+          if (notifyRadiusKm != null && driverLocationForNotify && mapsKeyForNotify && payload.new?.pickup_address) {
+            const point = await geocodeAddressCached(payload.new.pickup_address, mapsKeyForNotify)
+            if (point) {
+              const km = haversineKm(driverLocationForNotify.lat, driverLocationForNotify.lng, point.lat, point.lng)
+              withinRadius = km <= notifyRadiusKm
+            }
+          }
+          if (withinRadius) {
+            playBusinessChime()
+            setNewOrderToast(true)
+            setTimeout(() => setNewOrderToast(false), 4000)
+          }
         }
       })
       .subscribe()
 
     return () => supabase.removeChannel(channel)
-  }, [isOwner])
+  }, [isOwner, notifyRadiusKm, driverLocationForNotify, mapsKeyForNotify])
 
   function setSelectedId(id) {
     setSelectedIdState(id)
@@ -2344,6 +2366,20 @@ function BiddingScreen({ profile, session, lang, embedded }) {
   const courierProfileId = session?.user?.id || null
   const driverLocation = useDriverLocation(session)
   const mapsKey = useGoogleMapsKey()
+  const isOwner = profile?.account_type === 'owner_operator'
+
+  // Încarcă preferința salvată — rămâne aceeași data viitoare când
+  // șoferul deschide aplicația, nu se resetează la "Alle".
+  useEffect(() => {
+    if (!isOwner || !courierProfileId) return
+    supabase.from('profiles').select('preferred_radius_km').eq('id', courierProfileId).single()
+      .then(({ data }) => { if (data?.preferred_radius_km) setRadiusKm(data.preferred_radius_km) })
+  }, [isOwner, courierProfileId])
+
+  function updateRadius(value) {
+    setRadiusKm(value)
+    if (courierProfileId) supabase.from('profiles').update({ preferred_radius_km: value }).eq('id', courierProfileId).then(() => {})
+  }
 
   useEffect(() => {
     let active = true
@@ -2385,7 +2421,7 @@ function BiddingScreen({ profile, session, lang, embedded }) {
   // Calculăm distanța (geocodificare + Haversine) doar pentru comenzile
   // vizibile acum, o singură dată fiecare — nu la fiecare randare.
   useEffect(() => {
-    if (!driverLocation || !mapsKey) return
+    if (!isOwner || !driverLocation || !mapsKey) return
     let cancelled = false
     ;(async () => {
       for (const o of availableOrders) {
@@ -2400,9 +2436,16 @@ function BiddingScreen({ profile, session, lang, embedded }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [driverLocation, mapsKey, availableOrders.map((o) => o.id).join(',')])
 
-  const filteredOrders = radiusKm == null ? availableOrders : availableOrders.filter((o) => {
-    const km = orderDistances[o.id]
-    return km == null ? true : km <= radiusKm // dacă nu s-a putut calcula, o lăsăm vizibilă (mai bine văzută decât ascunsă din greșeală)
+  // Nimic nu se mai ascunde — doar sortăm cele apropiate primele; comenzile
+  // mai îndepărtate rămân vizibile, doar coboară spre finalul listei.
+  const sortedOrders = [...availableOrders].sort((a, b) => {
+    if (radiusKm == null) return 0
+    const da = orderDistances[a.id]
+    const db = orderDistances[b.id]
+    if (da == null && db == null) return 0
+    if (da == null) return 1
+    if (db == null) return -1
+    return da - db
   })
 
   if (loading) return <PlaceholderScreen title={embedded ? '' : t('tabBidding', lang)} note={t('loadingRides', lang)} />
@@ -2417,23 +2460,21 @@ function BiddingScreen({ profile, session, lang, embedded }) {
   return (
     <div className={embedded ? '' : 'rides-list'}>
       {!embedded && <h2 className="screen-title">{t('tabBidding', lang)}</h2>}
-      <div className="radius-filter-row">
-        <span className="radius-filter-label">{t('radiusFilterLabel', lang)}</span>
-        <select className="doc-type-select" value={radiusKm ?? 'all'} onChange={(e) => setRadiusKm(e.target.value === 'all' ? null : Number(e.target.value))}>
-          <option value="100">100 km</option>
-          <option value="200">200 km</option>
-          <option value="350">350 km</option>
-          <option value="600">600 km</option>
-          <option value="all">{t('radiusFilterAll', lang)}</option>
-        </select>
-      </div>
-      {filteredOrders.length === 0 ? (
-        <PlaceholderScreen title="" note={t('radiusFilterEmpty', lang)} />
-      ) : (
-        filteredOrders.map((o) => (
-          <BidCard key={o.id} order={o} lang={lang} courierProfileId={courierProfileId} open={openId === o.id} onToggle={() => setOpenId(openId === o.id ? null : o.id)} onBidPlaced={(orderId) => setBiddedOrderIds((prev) => new Set(prev).add(orderId))} distanceKm={orderDistances[o.id]} />
-        ))
+      {isOwner && (
+        <div className="radius-filter-row">
+          <span className="radius-filter-label">{t('radiusFilterLabel', lang)}</span>
+          <select className="doc-type-select" value={radiusKm ?? 'all'} onChange={(e) => updateRadius(e.target.value === 'all' ? null : Number(e.target.value))}>
+            <option value="100">100 km</option>
+            <option value="200">200 km</option>
+            <option value="350">350 km</option>
+            <option value="600">600 km</option>
+            <option value="all">{t('radiusFilterAll', lang)}</option>
+          </select>
+        </div>
       )}
+      {sortedOrders.map((o) => (
+        <BidCard key={o.id} order={o} lang={lang} courierProfileId={courierProfileId} open={openId === o.id} onToggle={() => setOpenId(openId === o.id ? null : o.id)} onBidPlaced={(orderId) => setBiddedOrderIds((prev) => new Set(prev).add(orderId))} distanceKm={isOwner ? orderDistances[o.id] : null} />
+      ))}
     </div>
   )
 }

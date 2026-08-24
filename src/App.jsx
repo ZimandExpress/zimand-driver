@@ -740,6 +740,8 @@ function RideCard({ order, isOwner, lang, onClick, compact }) {
       <div className="ride-card2-top">
         <div className="ride-card2-id">
           <span className="ride-card2-icon">🚚</span>
+          {isToday(order.pickup_date) && <span className="pill heute" style={{ marginRight: 6 }}>{t('todayBadge', lang)}</span>}
+          {!isToday(order.pickup_date) && isTomorrow(order.pickup_date) && <span className="pill morgen" style={{ marginRight: 6 }}>{t('tomorrowBadge', lang)}</span>}
           <span className="ride-card2-num">{order.order_number || order.reference || order.id.slice(0, 8)}</span>
         </div>
         <span className={`ride-badge ${statusClass(order.status)}`}>{statusLabel(order.status, lang)}</span>
@@ -752,8 +754,6 @@ function RideCard({ order, isOwner, lang, onClick, compact }) {
           <span className="ric">📅</span>
           <span className="rik">{t('pickup', lang)}</span>
           <span className="riv">
-            {isToday(order.pickup_date) && <span className="pill heute" style={{ marginRight: 6 }}>{t('todayBadge', lang)}</span>}
-            {!isToday(order.pickup_date) && isTomorrow(order.pickup_date) && <span className="pill morgen" style={{ marginRight: 6 }}>{t('tomorrowBadge', lang)}</span>}
             {order.pickup_fixed ? (
               <span className="fixed-time-badge">🔒 {fmtDate(order.pickup_date)}{order.pickup_time ? ` · ${fmtTime(order.pickup_time)}` : ''}</span>
             ) : (
@@ -1009,14 +1009,18 @@ function GoogleLiveMap({ pickupCoords, deliveryCoords }) {
 function ContactRow({ contact, lang }) {
   if (!contact) return null
   const phone = extractPhone(contact)
+  const nameOnly = contact.split(' · Tel.')[0].trim()
   return (
     <div className="contact-row">
-      <span className="contact-text">👤 {contact}</span>
-      {phone && (
-        <a className="contact-call" href={`tel:${phone.replace(/[\s\-()\/]/g, '')}`}>
-          📞 {t('callButton', lang)}
-        </a>
-      )}
+      <div className="contact-line">
+        <span className="contact-text">👤 {nameOnly}</span>
+        {phone && (
+          <a className="contact-call" href={`tel:${phone.replace(/[\s\-()\/]/g, '')}`}>
+            📞 {t('callButton', lang)}
+          </a>
+        )}
+      </div>
+      {phone && <div className="contact-phone-line">{phone}</div>}
     </div>
   )
 }

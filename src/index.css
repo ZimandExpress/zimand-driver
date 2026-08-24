@@ -2306,6 +2306,26 @@ textarea.bid-input2 {
   color: #B23A24;
 }
 
+.radius-filter-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.radius-filter-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--navy);
+}
+
+.distance-badge {
+  margin-left: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--orange);
+}
+
 .celebration-overlay {
   position: fixed;
   inset: 0;

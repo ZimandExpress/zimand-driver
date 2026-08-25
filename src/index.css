@@ -403,9 +403,11 @@ body {
     width: 390px;
     max-height: 844px;
     border-radius: 40px;
-    overflow: hidden;
+    overflow-y: auto;
+    overflow-x: hidden;
     box-shadow: 0 30px 60px rgba(15,34,64,.35);
     border: 10px solid var(--navy);
+    -webkit-overflow-scrolling: touch;
   }
 
   .phone-shell {
@@ -643,9 +645,6 @@ body {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  max-height: 78vh;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
 }
 
 .leg-title {

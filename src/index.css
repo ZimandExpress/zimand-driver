@@ -1519,6 +1519,8 @@ body {
   align-items: center;
   gap: 8px;
   flex-shrink: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .geboten-row {
@@ -1540,6 +1542,11 @@ body {
 
 .pill.heute {
   background: var(--orange);
+  color: #fff;
+}
+
+.pill.distance {
+  background: var(--navy);
   color: #fff;
 }
 
@@ -1676,7 +1683,8 @@ body {
 .bid-cargo-meta {
   display: flex;
   align-items: center;
-  gap: 12px;
+  flex-wrap: wrap;
+  gap: 8px 12px;
   font-size: 14px;
   color: var(--text-soft);
 }

@@ -483,9 +483,35 @@ function statusLabel(status, lang) {
   }
 }
 
+// Contextul audio se creează O SINGURĂ DATĂ, nu la fiecare sunet — pe
+// telefoane (mai ales iOS), un AudioContext nou creat fără o atingere
+// directă chiar înainte pornește "suspendat" și nu produce niciun sunet,
+// fără nicio eroare vizibilă. Îl deblocăm o dată, la prima atingere din
+// aplicație, și îl refolosim mereu după aceea.
+let sharedAudioCtx = null
+function getSharedAudioCtx() {
+  if (!sharedAudioCtx) {
+    sharedAudioCtx = new (window.AudioContext || window.webkitAudioContext)()
+  }
+  return sharedAudioCtx
+}
+if (typeof window !== 'undefined') {
+  const unlockAudio = () => {
+    try {
+      const ctx = getSharedAudioCtx()
+      if (ctx.state === 'suspended') ctx.resume()
+    } catch {}
+    window.removeEventListener('pointerdown', unlockAudio)
+    window.removeEventListener('touchstart', unlockAudio)
+  }
+  window.addEventListener('pointerdown', unlockAudio, { once: true })
+  window.addEventListener('touchstart', unlockAudio, { once: true })
+}
+
 function playBusinessChime() {
   try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)()
+    const ctx = getSharedAudioCtx()
+    if (ctx.state === 'suspended') { ctx.resume().catch(() => {}) }
     const now = ctx.currentTime
     const playTone = (freq, start, duration, gain = 0.14) => {
       const osc = ctx.createOscillator()

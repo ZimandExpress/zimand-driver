@@ -594,7 +594,7 @@ function RidesScreen({ profile, isOwner, session, lang }) {
 
   useEffect(() => {
     if (!isOwner || !profile?.id) return
-    supabase.from('profiles').select('preferred_radius_km').eq('id', profile.id).single()
+    supabase.from('profiles').select('preferred_radius_km').eq('id', profile.id).maybeSingle()
       .then(({ data }) => { if (data?.preferred_radius_km) setNotifyRadiusKm(data.preferred_radius_km) })
   }, [isOwner, profile?.id])
 
@@ -2426,7 +2426,7 @@ function BiddingScreen({ profile, session, lang, embedded }) {
   // șoferul deschide aplicația, nu se resetează la "Alle".
   useEffect(() => {
     if (!isOwner || !courierProfileId) return
-    supabase.from('profiles').select('preferred_radius_km').eq('id', courierProfileId).single()
+    supabase.from('profiles').select('preferred_radius_km').eq('id', courierProfileId).maybeSingle()
       .then(({ data }) => { if (data?.preferred_radius_km) setRadiusKm(data.preferred_radius_km) })
   }, [isOwner, courierProfileId])
 

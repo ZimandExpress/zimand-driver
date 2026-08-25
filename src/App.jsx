@@ -62,6 +62,15 @@ export default function App() {
     setLangState(l)
   }
 
+  // Siguranță: dacă o versiune anterioară a blocat derularea paginii
+  // (document.body.style.overflow = 'hidden') și nu a mai apucat să o
+  // elibereze, o resetăm aici la pornirea aplicației — altfel cineva cu
+  // ecranul deja blocat ar rămâne blocat și după actualizare, până șterge
+  // manual datele site-ului.
+  useEffect(() => {
+    document.body.style.overflow = ''
+  }, [])
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
@@ -1607,15 +1616,13 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
   // hook-uri între randări (ex. la trecerea de la butonul "Ajuns" la
   // formularul de confirmare) și randarea se rupe, ceea ce se manifesta ca
   // interfața/poza rămasă "blocată" imediat după marcarea sosirii.
-  useEffect(() => {
-    // Blochează defilarea fundalului cât timp formularul de confirmare
-    // (poze, semnătură, notițe) e activ — rămâne o "fereastră" concentrată,
-    // nu se mai poate derula toată pagina din jur.
-    if (!arrivedAt) return
-    const prevOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => { document.body.style.overflow = prevOverflow }
-  }, [arrivedAt])
+  //
+  // NU mai blocăm document.body.style.overflow aici — componenta nu se
+  // demontează garantat la schimbarea de tab în aplicație, iar dacă
+  // utilizatorul iese din ecran fără să confirme ridicarea/livrarea,
+  // blocarea rămânea activă global și îngheța tot ecranul (nu se mai putea
+  // derula sau apăsa butoane), chiar și după revenirea la comandă.
+  useEffect(() => {}, [arrivedAt])
 
   if (!startedAt) {
     return (
@@ -2173,6 +2180,9 @@ const PRE_WIN_HIDDEN_PREFIXES = [
   'Notiz Zustellung:',
   'Kundenbemerkung:',
   'Auftraggeber (Gast):',
+  'Referenz:',
+  'Referenzen:',
+  'Referenznummer:',
 ]
 function preWinSafeNotes(notesText) {
   if (!notesText) return ''

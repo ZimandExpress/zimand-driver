@@ -849,57 +849,55 @@ function RideCard({ order, isOwner, lang, onClick, compact }) {
     )
   }
 
+  const today = isToday(order.pickup_date)
+  const tomorrow = isTomorrow(order.pickup_date)
+
   return (
     <div className="ride-card2">
-      <div className="ride-card2-top">
-        <div className="ride-card2-id">
-          <span className="ride-card2-icon">🚚</span>
-          {isToday(order.pickup_date) && <span className="pill heute" style={{ marginRight: 6 }}>{t('todayBadge', lang)}</span>}
-          {!isToday(order.pickup_date) && isTomorrow(order.pickup_date) && <span className="pill morgen" style={{ marginRight: 6 }}>{t('tomorrowBadge', lang)}</span>}
-          <span className="ride-card2-num">{order.order_number || order.reference || order.id.slice(0, 8)}</span>
-        </div>
-        <span className={`ride-badge ${statusClass(order.status)}`}>{statusLabel(order.status, lang)}</span>
-      </div>
-
-      <div className="ride-card2-route">{order.pickup_address} → {order.delivery_address}</div>
-
-      <div className="ride-card2-rows">
-        <div className="ride-card2-row">
-          <span className="ric">📅</span>
-          <span className="rik">{t('pickup', lang)}</span>
-          <span className="riv">
-            {order.pickup_fixed ? (
-              <span className="fixed-time-badge">🔒 {fmtDate(order.pickup_date)}{order.pickup_time ? ` · ${fmtTime(order.pickup_time)}` : ''}</span>
-            ) : (
-              <>{fmtDate(order.pickup_date)}{order.pickup_from ? `, ${fmtTime(order.pickup_from)}` : ''}{order.pickup_to ? `–${fmtTime(order.pickup_to)}` : ''}</>
-            )}
-          </span>
-        </div>
-        <div className="ride-card2-row">
-          <span className="ric">📅</span>
-          <span className="rik">{t('delivery', lang)}</span>
-          <span className="riv">
-            {order.delivery_fixed ? (
-              <span className="fixed-time-badge">🔒 {fmtDate(order.delivery_date)}{order.delivery_time ? ` · ${fmtTime(order.delivery_time)}` : ''}</span>
-            ) : (
-              <>{fmtDate(order.delivery_date)}{order.delivery_from ? `, ${fmtTime(order.delivery_from)}` : ''}{order.delivery_to ? `–${fmtTime(order.delivery_to)}` : ''}</>
-            )}
-          </span>
-        </div>
-        {order.cargo_desc && (
-          <div className="ride-card2-row">
-            <span className="ric">📦</span>
-            <span className="rik">{t('cargoLabel', lang)}</span>
-            <span className="riv">{order.cargo_desc}{order.weight ? `, ${order.weight} kg` : ''}</span>
+      <div className="bid-card2-head">
+        {isRecentlyNew(order.created_at) && <span className="new-corner">{t('newBadge', lang)}</span>}
+        <div className="bid-top-row">
+          <div className="bid-top-left">
+            <span className="pill-label">{t('pickup', lang)}</span>
+            <span className="pill-date">{fmtDate(order.pickup_date)}</span>
+            <span className="pill-time">
+              {order.pickup_fixed
+                ? (order.pickup_time ? `🔒 ${fmtTime(order.pickup_time)}` : '🔒')
+                : (order.pickup_from ? `${fmtTime(order.pickup_from)}${order.pickup_to ? `–${fmtTime(order.pickup_to)}` : ''}` : '—')}
+            </span>
           </div>
-        )}
-        {isOwner && order.estimated_price != null && (
-          <div className="ride-card2-row">
-            <span className="ric">🏷️</span>
-            <span className="rik">{t('priceLabel', lang)}</span>
-            <span className="riv price">{order.estimated_price} €</span>
+          <div className="bid-top-right">
+            {today && <span className="pill heute">{t('todayBadge', lang)}</span>}
+            {!today && tomorrow && <span className="pill morgen">{t('tomorrowBadge', lang)}</span>}
           </div>
-        )}
+        </div>
+
+        <div className="bid-order-mini">
+          {t('orderRef', lang)} {order.order_number || order.reference || order.id.slice(0, 8)}
+          <span className={`ride-badge ${statusClass(order.status)}`} style={{ marginLeft: 8 }}>{statusLabel(order.status, lang)}</span>
+        </div>
+
+        <div className="bid-stop"><span className="addr"><MapPin size={13} strokeWidth={1.8} /> {order.pickup_address}</span></div>
+        <div className="bid-stop"><span className="addr"><FlagTriangleRight size={13} strokeWidth={1.8} /> {order.delivery_address}</span></div>
+
+        <div className="bid-divider" />
+        <div className="bid-zustellung-label">{t('delivery', lang)}</div>
+        <div className="bid-zustellung-val">
+          {order.delivery_fixed ? (
+            <span className="fixed-time-badge">🔒 {t('fixedDeliveryBadge', lang)} · {fmtDate(order.delivery_date)}{order.delivery_time ? ` · ${fmtTime(order.delivery_time)}` : ''}</span>
+          ) : (
+            <>{fmtDate(order.delivery_date)} · {fmtTime(order.delivery_from)}{order.delivery_to ? `–${fmtTime(order.delivery_to)}` : ''}</>
+          )}
+        </div>
+
+        <div className="bid-cargo-row">
+          <VehicleChips vehicles={order.vehicles} />
+          <div className="bid-cargo-meta">
+            {order.km && <span className="meta-item">📍 {order.km} km</span>}
+            {order.weight && <span className="meta-item">⚖ {order.weight} kg</span>}
+            {isOwner && order.estimated_price != null && <span className="meta-item price">{order.estimated_price} €</span>}
+          </div>
+        </div>
       </div>
 
       <button className="ride-card2-action" onClick={onClick}>

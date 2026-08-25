@@ -2662,7 +2662,6 @@ function BidCard({ order, lang, courierProfileId, open, onToggle, onBidPlaced, d
             <span className="pill-time">{order.pickup_fixed ? (order.pickup_time ? `🔒 ${fmtTime(order.pickup_time)}` : '🔒') : (order.pickup_from ? `${fmtTime(order.pickup_from)}${order.pickup_to ? `–${fmtTime(order.pickup_to)}` : ''}` : '—')}</span>
           </div>
           <div className="bid-top-right">
-            {distanceKm != null && <span className="pill distance">🚗 {distanceKm} km bis zu dir</span>}
             {today && <span className="pill heute">{t('todayBadge', lang)}</span>}
             {!today && tomorrow && <span className="pill morgen">{t('tomorrowBadge', lang)}</span>}
           </div>
@@ -2689,6 +2688,7 @@ function BidCard({ order, lang, courierProfileId, open, onToggle, onBidPlaced, d
         <div className="bid-cargo-row">
           <VehicleChips vehicles={order.vehicles} />
           <div className="bid-cargo-meta">
+            {distanceKm != null && <span className="meta-item">🚗 {distanceKm} km bis zu dir</span>}
             {order.weight && <span className="meta-item">⚖ {order.weight} kg</span>}
           </div>
         </div>

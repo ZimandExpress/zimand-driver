@@ -2501,10 +2501,26 @@ function BiddingScreen({ profile, session, lang, embedded }) {
   })
 
   if (loading) return <PlaceholderScreen title={embedded ? '' : t('tabBidding', lang)} note={t('loadingRides', lang)} />
+
+  const radiusFilter = isOwner && (
+    <div className="radius-filter-row">
+      <span className="radius-filter-label">{t('radiusFilterLabel', lang)}</span>
+      <select className="doc-type-select" value={radiusKm ?? 'all'} onChange={(e) => updateRadius(e.target.value === 'all' ? null : Number(e.target.value))}>
+        <option value="100">100 km</option>
+        <option value="200">200 km</option>
+        <option value="350">350 km</option>
+        <option value="600">600 km</option>
+        <option value="all">{t('radiusFilterAll', lang)}</option>
+      </select>
+    </div>
+  )
+
   if (availableOrders.length === 0) {
     return (
       <div className={embedded ? '' : 'rides-list'}>
-        <PlaceholderScreen title={embedded ? '' : t('tabBidding', lang)} note={t('biddingPlaceholder', lang)} />
+        {!embedded && <h2 className="screen-title">{t('tabBidding', lang)}</h2>}
+        {radiusFilter}
+        <PlaceholderScreen title="" note={t('biddingPlaceholder', lang)} />
       </div>
     )
   }
@@ -2512,18 +2528,7 @@ function BiddingScreen({ profile, session, lang, embedded }) {
   return (
     <div className={embedded ? '' : 'rides-list'}>
       {!embedded && <h2 className="screen-title">{t('tabBidding', lang)}</h2>}
-      {isOwner && (
-        <div className="radius-filter-row">
-          <span className="radius-filter-label">{t('radiusFilterLabel', lang)}</span>
-          <select className="doc-type-select" value={radiusKm ?? 'all'} onChange={(e) => updateRadius(e.target.value === 'all' ? null : Number(e.target.value))}>
-            <option value="100">100 km</option>
-            <option value="200">200 km</option>
-            <option value="350">350 km</option>
-            <option value="600">600 km</option>
-            <option value="all">{t('radiusFilterAll', lang)}</option>
-          </select>
-        </div>
-      )}
+      {radiusFilter}
       {sortedOrders.map((o) => (
         <BidCard key={o.id} order={o} lang={lang} courierProfileId={courierProfileId} open={openId === o.id} onToggle={() => setOpenId(openId === o.id ? null : o.id)} onBidPlaced={(orderId) => setBiddedOrderIds((prev) => new Set(prev).add(orderId))} distanceKm={isOwner ? orderDistances[o.id] : null} />
       ))}
@@ -2657,6 +2662,7 @@ function BidCard({ order, lang, courierProfileId, open, onToggle, onBidPlaced, d
             <span className="pill-time">{order.pickup_fixed ? (order.pickup_time ? `🔒 ${fmtTime(order.pickup_time)}` : '🔒') : (order.pickup_from ? `${fmtTime(order.pickup_from)}${order.pickup_to ? `–${fmtTime(order.pickup_to)}` : ''}` : '—')}</span>
           </div>
           <div className="bid-top-right">
+            {distanceKm != null && <span className="pill distance">🚗 {distanceKm} km bis zu dir</span>}
             {today && <span className="pill heute">{t('todayBadge', lang)}</span>}
             {!today && tomorrow && <span className="pill morgen">{t('tomorrowBadge', lang)}</span>}
           </div>
@@ -2668,7 +2674,7 @@ function BidCard({ order, lang, courierProfileId, open, onToggle, onBidPlaced, d
           </div>
         )}
         <div className="bid-stop"><span className="addr"><MapPin size={13} strokeWidth={1.8} /> {order.pickup_address}</span></div>
-        <div className="bid-stop"><span className="addr"><FlagTriangleRight size={13} strokeWidth={1.8} /> {order.delivery_address}</span></div>
+        <div className="bid-stop"><span className="addr"><FlagTriangleRight size={13} strokeWidth={1.8} /> {order.delivery_address}</span>{order.km != null && <span className="val">📍 {order.km} km</span>}</div>
 
         <div className="bid-divider" />
         <div className="bid-zustellung-label">{t('delivery', lang)}</div>
@@ -2683,7 +2689,6 @@ function BidCard({ order, lang, courierProfileId, open, onToggle, onBidPlaced, d
         <div className="bid-cargo-row">
           <VehicleChips vehicles={order.vehicles} />
           <div className="bid-cargo-meta">
-            {(distanceKm != null || order.km) && <span className="meta-item">📍 {distanceKm ?? order.km} km</span>}
             {order.weight && <span className="meta-item">⚖ {order.weight} kg</span>}
           </div>
         </div>

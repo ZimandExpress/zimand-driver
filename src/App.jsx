@@ -1641,8 +1641,9 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
   }
 
   return (
-    <div className="leg-workflow">
-      <div className="leg-title">{legLabel} · {t('confirmStep', lang)}</div>
+    <div className="leg-confirm-overlay">
+      <div className="leg-confirm-header">{legLabel} · {t('confirmStep', lang)}</div>
+      <div className="leg-confirm-body">
 
       <div className="pod-label">{t('photosLabel', lang)} ({photos.length}/6)</div>
       <div className="photo-grid">
@@ -1740,6 +1741,7 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
       <button className="btn" onClick={confirmLeg} disabled={busy} style={{ marginTop: 14 }}>
         {busy ? '…' : leg === 'pickup' ? t('confirmPickup', lang) : t('confirmDelivery', lang)}
       </button>
+      </div>
     </div>
   )
 }

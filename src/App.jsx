@@ -603,7 +603,7 @@ function RidesScreen({ profile, isOwner, session, lang }) {
 
     function refreshOpenCount() {
       Promise.all([
-        supabase.from('orders').select('id').eq('status', 'open'),
+        supabase.from('orders').select('id').eq('status', 'open').or('on_hold.is.null,on_hold.eq.false'),
         supabase.from('bids').select('order_id').eq('courier_id', session?.user?.id),
       ]).then(([openRes, bidsRes]) => {
         const biddedIds = new Set((bidsRes.data || []).map((b) => b.order_id))
@@ -619,7 +619,7 @@ function RidesScreen({ profile, isOwner, session, lang }) {
       .channel('rides-open-count')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: 'status=eq.open' }, async (payload) => {
         refreshOpenCount()
-        if (payload.eventType === 'INSERT' && openCountLoaded.current) {
+        if (payload.eventType === 'INSERT' && openCountLoaded.current && !payload.new?.on_hold) {
           // Dacă șoferul are o rază preferată setată, notificăm doar pentru
           // comenzi din acel raion — cele mai îndepărtate rămân vizibile
           // în listă, dar fără sunet/notificare.
@@ -2439,6 +2439,7 @@ function BiddingScreen({ profile, session, lang, embedded }) {
       .from('orders')
       .select('*')
       .eq('status', 'open')
+      .or('on_hold.is.null,on_hold.eq.false')
       .order('pickup_date', { ascending: true })
       .then(({ data, error }) => {
         if (error) console.error('open orders fetch error:', error.message)
@@ -2456,7 +2457,7 @@ function BiddingScreen({ profile, session, lang, embedded }) {
     const channel = supabase
       .channel('bidding-open-orders')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: 'status=eq.open' }, () => {
-        supabase.from('orders').select('*').eq('status', 'open').then(({ data }) => setOrders(data || []))
+        supabase.from('orders').select('*').eq('status', 'open').or('on_hold.is.null,on_hold.eq.false').then(({ data }) => setOrders(data || []))
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'bids', filter: `courier_id=eq.${courierProfileId}` }, () => {
         supabase.from('bids').select('order_id').eq('courier_id', courierProfileId).then(({ data }) => setBiddedOrderIds(new Set((data || []).map((b) => b.order_id))))

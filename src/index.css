@@ -647,6 +647,43 @@ body {
   gap: 10px;
 }
 
+/* Formularul de confirmare (poze, documente, semnătură) e o "fereastră"
+   fixă pe tot ecranul — nu doar un card cu scroll blocat pe fundal.
+   Fundalul e complet acoperit (nu doar oprit din scroll), iar formularul
+   are propria singură zonă de derulare, curată, fără conflicte între
+   scroll-ul paginii și cel al cardului. */
+.leg-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 150;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+}
+
+.leg-confirm-header {
+  flex-shrink: 0;
+  padding: 16px;
+  padding-top: calc(16px + env(safe-area-inset-top));
+  background: var(--navy);
+  color: #fff;
+  font-family: 'Oswald', sans-serif;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: .02em;
+}
+
+.leg-confirm-body {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 16px;
+  padding-bottom: calc(24px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
 .leg-title {
   font-family: 'Oswald', sans-serif;
   font-size: 18px;

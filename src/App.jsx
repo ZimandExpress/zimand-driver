@@ -2944,6 +2944,9 @@ function ProfileScreen({ session, profile, isOwner, lang, onChangeLang, onProfil
         {t('accountLabel', lang)}: {profile?.name || session.user.email} · {t('typeLabel', lang)}:{' '}
         {isOwner ? t('typeOwnerOperator', lang) : t('typeEmployee', lang)}
       </p>
+      <p style={{ fontSize: 13, color: 'var(--text-soft)', marginTop: -8 }}>
+        📧 {session.user.email}
+      </p>
 
       <div className="toggle-row">
         <div className="txt">

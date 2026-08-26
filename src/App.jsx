@@ -888,7 +888,7 @@ function RideCard({ order, isOwner, lang, onClick, compact }) {
             <span className="pill-date">{fmtDate(order.pickup_date)}</span>
             <span className="pill-time">
               {order.pickup_fixed
-                ? (order.pickup_time ? `🔒 ${fmtTime(order.pickup_time)}` : '🔒')
+                ? (order.pickup_time ? `🔒 ${fmtTime(order.pickup_time)}${order.pickup_to ? `–${fmtTime(order.pickup_to)}` : ''}` : '🔒')
                 : (order.pickup_from ? `${fmtTime(order.pickup_from)}${order.pickup_to ? `–${fmtTime(order.pickup_to)}` : ''}` : '—')}
             </span>
             {order.is_shuttle && <span className="pill" style={{ background: '#EAF0FB', color: '#2A5299' }}>🚐 Shuttle</span>}
@@ -1244,7 +1244,7 @@ function RideDetailScreen({ order, isOwner, session, lang, onBack, onStatusChang
                 {' · '}
                 {order.pickup_fixed ? `🔒 ${t('fixedPickupBadge', lang)} · ` : ''}
                 {fmtDate(order.pickup_date)}
-                {order.pickup_fixed ? (order.pickup_time ? ` · ${fmtTime(order.pickup_time)}` : '') : (order.pickup_from ? ` · ${fmtTime(order.pickup_from)}${order.pickup_to ? `–${fmtTime(order.pickup_to)}` : ''}` : '')}
+                {order.pickup_fixed ? (order.pickup_time ? ` · ${fmtTime(order.pickup_time)}${order.pickup_to ? `–${fmtTime(order.pickup_to)}` : ''}` : '') : (order.pickup_from ? ` · ${fmtTime(order.pickup_from)}${order.pickup_to ? `–${fmtTime(order.pickup_to)}` : ''}` : '')}
               </span>
             )}
           </span>
@@ -2687,7 +2687,7 @@ function BidCard({ order, lang, courierProfileId, open, onToggle, onBidPlaced, d
           <div className="bid-top-left">
             <span className="pill-label">{t('pickup', lang)}</span>
             <span className="pill-date">{fmtDate(order.pickup_date)}</span>
-            <span className="pill-time">{order.pickup_fixed ? (order.pickup_time ? `🔒 ${fmtTime(order.pickup_time)}` : '🔒') : (order.pickup_from ? `${fmtTime(order.pickup_from)}${order.pickup_to ? `–${fmtTime(order.pickup_to)}` : ''}` : '—')}</span>
+            <span className="pill-time">{order.pickup_fixed ? (order.pickup_time ? `🔒 ${fmtTime(order.pickup_time)}${order.pickup_to ? `–${fmtTime(order.pickup_to)}` : ''}` : '🔒') : (order.pickup_from ? `${fmtTime(order.pickup_from)}${order.pickup_to ? `–${fmtTime(order.pickup_to)}` : ''}` : '—')}</span>
             {order.is_shuttle && <span className="pill" style={{ background: '#EAF0FB', color: '#2A5299' }}>🚐 Shuttle</span>}
           </div>
           <div className="bid-top-right">

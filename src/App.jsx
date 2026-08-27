@@ -2231,6 +2231,30 @@ function extractPhone(contactText) {
   return match ? match[1].replace(/\s+/g, ' ').trim() : null
 }
 
+// Înainte de câștigarea licitației, firma vede doar cod poștal + oraș +
+// țară (cod ISO scurt) — nu adresa exactă. Adresele vin din Google Places,
+// de regulă în formatul "Stradă Nr, PLZ Oraș, Țară".
+const COUNTRY_CODES = {
+  'Deutschland': 'DE', 'Germany': 'DE',
+  'Österreich': 'AT', 'Austria': 'AT',
+  'Schweiz': 'CH', 'Switzerland': 'CH', 'Suisse': 'CH',
+  'Frankreich': 'FR', 'France': 'FR',
+  'Italien': 'IT', 'Italy': 'IT', 'Italia': 'IT',
+  'Niederlande': 'NL', 'Netherlands': 'NL',
+  'Belgien': 'BE', 'Belgium': 'BE',
+  'Polen': 'PL', 'Poland': 'PL',
+  'Tschechien': 'CZ', 'Czechia': 'CZ',
+}
+function cityCountryOnly(address) {
+  if (!address) return ''
+  const parts = address.split(',').map((s) => s.trim()).filter(Boolean)
+  if (parts.length < 2) return address // format necunoscut — afișăm ce avem, mai sigur decât să ascundem greșit
+  const countryRaw = parts[parts.length - 1]
+  const plzCity = parts[parts.length - 2]
+  const countryCode = COUNTRY_CODES[countryRaw] || countryRaw
+  return `${plzCity} · ${countryCode}`
+}
+
 const SERVICE_BADGE_PREFIXES = [
   { prefix: 'Verladehilfe gebucht', icon: '📦⬆️', key: 'loadHelpBadge' },
   { prefix: 'Entladehilfe gebucht', icon: '📦⬇️', key: 'unloadHelpBadge' },
@@ -2782,8 +2806,8 @@ function BidCard({ order, lang, courierProfileId, open, onToggle, onBidPlaced, d
             <span className="pill geboten">✓ {t('bidPlaced', lang)}: {existingBid.price} €</span>
           </div>
         )}
-        <div className="bid-stop"><span className="addr"><MapPin size={13} strokeWidth={1.8} /> {order.pickup_address}</span></div>
-        <div className="bid-stop"><span className="addr"><FlagTriangleRight size={13} strokeWidth={1.8} /> {order.delivery_address}</span>{order.km != null && <span className="val">📍 {order.km} km</span>}</div>
+        <div className="bid-stop"><span className="addr"><MapPin size={13} strokeWidth={1.8} /> {cityCountryOnly(order.pickup_address)}</span></div>
+        <div className="bid-stop"><span className="addr"><FlagTriangleRight size={13} strokeWidth={1.8} /> {cityCountryOnly(order.delivery_address)}</span>{order.km != null && <span className="val">📍 {order.km} km</span>}</div>
 
         <div className="bid-divider" />
         <div className="bid-zustellung-label">{t('delivery', lang)}</div>

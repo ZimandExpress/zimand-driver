@@ -321,6 +321,12 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
   const isOwner = profile?.account_type === 'owner_operator'
   const watchIdRef = useRef(null)
 
+  // Numărul de oferte încă în așteptare (comandă deschisă, fără câștigător
+  // decis încă) — afișat ca cifră lângă "Meine Angebote" în meniu, vizibil
+  // indiferent de ecranul curent, nu doar când tab-ul respectiv e deschis.
+  const { bids: menuBids } = useCourierBids(isOwner ? session?.user?.id : null)
+  const pendingOffersCount = isOwner ? menuBids.filter((b) => b.orders && b.orders.status === 'open').length : 0
+
   // Send GPS position continuously while profile.is_online is true —
   // starts/stops automatically whenever the toggle in Profile changes it.
   useEffect(() => {
@@ -404,6 +410,7 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
           {isOwner && (
             <button className={`menu-item ${tab === 'angebote' ? 'active' : ''}`} onClick={() => navTo('angebote')}>
               <span className="ic"><Tag size={19} strokeWidth={1.75} /></span>{t('menuOffers', lang)}
+              {pendingOffersCount > 0 && <span className="count-pill" style={{ marginLeft: 'auto' }}>{pendingOffersCount}</span>}
             </button>
           )}
           <button className={`menu-item ${tab === 'abgeschlossen' ? 'active' : ''}`} onClick={() => navTo('abgeschlossen')}>
@@ -531,6 +538,52 @@ function playBusinessChime() {
     playTone(1174.66, 0.15, 0.24)
   } catch (err) {
     console.error('sound error:', err.message)
+  }
+}
+
+// Notificări push — funcționează chiar cu telefonul blocat sau aplicația
+// complet închisă (spre deosebire de playBusinessChime, care sună doar
+// cât timp aplicația e deschisă pe ecran). Cheia publică e sigură de expus
+// direct în cod — doar cheia PRIVATĂ (păstrată exclusiv pe server) permite
+// trimiterea efectivă de notificări.
+const VAPID_PUBLIC_KEY = 'BEpxgH8YgPfWzEXVtiseNj-kw0TgE3fcj3MPOA2OncaqtAooQnWcMFJsfos9JWVrNd9lRZUkW88UC7XLbwU_RJ4'
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/')
+  const rawData = window.atob(base64)
+  return Uint8Array.from([...rawData].map((c) => c.charCodeAt(0)))
+}
+
+async function getPushSubscriptionStatus() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return 'unsupported'
+  const reg = await navigator.serviceWorker.ready
+  const sub = await reg.pushManager.getSubscription()
+  return sub ? 'subscribed' : 'unsubscribed'
+}
+
+async function subscribePush(driverId) {
+  const reg = await navigator.serviceWorker.ready
+  const permission = await Notification.requestPermission()
+  if (permission !== 'granted') throw new Error('Berechtigung für Benachrichtigungen wurde nicht erteilt.')
+  const sub = await reg.pushManager.subscribe({
+    userVisibleOnly: true,
+    applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+  })
+  const raw = sub.toJSON()
+  const { error } = await supabase.from('push_subscriptions').upsert(
+    { driver_id: driverId, endpoint: raw.endpoint, p256dh: raw.keys.p256dh, auth: raw.keys.auth },
+    { onConflict: 'endpoint' }
+  )
+  if (error) throw error
+}
+
+async function unsubscribePush(driverId) {
+  const reg = await navigator.serviceWorker.ready
+  const sub = await reg.pushManager.getSubscription()
+  if (sub) {
+    await supabase.from('push_subscriptions').delete().eq('endpoint', sub.endpoint)
+    await sub.unsubscribe()
   }
 }
 
@@ -1712,7 +1765,6 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
         ref={fileInputRef}
         type="file"
         accept="image/*"
-        capture="environment"
         multiple
         style={{ display: 'none' }}
         onChange={addPhotos}
@@ -2851,6 +2903,32 @@ function ProfileScreen({ session, profile, isOwner, lang, onChangeLang, onProfil
   const [companyDrivers, setCompanyDrivers] = useState([])
   const [autoAssignEnabled, setAutoAssignEnabled] = useState(true)
   const [savingAssignPrefs, setSavingAssignPrefs] = useState(false)
+  const [pushStatus, setPushStatus] = useState('checking') // 'checking' | 'unsupported' | 'subscribed' | 'unsubscribed'
+  const [pushBusy, setPushBusy] = useState(false)
+  const [pushError, setPushError] = useState('')
+
+  useEffect(() => {
+    getPushSubscriptionStatus().then(setPushStatus).catch(() => setPushStatus('unsupported'))
+  }, [])
+
+  async function togglePush() {
+    if (!profile?.id) return
+    setPushBusy(true)
+    setPushError('')
+    try {
+      if (pushStatus === 'subscribed') {
+        await unsubscribePush(profile.id)
+        setPushStatus('unsubscribed')
+      } else {
+        await subscribePush(profile.id)
+        setPushStatus('subscribed')
+      }
+    } catch (err) {
+      setPushError(err.message)
+    } finally {
+      setPushBusy(false)
+    }
+  }
 
   useEffect(() => {
     if (!companyProfileId) return
@@ -2990,6 +3068,21 @@ function ProfileScreen({ session, profile, isOwner, lang, onChangeLang, onProfil
           disabled={busy}
         />
       </div>
+
+      {pushStatus !== 'unsupported' && pushStatus !== 'checking' && (
+        <div className="toggle-row">
+          <div className="txt">
+            {t('pushToggle', lang)}
+            <small>{t('pushToggleNote', lang)}</small>
+          </div>
+          <button
+            className={`switch ${pushStatus === 'subscribed' ? 'on' : ''}`}
+            onClick={togglePush}
+            disabled={pushBusy}
+          />
+        </div>
+      )}
+      {pushError && <div className="login-error" style={{ marginTop: -8, marginBottom: 12 }}>{pushError}</div>}
 
       {vehicles.length > 0 && (
         <div className="prof-row">

@@ -1679,20 +1679,19 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
   async function confirmLeg() {
     setBusy(true)
     try {
-      const photoPaths = []
-      for (const p of photos) {
-        photoPaths.push(await uploadPodFile(order.id, leg, p.file))
-      }
-      const uploadedDocs = []
-      for (const doc of documents) {
-        const path = await uploadPodFile(order.id, leg, doc.file)
-        uploadedDocs.push({ type: doc.type, path, name: doc.file.name })
-      }
-      let signaturePath = null
-      if (signatureBlob) {
-        const sigFile = new File([signatureBlob], 'signature.png', { type: 'image/png' })
-        signaturePath = await uploadPodFile(order.id, leg, sigFile)
-      }
+      // Toate fișierele se încarcă simultan, nu unul după altul — cu 5-6
+      // poze plus documente plus semnătură, încărcarea pe rând se aduna
+      // repede la un timp de așteptare mult prea mare.
+      const [photoPaths, uploadedDocs, signaturePath] = await Promise.all([
+        Promise.all(photos.map((p) => uploadPodFile(order.id, leg, p.file))),
+        Promise.all(documents.map(async (doc) => ({
+          type: doc.type, name: doc.file.name,
+          path: await uploadPodFile(order.id, leg, doc.file),
+        }))),
+        signatureBlob
+          ? uploadPodFile(order.id, leg, new File([signatureBlob], 'signature.png', { type: 'image/png' }))
+          : Promise.resolve(null),
+      ])
       const { error } = await supabase.rpc(confirmFn, {
         p_order_id: order.id,
         p_photos: photoPaths,
@@ -1870,7 +1869,7 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
       <SignatureLine lang={lang} signatureBlob={signatureBlob} onChange={setSignatureBlob} />
 
       <button className="btn" onClick={confirmLeg} disabled={busy} style={{ marginTop: 14 }}>
-        {busy ? '…' : leg === 'pickup' ? t('confirmPickup', lang) : t('confirmDelivery', lang)}
+        {busy ? t('uploadingLabel', lang) : leg === 'pickup' ? t('confirmPickup', lang) : t('confirmDelivery', lang)}
       </button>
     </div>
   )

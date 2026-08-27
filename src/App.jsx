@@ -2590,7 +2590,6 @@ function BiddingScreen({ profile, session, lang, embedded }) {
   const [openId, setOpenId] = useState(null)
   const [biddedOrderIds, setBiddedOrderIds] = useState(new Set())
   const [radiusKm, setRadiusKm] = useState(null) // null = alle
-  const [orderDistances, setOrderDistances] = useState({}) // { orderId: km | null }
   const courierProfileId = session?.user?.id || null
   const driverLocation = useDriverLocation(session)
   const mapsKey = useGoogleMapsKey()
@@ -2647,35 +2646,11 @@ function BiddingScreen({ profile, session, lang, embedded }) {
   // rămâne și în "Verfügbar"
   const availableOrders = orders.filter((o) => !biddedOrderIds.has(o.id))
 
-  // Calculăm distanța (geocodificare + Haversine) doar pentru comenzile
-  // vizibile acum, o singură dată fiecare — nu la fiecare randare.
-  useEffect(() => {
-    if (!isOwner || !driverLocation || !mapsKey) return
-    let cancelled = false
-    ;(async () => {
-      for (const o of availableOrders) {
-        if (orderDistances[o.id] !== undefined) continue
-        const point = await geocodeAddressCached(o.pickup_address, mapsKey)
-        if (cancelled) return
-        const km = point ? Math.round(haversineKm(driverLocation.lat, driverLocation.lng, point.lat, point.lng)) : null
-        setOrderDistances((prev) => ({ ...prev, [o.id]: km }))
-      }
-    })()
-    return () => { cancelled = true }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [driverLocation, mapsKey, availableOrders.map((o) => o.id).join(',')])
-
-  // Nimic nu se mai ascunde — doar sortăm cele apropiate primele; comenzile
-  // mai îndepărtate rămân vizibile, doar coboară spre finalul listei.
-  const sortedOrders = [...availableOrders].sort((a, b) => {
-    if (radiusKm == null) return 0
-    const da = orderDistances[a.id]
-    const db = orderDistances[b.id]
-    if (da == null && db == null) return 0
-    if (da == null) return 1
-    if (db == null) return -1
-    return da - db
-  })
+  // Calculul de distanță (afișat pe fiecare comandă, "X km bis zu dir")
+  // a fost dezactivat complet — atât varianta cu ruta reală, cât și cea
+  // "gratuită" foloseau geocodificare Google, plătită la scară mare (multe
+  // verificări × mulți șoferi). Sortarea rămâne în ordinea normală.
+  const sortedOrders = availableOrders
 
   if (loading) return <PlaceholderScreen title={embedded ? '' : t('tabBidding', lang)} note={t('loadingRides', lang)} />
 
@@ -2707,7 +2682,7 @@ function BiddingScreen({ profile, session, lang, embedded }) {
       {!embedded && <h2 className="screen-title">{t('tabBidding', lang)}</h2>}
       {radiusFilter}
       {sortedOrders.map((o) => (
-        <BidCard key={o.id} order={o} lang={lang} courierProfileId={courierProfileId} open={openId === o.id} onToggle={() => setOpenId(openId === o.id ? null : o.id)} onBidPlaced={(orderId) => setBiddedOrderIds((prev) => new Set(prev).add(orderId))} distanceKm={isOwner ? orderDistances[o.id] : null} />
+        <BidCard key={o.id} order={o} lang={lang} courierProfileId={courierProfileId} open={openId === o.id} onToggle={() => setOpenId(openId === o.id ? null : o.id)} onBidPlaced={(orderId) => setBiddedOrderIds((prev) => new Set(prev).add(orderId))} />
       ))}
     </div>
   )
@@ -2737,7 +2712,7 @@ function VehicleChips({ vehicles }) {
   )
 }
 
-function BidCard({ order, lang, courierProfileId, open, onToggle, onBidPlaced, distanceKm }) {
+function BidCard({ order, lang, courierProfileId, open, onToggle, onBidPlaced }) {
   const [ownPrice, setOwnPrice] = useState('')
   const [message, setMessage] = useState('')
   const [respectInterval, setRespectInterval] = useState(true)
@@ -2866,7 +2841,6 @@ function BidCard({ order, lang, courierProfileId, open, onToggle, onBidPlaced, d
         <div className="bid-cargo-row">
           <VehicleChips vehicles={order.vehicles} />
           <div className="bid-cargo-meta">
-            {distanceKm != null && <span className="meta-item">🚗 {distanceKm} km bis zu dir</span>}
             {order.weight && <span className="meta-item">⚖ {order.weight} kg</span>}
           </div>
         </div>

@@ -1,12 +1,17 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
-
 export default defineConfig({
   plugins: [
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      // Trecut la 'injectManifest' — necesar ca să putem adăuga cod propriu
+      // pentru notificări push (Workbox singur nu gestionează push-uri).
+      // 'src/sw.js' conține precache-ul automat (neschimbat) PLUS partea nouă.
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.js',
       includeAssets: ['apple-touch-icon.png'],
       manifest: {
         name: 'Zimand Driver',
@@ -23,20 +28,10 @@ export default defineConfig({
           { src: '/icon-512-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
       },
-      workbox: {
-        // Nu punem în cache apelurile către Supabase (date live, nu trebuie
-        // servite din cache vechi) — doar fișierele aplicației în sine.
-        navigateFallbackDenylist: [/^\/rest\//, /^\/auth\//, /^\/storage\//, /^\/functions\//],
+      injectManifest: {
         // opencv.js (~9 MB) depășește limita implicită de 2 MB — o ridicăm,
         // exact cum indică mesajul de eroare al build-ului.
         maximumFileSizeToCacheInBytes: 15 * 1024 * 1024,
-        runtimeCaching: [
-          {
-            urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com\//,
-            handler: 'CacheFirst',
-            options: { cacheName: 'google-fonts', expiration: { maxEntries: 20, maxAgeSeconds: 60 * 60 * 24 * 365 } },
-          },
-        ],
       },
     }),
   ],

@@ -2211,6 +2211,7 @@ function driverSafeNotesWithoutContacts(notesText) {
       !line.startsWith('Kontakt Zustellung:') &&
       !line.startsWith('Notiz Abholung:') &&
       !line.startsWith('Notiz Zustellung:') &&
+      !line.startsWith('Auftraggeber (Gast):') &&
       !line.startsWith('ADR: ') &&
       !line.startsWith('Stapelbar: ') &&
       !line.includes('frühere Abholung') &&

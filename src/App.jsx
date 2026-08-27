@@ -786,7 +786,7 @@ function RidesScreen({ profile, isOwner, session, lang }) {
     return <CompletedOrderDetail order={selected} isOwner={isOwner} lang={lang} onBack={() => setSelectedId(null)} />
   }
   if (selected) {
-    return <RideDetailScreen order={selected} isOwner={isOwner} session={session} lang={lang} onBack={() => setSelectedId(null)} onStatusChange={() => {}} onDeliveryComplete={(amount) => setCelebration(amount)} />
+    return <RideDetailScreen order={selected} isOwner={isOwner} session={session} lang={lang} onBack={() => setSelectedId(null)} onStatusChange={() => {}} onDeliveryComplete={(amount) => { setSelectedId(null); setCelebration(amount) }} />
   }
 
   const activeOrders = orders.filter((o) => o.status === 'assigned')

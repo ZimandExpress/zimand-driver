@@ -1765,7 +1765,6 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
         ref={fileInputRef}
         type="file"
         accept="image/*"
-        multiple
         style={{ display: 'none' }}
         onChange={addPhotos}
       />

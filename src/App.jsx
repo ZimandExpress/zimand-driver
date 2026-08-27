@@ -48,6 +48,7 @@ function InstallPrompt({ lang }) {
   )
 }
 
+// BUILD-MARKER: 2026-08-26-confirmFormOpen-fix
 export default function App() {
   const [session, setSession] = useState(null)
   const [profile, setProfile] = useState(null)
@@ -1210,9 +1211,26 @@ function RideDetailScreen({ order, isOwner, session, lang, onBack, onStatusChang
   const arrivedAt = leg === 'pickup' ? order.pickup_arrived_at : order.delivery_arrived_at
   const confirmedAt = leg === 'pickup' ? order.pickup_confirmed_at : order.delivery_confirmed_at
 
+  // Formularul de confirmare (poze/documente/nume/semnătură) se deschide
+  // automat de îndată ce șoferul a ajuns la locație. "Zurück" în acest
+  // pas special NU trebuie să scoată șoferul din comandă — doar închide
+  // formularul, ca să revadă detaliile (adresă, marfă), fără să piardă
+  // progresul deja înregistrat ("Angekommen" rămâne bifat). Apăsând din
+  // nou pe caseta etapei active, formularul se redeschide.
+  const [confirmFormOpen, setConfirmFormOpen] = useState(true)
+  const inConfirmStep = order.status === 'assigned' && !!arrivedAt && !confirmedAt
+
+  function handleBack() {
+    if (inConfirmStep && confirmFormOpen) {
+      setConfirmFormOpen(false)
+      return
+    }
+    onBack()
+  }
+
   return (
     <div className="ride-detail">
-      <button className="back-btn" onClick={onBack}>← {t('back', lang)}</button>
+      <button className="back-btn" onClick={handleBack}>← {t('back', lang)}</button>
 
       <div className="ride-detail-header">
         <span className="ride-ref">{t('orderRef', lang)} {order.order_number || order.reference || order.id.slice(0, 8)}</span>
@@ -1229,14 +1247,19 @@ function RideDetailScreen({ order, isOwner, session, lang, onBack, onStatusChang
         </div>
       )}
 
-      {order.status === 'assigned' && !confirmedAt && (
+      {order.status === 'assigned' && !confirmedAt && confirmFormOpen && (
         <LegWorkflow key={leg} order={order} leg={leg} lang={lang} startedAt={startedAt} arrivedAt={arrivedAt} onStatusChange={onStatusChange} isOwner={isOwner} onDeliveryComplete={() => onDeliveryComplete(isOwner ? order.estimated_price : true)} />
       )}
 
       {order.status === 'assigned' && order.pickup_confirmed_at && !order.delivery_confirmed_at && leg === 'delivery' && null}
 
+      {!(inConfirmStep && confirmFormOpen) && (
+      <>
       <div className="info-card">
-        <div className={`info-card-head leg-head-line ${order.pickup_started_at && !order.pickup_arrived_at ? 'en-route' : ''}`}>
+        <div
+          className={`info-card-head leg-head-line ${order.pickup_started_at && !order.pickup_arrived_at ? 'en-route' : ''}`}
+          {...(leg === 'pickup' && arrivedAt && !confirmedAt ? { onClick: () => setConfirmFormOpen(true), style: { cursor: 'pointer' } } : {})}
+        >
           <span className="leg-head-left">
             🅐 {t('pickup', lang)}
             {order.pickup_date && (
@@ -1270,7 +1293,10 @@ function RideDetailScreen({ order, isOwner, session, lang, onBack, onStatusChang
       </div>
 
       <div className="info-card">
-        <div className={`info-card-head leg-head-line ${order.delivery_started_at && !order.delivery_arrived_at ? 'en-route' : ''}`}>
+        <div
+          className={`info-card-head leg-head-line ${order.delivery_started_at && !order.delivery_arrived_at ? 'en-route' : ''}`}
+          {...(leg === 'delivery' && arrivedAt && !confirmedAt ? { onClick: () => setConfirmFormOpen(true), style: { cursor: 'pointer' } } : {})}
+        >
           <span className="leg-head-left">
             🅑 {t('delivery', lang)}
             {order.delivery_date && (
@@ -1297,6 +1323,8 @@ function RideDetailScreen({ order, isOwner, session, lang, onBack, onStatusChang
           {deliveryNotiz && <div className="leg-notiz">📝 {deliveryNotiz}</div>}
         </div>
       </div>
+      </>
+      )}
 
       <div className="info-card">
         <div className="info-card-head cargo-toggle" onClick={() => setCargoOpen((v) => !v)}>

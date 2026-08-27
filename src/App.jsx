@@ -1620,7 +1620,9 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
   const [signatureBlob, setSignatureBlob] = useState(null)
   const [signerName, setSignerName] = useState('')
   const fileInputRef = useRef(null)
+  const cameraInputRef = useRef(null)
   const docInputRef = useRef(null)
+  const [photoSourceOpen, setPhotoSourceOpen] = useState(false)
 
   const startFn = leg === 'pickup' ? 'driver_mark_pickup_started' : 'driver_mark_delivery_started'
   const arriveFn = leg === 'pickup' ? 'driver_mark_pickup_arrived' : 'driver_mark_delivery_arrived'
@@ -1758,9 +1760,35 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
           </div>
         ))}
         {photos.length < 6 && (
-          <div className="photo-slot" onClick={() => fileInputRef.current?.click()}>+</div>
+          <div className="photo-slot" onClick={() => setPhotoSourceOpen(true)}>+</div>
         )}
       </div>
+
+      {photoSourceOpen && (
+        <div className="sig-fullscreen" style={{ justifyContent: 'flex-end', background: 'rgba(15,34,64,.55)' }}>
+          <div style={{ background: '#fff', borderRadius: '16px 16px 0 0', padding: '20px 20px calc(20px + env(safe-area-inset-bottom))' }}>
+            <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: 17, color: 'var(--navy)', marginBottom: 14, textTransform: 'uppercase', letterSpacing: '.03em' }}>
+              {t('photosLabel', lang)}
+            </div>
+            <button type="button" className="btn secondary" style={{ width: '100%', marginTop: 0, marginBottom: 10 }} onClick={() => { setPhotoSourceOpen(false); cameraInputRef.current?.click() }}>
+              📷 {t('takePhoto', lang)}
+            </button>
+            <button type="button" className="btn secondary" style={{ width: '100%', marginTop: 0, marginBottom: 10 }} onClick={() => { setPhotoSourceOpen(false); fileInputRef.current?.click() }}>
+              🖼️ {t('chooseFromGallery', lang)}
+            </button>
+            <button type="button" className="link-btn" onClick={() => setPhotoSourceOpen(false)}>{t('back', lang)}</button>
+          </div>
+        </div>
+      )}
+
+      <input
+        ref={cameraInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        style={{ display: 'none' }}
+        onChange={addPhotos}
+      />
       <input
         ref={fileInputRef}
         type="file"

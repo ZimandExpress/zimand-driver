@@ -43,6 +43,22 @@ body {
   gap: 8px;
 }
 
+.splash-logo {
+  font-family: 'Oswald', sans-serif;
+  font-size: 42px;
+  font-weight: 600;
+  color: var(--navy);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  letter-spacing: .01em;
+}
+
+.splash-logo .live-dot {
+  width: 14px;
+  height: 14px;
+}
+
 .live-dot {
   width: 8px;
   height: 8px;

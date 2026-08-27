@@ -2033,6 +2033,11 @@ function useCompanyProfileId(session, profile) {
 function useCourierBids(courierProfileId) {
   const [bids, setBids] = useState([])
   const [loading, setLoading] = useState(true)
+  // Numele canalului trebuie să fie unic per instanță — acest hook rulează
+  // acum simultan din mai multe locuri (meniu + ecranul propriu-zis), iar
+  // Supabase Realtime interzice atașarea de listeneri noi pe un canal cu
+  // același nume, deja abonat în altă parte.
+  const channelNameRef = useRef(`courier-own-bids-${Math.random().toString(36).slice(2)}`)
 
   useEffect(() => {
     if (!courierProfileId) { setLoading(false); return }
@@ -2052,7 +2057,7 @@ function useCourierBids(courierProfileId) {
     load()
 
     const channel = supabase
-      .channel('courier-own-bids')
+      .channel(channelNameRef.current)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'bids', filter: `courier_id=eq.${courierProfileId}` }, load)
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders' }, load)
       .subscribe()

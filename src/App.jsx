@@ -1751,7 +1751,7 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
         onChange={addDocument}
       />
 
-      <div className="pod-label">{t('signerNameLabel', lang)}</div>
+      <div className="pod-label">{t(leg === 'pickup' ? 'signerNameLabelPickup' : 'signerNameLabelDelivery', lang)}</div>
       <input
         className="bid-input2"
         type="text"

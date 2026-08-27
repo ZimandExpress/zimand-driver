@@ -177,7 +177,7 @@ function LangSwitcher({ lang, onChangeLang, dark }) {
 function SplashScreen({ lang }) {
   return (
     <div className="phone-shell center-content">
-      <div className="brand-mark">
+      <div className="splash-logo">
         <span className="live-dot" /> {t('appName', lang)}
       </div>
     </div>
@@ -1676,8 +1676,11 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
     setDocuments((prev) => prev.filter((_, i) => i !== idx))
   }
 
+  const [uploadError, setUploadError] = useState('')
+
   async function confirmLeg() {
     setBusy(true)
+    setUploadError('')
     try {
       // Toate fișierele se încarcă simultan, nu unul după altul — cu 5-6
       // poze plus documente plus semnătură, încărcarea pe rând se aduna
@@ -1713,6 +1716,10 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
       }).catch((syncErr) => console.error('sync-delivery-documents error:', syncErr.message))
     } catch (err) {
       console.error('confirm leg error:', err.message)
+      // Pozele, documentele și semnătura RĂMÂN neatinse, aici, în ecran —
+      // nimic nu se șterge la eșec. E suficient să apese din nou butonul,
+      // odată ce semnalul revine, fără să reia nimic de la capăt.
+      setUploadError(t('uploadFailedError', lang))
     } finally {
       setBusy(false)
     }
@@ -1867,6 +1874,12 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
       />
 
       <SignatureLine lang={lang} signatureBlob={signatureBlob} onChange={setSignatureBlob} />
+
+      {uploadError && (
+        <div style={{ background: '#FCEBE8', border: '1px solid #E4A296', borderRadius: 10, padding: '10px 12px', fontSize: 15.5, color: '#B23A24', marginTop: 4 }}>
+          ⚠️ {uploadError}
+        </div>
+      )}
 
       <button className="btn" onClick={confirmLeg} disabled={busy} style={{ marginTop: 14 }}>
         {busy ? t('uploadingLabel', lang) : leg === 'pickup' ? t('confirmPickup', lang) : t('confirmDelivery', lang)}

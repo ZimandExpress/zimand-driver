@@ -4,6 +4,12 @@ import { t, getLang, setLang, availableLangs } from './i18n'
 import { Truck, CheckCircle2, Wallet, User, LogOut, Menu, Bell, MapPin, FlagTriangleRight, Tag, XCircle, Download, X, Navigation, Trophy, ThumbsUp } from 'lucide-react'
 import './index.css'
 
+// Jurnal de utilizare Google API — o linie per apel real, "fire-and-forget",
+// ca să vedem exact de unde vine consumul (raport în panoul de disponent).
+function logApiUsage(apiName, page, description) {
+  supabase.from('api_usage_log').insert({ api_name: apiName, source_app: 'driver_app', page, description }).then(() => {}, () => {})
+}
+
 function InstallPrompt({ lang }) {
   const [deferredPrompt, setDeferredPrompt] = useState(null)
   const [dismissed, setDismissed] = useState(() => localStorage.getItem('zd-install-dismissed') === '1')
@@ -1028,6 +1034,7 @@ let googleMapsLoadPromise = null
 function loadGoogleMaps(apiKey) {
   if (window.google?.maps) return Promise.resolve()
   if (googleMapsLoadPromise) return googleMapsLoadPromise
+  logApiUsage('maps_js', 'Driver App — Kartenladung (einmal pro Sitzung)')
   googleMapsLoadPromise = new Promise((resolve, reject) => {
     const script = document.createElement('script')
     script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=geometry`
@@ -1167,6 +1174,7 @@ function GoogleLiveMap({ pickupCoords, deliveryCoords }) {
     if (deliveryCoords) addMarker(deliveryCoords, 'B', '#0F2240')
 
     if (pickupCoords && deliveryCoords) {
+      logApiUsage('directions', 'Driver App — Live-Karte (Route zeichnen)')
       const directionsService = new window.google.maps.DirectionsService()
       directionsService.route(
         {

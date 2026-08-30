@@ -1166,15 +1166,26 @@ function GoogleLiveMap({ pickupCoords, deliveryCoords }) {
     if (pickupCoords) addMarker(pickupCoords, 'A', '#FF7A29')
     if (deliveryCoords) addMarker(deliveryCoords, 'B', '#0F2240')
 
-    // Directions API dezactivat — consum neașteptat de mare, costuri reale
-    // apărute rapid. Harta arată doar punctele A/B, fără linia de rută
-    // desenată; butonul "Navigation" (Google Maps extern) rămâne neatins,
-    // acolo rutarea reală nu are niciun cost pentru noi.
     if (pickupCoords && deliveryCoords) {
-      const bounds = new window.google.maps.LatLngBounds()
-      bounds.extend({ lat: pickupCoords[0], lng: pickupCoords[1] })
-      bounds.extend({ lat: deliveryCoords[0], lng: deliveryCoords[1] })
-      map.fitBounds(bounds, 40)
+      const directionsService = new window.google.maps.DirectionsService()
+      directionsService.route(
+        {
+          origin: { lat: pickupCoords[0], lng: pickupCoords[1] },
+          destination: { lat: deliveryCoords[0], lng: deliveryCoords[1] },
+          travelMode: window.google.maps.TravelMode.DRIVING,
+        },
+        (result, status) => {
+          if (status === 'OK') {
+            renderer.setDirections(result)
+          } else {
+            renderer.setDirections({ routes: [] })
+            const bounds = new window.google.maps.LatLngBounds()
+            bounds.extend({ lat: pickupCoords[0], lng: pickupCoords[1] })
+            bounds.extend({ lat: deliveryCoords[0], lng: deliveryCoords[1] })
+            map.fitBounds(bounds, 40)
+          }
+        }
+      )
     } else if (pickupCoords) {
       map.setCenter({ lat: pickupCoords[0], lng: pickupCoords[1] })
       map.setZoom(12)

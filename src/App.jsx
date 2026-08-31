@@ -1226,7 +1226,15 @@ function ContactRow({ contact, lang }) {
   )
 }
 
-function RideDetailScreen({ order, isOwner, session, lang, onBack, onStatusChange, onDeliveryComplete }) {
+function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, onStatusChange, onDeliveryComplete }) {
+  // Actualizare optimistă — de îndată ce un buton (Losfahren/Angekommen/
+  // confirmare) reușește, marcăm local, imediat, fără să așteptăm ca
+  // sincronizarea live (Realtime) să confirme din baza de date — asta
+  // dădea senzația de aplicație lentă la fiecare apăsare.
+  const [optimistic, setOptimistic] = useState({})
+  const order = { ...orderProp, ...optimistic }
+  useEffect(() => { setOptimistic({}) }, [orderProp.id])
+  const setOptimisticField = (field) => setOptimistic((o) => ({ ...o, [field]: new Date().toISOString() }))
   const pickupCoords = useGeocode(order.pickup_address)
   const deliveryCoords = useGeocode(order.delivery_address)
   const companyName = useCompanyName(order.created_by)
@@ -1312,7 +1320,7 @@ function RideDetailScreen({ order, isOwner, session, lang, onBack, onStatusChang
       )}
 
       {order.status === 'assigned' && !confirmedAt && confirmFormOpen && (
-        <LegWorkflow key={leg} order={order} leg={leg} lang={lang} startedAt={startedAt} arrivedAt={arrivedAt} onStatusChange={onStatusChange} isOwner={isOwner} onDeliveryComplete={() => onDeliveryComplete(isOwner ? order.estimated_price : true)} />
+        <LegWorkflow key={leg} order={order} leg={leg} lang={lang} startedAt={startedAt} arrivedAt={arrivedAt} onStatusChange={setOptimisticField} isOwner={isOwner} onDeliveryComplete={() => onDeliveryComplete(isOwner ? order.estimated_price : true)} />
       )}
 
       {order.status === 'assigned' && order.pickup_confirmed_at && !order.delivery_confirmed_at && leg === 'delivery' && null}
@@ -1704,7 +1712,11 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
       console.error(fn, error.message)
       return
     }
-    onStatusChange()
+    // Numele funcției urmează mereu tiparul driver_mark_{etapă}_started/
+    // arrived — deducem câmpul afectat, ca să marcăm local, instant,
+    // fără să așteptăm sincronizarea live din baza de date.
+    const m = fn.match(/^driver_mark_(.+)_(started|arrived)$/)
+    if (m) onStatusChange(`${m[1]}_${m[2]}_at`)
   }
 
   function addPhotos(e) {
@@ -1770,7 +1782,7 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
         p_signer_name: signerName || null,
       })
       if (error) throw error
-      onStatusChange()
+      onStatusChange(`${leg}_confirmed_at`)
       if ((leg === 'delivery' && !order.is_round_trip) || leg === 'return_delivery') { if (onDeliveryComplete) onDeliveryComplete() }
 
       // Trimite pozele/documentele/semnătura către portalul de client —

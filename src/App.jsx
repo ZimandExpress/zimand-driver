@@ -1266,11 +1266,14 @@ function RideDetailScreen({ order, isOwner, session, lang, onBack, onStatusChang
     onBack()
   }
 
-  // which leg are we on: pickup or delivery
-  const leg = !order.pickup_confirmed_at ? 'pickup' : 'delivery'
-  const startedAt = leg === 'pickup' ? order.pickup_started_at : order.delivery_started_at
-  const arrivedAt = leg === 'pickup' ? order.pickup_arrived_at : order.delivery_arrived_at
-  const confirmedAt = leg === 'pickup' ? order.pickup_confirmed_at : order.delivery_confirmed_at
+  // which leg are we on: pickup, delivery, sau (la dus-întors) return_pickup/return_delivery
+  const leg = !order.pickup_confirmed_at ? 'pickup'
+    : !order.delivery_confirmed_at ? 'delivery'
+    : (order.is_round_trip && !order.return_pickup_confirmed_at) ? 'return_pickup'
+    : 'return_delivery'
+  const startedAt = leg === 'pickup' ? order.pickup_started_at : leg === 'delivery' ? order.delivery_started_at : leg === 'return_pickup' ? order.return_pickup_started_at : order.return_delivery_started_at
+  const arrivedAt = leg === 'pickup' ? order.pickup_arrived_at : leg === 'delivery' ? order.delivery_arrived_at : leg === 'return_pickup' ? order.return_pickup_arrived_at : order.return_delivery_arrived_at
+  const confirmedAt = leg === 'pickup' ? order.pickup_confirmed_at : leg === 'delivery' ? order.delivery_confirmed_at : leg === 'return_pickup' ? order.return_pickup_confirmed_at : order.return_delivery_confirmed_at
 
   // Formularul de confirmare (poze/documente/nume/semnătură) se deschide
   // automat de îndată ce șoferul a ajuns la locație. "Zurück" în acest
@@ -1384,6 +1387,62 @@ function RideDetailScreen({ order, isOwner, session, lang, onBack, onStatusChang
           {deliveryNotiz && <div className="leg-notiz">📝 {deliveryNotiz}</div>}
         </div>
       </div>
+
+      {order.is_round_trip && (
+        <>
+          <div className="info-card">
+            <div
+              className={`info-card-head leg-head-line ${order.return_pickup_started_at && !order.return_pickup_arrived_at ? 'en-route' : ''}`}
+              {...(leg === 'return_pickup' && arrivedAt && !confirmedAt ? { onClick: () => setConfirmFormOpen(true), style: { cursor: 'pointer' } } : {})}
+            >
+              <span className="leg-head-left">
+                🔁🅐 {t('pickup', lang)} ({t('returnLabel', lang)})
+                {order.return_pickup_date && (
+                  <span className="leg-head-time">
+                    {' · '}
+                    {fmtDate(order.return_pickup_date)}
+                    {order.return_pickup_from ? ` · ${fmtTime(order.return_pickup_from)}${order.return_pickup_to ? `–${fmtTime(order.return_pickup_to)}` : ''}` : ''}
+                  </span>
+                )}
+              </span>
+              {order.return_pickup_confirmed_at && <span className="leg-done-badge">✓ {t('pickedUpLabel', lang)}</span>}
+              {order.return_pickup_started_at && !order.return_pickup_arrived_at && (
+                <span className="leg-en-route-pill">{t('enRouteLabel', lang)} <span className="moving-van">🚚</span></span>
+              )}
+            </div>
+            <div className="info-card-body">
+              <div className="info-row address-row">
+                <span className="address-text">{order.return_pickup_address}</span>
+                <a className="maps-nav-btn" href={mapsNavUrl(order.return_pickup_address)} target="_blank" rel="noreferrer"><Navigation size={13} strokeWidth={2.2} /> {t('navigateButton', lang)}</a>
+              </div>
+              {order.return_pickup_confirmed_at && <div className="info-row-time">✓ {fmtDateTime(order.return_pickup_confirmed_at)}</div>}
+              {order.return_cargo_desc && <div className="leg-notiz">📝 {order.return_cargo_desc}</div>}
+            </div>
+          </div>
+
+          <div className="info-card">
+            <div
+              className={`info-card-head leg-head-line ${order.return_delivery_started_at && !order.return_delivery_arrived_at ? 'en-route' : ''}`}
+              {...(leg === 'return_delivery' && arrivedAt && !confirmedAt ? { onClick: () => setConfirmFormOpen(true), style: { cursor: 'pointer' } } : {})}
+            >
+              <span className="leg-head-left">
+                🔁🅑 {t('delivery', lang)} ({t('returnLabel', lang)})
+              </span>
+              {order.return_delivery_confirmed_at && <span className="leg-done-badge">✓ {t('deliveredLabel', lang)}</span>}
+              {order.return_delivery_started_at && !order.return_delivery_arrived_at && (
+                <span className="leg-en-route-pill">{t('enRouteLabel', lang)} <span className="moving-van">🚚</span></span>
+              )}
+            </div>
+            <div className="info-card-body">
+              <div className="info-row address-row">
+                <span className="address-text">{order.return_delivery_address}</span>
+                <a className="maps-nav-btn" href={mapsNavUrl(order.return_delivery_address)} target="_blank" rel="noreferrer"><Navigation size={13} strokeWidth={2.2} /> {t('navigateButton', lang)}</a>
+              </div>
+              {order.return_delivery_confirmed_at && <div className="info-row-time">✓ {fmtDateTime(order.return_delivery_confirmed_at)}</div>}
+            </div>
+          </div>
+        </>
+      )}
       </>
       )}
 
@@ -1632,10 +1691,10 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
   const docInputRef = useRef(null)
   const [photoSourceOpen, setPhotoSourceOpen] = useState(false)
 
-  const startFn = leg === 'pickup' ? 'driver_mark_pickup_started' : 'driver_mark_delivery_started'
-  const arriveFn = leg === 'pickup' ? 'driver_mark_pickup_arrived' : 'driver_mark_delivery_arrived'
-  const confirmFn = leg === 'pickup' ? 'driver_confirm_pickup' : 'driver_confirm_delivery'
-  const legLabel = leg === 'pickup' ? t('pickup', lang) : t('delivery', lang)
+  const startFn = leg === 'pickup' ? 'driver_mark_pickup_started' : leg === 'delivery' ? 'driver_mark_delivery_started' : leg === 'return_pickup' ? 'driver_mark_return_pickup_started' : 'driver_mark_return_delivery_started'
+  const arriveFn = leg === 'pickup' ? 'driver_mark_pickup_arrived' : leg === 'delivery' ? 'driver_mark_delivery_arrived' : leg === 'return_pickup' ? 'driver_mark_return_pickup_arrived' : 'driver_mark_return_delivery_arrived'
+  const confirmFn = leg === 'pickup' ? 'driver_confirm_pickup' : leg === 'delivery' ? 'driver_confirm_delivery' : leg === 'return_pickup' ? 'driver_confirm_return_pickup' : 'driver_confirm_return_delivery'
+  const legLabel = (leg === 'pickup' || leg === 'return_pickup') ? t('pickup', lang) : t('delivery', lang)
 
   async function callRpc(fn) {
     setBusy(true)
@@ -1712,7 +1771,7 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
       })
       if (error) throw error
       onStatusChange()
-      if (leg === 'delivery' && onDeliveryComplete) onDeliveryComplete()
+      if ((leg === 'delivery' && !order.is_round_trip) || leg === 'return_delivery') { if (onDeliveryComplete) onDeliveryComplete() }
 
       // Trimite pozele/documentele/semnătura către portalul de client —
       // dacă eșuează, nu blocăm confirmarea (deja salvată cu succes mai sus).
@@ -1872,7 +1931,7 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
         onChange={addDocument}
       />
 
-      <div className="pod-label">{t(leg === 'pickup' ? 'signerNameLabelPickup' : 'signerNameLabelDelivery', lang)}</div>
+      <div className="pod-label">{t((leg === 'pickup' || leg === 'return_pickup') ? 'signerNameLabelPickup' : 'signerNameLabelDelivery', lang)}</div>
       <input
         className="bid-input2"
         type="text"
@@ -1890,7 +1949,7 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
       )}
 
       <button className="btn" onClick={confirmLeg} disabled={busy} style={{ marginTop: 14 }}>
-        {busy ? t('uploadingLabel', lang) : leg === 'pickup' ? t('confirmPickup', lang) : t('confirmDelivery', lang)}
+        {busy ? t('uploadingLabel', lang) : (leg === 'pickup' || leg === 'return_pickup') ? t('confirmPickup', lang) : t('confirmDelivery', lang)}
       </button>
     </div>
   )

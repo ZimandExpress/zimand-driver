@@ -1361,6 +1361,11 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
             </div>
           )}
           {pickupNotiz && <div className="leg-notiz">📝 {pickupNotiz}</div>}
+          {order.pickup_alt_date && (
+            <div style={{ background: '#FFF6ED', border: '1px solid #FF7A29', borderRadius: 6, padding: '6px 10px', marginTop: 6, fontSize: 12.5, color: '#E8631A', fontWeight: 600 }}>
+              ⏰ {t('altTimeLabel', lang)}: {fmtDate(order.pickup_alt_date)} {order.pickup_alt_from ? `${fmtTime(order.pickup_alt_from)}${order.pickup_alt_to ? `–${fmtTime(order.pickup_alt_to)}` : ''}` : ''}
+            </div>
+          )}
         </div>
       </div>
 
@@ -1393,6 +1398,11 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
           </div>
           {order.delivery_confirmed_at && <div className="info-row-time">✓ {fmtDateTime(order.delivery_confirmed_at)}</div>}
           {deliveryNotiz && <div className="leg-notiz">📝 {deliveryNotiz}</div>}
+          {order.delivery_alt_date && (
+            <div style={{ background: '#FFF6ED', border: '1px solid #FF7A29', borderRadius: 6, padding: '6px 10px', marginTop: 6, fontSize: 12.5, color: '#E8631A', fontWeight: 600 }}>
+              ⏰ {t('altTimeLabel', lang)}: {fmtDate(order.delivery_alt_date)} {order.delivery_alt_from ? `${fmtTime(order.delivery_alt_from)}${order.delivery_alt_to ? `–${fmtTime(order.delivery_alt_to)}` : ''}` : ''}
+            </div>
+          )}
         </div>
       </div>
 

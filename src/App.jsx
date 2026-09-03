@@ -450,6 +450,14 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
   )
 }
 
+// Prețul real, câștigat la licitație, dacă există — nu doar estimarea
+// pusă de dispecer la crearea comenzii, care poate fi depășită dacă
+// firma a câștigat cu un preț diferit.
+function effectivePrice(order) {
+  const bidPrice = Array.isArray(order?.winning_bid) ? order.winning_bid[0]?.price : order?.winning_bid?.price;
+  return bidPrice != null ? bidPrice : order?.estimated_price;
+}
+
 function fmtDate(dateStr) {
   if (!dateStr) return ''
   const d = new Date(dateStr)
@@ -749,7 +757,7 @@ function RidesScreen({ profile, isOwner, session, lang }) {
 
     supabase
       .from('orders')
-      .select('*')
+      .select('*, winning_bid:bids!fk_winner_bid(price)')
       .eq('assigned_driver_id', profile.id)
       .then(({ data, error }) => {
         if (error) console.error('orders fetch error:', error.message)
@@ -878,7 +886,7 @@ function CompletedOrdersListScreen({ profile, isOwner, lang }) {
     if (!profile?.id) { setLoading(false); return }
     supabase
       .from('orders')
-      .select('*')
+      .select('*, winning_bid:bids!fk_winner_bid(price)')
       .eq('assigned_driver_id', profile.id)
       .in('status', ['done', 'cancelled'])
       .then(({ data, error }) => {
@@ -982,7 +990,7 @@ function RideCard({ order, isOwner, lang, onClick, compact }) {
           <div className="bid-cargo-meta">
             {order.km && <span className="meta-item">📍 {order.km} km</span>}
             {order.weight && <span className="meta-item">⚖ {order.weight} kg</span>}
-            {isOwner && order.estimated_price != null && <span className="meta-item price">{order.estimated_price} €</span>}
+            {isOwner && effectivePrice(order) != null && <span className="meta-item price">{effectivePrice(order)} €</span>}
           </div>
         </div>
       </div>
@@ -1320,7 +1328,7 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
       )}
 
       {order.status === 'assigned' && !confirmedAt && confirmFormOpen && (
-        <LegWorkflow key={leg} order={order} leg={leg} lang={lang} startedAt={startedAt} arrivedAt={arrivedAt} onStatusChange={setOptimisticField} isOwner={isOwner} onDeliveryComplete={() => onDeliveryComplete(isOwner ? order.estimated_price : true)} />
+        <LegWorkflow key={leg} order={order} leg={leg} lang={lang} startedAt={startedAt} arrivedAt={arrivedAt} onStatusChange={setOptimisticField} isOwner={isOwner} onDeliveryComplete={() => onDeliveryComplete(isOwner ? effectivePrice(order) : true)} />
       )}
 
       {order.status === 'assigned' && order.pickup_confirmed_at && !order.delivery_confirmed_at && leg === 'delivery' && null}
@@ -2098,7 +2106,7 @@ function CompletedOrderDetail({ order, isOwner, lang, onBack }) {
   const deliveryCoords = useGeocode(order.delivery_address)
   const companyName = useCompanyName(order.created_by)
 
-  const net = order.estimated_price
+  const net = effectivePrice(order)
 
   return (
     <div className="ride-detail">
@@ -2517,7 +2525,7 @@ function EarningsScreen({ profile, lang }) {
     if (!profile?.id) { setLoading(false); return }
     supabase
       .from('orders')
-      .select('*')
+      .select('*, winning_bid:bids!fk_winner_bid(price)')
       .eq('assigned_driver_id', profile.id)
       .eq('status', 'done')
       .then(({ data, error }) => {
@@ -2549,12 +2557,12 @@ function EarningsScreen({ profile, lang }) {
     .map(([, v]) => v)
     .sort((a, b) => b.start - a.start)
 
-  const currentTotal = currentWeek.orders.reduce((sum, o) => sum + (o.estimated_price || 0), 0)
+  const currentTotal = currentWeek.orders.reduce((sum, o) => sum + (effectivePrice(o) || 0), 0)
   const weekEnd = new Date(currentWeekStart)
   weekEnd.setDate(weekEnd.getDate() + 6)
 
   function openSummary(o) {
-    const net = o.estimated_price || 0
+    const net = effectivePrice(o) || 0
     setSummary({
       id: o.order_number || o.reference || o.id.slice(0, 8),
       route: `${o.pickup_address} → ${o.delivery_address}`,
@@ -2581,7 +2589,7 @@ function EarningsScreen({ profile, lang }) {
         currentWeek.orders.map((o) => (
           <div className="hist-item" key={o.id} onClick={() => openSummary(o)}>
             <div><div className="id">{o.order_number || o.reference || o.id.slice(0, 8)}</div>{o.pickup_address} → {o.delivery_address}</div>
-            <div className="p">{(o.estimated_price || 0).toFixed(2)} €</div>
+            <div className="p">{(effectivePrice(o) || 0).toFixed(2)} €</div>
           </div>
         ))
       )}
@@ -2592,7 +2600,7 @@ function EarningsScreen({ profile, lang }) {
           {otherWeeks.map((w) => {
             const end = new Date(w.start)
             end.setDate(end.getDate() + 6)
-            const total = w.orders.reduce((sum, o) => sum + (o.estimated_price || 0), 0)
+            const total = w.orders.reduce((sum, o) => sum + (effectivePrice(o) || 0), 0)
             return (
               <div className="hist-item" key={w.start.toISOString()} style={{ opacity: 0.75 }}>
                 <div><div className="id">{formatDateShort(w.start)}–{formatDateShort(end)}</div>{w.orders.length} {t('tabRides', lang)}</div>

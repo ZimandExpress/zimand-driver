@@ -185,6 +185,12 @@ const translations = {
     stageReturnPickupDone: 'Rückfahrt · Abholung abgeschlossen',
     stageReturnToDelivery: 'Rückfahrt · unterwegs zur Zustellung',
     stageReturnAtDelivery: 'Rückfahrt · an Zustellung angekommen',
+
+    // --- Rückgängig ---
+    undoHint: 'Versehentlich getippt?',
+    undoLabel: 'Rückgängig',
+    undoFailed: 'Rückgängig machen nicht möglich. Bitte Disponent kontaktieren.',
+    undoTooLate: 'Zeitfenster abgelaufen. Bitte Disponent kontaktieren.',
   },
   en: {
     appName: 'Zimand Driver',
@@ -372,6 +378,12 @@ const translations = {
     stageReturnPickupDone: 'Return · pickup completed',
     stageReturnToDelivery: 'Return · on the way to delivery',
     stageReturnAtDelivery: 'Return · arrived at delivery',
+
+    // --- Undo ---
+    undoHint: 'Tapped by mistake?',
+    undoLabel: 'Undo',
+    undoFailed: 'Could not undo. Please contact dispatch.',
+    undoTooLate: 'Time window expired. Please contact dispatch.',
   },
 }
 

@@ -158,6 +158,18 @@ const translations = {
     sortOldest: 'Ältestes zuerst',
     comingSoon: 'Demnächst verfügbar',
     biddingComingSoon: 'Direktes Bieten kommt bald — verfügbare Aufträge werden hier erscheinen.',
+
+    // --- Upload-Warteschlange / Offline (Batch 1) ---
+    retryLabel: 'Erneut versuchen',
+    offlineSyncNote: 'Offline – Daten werden automatisch synchronisiert',
+    allFilesSynced: 'Alle Dateien synchronisiert',
+    filesPendingSync: '{n} Dateien warten auf Synchronisierung',
+    filesFailedSync: '{n} Dateien fehlgeschlagen – zum Wiederholen antippen',
+    savedLocallyNote: 'Lokal gespeichert – geht nicht verloren',
+    waitingForUploads: 'Dateien werden hochgeladen…',
+    confirmSavedOffline: 'Lokal gespeichert. Wird gesendet, sobald wieder Netz da ist.',
+    photoTooLarge: 'Foto zu groß.',
+    photoUnsupported: 'Dateiformat nicht unterstützt.',
   },
   en: {
     appName: 'Zimand Driver',
@@ -318,6 +330,18 @@ const translations = {
     sortOldest: 'Oldest first',
     comingSoon: 'Coming soon',
     biddingComingSoon: 'Direct bidding is coming soon — available orders will appear here.',
+
+    // --- Upload queue / offline (batch 1) ---
+    retryLabel: 'Retry',
+    offlineSyncNote: 'Offline – data will sync automatically',
+    allFilesSynced: 'All files synced',
+    filesPendingSync: '{n} files waiting to sync',
+    filesFailedSync: '{n} files failed – tap to retry',
+    savedLocallyNote: 'Saved locally – will not be lost',
+    waitingForUploads: 'Uploading files…',
+    confirmSavedOffline: 'Saved locally. Will be sent as soon as you are back online.',
+    photoTooLarge: 'Photo too large.',
+    photoUnsupported: 'File format not supported.',
   },
 }
 

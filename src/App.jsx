@@ -817,9 +817,14 @@ function RidesScreen({ profile, isOwner, session, lang }) {
 
   useEffect(() => {
     if (!isOwner || !profile?.id) return
-    supabase.from('profiles').select('preferred_radius_km').eq('id', profile.id).maybeSingle()
+    // profile.id este id-ul rândului din tabela `drivers`, NU al profilului de
+    // firmă. Raza se citea după id greșit, interogarea nu întorcea niciodată
+    // nimic, iar filtrul pe distanță nu funcționa deloc: șoferul primea sunet
+    // pentru orice comandă nouă, oricât de departe. La ecranul de licitații
+    // aceeași valoare se citea corect, după session.user.id.
+    supabase.from('profiles').select('preferred_radius_km').eq('id', session.user.id).maybeSingle()
       .then(({ data }) => { if (data?.preferred_radius_km) setNotifyRadiusKm(data.preferred_radius_km) })
-  }, [isOwner, profile?.id])
+  }, [isOwner, session?.user?.id])
 
   useEffect(() => {
     if (!isOwner) return
@@ -2887,6 +2892,49 @@ function LegTime({ order, prefix, lang }) {
   )
 }
 
+// Ciclul de facturare al firmei: 'weekly' (Luni–Duminică) sau 'per_order'
+// (factură după fiecare comandă, termen 30 de zile). La owner-operator contul
+// de autentificare ESTE contul firmei, deci profilul propriu e citibil.
+function useBillingCycle(enabled) {
+  const [cycle, setCycle] = useState(null)
+  useEffect(() => {
+    if (!enabled) return
+    let active = true
+    supabase.auth.getSession().then(({ data }) => {
+      const uid = data?.session?.user?.id
+      if (!uid) return
+      supabase.from('profiles').select('billing_cycle').eq('id', uid).maybeSingle()
+        .then(({ data: row }) => { if (active) setCycle(row?.billing_cycle || 'per_order') })
+    })
+    return () => { active = false }
+  }, [enabled])
+  return cycle
+}
+
+// Începutul perioadei în care cade o dată, după ciclul de facturare.
+// Săptămânal: lunea. Pe comandă: întâi de lună.
+function periodStartFor(dateStr, cycle) {
+  if (cycle === 'weekly') return getWeekStart(dateStr)
+  const d = new Date(dateStr)
+  return new Date(d.getFullYear(), d.getMonth(), 1)
+}
+
+function periodEndFor(start, cycle) {
+  if (cycle === 'weekly') {
+    const end = new Date(start)
+    end.setDate(end.getDate() + 6)
+    return end
+  }
+  return new Date(start.getFullYear(), start.getMonth() + 1, 0)
+}
+
+function periodLabel(start, cycle, lang) {
+  if (cycle === 'weekly') {
+    return `${formatDateShort(start)}–${formatDateShort(periodEndFor(start, 'weekly'))}`
+  }
+  return start.toLocaleDateString(lang === 'en' ? 'en-GB' : 'de-DE', { month: 'long', year: 'numeric' })
+}
+
 function getWeekStart(dateStr) {
   const d = new Date(dateStr)
   const day = d.getDay() // 0=Sun..6=Sat
@@ -2906,7 +2954,7 @@ function formatDateShort(d) {
 // în lipsa ei, delivery_date, iar valoarea prin earningsAmount. Dacă cele două
 // ar diverge, șoferul ar vedea două cifre diferite pentru aceeași lună și
 // n-ar mai avea încredere în niciuna.
-function useEarningsSummary(profile, enabled) {
+function useEarningsSummary(profile, enabled, cycle) {
   const [totals, setTotals] = useState(null) // { month, today, monthCount, todayCount }
 
   useEffect(() => {
@@ -2914,7 +2962,11 @@ function useEarningsSummary(profile, enabled) {
     let active = true
 
     const now = new Date()
-    const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
+    // Aceeași perioadă ca ecranul de câștiguri — altfel cardul și ecranul ar
+    // arăta două cifre diferite pentru același interval.
+    const start = periodStartFor(now.toISOString(), cycle)
+    const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    const monthStart = iso(start)
 
     supabase
       .from('orders')
@@ -2945,14 +2997,15 @@ function useEarningsSummary(profile, enabled) {
       })
 
     return () => { active = false }
-  }, [enabled, profile?.id])
+  }, [enabled, profile?.id, cycle])
 
   return totals
 }
 
 function EarningsMenuCard({ profile, open, lang, onClick }) {
-  const totals = useEarningsSummary(profile, open)
-  if (!totals) return null
+  const cycle = useBillingCycle(open)
+  const totals = useEarningsSummary(profile, open && !!cycle, cycle)
+  if (!totals || !cycle) return null
 
   return (
     <div
@@ -2964,7 +3017,7 @@ function EarningsMenuCard({ profile, open, lang, onClick }) {
       }}
     >
       <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.06em', color: '#9FB3D0' }}>
-        {t('earningsMonthLabel', lang)}
+        {t(cycle === 'weekly' ? 'earningsWeekLabel' : 'earningsMonthLabel', lang)}
       </div>
       <div style={{ fontSize: 26, fontWeight: 700, lineHeight: 1.15, marginTop: 2 }}>
         {totals.month.toFixed(2)} €
@@ -2992,6 +3045,7 @@ function EarningsScreen({ profile, lang }) {
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
   const [summary, setSummary] = useState(null)
+  const cycle = useBillingCycle(true)
 
   useEffect(() => {
     if (!profile?.id) { setLoading(false); return }
@@ -3013,10 +3067,10 @@ function EarningsScreen({ profile, lang }) {
     .map((o) => ({ ...o, _refDate: completionRefDate(o) }))
     .filter((o) => o._refDate)
 
-  const currentWeekStart = getWeekStart(new Date().toISOString())
+  const currentWeekStart = periodStartFor(new Date().toISOString(), cycle)
   const byWeek = new Map()
   withDate.forEach((o) => {
-    const ws = getWeekStart(o._refDate)
+    const ws = periodStartFor(o._refDate, cycle)
     const key = ws.toISOString()
     if (!byWeek.has(key)) byWeek.set(key, { start: ws, orders: [] })
     byWeek.get(key).orders.push(o)
@@ -3030,8 +3084,7 @@ function EarningsScreen({ profile, lang }) {
     .sort((a, b) => b.start - a.start)
 
   const currentTotal = currentWeek.orders.reduce((sum, o) => sum + earningsAmount(o), 0)
-  const weekEnd = new Date(currentWeekStart)
-  weekEnd.setDate(weekEnd.getDate() + 6)
+  const weekEnd = periodEndFor(currentWeekStart, cycle)
 
   function openSummary(o) {
     const net = earningsAmount(o)
@@ -3046,15 +3099,15 @@ function EarningsScreen({ profile, lang }) {
   return (
     <div className="rides-list">
       <div className="earn-hero">
-        <div className="lbl">{t('earningsWeekLabel', lang)}</div>
+        <div className="lbl">{t(cycle === 'weekly' ? 'earningsWeekLabel' : 'earningsMonthPeriodLabel', lang)}</div>
         <div className="amt">{currentTotal.toFixed(2)} €</div>
         <div className="row">
-          <div>{t('earningsPeriod', lang)}<b>{formatDateShort(currentWeekStart)}–{formatDateShort(weekEnd)}</b></div>
+          <div>{t('earningsPeriod', lang)}<b>{periodLabel(currentWeekStart, cycle, lang)}</b></div>
           <div>{t('tabRides', lang)}<b>{currentWeek.orders.length}</b></div>
         </div>
       </div>
 
-      <div className="section-heading">{t('earningsThisWeek', lang)} <span className="count-pill">{currentWeek.orders.length}</span></div>
+      <div className="section-heading">{t(cycle === 'weekly' ? 'earningsThisWeek' : 'earningsThisMonth', lang)} <span className="count-pill">{currentWeek.orders.length}</span></div>
       {currentWeek.orders.length === 0 ? (
         <div className="empty-note">{t('noRides', lang)}</div>
       ) : (
@@ -3068,14 +3121,12 @@ function EarningsScreen({ profile, lang }) {
 
       {otherWeeks.length > 0 && (
         <>
-          <div className="section-heading">{t('earningsPreviousWeeks', lang)}</div>
+          <div className="section-heading">{t(cycle === 'weekly' ? 'earningsPreviousWeeks' : 'earningsPreviousMonths', lang)}</div>
           {otherWeeks.map((w) => {
-            const end = new Date(w.start)
-            end.setDate(end.getDate() + 6)
             const total = w.orders.reduce((sum, o) => sum + earningsAmount(o), 0)
             return (
               <div className="hist-item" key={w.start.toISOString()} style={{ opacity: 0.75 }}>
-                <div><div className="id">{formatDateShort(w.start)}–{formatDateShort(end)}</div>{w.orders.length} {t('tabRides', lang)}</div>
+                <div><div className="id">{periodLabel(w.start, cycle, lang)}</div>{w.orders.length} {t('tabRides', lang)}</div>
                 <div className="p">{total.toFixed(2)} €</div>
               </div>
             )

@@ -170,6 +170,21 @@ const translations = {
     confirmSavedOffline: 'Lokal gespeichert. Wird gesendet, sobald wieder Netz da ist.',
     photoTooLarge: 'Foto zu groß.',
     photoUnsupported: 'Dateiformat nicht unterstützt.',
+
+    // --- Operative Auftragsphasen ---
+    stepLabel: 'Schritt',
+    stageAssigned: 'Auftrag erhalten',
+    stageToPickup: 'Unterwegs zur Abholung',
+    stageAtPickup: 'An Abholung angekommen',
+    stagePickupDone: 'Abholung abgeschlossen',
+    stageToDelivery: 'Unterwegs zur Zustellung',
+    stageAtDelivery: 'An Zustellung angekommen',
+    stageReturnReady: 'Rückfahrt bereit',
+    stageReturnToPickup: 'Rückfahrt · unterwegs zur Abholung',
+    stageReturnAtPickup: 'Rückfahrt · an Abholung angekommen',
+    stageReturnPickupDone: 'Rückfahrt · Abholung abgeschlossen',
+    stageReturnToDelivery: 'Rückfahrt · unterwegs zur Zustellung',
+    stageReturnAtDelivery: 'Rückfahrt · an Zustellung angekommen',
   },
   en: {
     appName: 'Zimand Driver',
@@ -342,6 +357,21 @@ const translations = {
     confirmSavedOffline: 'Saved locally. Will be sent as soon as you are back online.',
     photoTooLarge: 'Photo too large.',
     photoUnsupported: 'File format not supported.',
+
+    // --- Operational order stages ---
+    stepLabel: 'Step',
+    stageAssigned: 'Order received',
+    stageToPickup: 'On the way to pickup',
+    stageAtPickup: 'Arrived at pickup',
+    stagePickupDone: 'Pickup completed',
+    stageToDelivery: 'On the way to delivery',
+    stageAtDelivery: 'Arrived at delivery',
+    stageReturnReady: 'Return trip ready',
+    stageReturnToPickup: 'Return · on the way to pickup',
+    stageReturnAtPickup: 'Return · arrived at pickup',
+    stageReturnPickupDone: 'Return · pickup completed',
+    stageReturnToDelivery: 'Return · on the way to delivery',
+    stageReturnAtDelivery: 'Return · arrived at delivery',
   },
 }
 

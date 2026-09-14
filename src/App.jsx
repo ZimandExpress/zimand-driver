@@ -518,6 +518,74 @@ function statusLabel(status, lang) {
   }
 }
 
+// Etapa operațională reală a comenzii, dedusă din timestamp-urile existente.
+// NU înlocuiește statusul din baza de date (open/assigned/done/cancelled) —
+// îl completează. Backendul rămâne sursa de adevăr; asta e doar o citire mai
+// precisă a lui, ca șoferul să vadă unde se află, nu un cuvânt tehnic.
+function operationalStage(order) {
+  if (!order) return { key: 'statusOpen', cls: 'new' }
+  if (order.status === 'cancelled') return { key: 'statusCancelled', cls: 'cancelled' }
+  if (order.status === 'done') return { key: 'statusDone', cls: 'done' }
+  if (order.status !== 'assigned') return { key: 'statusOpen', cls: 'new' }
+
+  if (!order.pickup_started_at) return { key: 'stageAssigned', cls: 'progress' }
+  if (!order.pickup_arrived_at) return { key: 'stageToPickup', cls: 'progress', moving: true }
+  if (!order.pickup_confirmed_at) return { key: 'stageAtPickup', cls: 'progress' }
+  if (!order.delivery_started_at) return { key: 'stagePickupDone', cls: 'progress' }
+  if (!order.delivery_arrived_at) return { key: 'stageToDelivery', cls: 'progress', moving: true }
+  if (!order.delivery_confirmed_at) return { key: 'stageAtDelivery', cls: 'progress' }
+  if (!order.is_round_trip) return { key: 'statusDone', cls: 'done' }
+
+  if (!order.return_pickup_started_at) return { key: 'stageReturnReady', cls: 'progress' }
+  if (!order.return_pickup_arrived_at) return { key: 'stageReturnToPickup', cls: 'progress', moving: true }
+  if (!order.return_pickup_confirmed_at) return { key: 'stageReturnAtPickup', cls: 'progress' }
+  if (!order.return_delivery_started_at) return { key: 'stageReturnPickupDone', cls: 'progress' }
+  if (!order.return_delivery_arrived_at) return { key: 'stageReturnToDelivery', cls: 'progress', moving: true }
+  if (!order.return_delivery_confirmed_at) return { key: 'stageReturnAtDelivery', cls: 'progress' }
+  return { key: 'statusDone', cls: 'done' }
+}
+
+// Pasul curent din traseu. Dus-întors are șase etape în plus, deci totalul
+// diferă — nu afișăm un număr fix care ar minți la cursele de retur.
+function stageProgress(order) {
+  if (!order || order.status !== 'assigned') return null
+  const done = [
+    order.pickup_started_at, order.pickup_arrived_at, order.pickup_confirmed_at,
+    order.delivery_started_at, order.delivery_arrived_at, order.delivery_confirmed_at,
+    ...(order.is_round_trip ? [
+      order.return_pickup_started_at, order.return_pickup_arrived_at, order.return_pickup_confirmed_at,
+      order.return_delivery_started_at, order.return_delivery_arrived_at, order.return_delivery_confirmed_at,
+    ] : []),
+  ].filter(Boolean).length
+  const total = order.is_round_trip ? 12 : 6
+  return { done, total, current: Math.min(done + 1, total) }
+}
+
+function StageBadge({ order, lang, style }) {
+  const stage = operationalStage(order)
+  return (
+    <span className={`ride-badge ${stage.cls}`} style={style}>
+      {t(stage.key, lang)}
+      {stage.moving && <span className="moving-van" style={{ marginLeft: 4 }}>🚚</span>}
+    </span>
+  )
+}
+
+function StageProgress({ order, lang }) {
+  const p = stageProgress(order)
+  if (!p || p.done === 0) return null
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '8px 0 2px' }}>
+      <div style={{ flex: 1, height: 4, borderRadius: 4, background: '#E7EAF0', overflow: 'hidden' }}>
+        <div style={{ width: `${(p.done / p.total) * 100}%`, height: '100%', background: '#FF7A29', transition: 'width .3s' }} />
+      </div>
+      <span style={{ fontSize: 11.5, fontWeight: 700, color: '#6B7A90', whiteSpace: 'nowrap' }}>
+        {t('stepLabel', lang)} {p.current}/{p.total}
+      </span>
+    </div>
+  )
+}
+
 // Contextul audio se creează O SINGURĂ DATĂ, nu la fiecare sunet — pe
 // telefoane (mai ales iOS), un AudioContext nou creat fără o atingere
 // directă chiar înainte pornește "suspendat" și nu produce niciun sunet,
@@ -813,7 +881,13 @@ function RidesScreen({ profile, isOwner, session, lang }) {
     return <CompletedOrderDetail order={selected} isOwner={isOwner} lang={lang} onBack={() => setSelectedId(null)} />
   }
   if (selected) {
-    return <RideDetailScreen order={selected} isOwner={isOwner} session={session} lang={lang} onBack={() => setSelectedId(null)} onStatusChange={() => {}} onDeliveryComplete={(amount) => { setSelectedId(null); setCelebration(amount) }} />
+    return <RideDetailScreen order={selected} isOwner={isOwner} session={session} lang={lang} onBack={() => setSelectedId(null)} onStatusChange={() => {}} onDeliveryComplete={(amount) => {
+      // Ecranul de felicitare cu suma câștigată este pentru firmele partenere,
+      // care văd remunerația. Un angajat la a unsprezecea livrare din tură nu
+      // are ce sărbători — se întoarce direct în lista de comenzi.
+      setSelectedId(null)
+      if (amount != null) setCelebration(amount)
+    }} />
   }
 
   const activeOrders = orders.filter((o) => o.status === 'assigned')
@@ -982,8 +1056,10 @@ function RideCard({ order, isOwner, lang, onClick, compact }) {
 
         <div className="bid-order-mini">
           {t('orderRef', lang)} {order.order_number || order.reference || order.id.slice(0, 8)}
-          <span className={`ride-badge ${statusClass(order.status)}`} style={{ marginLeft: 8 }}>{statusLabel(order.status, lang)}</span>
+          <StageBadge order={order} lang={lang} style={{ marginLeft: 8 }} />
         </div>
+
+        <StageProgress order={order} lang={lang} />
 
         <div className="bid-stop"><span className="addr"><MapPin size={13} strokeWidth={1.8} /> {order.pickup_address}</span></div>
         <div className="bid-stop"><span className="addr"><FlagTriangleRight size={13} strokeWidth={1.8} /> {order.delivery_address}</span></div>
@@ -1327,10 +1403,10 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
 
       <div className="ride-detail-header">
         <span className="ride-ref">{t('orderRef', lang)} {order.order_number || order.reference || order.id.slice(0, 8)}</span>
-        <span className={`ride-badge ${statusClass(order.status)}`}>
-          {statusLabel(order.status, lang)}
-        </span>
+        <StageBadge order={order} lang={lang} />
       </div>
+
+      <StageProgress order={order} lang={lang} />
 
       <GoogleLiveMap pickupCoords={pickupCoords} deliveryCoords={deliveryCoords} />
 
@@ -1341,7 +1417,7 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
       )}
 
       {order.status === 'assigned' && !confirmedAt && confirmFormOpen && (
-        <LegWorkflow key={leg} order={order} leg={leg} lang={lang} startedAt={startedAt} arrivedAt={arrivedAt} onStatusChange={setOptimisticField} isOwner={isOwner} onDeliveryComplete={() => onDeliveryComplete(isOwner ? effectivePrice(order) : true)} />
+        <LegWorkflow key={leg} order={order} leg={leg} lang={lang} startedAt={startedAt} arrivedAt={arrivedAt} onStatusChange={setOptimisticField} isOwner={isOwner} onDeliveryComplete={() => onDeliveryComplete(isOwner ? effectivePrice(order) : null)} />
       )}
 
       {order.status === 'assigned' && order.pickup_confirmed_at && !order.delivery_confirmed_at && leg === 'delivery' && null}

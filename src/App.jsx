@@ -8,6 +8,7 @@ import {
   startQueue, enqueueFiles, enqueueSignature, confirmLeg as queueConfirmLeg,
 } from './offline/uploadQueue'
 import { pruneOld } from './offline/db'
+import { analyzeDocumentPhoto } from './services/imageQuality'
 
 // Jurnal de utilizare Google API — o linie per apel real, "fire-and-forget",
 // ca să vedem exact de unde vine consumul (raport în panoul de disponent).
@@ -1918,10 +1919,16 @@ function DocumentGuideIllustration() {
 
 function DocumentCapture({ lang, onPick, onClose }) {
   const [type, setType] = useState(null)
+  const [review, setReview] = useState(null) // { file, url, checking, result }
   const cameraRef = useRef(null)
   const galleryRef = useRef(null)
 
   const chosen = DOC_TYPES.find((d) => d.id === type)
+
+  // Eliberăm previzualizarea când componenta dispare.
+  useEffect(() => {
+    return () => { if (review?.url) URL.revokeObjectURL(review.url) }
+  }, [review?.url])
 
   const sheet = {
     background: '#fff', borderRadius: '16px 16px 0 0',
@@ -1933,16 +1940,83 @@ function DocumentCapture({ lang, onPick, onClose }) {
     textTransform: 'uppercase', letterSpacing: '.03em', marginBottom: 14,
   }
 
-  function handleFile(e) {
+  // PDF-urile alese din galerie trec direct — nu au ce să fie verificate ca
+  // fotografii. Pozele intră în pasul de verificare.
+  async function handleFile(e) {
     const file = e.target.files?.[0]
     e.target.value = ''
-    if (file && type) onPick(file, type)
+    if (!file || !type) return
+    if (!String(file.type || '').startsWith('image/')) { onPick(file, type); return }
+
+    setReview({ file, url: URL.createObjectURL(file), checking: true, result: null })
+    const result = await analyzeDocumentPhoto(file)
+    setReview((r) => (r && r.file === file ? { ...r, checking: false, result } : r))
+  }
+
+  function retake() {
+    if (review?.url) URL.revokeObjectURL(review.url)
+    setReview(null)
+    cameraRef.current?.click()
   }
 
   return (
     <div className="sig-fullscreen" style={{ justifyContent: 'flex-end', background: 'rgba(15,34,64,.55)' }}>
       <div style={sheet}>
-        {!chosen ? (
+        {review ? (
+          <>
+            <div style={title}>{t(chosen ? chosen.labelKey : 'documentsLabel', lang)}</div>
+
+            <div style={{
+              borderRadius: 10, overflow: 'hidden', marginBottom: 12,
+              border: `2px solid ${review.checking ? '#D8DEE8' : review.result?.ok ? '#1F7A50' : '#B23A24'}`,
+              background: '#0F2240',
+            }}>
+              <img src={review.url} alt="" style={{ width: '100%', display: 'block', maxHeight: '46vh', objectFit: 'contain' }} />
+            </div>
+
+            {review.checking ? (
+              <div style={{ fontSize: 13.5, color: '#6B7A90', marginBottom: 14 }}>{t('qChecking', lang)}</div>
+            ) : review.result?.ok ? (
+              <div style={{
+                background: '#EAF5EF', border: '1px solid #A8D5BE', borderRadius: 10,
+                padding: '11px 13px', fontSize: 13.5, color: '#1F7A50', marginBottom: 14,
+              }}>
+                ✓ {t('qGood', lang)}
+              </div>
+            ) : (
+              <div style={{
+                background: '#FCEBE8', border: '1px solid #E4A296', borderRadius: 10,
+                padding: '11px 13px', fontSize: 13.5, color: '#B23A24', marginBottom: 14,
+              }}>
+                <div style={{ fontWeight: 700, marginBottom: 4 }}>{t('qProblemTitle', lang)}</div>
+                {review.result.issues.map((k) => (
+                  <div key={k}>· {t(k, lang)}</div>
+                ))}
+              </div>
+            )}
+
+            {!review.checking && (
+              <>
+                <button
+                  type="button"
+                  className={review.result?.ok ? 'btn secondary' : 'btn'}
+                  style={{ width: '100%', marginTop: 0 }}
+                  onClick={retake}
+                >
+                  {t('qRetake', lang)}
+                </button>
+                <button
+                  type="button"
+                  className={review.result?.ok ? 'btn' : 'btn secondary'}
+                  style={{ width: '100%', marginTop: 10 }}
+                  onClick={() => onPick(review.file, type)}
+                >
+                  {review.result?.ok ? t('qUse', lang) : t('qUseAnyway', lang)}
+                </button>
+              </>
+            )}
+          </>
+        ) : !chosen ? (
           <>
             <div style={title}>{t('docChooseType', lang)}</div>
             {DOC_TYPES.map((d) => (

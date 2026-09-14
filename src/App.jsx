@@ -480,6 +480,27 @@ function effectivePrice(order) {
   return bidPrice != null ? bidPrice : order?.estimated_price;
 }
 
+// Cât a produs efectiv o comandă. Identică cu regula din
+// partner.zimandexpress.de (MyEarningsPanel):
+//
+//   - la comandă anulată de client se numără DESPĂGUBIREA, nu prețul;
+//   - fără ofertă câștigătoare se numără zero, NU estimarea dispecerului.
+//     Estimarea e prețul la care s-a scos comanda la licitație, nu ce
+//     încasează firma; dacă o folosim, Driver arată bani care nu apar în
+//     decont și nici în Partner.
+//
+// Diferită, intenționat, de effectivePrice: aceea arată valoarea afișată a
+// unei comenzi pe card, inclusiv înainte să existe o ofertă câștigătoare.
+// Aici e vorba de bani încasați.
+//
+// ATENȚIE: aceeași regulă există în panoul de partener. Se schimbă împreună.
+function earningsAmount(order) {
+  if (!order) return 0
+  if (order.client_cancelled) return Number(order.compensation_amount || 0)
+  const bid = Array.isArray(order.winning_bid) ? order.winning_bid[0] : order.winning_bid
+  return Number(bid?.price || 0)
+}
+
 // Data la care o comandă "contează" pentru câștiguri și istoric.
 //
 // La cursele dus-întors, delivery_confirmed_at e livrarea de la DUS, adică
@@ -1447,7 +1468,7 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
       )}
 
       {order.status === 'assigned' && !confirmedAt && confirmFormOpen && (
-        <LegWorkflow key={leg} order={order} leg={leg} lang={lang} startedAt={startedAt} arrivedAt={arrivedAt} onStatusChange={setOptimisticField} isOwner={isOwner} profile={profile} onDeliveryComplete={() => onDeliveryComplete(isOwner ? effectivePrice(order) : null)} />
+        <LegWorkflow key={leg} order={order} leg={leg} lang={lang} startedAt={startedAt} arrivedAt={arrivedAt} onStatusChange={setOptimisticField} isOwner={isOwner} profile={profile} onDeliveryComplete={() => onDeliveryComplete(isOwner ? (earningsAmount(order) || null) : null)} />
       )}
 
       {order.status === 'assigned' && order.pickup_confirmed_at && !order.delivery_confirmed_at && leg === 'delivery' && null}
@@ -2470,7 +2491,7 @@ function CompletedOrderDetail({ order, isOwner, lang, onBack }) {
   const deliveryCoords = useGeocode(order.delivery_address)
   const companyName = useCompanyName(order.created_by)
 
-  const net = effectivePrice(order)
+  const net = earningsAmount(order)
 
   return (
     <div className="ride-detail">
@@ -2882,7 +2903,7 @@ function formatDateShort(d) {
 
 // Sumarul de câștiguri din meniu. Folosește EXACT aceleași definiții ca
 // EarningsScreen — status 'done', data de referință delivery_confirmed_at sau,
-// în lipsa ei, delivery_date, iar valoarea prin effectivePrice. Dacă cele două
+// în lipsa ei, delivery_date, iar valoarea prin earningsAmount. Dacă cele două
 // ar diverge, șoferul ar vedea două cifre diferite pentru aceeași lună și
 // n-ar mai avea încredere în niciuna.
 function useEarningsSummary(profile, enabled) {
@@ -2897,7 +2918,7 @@ function useEarningsSummary(profile, enabled) {
 
     supabase
       .from('orders')
-      .select('id, is_round_trip, delivery_confirmed_at, return_delivery_confirmed_at, delivery_date, estimated_price, winning_bid:bids!fk_winner_bid(price)')
+      .select('id, is_round_trip, client_cancelled, compensation_amount, delivery_confirmed_at, return_delivery_confirmed_at, delivery_date, winning_bid:bids!fk_winner_bid(price)')
       .eq('assigned_driver_id', profile.id)
       .eq('status', 'done')
       .or(`delivery_confirmed_at.gte.${monthStart},return_delivery_confirmed_at.gte.${monthStart},delivery_date.gte.${monthStart}`)
@@ -2915,7 +2936,7 @@ function useEarningsSummary(profile, enabled) {
           if (!ref) return
           const day = String(ref).slice(0, 10)
           if (day < monthStart) return
-          const value = effectivePrice(o) || 0
+          const value = earningsAmount(o)
           month += value
           monthCount++
           if (day === todayIso) { today += value; todayCount++ }
@@ -3008,12 +3029,12 @@ function EarningsScreen({ profile, lang }) {
     .map(([, v]) => v)
     .sort((a, b) => b.start - a.start)
 
-  const currentTotal = currentWeek.orders.reduce((sum, o) => sum + (effectivePrice(o) || 0), 0)
+  const currentTotal = currentWeek.orders.reduce((sum, o) => sum + earningsAmount(o), 0)
   const weekEnd = new Date(currentWeekStart)
   weekEnd.setDate(weekEnd.getDate() + 6)
 
   function openSummary(o) {
-    const net = effectivePrice(o) || 0
+    const net = earningsAmount(o)
     setSummary({
       id: o.order_number || o.reference || o.id.slice(0, 8),
       route: `${o.pickup_address} → ${o.delivery_address}`,
@@ -3040,7 +3061,7 @@ function EarningsScreen({ profile, lang }) {
         currentWeek.orders.map((o) => (
           <div className="hist-item" key={o.id} onClick={() => openSummary(o)}>
             <div><div className="id">{o.order_number || o.reference || o.id.slice(0, 8)}</div>{o.pickup_address} → {o.delivery_address}</div>
-            <div className="p">{(effectivePrice(o) || 0).toFixed(2)} €</div>
+            <div className="p">{earningsAmount(o).toFixed(2)} €</div>
           </div>
         ))
       )}
@@ -3051,7 +3072,7 @@ function EarningsScreen({ profile, lang }) {
           {otherWeeks.map((w) => {
             const end = new Date(w.start)
             end.setDate(end.getDate() + 6)
-            const total = w.orders.reduce((sum, o) => sum + (effectivePrice(o) || 0), 0)
+            const total = w.orders.reduce((sum, o) => sum + earningsAmount(o), 0)
             return (
               <div className="hist-item" key={w.start.toISOString()} style={{ opacity: 0.75 }}>
                 <div><div className="id">{formatDateShort(w.start)}–{formatDateShort(end)}</div>{w.orders.length} {t('tabRides', lang)}</div>

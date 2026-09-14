@@ -1331,7 +1331,10 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
   const [optimistic, setOptimistic] = useState({})
   const order = { ...orderProp, ...optimistic }
   useEffect(() => { setOptimistic({}) }, [orderProp.id])
-  const setOptimisticField = (field) => setOptimistic((o) => ({ ...o, [field]: new Date().toISOString() }))
+  // value === null înseamnă "am anulat etapa" — câmpul trebuie să apară gol
+  // imediat, altfel interfața ar rămâne o clipă pe etapa anulată.
+  const setOptimisticField = (field, value) =>
+    setOptimistic((o) => ({ ...o, [field]: value === null ? null : new Date().toISOString() }))
   const pickupCoords = useGeocode(order.pickup_address)
   const deliveryCoords = useGeocode(order.delivery_address)
   const companyName = useCompanyName(order.created_by)
@@ -1794,6 +1797,46 @@ function CelebrationScreen({ amount, lang, onClose }) {
   )
 }
 
+// Fereastra în care șoferul își poate corecta singur o apăsare greșită.
+// 30 de secunde: destul cât să observe, prea puțin cât să rescrie istoricul.
+const UNDO_WINDOW_MS = 30000
+
+function UndoBar({ field, at, lang, onUndo }) {
+  const [left, setLeft] = useState(() => Math.max(0, UNDO_WINDOW_MS - (Date.now() - at)))
+  const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setLeft(Math.max(0, UNDO_WINDOW_MS - (Date.now() - at)))
+    }, 500)
+    return () => clearInterval(id)
+  }, [at])
+
+  if (left <= 0) return null
+
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+      background: '#FFF6ED', border: '1px solid #FFD2AE', borderRadius: 10,
+      padding: '10px 12px', marginBottom: 10, fontSize: 13, color: '#B35A12',
+    }}>
+      <span>{t('undoHint', lang)}</span>
+      <button
+        type="button"
+        disabled={busy}
+        onClick={async () => { setBusy(true); await onUndo(field); setBusy(false) }}
+        style={{
+          background: '#fff', border: '1px solid #FF7A29', color: '#E8631A',
+          borderRadius: 8, padding: '7px 12px', fontSize: 13, fontWeight: 700,
+          whiteSpace: 'nowrap', cursor: 'pointer',
+        }}
+      >
+        {busy ? '…' : `${t('undoLabel', lang)} (${Math.ceil(left / 1000)})`}
+      </button>
+    </div>
+  )
+}
+
 function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, isOwner, onDeliveryComplete }) {
   const [busy, setBusy] = useState(false)
   const [fileSummary, setFileSummary] = useState({ total: 0, allDone: false, failed: 0, pending: 0, processing: 0 })
@@ -1810,7 +1853,34 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
   const confirmFn = leg === 'pickup' ? 'driver_confirm_pickup' : leg === 'delivery' ? 'driver_confirm_delivery' : leg === 'return_pickup' ? 'driver_confirm_return_pickup' : 'driver_confirm_return_delivery'
   const legLabel = (leg === 'pickup' || leg === 'return_pickup') ? t('pickup', lang) : t('delivery', lang)
 
+  // Ultima etapă marcată, cât timp mai poate fi anulată.
+  const [undoable, setUndoable] = useState(null) // { field, at } | null
+
+  async function undoStage(field) {
+    const { data, error } = await supabase.rpc('driver_undo_stage', {
+      p_order_id: order.id,
+      p_field: field,
+    })
+    if (error) {
+      console.error('undo error:', error.message)
+      setUndoError(t('undoFailed', lang))
+      return
+    }
+    if (data !== true) {
+      // Fereastra a expirat sau etapa următoare a fost deja marcată.
+      setUndoError(t('undoTooLate', lang))
+      setUndoable(null)
+      return
+    }
+    setUndoable(null)
+    setUndoError('')
+    onStatusChange(field, null)
+  }
+
+  const [undoError, setUndoError] = useState('')
+
   async function callRpc(fn) {
+    if (busy) return
     setBusy(true)
     const { error } = await supabase.rpc(fn, { p_order_id: order.id })
     setBusy(false)
@@ -1822,8 +1892,28 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
     // arrived — deducem câmpul afectat, ca să marcăm local, instant,
     // fără să așteptăm sincronizarea live din baza de date.
     const m = fn.match(/^driver_mark_(.+)_(started|arrived)$/)
-    if (m) onStatusChange(`${m[1]}_${m[2]}_at`)
+    if (m) {
+      const field = `${m[1]}_${m[2]}_at`
+      onStatusChange(field)
+      setUndoable({ field, at: Date.now() })
+    }
   }
+
+  const undoBlock = (
+    <>
+      {undoable && (
+        <UndoBar field={undoable.field} at={undoable.at} lang={lang} onUndo={undoStage} />
+      )}
+      {undoError && (
+        <div style={{
+          background: '#FCEBE8', border: '1px solid #E4A296', borderRadius: 10,
+          padding: '9px 12px', fontSize: 13, color: '#B23A24', marginBottom: 10,
+        }}>
+          {undoError}
+        </div>
+      )}
+    </>
+  )
 
   // Fișierele nu mai stau în state-ul React, ci în coada persistentă
   // (IndexedDB). Ele supraviețuiesc refresh-ului, închiderii aplicației și
@@ -1899,22 +1989,29 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
 
   if (!startedAt) {
     return (
-      <button className="btn sticky-cta" onClick={() => callRpc(startFn)} disabled={busy}>
-        {t('startDriving', lang)}
-      </button>
+      <>
+        {undoBlock}
+        <button className="btn sticky-cta" onClick={() => callRpc(startFn)} disabled={busy}>
+          {t('startDriving', lang)}
+        </button>
+      </>
     )
   }
 
   if (!arrivedAt) {
     return (
-      <button className="btn sticky-cta" onClick={() => callRpc(arriveFn)} disabled={busy}>
-        {t('arrived', lang)}
-      </button>
+      <>
+        {undoBlock}
+        <button className="btn sticky-cta" onClick={() => callRpc(arriveFn)} disabled={busy}>
+          {t('arrived', lang)}
+        </button>
+      </>
     )
   }
 
   return (
     <div className="leg-workflow">
+      {undoBlock}
       <div className="leg-title">{legLabel} · {t('confirmStep', lang)}</div>
 
       <PodFiles

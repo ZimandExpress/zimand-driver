@@ -219,6 +219,18 @@ const translations = {
     earningsMonthPeriodLabel: 'Dieser Monat',
     earningsThisMonth: 'Dieser Monat',
     earningsPreviousMonths: 'Frühere Monate',
+
+    // --- Dokument fotografieren ---
+    docChooseType: 'Welches Dokument?',
+    docOpenCamera: '📷 Kamera öffnen',
+    docFromGallery: '🖼️ Aus Galerie wählen',
+    docGuideCmrText: 'Legen Sie den CMR-Frachtbrief flach hin und fotografieren Sie die ganze Seite von oben. Stempel und Unterschrift müssen lesbar sein.',
+    docGuideProtocolText: 'Fotografieren Sie das vollständige Zustellprotokoll von oben. Die Unterschrift des Empfängers muss klar erkennbar sein.',
+    docGuideOtherText: 'Fotografieren Sie das gesamte Dokument von oben, flach und vollständig im Bild.',
+    docRuleCorners: 'Alle vier Ecken im Bild',
+    docRuleFlat: 'Blatt flach hinlegen, nicht in der Hand halten',
+    docRuleLight: 'Kein Schatten, kein direktes Gegenlicht',
+    docRuleReadable: 'Text, Stempel und Unterschrift lesbar',
   },
   en: {
     appName: 'Zimand Driver',
@@ -440,6 +452,18 @@ const translations = {
     earningsMonthPeriodLabel: 'This month',
     earningsThisMonth: 'This month',
     earningsPreviousMonths: 'Previous months',
+
+    // --- Photographing a document ---
+    docChooseType: 'Which document?',
+    docOpenCamera: '📷 Open camera',
+    docFromGallery: '🖼️ Choose from gallery',
+    docGuideCmrText: 'Lay the CMR consignment note flat and photograph the whole page from above. Stamp and signature must be readable.',
+    docGuideProtocolText: 'Photograph the complete delivery protocol from above. The recipient signature must be clearly visible.',
+    docGuideOtherText: 'Photograph the whole document from above, flat and fully in frame.',
+    docRuleCorners: 'All four corners in the frame',
+    docRuleFlat: 'Lay the sheet flat, do not hold it',
+    docRuleLight: 'No shadow, no direct backlight',
+    docRuleReadable: 'Text, stamp and signature readable',
   },
 }
 

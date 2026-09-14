@@ -881,7 +881,7 @@ function RidesScreen({ profile, isOwner, session, lang }) {
     return <CompletedOrderDetail order={selected} isOwner={isOwner} lang={lang} onBack={() => setSelectedId(null)} />
   }
   if (selected) {
-    return <RideDetailScreen order={selected} isOwner={isOwner} session={session} lang={lang} onBack={() => setSelectedId(null)} onStatusChange={() => {}} onDeliveryComplete={(amount) => {
+    return <RideDetailScreen order={selected} isOwner={isOwner} session={session} profile={profile} lang={lang} onBack={() => setSelectedId(null)} onStatusChange={() => {}} onDeliveryComplete={(amount) => {
       // Ecranul de felicitare cu suma câștigată este pentru firmele partenere,
       // care văd remunerația. Un angajat la a unsprezecea livrare din tură nu
       // are ce sărbători — se întoarce direct în lista de comenzi.
@@ -1323,7 +1323,7 @@ function ContactRow({ contact, lang }) {
   )
 }
 
-function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, onStatusChange, onDeliveryComplete }) {
+function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, onStatusChange, onDeliveryComplete, profile }) {
   // Actualizare optimistă — de îndată ce un buton (Losfahren/Angekommen/
   // confirmare) reușește, marcăm local, imediat, fără să așteptăm ca
   // sincronizarea live (Realtime) să confirme din baza de date — asta
@@ -1420,7 +1420,7 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
       )}
 
       {order.status === 'assigned' && !confirmedAt && confirmFormOpen && (
-        <LegWorkflow key={leg} order={order} leg={leg} lang={lang} startedAt={startedAt} arrivedAt={arrivedAt} onStatusChange={setOptimisticField} isOwner={isOwner} onDeliveryComplete={() => onDeliveryComplete(isOwner ? effectivePrice(order) : null)} />
+        <LegWorkflow key={leg} order={order} leg={leg} lang={lang} startedAt={startedAt} arrivedAt={arrivedAt} onStatusChange={setOptimisticField} isOwner={isOwner} profile={profile} onDeliveryComplete={() => onDeliveryComplete(isOwner ? effectivePrice(order) : null)} />
       )}
 
       {order.status === 'assigned' && order.pickup_confirmed_at && !order.delivery_confirmed_at && leg === 'delivery' && null}
@@ -1797,6 +1797,143 @@ function CelebrationScreen({ amount, lang, onClose }) {
   )
 }
 
+// Notificarea de ETA către client. Intervalul e ales de șofer, nu calculat
+// din Google Directions — un apel de rute la fiecare deschidere ar readuce
+// exact problema de consum pe care încercăm s-o reducem. Prepopulăm din
+// fereastra programată a comenzii, iar șoferul ajustează.
+function EtaSheet({ order, leg, lang, driverPhone, onClose, onSent }) {
+  const scheduledFrom = leg === 'pickup' ? (order.pickup_time || order.pickup_from) : (order.delivery_time || order.delivery_from)
+  const scheduledTo = leg === 'pickup' ? order.pickup_to : order.delivery_to
+
+  function plusMinutes(min) {
+    const d = new Date(Date.now() + min * 60000)
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+  }
+  function todayIso() {
+    const d = new Date()
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  }
+
+  const [date, setDate] = useState(todayIso())
+  const [from, setFrom] = useState(() => (scheduledFrom ? String(scheduledFrom).slice(0, 5) : plusMinutes(30)))
+  const [to, setTo] = useState(() => (scheduledTo ? String(scheduledTo).slice(0, 5) : plusMinutes(90)))
+  const [sharePhone, setSharePhone] = useState(false)   // implicit OPRIT
+  const [phone, setPhone] = useState(driverPhone || '')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+
+  const sentCount = leg === 'pickup' ? (order.pickup_eta_count || 0) : (order.delivery_eta_count || 0)
+
+  async function send() {
+    setError('')
+    if (!date || !from || !to || to <= from) {
+      setError(t('etaBadWindow', lang))
+      return
+    }
+    setBusy(true)
+    const { data, error: rpcErr } = await supabase.rpc('driver_send_eta', {
+      p_order_id: order.id,
+      p_leg: leg,
+      p_from: new Date(`${date}T${from}:00`).toISOString(),
+      p_to: new Date(`${date}T${to}:00`).toISOString(),
+      p_phone: sharePhone ? (phone.trim() || null) : null,
+    })
+    setBusy(false)
+    if (rpcErr) {
+      console.error('driver_send_eta:', rpcErr.message)
+      setError(t('etaFailed', lang))
+      return
+    }
+    if (!data?.ok) {
+      const reasons = {
+        no_recipient: 'etaNoRecipient',
+        limit_reached: 'etaLimitReached',
+        bad_window: 'etaBadWindow',
+        not_assigned: 'etaFailed',
+        bad_leg: 'etaFailed',
+      }
+      setError(t(reasons[data?.reason] || 'etaFailed', lang))
+      return
+    }
+    onSent(data.count)
+  }
+
+  const label = { display: 'block', fontSize: 12, fontWeight: 700, color: '#6B7A90', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '.03em' }
+  const field = { width: '100%', padding: '11px 12px', fontSize: 16, border: '1px solid #D8DEE8', borderRadius: 8, background: '#fff', color: '#0F2240' }
+
+  return (
+    <div className="sig-fullscreen" style={{ justifyContent: 'flex-end', background: 'rgba(15,34,64,.55)' }}>
+      <div style={{ background: '#fff', borderRadius: '16px 16px 0 0', padding: '20px 20px calc(20px + env(safe-area-inset-bottom))', maxHeight: '90vh', overflowY: 'auto' }}>
+        <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: 17, color: '#0F2240', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '.03em' }}>
+          {t('etaTitle', lang)}
+        </div>
+        <p style={{ fontSize: 12.5, color: '#6B7A90', margin: '0 0 16px', lineHeight: 1.5 }}>
+          {t(leg === 'pickup' ? 'etaSubtitlePickup' : 'etaSubtitleDelivery', lang)}
+        </p>
+
+        <label style={label}>{t('etaDateLabel', lang)}</label>
+        <input type="date" value={date} onChange={(e) => setDate(e.target.value)} style={{ ...field, marginBottom: 14 }} />
+
+        <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
+          <div style={{ flex: 1 }}>
+            <label style={label}>{t('etaFromLabel', lang)}</label>
+            <input type="time" value={from} onChange={(e) => setFrom(e.target.value)} style={field} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label style={label}>{t('etaToLabel', lang)}</label>
+            <input type="time" value={to} onChange={(e) => setTo(e.target.value)} style={field} />
+          </div>
+        </div>
+
+        <div style={{ background: '#F6F8FA', borderRadius: 10, padding: '12px 14px', marginBottom: 16 }}>
+          <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={sharePhone}
+              onChange={(e) => setSharePhone(e.target.checked)}
+              style={{ width: 20, height: 20, marginTop: 1, flexShrink: 0 }}
+            />
+            <span style={{ fontSize: 13.5, color: '#0F2240', lineHeight: 1.45 }}>
+              {t('etaSharePhone', lang)}
+              <span style={{ display: 'block', fontSize: 12, color: '#6B7A90', marginTop: 2 }}>
+                {t('etaSharePhoneNote', lang)}
+              </span>
+            </span>
+          </label>
+          {sharePhone && (
+            <input
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder={t('etaPhonePlaceholder', lang)}
+              style={{ ...field, marginTop: 10 }}
+            />
+          )}
+        </div>
+
+        {error && (
+          <div style={{ background: '#FCEBE8', border: '1px solid #E4A296', borderRadius: 10, padding: '10px 12px', fontSize: 13, color: '#B23A24', marginBottom: 12 }}>
+            {error}
+          </div>
+        )}
+
+        {sentCount > 0 && (
+          <div style={{ fontSize: 12, color: '#6B7A90', marginBottom: 10 }}>
+            {t('etaAlreadySent', lang).replace('{n}', sentCount)}
+          </div>
+        )}
+
+        <button className="btn" onClick={send} disabled={busy} style={{ width: '100%' }}>
+          {busy ? '…' : t('etaSendButton', lang)}
+        </button>
+        <button type="button" className="link-btn" onClick={onClose} style={{ marginTop: 8 }}>
+          {t('back', lang)}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // Fereastra în care șoferul își poate corecta singur o apăsare greșită.
 // 30 de secunde: destul cât să observe, prea puțin cât să rescrie istoricul.
 const UNDO_WINDOW_MS = 30000
@@ -1837,7 +1974,7 @@ function UndoBar({ field, at, lang, onUndo }) {
   )
 }
 
-function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, isOwner, onDeliveryComplete }) {
+function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, isOwner, onDeliveryComplete, profile }) {
   const [busy, setBusy] = useState(false)
   const [fileSummary, setFileSummary] = useState({ total: 0, allDone: false, failed: 0, pending: 0, processing: 0 })
   const [docType, setDocType] = useState('cmr')
@@ -1898,6 +2035,51 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
       setUndoable({ field, at: Date.now() })
     }
   }
+
+  // ETA e disponibil doar pe traseul principal. Cursele de retur ar avea
+  // nevoie de propriile coloane; până atunci butonul nu apare acolo, ca să nu
+  // suprascrie intervalul anunțat pentru dus.
+  const [etaOpen, setEtaOpen] = useState(false)
+  const [etaToast, setEtaToast] = useState('')
+  const etaAvailable = leg === 'pickup' || leg === 'delivery'
+  const etaCount = leg === 'pickup' ? (order.pickup_eta_count || 0) : (order.delivery_eta_count || 0)
+
+  const etaBlock = etaAvailable ? (
+    <>
+      <button
+        type="button"
+        onClick={() => setEtaOpen(true)}
+        style={{
+          width: '100%', background: '#fff', border: '1px solid #D8DEE8',
+          borderRadius: 10, padding: '11px 14px', fontSize: 14, fontWeight: 600,
+          color: '#0F2240', marginBottom: 10, cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+        }}
+      >
+        <Bell size={15} strokeWidth={2} />
+        {etaCount > 0 ? t('etaButtonAgain', lang) : t('etaButton', lang)}
+      </button>
+      {etaToast && (
+        <div style={{ background: '#EAF5EF', border: '1px solid #A8D5BE', borderRadius: 10, padding: '10px 12px', fontSize: 13, color: '#1F7A50', marginBottom: 10 }}>
+          ✓ {etaToast}
+        </div>
+      )}
+      {etaOpen && (
+        <EtaSheet
+          order={order}
+          leg={leg}
+          lang={lang}
+          driverPhone={profile?.phone}
+          onClose={() => setEtaOpen(false)}
+          onSent={(count) => {
+            setEtaOpen(false)
+            setEtaToast(t('etaSentToast', lang).replace('{n}', count))
+            setTimeout(() => setEtaToast(''), 6000)
+          }}
+        />
+      )}
+    </>
+  ) : null
 
   const undoBlock = (
     <>
@@ -2002,6 +2184,7 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
     return (
       <>
         {undoBlock}
+        {etaBlock}
         <button className="btn sticky-cta" onClick={() => callRpc(arriveFn)} disabled={busy}>
           {t('arrived', lang)}
         </button>

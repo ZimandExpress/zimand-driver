@@ -480,6 +480,24 @@ function effectivePrice(order) {
   return bidPrice != null ? bidPrice : order?.estimated_price;
 }
 
+// Data la care o comandă "contează" pentru câștiguri și istoric.
+//
+// La cursele dus-întors, delivery_confirmed_at e livrarea de la DUS, adică
+// jumătatea cursei — nu finalul ei. Dacă o cursă pleacă pe 31 și se întoarce
+// pe 1, banii ar apărea în luna greșită. Disponent folosește deja regula de
+// mai jos (App.jsx, panoul de disponent), iar aplicația șoferului trebuie să
+// spună exact același lucru despre aceeași comandă.
+//
+// ATENȚIE: aceasta este SINGURA definiție. Dacă se schimbă vreodată, se
+// schimbă aici, nu în locurile care o folosesc.
+function completionRefDate(order) {
+  if (!order) return null
+  const confirmed = order.is_round_trip
+    ? order.return_delivery_confirmed_at
+    : order.delivery_confirmed_at
+  return confirmed || order.delivery_date || null
+}
+
 function fmtDate(dateStr) {
   if (!dateStr) return ''
   const d = new Date(dateStr)
@@ -1000,8 +1018,8 @@ function CompletedOrdersListScreen({ profile, isOwner, lang }) {
   }
 
   const sorted = [...orders].sort((a, b) => {
-    const da = a.delivery_confirmed_at || a.delivery_date || ''
-    const db = b.delivery_confirmed_at || b.delivery_date || ''
+    const da = completionRefDate(a) || ''
+    const db = completionRefDate(b) || ''
     return db.localeCompare(da)
   })
 
@@ -1030,8 +1048,8 @@ function RideCard({ order, isOwner, lang, onClick, compact }) {
           <span className="ride-row-route">{order.pickup_address} → {order.delivery_address}</span>
           {isCancelled ? (
             <span className="ride-row-date">{statusLabel(order.status, lang)}</span>
-          ) : order.delivery_confirmed_at && (
-            <span className="ride-row-date">{t('delivery', lang)}: {fmtDate(order.delivery_confirmed_at)}</span>
+          ) : completionRefDate(order) && (
+            <span className="ride-row-date">{t('delivery', lang)}: {fmtDate(completionRefDate(order))}</span>
           )}
         </div>
         <div className="ride-row-chev">›</div>
@@ -2879,10 +2897,10 @@ function useEarningsSummary(profile, enabled) {
 
     supabase
       .from('orders')
-      .select('id, delivery_confirmed_at, delivery_date, estimated_price, winning_bid:bids!fk_winner_bid(price)')
+      .select('id, is_round_trip, delivery_confirmed_at, return_delivery_confirmed_at, delivery_date, estimated_price, winning_bid:bids!fk_winner_bid(price)')
       .eq('assigned_driver_id', profile.id)
       .eq('status', 'done')
-      .or(`delivery_confirmed_at.gte.${monthStart},delivery_date.gte.${monthStart}`)
+      .or(`delivery_confirmed_at.gte.${monthStart},return_delivery_confirmed_at.gte.${monthStart},delivery_date.gte.${monthStart}`)
       .then(({ data, error }) => {
         if (!active) return
         if (error) {
@@ -2893,7 +2911,7 @@ function useEarningsSummary(profile, enabled) {
         const todayIso = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
         let month = 0, today = 0, monthCount = 0, todayCount = 0
         ;(data || []).forEach((o) => {
-          const ref = o.delivery_confirmed_at || o.delivery_date
+          const ref = completionRefDate(o)
           if (!ref) return
           const day = String(ref).slice(0, 10)
           if (day < monthStart) return
@@ -2971,7 +2989,7 @@ function EarningsScreen({ profile, lang }) {
   if (loading) return <PlaceholderScreen title={t('tabEarnings', lang)} note={t('loadingRides', lang)} />
 
   const withDate = orders
-    .map((o) => ({ ...o, _refDate: o.delivery_confirmed_at || o.delivery_date }))
+    .map((o) => ({ ...o, _refDate: completionRefDate(o) }))
     .filter((o) => o._refDate)
 
   const currentWeekStart = getWeekStart(new Date().toISOString())

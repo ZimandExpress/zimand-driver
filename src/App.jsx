@@ -812,6 +812,10 @@ function RidesScreen({ profile, isOwner, session, lang }) {
   const [celebration, setCelebration] = useState(null) // number (net earnings) | true (no amount) | null — la nivel de ecran, supraviețuiește comutării spre CompletedOrderDetail
   const [notifyRadiusKm, setNotifyRadiusKm] = useState(null)
   const openCountLoaded = useRef(false)
+  // Oglindă a listei de comenzi, citibilă din handler-ul Realtime fără să-l
+  // legăm de starea curentă (altfel abonamentul s-ar reface la fiecare
+  // schimbare de comandă).
+  const ordersRef = useRef([])
   const driverLocationForNotify = useDriverLocation(session)
   const mapsKeyForNotify = useGoogleMapsKey()
 
@@ -872,6 +876,8 @@ function RidesScreen({ profile, isOwner, session, lang }) {
     return () => supabase.removeChannel(channel)
   }, [isOwner, notifyRadiusKm, driverLocationForNotify, mapsKeyForNotify, session?.user?.id])
 
+  useEffect(() => { ordersRef.current = orders }, [orders])
+
   function setSelectedId(id) {
     setSelectedIdState(id)
     if (id) {
@@ -901,22 +907,50 @@ function RidesScreen({ profile, isOwner, session, lang }) {
         }
       })
 
+    // Reîncarcă o singură comandă, cu prețul câștigat alăturat.
+    const refetchOne = (id) => {
+      supabase
+        .from('orders')
+        .select('*, winning_bid:bids!fk_winner_bid(price)')
+        .eq('id', id)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (!active || !data) return
+          setOrders((current) => current.map((o) => (o.id === data.id ? data : o)))
+        })
+    }
+
     const channel = supabase
       .channel('driver-orders-' + profile.id)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'orders', filter: `assigned_driver_id=eq.${profile.id}` },
         (payload) => {
+          if (payload.eventType === 'DELETE') {
+            setOrders((current) => current.filter((o) => o.id !== payload.old.id))
+            return
+          }
+
+          const known = ordersRef.current.find((o) => o.id === payload.new.id)
+
+          // Realtime trimite rândul BRUT din `orders`. Prețul câștigat la
+          // licitație stă în `bids` și vine doar prin join, la încărcarea
+          // inițială — nu e în acest payload. Dacă înlocuim obiectul întreg,
+          // cum se făcea înainte, câmpul dispare, iar interfața cade pe
+          // estimated_price, adică prețul cu care dispecerul a postat comanda.
+          // Concret: la prima apăsare de „Losfahren" se pierdea prețul real,
+          // iar la finalizare ecranul de felicitare arăta suma greșită.
+          // De aceea fuzionăm și păstrăm câmpul, în loc să înlocuim.
           setOrders((current) => {
-            if (payload.eventType === 'DELETE') {
-              return current.filter((o) => o.id !== payload.old.id)
-            }
-            const exists = current.some((o) => o.id === payload.new.id)
-            if (exists) {
-              return current.map((o) => (o.id === payload.new.id ? payload.new : o))
-            }
-            return [...current, payload.new]
+            if (!known) return [...current, payload.new]
+            return current.map((o) => (o.id === payload.new.id ? { ...o, ...payload.new } : o))
           })
+
+          // Reîncărcăm doar când chiar e nevoie: comandă nouă în listă, sau
+          // câștigătorul s-a schimbat (atunci prețul păstrat nu mai e valabil).
+          if (!known || known.winner_bid_id !== payload.new.winner_bid_id || !known.winning_bid) {
+            refetchOne(payload.new.id)
+          }
         }
       )
       .subscribe()

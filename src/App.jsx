@@ -1884,6 +1884,121 @@ function CelebrationScreen({ amount, lang, onClose }) {
   )
 }
 
+// Adăugarea unui document, în doi pași obligatorii: mai întâi tipul, apoi
+// instrucțiunile de fotografiere pentru acel tip — pe tot ecranul, chiar
+// înainte să se deschidă camera.
+//
+// Înainte exista un rând discret cu „💡 Tipp" care deschidea aceleași
+// instrucțiuni. Nimeni nu-l apăsa, fiindcă apare exact în momentul în care
+// șoferul e grăbit și vrea doar să pozeze. Acum instrucțiunile sunt pe drumul
+// principal, nu pe o ramură laterală.
+const DOC_TYPES = [
+  { id: 'cmr', labelKey: 'docTypeCmr', guideKey: 'docGuideCmrText' },
+  { id: 'zustellprotokoll', labelKey: 'docTypeProtocol', guideKey: 'docGuideProtocolText' },
+  { id: 'other', labelKey: 'docTypeOther', guideKey: 'docGuideOtherText' },
+]
+
+function DocumentGuideIllustration() {
+  return (
+    <svg viewBox="0 0 280 200" style={{ width: '100%', maxWidth: 260 }}>
+      <rect x="6" y="6" width="268" height="188" rx="12" fill="#F6F8FA" stroke="#E7EAF0" strokeWidth="2" />
+      <rect x="58" y="26" width="164" height="148" rx="4" fill="#fff" stroke="#0F2240" strokeWidth="2.5" />
+      <line x1="78" y1="50" x2="202" y2="50" stroke="#C7D0DE" strokeWidth="3" />
+      <line x1="78" y1="70" x2="202" y2="70" stroke="#C7D0DE" strokeWidth="3" />
+      <line x1="78" y1="90" x2="168" y2="90" stroke="#C7D0DE" strokeWidth="3" />
+      <line x1="78" y1="130" x2="202" y2="130" stroke="#C7D0DE" strokeWidth="3" />
+      <line x1="78" y1="150" x2="158" y2="150" stroke="#C7D0DE" strokeWidth="3" />
+      <path d="M58 36 v-10 h10" fill="none" stroke="#FF7A29" strokeWidth="3.5" strokeLinecap="round" />
+      <path d="M222 36 v-10 h-10" fill="none" stroke="#FF7A29" strokeWidth="3.5" strokeLinecap="round" />
+      <path d="M58 164 v10 h10" fill="none" stroke="#FF7A29" strokeWidth="3.5" strokeLinecap="round" />
+      <path d="M222 164 v10 h-10" fill="none" stroke="#FF7A29" strokeWidth="3.5" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+function DocumentCapture({ lang, onPick, onClose }) {
+  const [type, setType] = useState(null)
+  const cameraRef = useRef(null)
+  const galleryRef = useRef(null)
+
+  const chosen = DOC_TYPES.find((d) => d.id === type)
+
+  const sheet = {
+    background: '#fff', borderRadius: '16px 16px 0 0',
+    padding: '20px 20px calc(20px + env(safe-area-inset-bottom))',
+    maxHeight: '92vh', overflowY: 'auto',
+  }
+  const title = {
+    fontFamily: "'Oswald', sans-serif", fontSize: 17, color: '#0F2240',
+    textTransform: 'uppercase', letterSpacing: '.03em', marginBottom: 14,
+  }
+
+  function handleFile(e) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (file && type) onPick(file, type)
+  }
+
+  return (
+    <div className="sig-fullscreen" style={{ justifyContent: 'flex-end', background: 'rgba(15,34,64,.55)' }}>
+      <div style={sheet}>
+        {!chosen ? (
+          <>
+            <div style={title}>{t('docChooseType', lang)}</div>
+            {DOC_TYPES.map((d) => (
+              <button
+                key={d.id}
+                type="button"
+                onClick={() => setType(d.id)}
+                style={{
+                  width: '100%', textAlign: 'left', background: '#fff',
+                  border: '1px solid #D8DEE8', borderRadius: 10,
+                  padding: '15px 16px', fontSize: 15, fontWeight: 600,
+                  color: '#0F2240', marginBottom: 10, cursor: 'pointer',
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                }}
+              >
+                {t(d.labelKey, lang)}
+                <span style={{ color: '#B9C3D1' }}>›</span>
+              </button>
+            ))}
+            <button type="button" className="link-btn" onClick={onClose}>{t('back', lang)}</button>
+          </>
+        ) : (
+          <>
+            <div style={title}>{t(chosen.labelKey, lang)}</div>
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 14 }}>
+              <DocumentGuideIllustration />
+            </div>
+            <p style={{ fontSize: 13.5, color: '#0F2240', lineHeight: 1.55, margin: '0 0 14px' }}>
+              {t(chosen.guideKey, lang)}
+            </p>
+            <ul style={{ margin: '0 0 18px', paddingLeft: 18, fontSize: 13, color: '#6B7A90', lineHeight: 1.7 }}>
+              <li>{t('docRuleCorners', lang)}</li>
+              <li>{t('docRuleFlat', lang)}</li>
+              <li>{t('docRuleLight', lang)}</li>
+              <li>{t('docRuleReadable', lang)}</li>
+            </ul>
+
+            <button type="button" className="btn" style={{ width: '100%', marginTop: 0 }} onClick={() => cameraRef.current?.click()}>
+              {t('docOpenCamera', lang)}
+            </button>
+            <button type="button" className="btn secondary" style={{ width: '100%', marginTop: 10 }} onClick={() => galleryRef.current?.click()}>
+              {t('docFromGallery', lang)}
+            </button>
+            <button type="button" className="link-btn" onClick={() => setType(null)} style={{ marginTop: 8 }}>
+              {t('back', lang)}
+            </button>
+
+            <input ref={cameraRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={handleFile} />
+            <input ref={galleryRef} type="file" accept="image/*,application/pdf" style={{ display: 'none' }} onChange={handleFile} />
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // Notificarea de ETA către client. Intervalul e ales de șofer, nu calculat
 // din Google Directions — un apel de rute la fiecare deschidere ar readuce
 // exact problema de consum pe care încercăm s-o reducem. Prepopulăm din
@@ -2064,12 +2179,10 @@ function UndoBar({ field, at, lang, onUndo }) {
 function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, isOwner, onDeliveryComplete, profile }) {
   const [busy, setBusy] = useState(false)
   const [fileSummary, setFileSummary] = useState({ total: 0, allDone: false, failed: 0, pending: 0, processing: 0 })
-  const [docType, setDocType] = useState('cmr')
   const [signatureBlob, setSignatureBlob] = useState(null)
   const [signerName, setSignerName] = useState('')
   const fileInputRef = useRef(null)
   const cameraInputRef = useRef(null)
-  const docInputRef = useRef(null)
   const [photoSourceOpen, setPhotoSourceOpen] = useState(false)
 
   const startFn = leg === 'pickup' ? 'driver_mark_pickup_started' : leg === 'delivery' ? 'driver_mark_delivery_started' : leg === 'return_pickup' ? 'driver_mark_return_pickup_started' : 'driver_mark_return_delivery_started'
@@ -2194,13 +2307,7 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
     if (files.length) enqueueFiles(order.id, leg, files, { kind: 'photo' })
   }
 
-  const [docGuideOpen, setDocGuideOpen] = useState(false)
-
-  function addDocument(e) {
-    const file = e.target.files?.[0]
-    e.target.value = ''
-    if (file) enqueueFiles(order.id, leg, [file], { kind: 'document', docType })
-  }
+  const [docCaptureOpen, setDocCaptureOpen] = useState(false)
 
   const [uploadError, setUploadError] = useState('')
 
@@ -2326,55 +2433,26 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
       />
 
       <div className="pod-label">{t('documentsLabel', lang)}</div>
-      <div className="doc-guide-hint" onClick={() => setDocGuideOpen(true)}>
-        💡 {t('docGuideHint', lang)}
-      </div>
-      <div className="doc-type-row">
-        <select className="doc-type-select" value={docType} onChange={(e) => setDocType(e.target.value)}>
-          <option value="cmr">{t('docTypeCmr', lang)}</option>
-          <option value="zustellprotokoll">{t('docTypeProtocol', lang)}</option>
-          <option value="other">{t('docTypeOther', lang)}</option>
-        </select>
-        <button type="button" className="btn secondary doc-add-btn" onClick={() => docInputRef.current?.click()}>
-          {t('addDocument', lang)}
-        </button>
-      </div>
+      <button
+        type="button"
+        className="btn secondary"
+        style={{ width: '100%', marginTop: 0 }}
+        onClick={() => setDocCaptureOpen(true)}
+      >
+        {t('addDocument', lang)}
+      </button>
 
-      {docGuideOpen && (
-        <div className="sig-fullscreen">
-          <div className="sig-fullscreen-header">
-            <span>{t('docGuideTitle', lang)}</span>
-            <button type="button" className="sig-fullscreen-close" onClick={() => setDocGuideOpen(false)}>✕</button>
-          </div>
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-            <svg viewBox="0 0 280 220" style={{ width: '100%', maxWidth: 280 }}>
-              <rect x="10" y="10" width="260" height="200" rx="12" fill="#F6F8FA" stroke="#E7EAF0" strokeWidth="2" />
-              <rect x="55" y="35" width="170" height="150" rx="4" fill="#fff" stroke="#0F2240" strokeWidth="2.5" />
-              <line x1="75" y1="60" x2="195" y2="60" stroke="#C7D0DE" strokeWidth="3" />
-              <line x1="75" y1="80" x2="195" y2="80" stroke="#C7D0DE" strokeWidth="3" />
-              <line x1="75" y1="100" x2="160" y2="100" stroke="#C7D0DE" strokeWidth="3" />
-              <line x1="75" y1="140" x2="195" y2="140" stroke="#C7D0DE" strokeWidth="3" />
-              <line x1="75" y1="160" x2="150" y2="160" stroke="#C7D0DE" strokeWidth="3" />
-              {/* colțuri evidențiate */}
-              <path d="M55 45 v-10 h10" fill="none" stroke="#FF7A29" strokeWidth="3.5" strokeLinecap="round" />
-              <path d="M215 45 v-10 h-10" fill="none" stroke="#FF7A29" strokeWidth="3.5" strokeLinecap="round" />
-              <path d="M55 175 v10 h10" fill="none" stroke="#FF7A29" strokeWidth="3.5" strokeLinecap="round" />
-              <path d="M215 175 v10 h-10" fill="none" stroke="#FF7A29" strokeWidth="3.5" strokeLinecap="round" />
-            </svg>
-          </div>
-          <div style={{ padding: '0 20px 20px' }}>
-            <p style={{ fontSize: 13, color: 'var(--text-soft)', textAlign: 'center', lineHeight: 1.6, margin: '0 0 16px' }}>{t('docGuideText', lang)}</p>
-            <button type="button" className="btn" onClick={() => setDocGuideOpen(false)}>{t('docGuideClose', lang)}</button>
-          </div>
-        </div>
+      {docCaptureOpen && (
+        <DocumentCapture
+          lang={lang}
+          onClose={() => setDocCaptureOpen(false)}
+          onPick={(file, pickedType) => {
+            setDocCaptureOpen(false)
+            enqueueFiles(order.id, leg, [file], { kind: 'document', docType: pickedType })
+          }}
+        />
       )}
-      <input
-        ref={docInputRef}
-        type="file"
-        accept="image/*,application/pdf"
-        style={{ display: 'none' }}
-        onChange={addDocument}
-      />
+
 
       <div className="pod-label">{t((leg === 'pickup' || leg === 'return_pickup') ? 'signerNameLabelPickup' : 'signerNameLabelDelivery', lang)}</div>
       <input

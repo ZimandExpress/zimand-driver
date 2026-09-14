@@ -29,9 +29,11 @@ export default defineConfig({
         ],
       },
       injectManifest: {
-        // opencv.js (~9 MB) depășește limita implicită de 2 MB — o ridicăm,
-        // exact cum indică mesajul de eroare al build-ului.
-        maximumFileSizeToCacheInBytes: 15 * 1024 * 1024,
+        // opencv.js și jscanify se încarcă leneș, doar când șoferul scanează
+        // efectiv un document. Nu au ce căuta în precache: altfel service
+        // worker-ul descarcă ~9 MB la prima instalare ȘI la fiecare
+        // actualizare, pe datele mobile ale șoferului.
+        globIgnores: ['**/vendor/opencv.js', '**/vendor/jscanify.js'],
       },
     }),
   ],

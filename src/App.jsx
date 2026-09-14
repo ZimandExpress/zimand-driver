@@ -3,6 +3,11 @@ import { supabase } from './supabaseClient'
 import { t, getLang, setLang, availableLangs } from './i18n'
 import { Truck, CheckCircle2, Wallet, User, LogOut, Menu, Bell, MapPin, FlagTriangleRight, Tag, XCircle, Download, X, Navigation, Trophy, ThumbsUp } from 'lucide-react'
 import './index.css'
+import PodFiles from './components/PodFiles'
+import {
+  startQueue, enqueueFiles, enqueueSignature, confirmLeg as queueConfirmLeg,
+} from './offline/uploadQueue'
+import { pruneOld } from './offline/db'
 
 // Jurnal de utilizare Google API — o linie per apel real, "fire-and-forget",
 // ca să vedem exact de unde vine consumul (raport în panoul de disponent).
@@ -76,6 +81,14 @@ export default function App() {
   // manual datele site-ului.
   useEffect(() => {
     document.body.style.overflow = ''
+  }, [])
+
+  // Coada de upload pornește o singură dată, la deschiderea aplicației:
+  // reia fișierele rămase în așteptare din sesiunea anterioară și retrimite
+  // confirmările care nu au apucat să ajungă la server.
+  useEffect(() => {
+    startQueue()
+    pruneOld().catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -1707,8 +1720,7 @@ function CelebrationScreen({ amount, lang, onClose }) {
 
 function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, isOwner, onDeliveryComplete }) {
   const [busy, setBusy] = useState(false)
-  const [photos, setPhotos] = useState([])
-  const [documents, setDocuments] = useState([])
+  const [fileSummary, setFileSummary] = useState({ total: 0, allDone: false, failed: 0, pending: 0, processing: 0 })
   const [docType, setDocType] = useState('cmr')
   const [signatureBlob, setSignatureBlob] = useState(null)
   const [signerName, setSignerName] = useState('')
@@ -1737,85 +1749,59 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
     if (m) onStatusChange(`${m[1]}_${m[2]}_at`)
   }
 
+  // Fișierele nu mai stau în state-ul React, ci în coada persistentă
+  // (IndexedDB). Ele supraviețuiesc refresh-ului, închiderii aplicației și
+  // lipsei de semnal. Componenta PodFiles le afișează citind direct de acolo,
+  // iar eliberarea preview-urilor se face în interiorul ei.
   function addPhotos(e) {
     const files = Array.from(e.target.files || [])
-    const withPreview = files.map((f) => ({ file: f, previewUrl: URL.createObjectURL(f) }))
-    setPhotos((prev) => [...prev, ...withPreview].slice(0, 6))
     e.target.value = ''
+    if (files.length) enqueueFiles(order.id, leg, files, { kind: 'photo' })
   }
-
-  function removePhoto(idx) {
-    setPhotos((prev) => {
-      const removed = prev[idx]
-      if (removed?.previewUrl) URL.revokeObjectURL(removed.previewUrl)
-      return prev.filter((_, i) => i !== idx)
-    })
-  }
-
-  // Eliberează toate preview-urile blob rămase când componenta se demontează
-  // (schimbare de etapă pickup/delivery, ieșire din ecran etc.) — evită
-  // scurgeri de memorie și pozele "blocate" din URL-uri vechi neeliberate.
-  useEffect(() => {
-    return () => { photos.forEach((p) => p.previewUrl && URL.revokeObjectURL(p.previewUrl)) }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
 
   const [docGuideOpen, setDocGuideOpen] = useState(false)
 
   function addDocument(e) {
     const file = e.target.files?.[0]
-    if (!file) return
     e.target.value = ''
-    setDocuments((prev) => [...prev, { type: docType, file }])
-  }
-
-  function removeDocument(idx) {
-    setDocuments((prev) => prev.filter((_, i) => i !== idx))
+    if (file) enqueueFiles(order.id, leg, [file], { kind: 'document', docType })
   }
 
   const [uploadError, setUploadError] = useState('')
 
   async function confirmLeg() {
+    if (busy) return
     setBusy(true)
     setUploadError('')
     try {
-      // Toate fișierele se încarcă simultan, nu unul după altul — cu 5-6
-      // poze plus documente plus semnătură, încărcarea pe rând se aduna
-      // repede la un timp de așteptare mult prea mare.
-      const [photoPaths, uploadedDocs, signaturePath] = await Promise.all([
-        Promise.all(photos.map((p) => uploadPodFile(order.id, leg, p.file))),
-        Promise.all(documents.map(async (doc) => ({
-          type: doc.type, name: doc.file.name,
-          path: await uploadPodFile(order.id, leg, doc.file),
-        }))),
-        signatureBlob
-          ? uploadPodFile(order.id, leg, new File([signatureBlob], 'signature.png', { type: 'image/png' }))
-          : Promise.resolve(null),
-      ])
-      const { error } = await supabase.rpc(confirmFn, {
-        p_order_id: order.id,
-        p_photos: photoPaths,
-        p_documents: uploadedDocs,
-        p_signature_url: signaturePath,
-        p_signer_name: signerName || null,
-      })
-      if (error) throw error
-      onStatusChange(`${leg}_confirmed_at`)
-      if ((leg === 'delivery' && !order.is_round_trip) || leg === 'return_delivery') { if (onDeliveryComplete) onDeliveryComplete() }
+      if (signatureBlob) await enqueueSignature(order.id, leg, signatureBlob)
 
-      // Trimite pozele/documentele/semnătura către portalul de client —
-      // dacă eșuează, nu blocăm confirmarea (deja salvată cu succes mai sus).
-      const { data: sessionData } = await supabase.auth.getSession()
-      fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sync-delivery-documents`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sessionData?.session?.access_token}` },
-        body: JSON.stringify({ order_id: order.id, leg }),
-      }).catch((syncErr) => console.error('sync-delivery-documents error:', syncErr.message))
+      // Fișierele au fost deja urcate de coadă, în fundal, pe măsură ce
+      // șoferul le adăuga. Aici doar înregistrăm confirmarea cu aceleași
+      // RPC-uri și același format ca înainte. Dacă nu e internet, confirmarea
+      // se salvează local și pleacă automat când revine semnalul.
+      const result = await queueConfirmLeg({
+        orderId: order.id,
+        leg,
+        rpcName: confirmFn,
+        signerName,
+      })
+
+      onStatusChange(`${leg}_confirmed_at`)
+
+      if (result === 'pending') {
+        // Nu declanșăm ecranul de succes: datele sunt în siguranță pe telefon,
+        // dar încă nu au ajuns la server. Un succes fals aici ar însemna o
+        // comandă raportată ca livrată fără dovezi în sistem.
+        setUploadError(t('confirmSavedOffline', lang))
+        return
+      }
+
+      if ((leg === 'delivery' && !order.is_round_trip) || leg === 'return_delivery') {
+        if (onDeliveryComplete) onDeliveryComplete()
+      }
     } catch (err) {
       console.error('confirm leg error:', err.message)
-      // Pozele, documentele și semnătura RĂMÂN neatinse, aici, în ecran —
-      // nimic nu se șterge la eșec. E suficient să apese din nou butonul,
-      // odată ce semnalul revine, fără să reia nimic de la capăt.
       setUploadError(t('uploadFailedError', lang))
     } finally {
       setBusy(false)
@@ -1855,17 +1841,13 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
     <div className="leg-workflow">
       <div className="leg-title">{legLabel} · {t('confirmStep', lang)}</div>
 
-      <div className="pod-label">{t('photosLabel', lang)} ({photos.length}/6)</div>
-      <div className="photo-grid">
-        {photos.map((p, i) => (
-          <div className="photo-slot filled" key={i} onClick={() => removePhoto(i)}>
-            <img src={p.previewUrl} alt="" />
-          </div>
-        ))}
-        {photos.length < 6 && (
-          <div className="photo-slot" onClick={() => setPhotoSourceOpen(true)}>+</div>
-        )}
-      </div>
+      <PodFiles
+        orderId={order.id}
+        leg={leg}
+        lang={lang}
+        onAddPhoto={() => setPhotoSourceOpen(true)}
+        onSummary={setFileSummary}
+      />
 
       {photoSourceOpen && (
         <div className="sig-fullscreen" style={{ justifyContent: 'flex-end', background: 'rgba(15,34,64,.55)' }}>
@@ -1943,16 +1925,6 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
           </div>
         </div>
       )}
-      {documents.length > 0 && (
-        <div className="doc-chip-list">
-          {documents.map((doc, i) => (
-            <div className="cmr-chip" key={i} onClick={() => removeDocument(i)}>
-              {doc.type === 'cmr' ? t('docTypeCmr', lang) : doc.type === 'zustellprotokoll' ? t('docTypeProtocol', lang) : t('docTypeOther', lang)}
-              {' · '}{doc.file.name} ✕
-            </div>
-          ))}
-        </div>
-      )}
       <input
         ref={docInputRef}
         type="file"
@@ -1978,8 +1950,17 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
         </div>
       )}
 
-      <button className="btn" onClick={confirmLeg} disabled={busy} style={{ marginTop: 14 }}>
-        {busy ? t('uploadingLabel', lang) : (leg === 'pickup' || leg === 'return_pickup') ? t('confirmPickup', lang) : t('confirmDelivery', lang)}
+      <button
+        className="btn"
+        onClick={confirmLeg}
+        disabled={busy || fileSummary.total === 0 || !fileSummary.allDone}
+        style={{ marginTop: 14 }}
+      >
+        {busy
+          ? t('uploadingLabel', lang)
+          : fileSummary.total > 0 && !fileSummary.allDone
+            ? t('waitingForUploads', lang)
+            : (leg === 'pickup' || leg === 'return_pickup') ? t('confirmPickup', lang) : t('confirmDelivery', lang)}
       </button>
     </div>
   )

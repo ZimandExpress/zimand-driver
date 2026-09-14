@@ -423,6 +423,15 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
           <div className="menu-header">
             <span className="live-dot" /><span className="menu-header-name">Zimand Express</span>
           </div>
+
+          {isOwner && (
+            <EarningsMenuCard
+              profile={profile}
+              open={menuOpen}
+              lang={lang}
+              onClick={() => navTo('castiguri')}
+            />
+          )}
           <button className={`menu-item ${tab === 'curse' ? 'active' : ''}`} onClick={() => navTo('curse')}>
             <span className="ic"><Truck size={19} strokeWidth={1.75} /></span>{t('tabRides', lang)}
           </button>
@@ -2851,6 +2860,93 @@ function getWeekStart(dateStr) {
 
 function formatDateShort(d) {
   return d.toLocaleDateString(undefined, { day: '2-digit', month: '2-digit' })
+}
+
+// Sumarul de câștiguri din meniu. Folosește EXACT aceleași definiții ca
+// EarningsScreen — status 'done', data de referință delivery_confirmed_at sau,
+// în lipsa ei, delivery_date, iar valoarea prin effectivePrice. Dacă cele două
+// ar diverge, șoferul ar vedea două cifre diferite pentru aceeași lună și
+// n-ar mai avea încredere în niciuna.
+function useEarningsSummary(profile, enabled) {
+  const [totals, setTotals] = useState(null) // { month, today, monthCount, todayCount }
+
+  useEffect(() => {
+    if (!enabled || !profile?.id) return
+    let active = true
+
+    const now = new Date()
+    const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
+
+    supabase
+      .from('orders')
+      .select('id, delivery_confirmed_at, delivery_date, estimated_price, winning_bid:bids!fk_winner_bid(price)')
+      .eq('assigned_driver_id', profile.id)
+      .eq('status', 'done')
+      .or(`delivery_confirmed_at.gte.${monthStart},delivery_date.gte.${monthStart}`)
+      .then(({ data, error }) => {
+        if (!active) return
+        if (error) {
+          console.error('earnings summary error:', error.message)
+          setTotals(null)
+          return
+        }
+        const todayIso = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+        let month = 0, today = 0, monthCount = 0, todayCount = 0
+        ;(data || []).forEach((o) => {
+          const ref = o.delivery_confirmed_at || o.delivery_date
+          if (!ref) return
+          const day = String(ref).slice(0, 10)
+          if (day < monthStart) return
+          const value = effectivePrice(o) || 0
+          month += value
+          monthCount++
+          if (day === todayIso) { today += value; todayCount++ }
+        })
+        setTotals({ month, today, monthCount, todayCount })
+      })
+
+    return () => { active = false }
+  }, [enabled, profile?.id])
+
+  return totals
+}
+
+function EarningsMenuCard({ profile, open, lang, onClick }) {
+  const totals = useEarningsSummary(profile, open)
+  if (!totals) return null
+
+  return (
+    <div
+      onClick={onClick}
+      style={{
+        margin: '0 12px 10px', padding: '14px 16px', borderRadius: 12,
+        background: 'linear-gradient(135deg, #0F2240 0%, #1B3A63 100%)',
+        color: '#fff', cursor: 'pointer',
+      }}
+    >
+      <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.06em', color: '#9FB3D0' }}>
+        {t('earningsMonthLabel', lang)}
+      </div>
+      <div style={{ fontSize: 26, fontWeight: 700, lineHeight: 1.15, marginTop: 2 }}>
+        {totals.month.toFixed(2)} €
+      </div>
+
+      <div style={{ height: 1, background: 'rgba(255,255,255,.14)', margin: '11px 0 9px' }} />
+
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+        <span style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.06em', color: '#9FB3D0' }}>
+          {t('earningsTodayLabel', lang)}
+        </span>
+        <span style={{ fontSize: 17, fontWeight: 700, color: totals.today > 0 ? '#FF9A55' : '#7D90AC' }}>
+          {totals.today.toFixed(2)} €
+        </span>
+      </div>
+
+      <div style={{ fontSize: 11, color: '#7D90AC', marginTop: 6 }}>
+        {t('earningsRidesCount', lang).replace('{m}', totals.monthCount).replace('{d}', totals.todayCount)}
+      </div>
+    </div>
+  )
 }
 
 function EarningsScreen({ profile, lang }) {

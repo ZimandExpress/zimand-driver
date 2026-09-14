@@ -215,7 +215,10 @@ const translations = {
     // --- Verdienst im Menü ---
     earningsMonthLabel: 'Diesen Monat',
     earningsTodayLabel: 'Heute',
-    earningsRidesCount: '{m} Aufträge diesen Monat · {d} heute',
+    earningsRidesCount: '{m} Aufträge · {d} heute',
+    earningsMonthPeriodLabel: 'Dieser Monat',
+    earningsThisMonth: 'Dieser Monat',
+    earningsPreviousMonths: 'Frühere Monate',
   },
   en: {
     appName: 'Zimand Driver',
@@ -433,7 +436,10 @@ const translations = {
     // --- Earnings in the menu ---
     earningsMonthLabel: 'This month',
     earningsTodayLabel: 'Today',
-    earningsRidesCount: '{m} orders this month · {d} today',
+    earningsRidesCount: '{m} orders · {d} today',
+    earningsMonthPeriodLabel: 'This month',
+    earningsThisMonth: 'This month',
+    earningsPreviousMonths: 'Previous months',
   },
 }
 

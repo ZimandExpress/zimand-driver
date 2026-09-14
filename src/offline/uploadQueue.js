@@ -20,6 +20,7 @@ import {
   dbPut, dbGet, dbDelete, dbGetAll, dbGetByLeg, localId,
 } from './db'
 import { processImage, makeThumbnail, PHOTO_PRESET, DOCUMENT_PRESET } from '../services/imageService'
+import { jpegToPdf } from '../services/pdfService'
 
 const BUCKET = 'proof-of-delivery'
 const MAX_CONCURRENT = 2
@@ -78,8 +79,29 @@ export async function enqueueFiles(orderId, leg, files, { kind = 'photo', docTyp
       try {
         const thumb = await makeThumbnail(file)
         await patch(id, { thumb })
-        const { blob, mime } = await processImage(file, preset)
-        await patch(id, { blob, mime, bytes: blob.size, status: 'queued', progress: 0 })
+        const processed = await processImage(file, preset)
+        let blob = processed.blob
+        let mime = processed.mime
+        let fileName = item.fileName
+
+        // Documentele fotografiate pleacă mai departe ca PDF, nu ca poză:
+        // asta primește contabilitatea, asta se atașează unei facturi și asta
+        // se deschide la fel pe orice calculator. Imaginea nu se recomprimă —
+        // JPEG-ul se încapsulează direct în PDF, deci nu se pierde
+        // lizibilitate și fișierul rămâne aproximativ de aceeași mărime.
+        // Dacă șoferul a ales din galerie un PDF gata făcut, îl lăsăm așa.
+        if (kind === 'document' && mime !== 'application/pdf') {
+          try {
+            blob = await jpegToPdf(blob)
+            mime = 'application/pdf'
+            fileName = fileName.replace(/\.[^.]+$/, '') + '.pdf'
+          } catch (convErr) {
+            // Conversia eșuată nu blochează dovada — urcăm poza ca atare.
+            console.error('pdf conversion failed, uploading image:', convErr.message)
+          }
+        }
+
+        await patch(id, { blob, mime, fileName, bytes: blob.size, status: 'queued', progress: 0 })
         pump()
       } catch (err) {
         await patch(id, { status: 'failed', error: err.code || 'process_failed' })

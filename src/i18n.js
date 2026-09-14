@@ -211,6 +211,11 @@ const translations = {
     etaLimitReached: 'Maximal 3 Benachrichtigungen pro Etappe erreicht.',
     etaNoRecipient: 'Für diesen Auftrag ist keine Kunden-E-Mail hinterlegt.',
     etaFailed: 'Ankunftszeit konnte nicht gesendet werden.',
+
+    // --- Verdienst im Menü ---
+    earningsMonthLabel: 'Diesen Monat',
+    earningsTodayLabel: 'Heute',
+    earningsRidesCount: '{m} Aufträge diesen Monat · {d} heute',
   },
   en: {
     appName: 'Zimand Driver',
@@ -424,6 +429,11 @@ const translations = {
     etaLimitReached: 'Maximum of 3 notifications per leg reached.',
     etaNoRecipient: 'No client email is stored for this order.',
     etaFailed: 'Could not send arrival time.',
+
+    // --- Earnings in the menu ---
+    earningsMonthLabel: 'This month',
+    earningsTodayLabel: 'Today',
+    earningsRidesCount: '{m} orders this month · {d} today',
   },
 }
 

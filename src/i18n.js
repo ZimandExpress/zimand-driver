@@ -242,6 +242,13 @@ const translations = {
     qRetake: '📷 Neu aufnehmen',
     qUse: 'Foto verwenden',
     qUseAnyway: 'Trotzdem verwenden',
+
+    // --- Gegenangebot vom Disponenten ---
+    counterTitle: 'Gegenangebot vom Disponenten',
+    counterAccept: '✓ Preis annehmen',
+    counterReject: 'Ablehnen',
+    counterRejectedNote: 'Sie haben das Gegenangebot abgelehnt. Der Disponent wurde informiert. Sie können jetzt einen neuen Preis senden.',
+    counterFailed: 'Aktion fehlgeschlagen. Bitte erneut versuchen.',
   },
   en: {
     appName: 'Zimand Driver',
@@ -486,6 +493,13 @@ const translations = {
     qRetake: '📷 Retake',
     qUse: 'Use photo',
     qUseAnyway: 'Use anyway',
+
+    // --- Counter offer from dispatch ---
+    counterTitle: 'Counter offer from dispatch',
+    counterAccept: '✓ Accept price',
+    counterReject: 'Decline',
+    counterRejectedNote: 'You declined the counter offer. Dispatch has been informed. You can now send a new price.',
+    counterFailed: 'Action failed. Please try again.',
   },
 }
 

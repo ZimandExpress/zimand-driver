@@ -1659,7 +1659,7 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
         </div>
         {cargoOpen && (
           <div className="info-card-body">
-            {order.shipment_type && <div className="info-row"><span className="k">📦</span><span className="v">{SHIPMENT_TYPE_LABELS[order.shipment_type] || order.shipment_type}{order.quantity ? ` (${order.quantity}×)` : ''}</span></div>}
+            {cargoSummary(order) && <div className="info-row"><span className="k">📦</span><span className="v">{cargoSummary(order)}</span></div>}
             {order.cargo_desc && <div className="info-row"><span className="k">{t('cargoLabel', lang)}</span><span className="v">{order.cargo_desc}</span></div>}
             {order.weight && <div className="info-row"><span className="k">{t('weightLabel', lang)}</span><span className="v">{order.weight} kg</span></div>}
             {order.dims && <div className="info-row"><span className="k">{t('dimsLabel', lang)}</span><span className="v">{order.dims}</span></div>}
@@ -3505,6 +3505,46 @@ const SHIPMENT_TYPE_LABELS = {
   sonstiges: 'Sonstiges',
 }
 
+const SHIPMENT_TYPE_SINGULAR = {
+  dokumente: 'Dokument',
+  pakete: 'Paket',
+  europaletten: 'Europalette',
+  paletten: 'Palette',
+  gitterbox: 'Gitterbox',
+  baumaterialien: 'Baumaterial',
+  'lkw-komplett': 'Ganzes Fahrzeug',
+  sonstiges: 'Sonstiges',
+}
+
+// Rezumatul mărfii, pe tipuri.
+//
+// Câmpul shipment_type e unul singur și reține doar primul tip al comenzii.
+// Afișat împreună cu cantitatea totală, producea „Paletten (8×)" pentru o
+// comandă care are de fapt 1 palet, 2 europaleți și 5 pachete — adică firma
+// care licitează vedea opt paleți și calcula greșit vehiculul și prețul.
+//
+// Detaliile reale sunt în cargo_items. Le grupăm pe tip și le însumăm,
+// fiindcă aceeași categorie poate apărea pe mai multe rânduri.
+function cargoSummary(order) {
+  const items = Array.isArray(order?.cargo_items) ? order.cargo_items : []
+  const valid = items.filter((it) => it && it.type && Number(it.qty) > 0)
+  if (valid.length === 0) {
+    if (!order?.shipment_type) return null
+    const label = SHIPMENT_TYPE_LABELS[order.shipment_type] || order.shipment_type
+    return order.quantity ? `${label} (${order.quantity}×)` : label
+  }
+  const byType = new Map()
+  valid.forEach((it) => byType.set(it.type, (byType.get(it.type) || 0) + Number(it.qty)))
+  return [...byType.entries()]
+    .map(([type, qty]) => {
+      const label = qty === 1
+        ? (SHIPMENT_TYPE_SINGULAR[type] || SHIPMENT_TYPE_LABELS[type] || type)
+        : (SHIPMENT_TYPE_LABELS[type] || type)
+      return `${qty}× ${label}`
+    })
+    .join(' · ')
+}
+
 function VehicleChips({ vehicles }) {
   if (!vehicles || vehicles.length === 0) return null
   return (
@@ -3654,9 +3694,9 @@ function BidCard({ order, lang, courierProfileId, open, onToggle, onBidPlaced })
 
       <div className="bid-card2-body">
         <div className="bid-body-inner">
-          {order.shipment_type && (
+          {cargoSummary(order) && (
             <div className="shipment-type-row">
-              📦 {SHIPMENT_TYPE_LABELS[order.shipment_type] || order.shipment_type}{order.quantity ? ` (${order.quantity}×)` : ''}
+              📦 {cargoSummary(order)}
             </div>
           )}
           {order.dims && (

@@ -3566,6 +3566,7 @@ function BidCard({ order, lang, courierProfileId, open, onToggle, onBidPlaced })
   const [customTo, setCustomTo] = useState('')
   const [busy, setBusy] = useState(false)
   const [existingBid, setExistingBid] = useState(null)
+  const [bidError, setBidError] = useState('')
   const [editing, setEditing] = useState(false)
   const today = isToday(order.pickup_date)
   const tomorrow = isTomorrow(order.pickup_date)
@@ -3587,6 +3588,66 @@ function BidCard({ order, lang, courierProfileId, open, onToggle, onBidPlaced })
       })
   }, [courierProfileId, order.id])
 
+  // Contraoferta dispecerului.
+  //
+  // Până acum exista doar în portalul de partener, pe calculator. Un
+  // owner-operator care lucrează de pe telefon primea emailul cu prețul
+  // propus și nu putea face nimic în aplicație — trebuia să deschidă
+  // portalul sau să sune dispeceratul.
+  //
+  // Acceptarea schimbă doar prețul ofertei lui. NU atribuie comanda:
+  // alegerea câștigătorului rămâne o decizie separată a dispecerului.
+  async function acceptCounter() {
+    if (!existingBid?.counter_price) return
+    setBusy(true)
+    try {
+      const history = Array.isArray(existingBid.price_history) ? existingBid.price_history : []
+      const { data, error } = await supabase
+        .from('bids')
+        .update({
+          price: existingBid.counter_price,
+          price_history: [...history, { price: existingBid.price, at: new Date().toISOString(), by: 'courier' }],
+          counter_price: null,
+          counter_message: null,
+          counter_at: null,
+          counter_rejected_at: null,
+        })
+        .eq('id', existingBid.id)
+        .select()
+        .single()
+      if (error) throw error
+      setExistingBid(data)
+      setOwnPrice(String(data.price ?? ''))
+    } catch (err) {
+      console.error('accept counter error:', err.message)
+      setBidError(t('counterFailed', lang))
+    }
+    setBusy(false)
+  }
+
+  // Refuzul lasă oferta inițială neatinsă și îl marchează pentru dispecer.
+  // Contraoferta dispare de pe ecranul șoferului, iar el poate trimite un
+  // preț nou — momentul în care marcajul de refuz se șterge automat.
+  async function rejectCounter() {
+    if (!existingBid?.counter_price) return
+    setBusy(true)
+    try {
+      const { data, error } = await supabase
+        .from('bids')
+        .update({ counter_rejected_at: new Date().toISOString() })
+        .eq('id', existingBid.id)
+        .select()
+        .single()
+      if (error) throw error
+      setExistingBid(data)
+      setEditing(true)
+    } catch (err) {
+      console.error('reject counter error:', err.message)
+      setBidError(t('counterFailed', lang))
+    }
+    setBusy(false)
+  }
+
   async function submitBid(amount) {
     if (!courierProfileId) {
       console.error('bid submit error: no courier profile id resolved yet')
@@ -3600,7 +3661,12 @@ function BidCard({ order, lang, courierProfileId, open, onToggle, onBidPlaced })
       if (existingBid) {
         const { data, error } = await supabase
           .from('bids')
-          .update({ price: amount, message: message || null, eta_from: etaFrom, eta_to: etaTo })
+          // Un preț nou încheie negocierea în curs: contraoferta veche și
+          // marcajul de refuz nu mai au ce căuta pe ofertă.
+          .update({
+            price: amount, message: message || null, eta_from: etaFrom, eta_to: etaTo,
+            counter_price: null, counter_message: null, counter_at: null, counter_rejected_at: null,
+          })
           .eq('id', existingBid.id)
           .select()
           .single()
@@ -3721,6 +3787,52 @@ function BidCard({ order, lang, courierProfileId, open, onToggle, onBidPlaced })
             <div className="order-notes-box">
               <div className="order-notes-label">{t('notesLabel', lang)}</div>
               <div className="order-notes-text">{preWinSafeNotes(order.notes)}</div>
+            </div>
+          )}
+
+          {existingBid?.counter_price && !existingBid.counter_rejected_at && (
+            <div style={{
+              background: '#FFF6ED', border: '1px solid #FFD2AE', borderRadius: 10,
+              padding: '14px 15px', marginBottom: 12,
+            }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#B35A12', textTransform: 'uppercase', letterSpacing: '.04em' }}>
+                {t('counterTitle', lang)}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, margin: '6px 0 2px' }}>
+                <span style={{ fontSize: 26, fontWeight: 700, color: '#B35A12' }}>{existingBid.counter_price} €</span>
+                <span style={{ fontSize: 12.5, color: '#8A5A16', textDecoration: 'line-through' }}>{existingBid.price} €</span>
+              </div>
+              {existingBid.counter_message && (
+                <div style={{ fontSize: 13, color: '#8A5A16', lineHeight: 1.5, marginTop: 6 }}>
+                  „{existingBid.counter_message}"
+                </div>
+              )}
+              <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                <button className="btn" style={{ flex: 1, marginTop: 0 }} onClick={acceptCounter} disabled={busy}>
+                  {t('counterAccept', lang)}
+                </button>
+                <button className="btn secondary" style={{ flex: 1, marginTop: 0 }} onClick={rejectCounter} disabled={busy}>
+                  {t('counterReject', lang)}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {existingBid?.counter_rejected_at && (
+            <div style={{
+              background: '#F6F8FA', border: '1px solid #D8DEE8', borderRadius: 10,
+              padding: '10px 13px', marginBottom: 12, fontSize: 12.5, color: '#6B7A90', lineHeight: 1.5,
+            }}>
+              {t('counterRejectedNote', lang)}
+            </div>
+          )}
+
+          {bidError && (
+            <div style={{
+              background: '#FCEBE8', border: '1px solid #E4A296', borderRadius: 10,
+              padding: '10px 12px', marginBottom: 12, fontSize: 13, color: '#B23A24',
+            }}>
+              {bidError}
             </div>
           )}
 

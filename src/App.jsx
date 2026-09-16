@@ -133,6 +133,12 @@ export default function App() {
             name: companyName || session.user.email,
             auth_user_id: session.user.id,
             company_id: courierProfileId,
+            // Obligatoriu: valoarea implicită a coloanei este 'employee'.
+            // Fără linia asta, o firmă care intra prima dată în aplicație
+            // primea un rând de angajat — deci nu vedea prețuri, nu putea
+            // licita și nu vedea câștiguri. Contul e al firmei, deci rândul
+            // trebuie să fie de firmă.
+            account_type: 'owner_operator',
           })
           .select()
           .single()
@@ -817,6 +823,9 @@ function RidesScreen({ profile, isOwner, session, lang }) {
   // legăm de starea curentă (altfel abonamentul s-ar reface la fiecare
   // schimbare de comandă).
   const ordersRef = useRef([])
+  // La un cont de firmă, toate rândurile de șofer ale firmei. La un angajat
+  // cu cont propriu, doar al lui.
+  const driverIds = useOwnDriverIds(session, profile)
   const driverLocationForNotify = useDriverLocation(session)
   const mapsKeyForNotify = useGoogleMapsKey()
 
@@ -889,8 +898,8 @@ function RidesScreen({ profile, isOwner, session, lang }) {
   }
 
   useEffect(() => {
-    if (!profile?.id) {
-      setLoading(false)
+    if (!profile?.id || !driverIds) {
+      if (!profile?.id) setLoading(false)
       return
     }
 
@@ -899,7 +908,7 @@ function RidesScreen({ profile, isOwner, session, lang }) {
     supabase
       .from('orders')
       .select('*, winning_bid:bids!fk_winner_bid(price)')
-      .eq('assigned_driver_id', profile.id)
+      .in('assigned_driver_id', driverIds)
       .then(({ data, error }) => {
         if (error) console.error('orders fetch error:', error.message)
         if (active) {
@@ -921,11 +930,13 @@ function RidesScreen({ profile, isOwner, session, lang }) {
         })
     }
 
-    const channel = supabase
-      .channel('driver-orders-' + profile.id)
-      .on(
+    // Realtime filtrează doar pe egalitate, deci un abonament per șofer.
+    // La o firmă cu doi-trei angajați sunt două-trei abonamente, nu mai mult.
+    let channel = supabase.channel('driver-orders-' + profile.id)
+    driverIds.forEach((driverId) => {
+      channel = channel.on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'orders', filter: `assigned_driver_id=eq.${profile.id}` },
+        { event: '*', schema: 'public', table: 'orders', filter: `assigned_driver_id=eq.${driverId}` },
         (payload) => {
           if (payload.eventType === 'DELETE') {
             setOrders((current) => current.filter((o) => o.id !== payload.old.id))
@@ -952,15 +963,16 @@ function RidesScreen({ profile, isOwner, session, lang }) {
           if (!known || known.winner_bid_id !== payload.new.winner_bid_id || !known.winning_bid) {
             refetchOne(payload.new.id)
           }
-        }
+        },
       )
-      .subscribe()
+    })
+    channel.subscribe()
 
     return () => {
       active = false
       supabase.removeChannel(channel)
     }
-  }, [profile?.id])
+  }, [profile?.id, driverIds])
 
   if (loading) return <PlaceholderScreen title={t('tabRides', lang)} note={t('loadingRides', lang)} />
 
@@ -2729,6 +2741,45 @@ function CompletedOrderDetail({ order, isOwner, lang, onBack }) {
       )}
     </div>
   )
+}
+
+// Ce rânduri de șofer „aparțin" contului conectat.
+//
+// O firmă parteneră intră în aplicație cu un singur cont — al firmei — dar
+// poate atribui o cursă unuia dintre angajații ei. Angajatul are propriul
+// rând în tabela de șoferi, adesea fără cont propriu.
+//
+// Aplicația cerea strict comenzile rândului cu care te-ai autentificat, deci
+// o comandă dată unui angajat nu apărea NIMĂNUI: nici angajatului, care n-are
+// cont, nici firmei, care e alt rând. Regulile din baza de date permiteau
+// deja accesul firmei la comenzile șoferilor ei — doar interogarea era prea
+// îngustă.
+//
+// Pentru un șofer angajat, cu cont propriu, întoarce doar id-ul lui.
+function useOwnDriverIds(session, profile) {
+  const [ids, setIds] = useState(null)
+
+  useEffect(() => {
+    if (!profile?.id) { setIds(null); return }
+    let active = true
+    // Contul firmei are company_id egal cu propriul cont de autentificare.
+    const isCompanyAccount = profile.company_id && session?.user?.id && profile.company_id === session.user.id
+    if (!isCompanyAccount) { setIds([profile.id]); return }
+
+    supabase
+      .from('drivers')
+      .select('id')
+      .eq('company_id', profile.company_id)
+      .then(({ data, error }) => {
+        if (!active) return
+        if (error) { console.error('company drivers fetch error:', error.message); setIds([profile.id]); return }
+        const list = (data || []).map((d) => d.id)
+        setIds(list.length ? list : [profile.id])
+      })
+    return () => { active = false }
+  }, [profile?.id, profile?.company_id, session?.user?.id])
+
+  return ids
 }
 
 function useCompanyProfileId(session, profile) {

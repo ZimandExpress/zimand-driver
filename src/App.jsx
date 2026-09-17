@@ -366,7 +366,26 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
 
     if (!('geolocation' in navigator)) return
 
+    // Scriem în baza de date doar când poziția s-a schimbat semnificativ.
+    //
+    // Înainte se scria la FIECARE actualizare de poziție, cu precizie maximă —
+    // de câteva ori pe minut în mers, adică mii de scrieri pe zi și baterie
+    // consumată pentru o precizie de care dispeceratul n-are nevoie.
+    //
+    // Praguri: 150 de metri sau 60 de secunde de la ultima scriere. În mers,
+    // pragul de distanță se atinge oricum la fiecare 10–15 secunde, deci
+    // vizibilitatea în Disponent rămâne practic aceeași.
+    let lastSent = { lat: null, lng: null, at: 0 }
+    const MIN_METERS = 150
+    const MIN_MS = 60000
+
     const sendPosition = (coords) => {
+      const now = Date.now()
+      if (lastSent.lat != null) {
+        const movedMeters = haversineKm(lastSent.lat, lastSent.lng, coords.latitude, coords.longitude) * 1000
+        if (movedMeters < MIN_METERS && now - lastSent.at < MIN_MS) return
+      }
+      lastSent = { lat: coords.latitude, lng: coords.longitude, at: now }
       supabase
         .from('drivers')
         .update({
@@ -383,7 +402,9 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
     watchIdRef.current = navigator.geolocation.watchPosition(
       (pos) => sendPosition(pos.coords),
       (err) => console.error('geolocation error:', err.message),
-      { enableHighAccuracy: true, maximumAge: 15000, timeout: 20000 }
+      // Precizie normală, nu maximă: pentru harta dispeceratului diferența e
+      // nesemnificativă, iar consumul de baterie scade considerabil.
+      { enableHighAccuracy: false, maximumAge: 15000, timeout: 20000 }
     )
 
     return () => {
@@ -1191,23 +1212,26 @@ function RideCard({ order, isOwner, lang, onClick, compact }) {
   )
 }
 
+// Geocodare, o singură implementare.
+//
+// Varianta anterioară folosea Nominatim (OpenStreetMap), fără cache și fără
+// User-Agent. Nominatim limitează la o cerere pe secundă și blochează IP-urile
+// care abuzează — iar aici se apela de două ori la FIECARE deschidere de
+// comandă, pentru aceleași adrese. În paralel exista deja o geocodare Google
+// cu cache, folosită în altă parte a aplicației: două sisteme pentru aceeași
+// treabă, dintre care unul riscant.
 function useGeocode(address) {
   const [coords, setCoords] = useState(null)
+  const mapsKey = useGoogleMapsKey()
 
   useEffect(() => {
-    if (!address) return
+    if (!address || !mapsKey) return
     let active = true
-    fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(address)}`)
-      .then((r) => r.json())
-      .then((results) => {
-        if (!active || !results || !results[0]) return
-        setCoords([parseFloat(results[0].lat), parseFloat(results[0].lon)])
-      })
-      .catch((err) => console.error('geocode error:', err.message))
-    return () => {
-      active = false
-    }
-  }, [address])
+    geocodeAddressCached(address, mapsKey).then((point) => {
+      if (active && point) setCoords([point.lat, point.lng])
+    })
+    return () => { active = false }
+  }, [address, mapsKey])
 
   return coords
 }
@@ -1371,6 +1395,13 @@ function GoogleLiveMap({ pickupCoords, deliveryCoords }) {
     if (deliveryCoords) addMarker(deliveryCoords, 'B', '#0F2240')
 
     if (pickupCoords && deliveryCoords) {
+      // Traseul dintre două puncte fixe nu se schimbă. Îl memorăm, altfel se
+      // cerea din nou de la Google la fiecare deschidere a comenzii — de zeci
+      // de ori pe zi pentru aceeași cursă.
+      const routeKey = `${pickupCoords[0]},${pickupCoords[1]}|${deliveryCoords[0]},${deliveryCoords[1]}`
+      const cachedRoute = directionsCache.get(routeKey)
+      if (cachedRoute) { renderer.setDirections(cachedRoute); return }
+
       logApiUsage('directions', 'Driver App — Live-Karte (Route zeichnen)')
       const directionsService = new window.google.maps.DirectionsService()
       directionsService.route(
@@ -1381,6 +1412,7 @@ function GoogleLiveMap({ pickupCoords, deliveryCoords }) {
         },
         (result, status) => {
           if (status === 'OK') {
+            directionsCache.set(routeKey, result)
             renderer.setDirections(result)
           } else {
             renderer.setDirections({ routes: [] })
@@ -3399,6 +3431,9 @@ function haversineKm(lat1, lng1, lat2, lng2) {
 // Geocodifică o adresă, cu cache simplu în memorie — nu repetăm apeluri
 // pentru aceeași adresă de mai multe ori.
 const geocodeCache = new Map()
+
+// Trasee deja cerute de la Google, pe durata sesiunii.
+const directionsCache = new Map()
 async function geocodeAddressCached(address, mapsKey) {
   if (geocodeCache.has(address)) return geocodeCache.get(address)
   try {

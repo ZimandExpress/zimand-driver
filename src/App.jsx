@@ -2141,7 +2141,9 @@ const INCIDENT_KINDS = [
 // Comanda NU se închide și NU se marchează ca livrată. Rămâne în lucru, iar
 // dispecerul decide ce urmează — exact ca la telefon, doar că rămâne scris,
 // cu oră, poziție și fotografie.
-function IncidentSheet({ order, leg, lang, driverId, onClose, onSaved }) {
+function IncidentSheet({ order, leg, lang, driverId, blocking, onClose, onSaved }) {
+  // La „livrarea nu e posibilă" categoria e deja evidentă din context; șoferul
+  // alege doar motivul concret.
   const [kind, setKind] = useState(null)
   const [comment, setComment] = useState('')
   const [photos, setPhotos] = useState([])
@@ -2202,6 +2204,10 @@ function IncidentSheet({ order, leg, lang, driverId, onClose, onSaved }) {
       photos: paths.length ? paths : null,
       lat: position?.lat ?? null,
       lng: position?.lng ?? null,
+      // Raportul de „livrare imposibilă" blochează confirmarea până când
+      // dispecerul decide. Celelalte probleme se raportează fără să oprească
+      // nimic — șoferul poate continua dacă situația se rezolvă singură.
+      blocks_delivery: !!blocking,
     })
 
     setBusy(false)
@@ -2540,9 +2546,51 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
   // ETA e disponibil doar pe traseul principal. Cursele de retur ar avea
   // nevoie de propriile coloane; până atunci butonul nu apare acolo, ca să nu
   // suprascrie intervalul anunțat pentru dus.
+  // Incidentul care blochează livrarea, dacă există unul nerezolvat.
+  //
+  // Cât timp e deschis, șoferul nu poate confirma livrarea: decizia o ia
+  // dispecerul, după ce vorbește cu clientul. Când dispecerul îl marchează
+  // rezolvat, instrucțiunea lui apare pe ecranul șoferului și butoanele se
+  // deblochează.
+  const [blockingIncident, setBlockingIncident] = useState(null)
+  const [dispatcherReply, setDispatcherReply] = useState(null)
+
+  useEffect(() => {
+    let active = true
+    const load = () => {
+      supabase
+        .from('order_incidents')
+        .select('*')
+        .eq('order_id', order.id)
+        .eq('blocks_delivery', true)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .then(({ data }) => {
+          if (!active) return
+          const inc = data?.[0] || null
+          if (!inc) { setBlockingIncident(null); return }
+          if (inc.resolved_at) {
+            setBlockingIncident(null)
+            if (inc.dispatcher_note) setDispatcherReply(inc.dispatcher_note)
+          } else {
+            setBlockingIncident(inc)
+          }
+        })
+    }
+    load()
+
+    const channel = supabase
+      .channel('incidents-' + order.id)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'order_incidents', filter: `order_id=eq.${order.id}` }, load)
+      .subscribe()
+
+    return () => { active = false; supabase.removeChannel(channel) }
+  }, [order.id])
+
   // Dokumentenzustellung, doar pe etapa de livrare — la ridicare nu are sens.
   const isDocumentDeliveryLeg = !!order.is_document_delivery && (leg === 'delivery' || leg === 'return_delivery')
   const [incidentOpen, setIncidentOpen] = useState(false)
+  const [incidentBlocking, setIncidentBlocking] = useState(false)
   const [incidentSaved, setIncidentSaved] = useState(false)
   const [etaOpen, setEtaOpen] = useState(false)
   const [etaToast, setEtaToast] = useState('')
@@ -2586,6 +2634,44 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
     </>
   ) : null
 
+  const waitingBlock = (
+    <>
+      {blockingIncident && (
+        <div style={{
+          background: '#FFF6ED', border: '2px solid #FF7A29', borderRadius: 10,
+          padding: '14px 15px', marginBottom: 12,
+        }}>
+          <div style={{ fontSize: 14.5, fontWeight: 700, color: '#B35A12', marginBottom: 4 }}>
+            ⏳ {t('waitingForDispatcher', lang)}
+          </div>
+          <div style={{ fontSize: 13, color: '#8A5A16', lineHeight: 1.5 }}>
+            {t('waitingForDispatcherNote', lang)}
+          </div>
+          {blockingIncident.comment && (
+            <div style={{ fontSize: 12.5, color: '#8A5A16', marginTop: 8, fontStyle: 'italic' }}>
+              „{blockingIncident.comment}"
+            </div>
+          )}
+        </div>
+      )}
+
+      {dispatcherReply && (
+        <div style={{
+          background: '#EAF0FB', border: '2px solid #2A5299', borderRadius: 10,
+          padding: '14px 15px', marginBottom: 12,
+        }}>
+          <div style={{ fontSize: 11.5, fontWeight: 700, color: '#2A5299', textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 5 }}>
+            {t('dispatcherInstruction', lang)}
+          </div>
+          <div style={{ fontSize: 15, color: '#0F2240', lineHeight: 1.5 }}>{dispatcherReply}</div>
+          <button type="button" className="link-btn" onClick={() => setDispatcherReply(null)} style={{ marginTop: 8 }}>
+            {t('dispatcherInstructionAck', lang)}
+          </button>
+        </div>
+      )}
+    </>
+  )
+
   const incidentBlock = (
     <>
       <button
@@ -2604,15 +2690,17 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
           ✓ {t('incidentSaved', lang)}
         </div>
       )}
-      {incidentOpen && (
+      {(incidentOpen || incidentBlocking) && (
         <IncidentSheet
           order={order}
           leg={leg}
           lang={lang}
           driverId={order.assigned_driver_id}
-          onClose={() => setIncidentOpen(false)}
+          blocking={incidentBlocking}
+          onClose={() => { setIncidentOpen(false); setIncidentBlocking(false) }}
           onSaved={() => {
             setIncidentOpen(false)
+            setIncidentBlocking(false)
             setIncidentSaved(true)
             setTimeout(() => setIncidentSaved(false), 8000)
           }}
@@ -2741,6 +2829,7 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
   return (
     <div className="leg-workflow">
       {undoBlock}
+      {waitingBlock}
 
       {/* Wartezeit — calculată din ora sosirii, nu dintr-un cronometru ținut
           în memorie. Dacă șoferul reîncarcă aplicația sau o închide, timpul
@@ -2864,14 +2953,20 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
             })}
             <button
               type="button"
-              onClick={() => setIncidentOpen(true)}
+              onClick={() => setIncidentBlocking(true)}
+              disabled={!!blockingIncident}
               style={{
-                width: '100%', textAlign: 'left', cursor: 'pointer',
+                width: '100%', textAlign: 'left',
+                cursor: blockingIncident ? 'not-allowed' : 'pointer',
+                opacity: blockingIncident ? 0.5 : 1,
                 background: '#fff', border: '1px solid #E4A296', borderRadius: 10,
                 padding: '13px 15px', fontSize: 14.5, fontWeight: 600, color: '#B23A24',
               }}
             >
               ⚠ {t('deliveryMethodImpossible', lang)}
+              <div style={{ fontSize: 12, color: '#6B7A90', marginTop: 3, fontWeight: 400, lineHeight: 1.45 }}>
+                {t('deliveryMethodImpossibleNote', lang)}
+              </div>
             </button>
           </div>
         </>
@@ -2902,7 +2997,7 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
       <button
         className="btn"
         onClick={confirmLeg}
-        disabled={busy || fileSummary.total === 0 || !fileSummary.allDone || (isDocumentDeliveryLeg && !deliveryMethod)}
+        disabled={busy || !!blockingIncident || fileSummary.total === 0 || !fileSummary.allDone || (isDocumentDeliveryLeg && !deliveryMethod)}
         style={{ marginTop: 14 }}
       >
         {busy

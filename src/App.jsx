@@ -2117,6 +2117,187 @@ function DocumentCapture({ lang, onPick, onClose }) {
   )
 }
 
+// Problemele pe care șoferul le poate raporta din teren.
+//
+// Ordinea contează: primele sunt cele care apar zilnic. Un șofer grăbit,
+// afară, cu mănuși, nu derulează o listă de unsprezece opțiuni ca să
+// găsească „Empfänger nicht vor Ort".
+const INCIDENT_KINDS = [
+  'empfaenger_nicht_vor_ort',
+  'empfaenger_nicht_erreichbar',
+  'annahme_verweigert',
+  'wartezeit',
+  'adresse_nicht_gefunden',
+  'adresse_falsch',
+  'zufahrt_nicht_moeglich',
+  'keine_entladehilfe',
+  'ware_beschaedigt',
+  'dokument_fehlt',
+  'sonstiges',
+]
+
+// Raportarea unei probleme.
+//
+// Comanda NU se închide și NU se marchează ca livrată. Rămâne în lucru, iar
+// dispecerul decide ce urmează — exact ca la telefon, doar că rămâne scris,
+// cu oră, poziție și fotografie.
+function IncidentSheet({ order, leg, lang, driverId, onClose, onSaved }) {
+  const [kind, setKind] = useState(null)
+  const [comment, setComment] = useState('')
+  const [photos, setPhotos] = useState([])
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const fileRef = useRef(null)
+
+  useEffect(() => {
+    return () => { photos.forEach((p) => p.url && URL.revokeObjectURL(p.url)) }
+  }, [photos])
+
+  function addPhotos(e) {
+    const files = Array.from(e.target.files || []).slice(0, 3 - photos.length)
+    e.target.value = ''
+    setPhotos((prev) => [...prev, ...files.map((f) => ({ file: f, url: URL.createObjectURL(f) }))])
+  }
+
+  async function save() {
+    if (!kind) return
+    setBusy(true)
+    setError('')
+
+    // Poziția e utilă dispecerului („zice că nu găsește adresa, dar e la 8 km
+    // de ea"), dar nu blocăm raportul dacă telefonul refuză s-o dea.
+    const position = await new Promise((resolve) => {
+      if (!navigator.geolocation) return resolve(null)
+      const timer = setTimeout(() => resolve(null), 4000)
+      navigator.geolocation.getCurrentPosition(
+        (pos) => { clearTimeout(timer); resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }) },
+        () => { clearTimeout(timer); resolve(null) },
+        { enableHighAccuracy: false, timeout: 4000, maximumAge: 60000 },
+      )
+    })
+
+    // Fotografiile sunt un plus, nu o condiție. Dacă încărcarea eșuează,
+    // raportul pleacă oricum — un incident nesalvat e mai rău decât unul
+    // fără poză.
+    const paths = []
+    for (const p of photos) {
+      try {
+        const { blob, mime } = await processImage(p.file, PHOTO_PRESET)
+        const path = `${order.id}/incident/${crypto.randomUUID?.() || Date.now()}.jpg`
+        const { error: upErr } = await supabase.storage
+          .from('proof-of-delivery')
+          .upload(path, blob, { contentType: mime, upsert: true })
+        if (!upErr) paths.push(path)
+      } catch (err) {
+        console.error('incident photo failed:', err.message)
+      }
+    }
+
+    const { error: insErr } = await supabase.from('order_incidents').insert({
+      order_id: order.id,
+      driver_id: driverId || null,
+      leg,
+      kind,
+      comment: comment.trim() || null,
+      photos: paths.length ? paths : null,
+      lat: position?.lat ?? null,
+      lng: position?.lng ?? null,
+    })
+
+    setBusy(false)
+    if (insErr) {
+      console.error('incident insert error:', insErr.message)
+      setError(t('incidentFailed', lang))
+      return
+    }
+    onSaved()
+  }
+
+  const sheet = {
+    background: '#fff', borderRadius: '16px 16px 0 0',
+    padding: '20px 20px calc(20px + env(safe-area-inset-bottom))',
+    maxHeight: '92vh', overflowY: 'auto',
+  }
+
+  return (
+    <div className="sig-fullscreen" style={{ justifyContent: 'flex-end', background: 'rgba(15,34,64,.55)' }}>
+      <div style={sheet}>
+        <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: 17, color: '#0F2240', textTransform: 'uppercase', letterSpacing: '.03em', marginBottom: 4 }}>
+          {t('incidentTitle', lang)}
+        </div>
+        <p style={{ fontSize: 12.5, color: '#6B7A90', margin: '0 0 16px', lineHeight: 1.5 }}>
+          {t('incidentSubtitle', lang)}
+        </p>
+
+        {!kind ? (
+          <>
+            {INCIDENT_KINDS.map((k) => (
+              <button
+                key={k}
+                type="button"
+                onClick={() => setKind(k)}
+                style={{
+                  width: '100%', textAlign: 'left', background: '#fff',
+                  border: '1px solid #D8DEE8', borderRadius: 10,
+                  padding: '13px 15px', fontSize: 14.5, fontWeight: 600,
+                  color: '#0F2240', marginBottom: 8, cursor: 'pointer',
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                }}
+              >
+                {t(`incident_${k}`, lang)}
+                <span style={{ color: '#B9C3D1' }}>›</span>
+              </button>
+            ))}
+            <button type="button" className="link-btn" onClick={onClose}>{t('back', lang)}</button>
+          </>
+        ) : (
+          <>
+            <div style={{
+              background: '#FFF6ED', border: '1px solid #FFD2AE', borderRadius: 10,
+              padding: '11px 13px', fontSize: 14, fontWeight: 700, color: '#B35A12', marginBottom: 14,
+            }}>
+              {t(`incident_${kind}`, lang)}
+            </div>
+
+            <textarea
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              placeholder={t('incidentCommentPlaceholder', lang)}
+              rows={4}
+              style={{ width: '100%', padding: '11px 12px', fontSize: 15, border: '1px solid #D8DEE8', borderRadius: 8, marginBottom: 12, resize: 'vertical' }}
+            />
+
+            <div className="photo-grid" style={{ marginBottom: 14 }}>
+              {photos.map((p, i) => (
+                <div className="photo-slot filled" key={i} onClick={() => setPhotos((prev) => prev.filter((_, j) => j !== i))}>
+                  <img src={p.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                </div>
+              ))}
+              {photos.length < 3 && (
+                <div className="photo-slot" onClick={() => fileRef.current?.click()}>+</div>
+              )}
+            </div>
+            <input ref={fileRef} type="file" accept="image/*" capture="environment" multiple style={{ display: 'none' }} onChange={addPhotos} />
+
+            {error && (
+              <div style={{ background: '#FCEBE8', border: '1px solid #E4A296', borderRadius: 10, padding: '10px 12px', fontSize: 13, color: '#B23A24', marginBottom: 12 }}>
+                {error}
+              </div>
+            )}
+
+            <button className="btn" style={{ width: '100%', marginTop: 0 }} onClick={save} disabled={busy}>
+              {busy ? t('incidentSending', lang) : t('incidentSend', lang)}
+            </button>
+            <button type="button" className="link-btn" onClick={() => setKind(null)} style={{ marginTop: 8 }}>
+              {t('back', lang)}
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // Notificarea de ETA către client. Intervalul e ales de șofer, nu calculat
 // din Google Directions — un apel de rute la fiecare deschidere ar readuce
 // exact problema de consum pe care încercăm s-o reducem. Prepopulăm din
@@ -2357,6 +2538,8 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
   // ETA e disponibil doar pe traseul principal. Cursele de retur ar avea
   // nevoie de propriile coloane; până atunci butonul nu apare acolo, ca să nu
   // suprascrie intervalul anunțat pentru dus.
+  const [incidentOpen, setIncidentOpen] = useState(false)
+  const [incidentSaved, setIncidentSaved] = useState(false)
   const [etaOpen, setEtaOpen] = useState(false)
   const [etaToast, setEtaToast] = useState('')
   const etaAvailable = leg === 'pickup' || leg === 'delivery'
@@ -2398,6 +2581,41 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
       )}
     </>
   ) : null
+
+  const incidentBlock = (
+    <>
+      <button
+        type="button"
+        onClick={() => setIncidentOpen(true)}
+        style={{
+          width: '100%', background: '#fff', border: '1px solid #E4A296',
+          borderRadius: 10, padding: '11px 14px', fontSize: 14, fontWeight: 600,
+          color: '#B23A24', marginBottom: 10, cursor: 'pointer',
+        }}
+      >
+        ⚠ {t('incidentButton', lang)}
+      </button>
+      {incidentSaved && (
+        <div style={{ background: '#EAF5EF', border: '1px solid #A8D5BE', borderRadius: 10, padding: '10px 12px', fontSize: 13, color: '#1F7A50', marginBottom: 10 }}>
+          ✓ {t('incidentSaved', lang)}
+        </div>
+      )}
+      {incidentOpen && (
+        <IncidentSheet
+          order={order}
+          leg={leg}
+          lang={lang}
+          driverId={order.assigned_driver_id}
+          onClose={() => setIncidentOpen(false)}
+          onSaved={() => {
+            setIncidentOpen(false)
+            setIncidentSaved(true)
+            setTimeout(() => setIncidentSaved(false), 8000)
+          }}
+        />
+      )}
+    </>
+  )
 
   const undoBlock = (
     <>
@@ -2500,6 +2718,7 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
         <button className="btn sticky-cta" onClick={() => callRpc(arriveFn)} disabled={busy}>
           {t('arrived', lang)}
         </button>
+        {incidentBlock}
       </>
     )
   }
@@ -2507,6 +2726,25 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
   return (
     <div className="leg-workflow">
       {undoBlock}
+
+      {/* Wartezeit — calculată din ora sosirii, nu dintr-un cronometru ținut
+          în memorie. Dacă șoferul reîncarcă aplicația sau o închide, timpul
+          rămâne corect. Componenta exista deja în cod, dar nu era folosită
+          nicăieri. */}
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        background: '#F6F8FA', border: '1px solid #D8DEE8', borderRadius: 10,
+        padding: '10px 14px', marginBottom: 12,
+      }}>
+        <span style={{ fontSize: 11.5, fontWeight: 700, color: '#6B7A90', textTransform: 'uppercase', letterSpacing: '.04em' }}>
+          {t('waitingTime', lang)}
+        </span>
+        <span style={{ fontFamily: 'monospace', fontSize: 18, fontWeight: 700, color: '#0F2240' }}>
+          <ElapsedTimer startedAt={arrivedAt} />
+        </span>
+      </div>
+
+      {incidentBlock}
       <div className="leg-title">{legLabel} · {t('confirmStep', lang)}</div>
 
       <PodFiles

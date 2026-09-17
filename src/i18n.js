@@ -279,6 +279,11 @@ const translations = {
     deliveryMethodPersoenlich: 'Persönlich an den Empfänger übergeben',
     deliveryMethodPersoenlichNote: 'Name und Unterschrift des Empfängers erforderlich.',
     deliveryMethodImpossible: 'Zustellung war nicht möglich',
+    deliveryMethodImpossibleNote: 'Der Disponent wird informiert und klärt es mit dem Kunden. Bitte warten Sie auf seine Anweisung.',
+    waitingForDispatcher: 'Warten auf Anweisung vom Disponenten',
+    waitingForDispatcherNote: 'Ihre Meldung ist angekommen. Der Disponent klärt es mit dem Kunden und meldet sich hier. Die Zustellung kann bis dahin nicht bestätigt werden.',
+    dispatcherInstruction: 'Anweisung vom Disponenten',
+    dispatcherInstructionAck: 'Verstanden',
   },
   en: {
     appName: 'Zimand Driver',
@@ -560,6 +565,11 @@ const translations = {
     deliveryMethodPersoenlich: 'Handed over personally',
     deliveryMethodPersoenlichNote: 'Recipient name and signature required.',
     deliveryMethodImpossible: 'Delivery was not possible',
+    deliveryMethodImpossibleNote: 'Dispatch will be informed and will clarify with the client. Please wait for their instruction.',
+    waitingForDispatcher: 'Waiting for instruction from dispatch',
+    waitingForDispatcherNote: 'Your report has arrived. Dispatch is clarifying with the client and will reply here. Delivery cannot be confirmed until then.',
+    dispatcherInstruction: 'Instruction from dispatch',
+    dispatcherInstructionAck: 'Understood',
   },
 }
 

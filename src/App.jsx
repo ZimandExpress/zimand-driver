@@ -2480,6 +2480,8 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
   const [fileSummary, setFileSummary] = useState({ total: 0, allDone: false, failed: 0, pending: 0, processing: 0 })
   const [signatureBlob, setSignatureBlob] = useState(null)
   const [signerName, setSignerName] = useState('')
+  // Doar la Dokumentenzustellung: cum a fost predat documentul.
+  const [deliveryMethod, setDeliveryMethod] = useState(order.delivery_method || null)
   const fileInputRef = useRef(null)
   const cameraInputRef = useRef(null)
   const [photoSourceOpen, setPhotoSourceOpen] = useState(false)
@@ -2538,6 +2540,8 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
   // ETA e disponibil doar pe traseul principal. Cursele de retur ar avea
   // nevoie de propriile coloane; până atunci butonul nu apare acolo, ca să nu
   // suprascrie intervalul anunțat pentru dus.
+  // Dokumentenzustellung, doar pe etapa de livrare — la ridicare nu are sens.
+  const isDocumentDeliveryLeg = !!order.is_document_delivery && (leg === 'delivery' || leg === 'return_delivery')
   const [incidentOpen, setIncidentOpen] = useState(false)
   const [incidentSaved, setIncidentSaved] = useState(false)
   const [etaOpen, setEtaOpen] = useState(false)
@@ -2653,6 +2657,17 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
     setUploadError('')
     try {
       if (signatureBlob) await enqueueSignature(order.id, leg, signatureBlob)
+
+      // Modul de livrare se scrie separat: șoferul n-are drept direct pe
+      // comenzi, iar RPC-ul de confirmare are o semnătură fixă folosită și de
+      // Disponent, pe care n-o schimbăm.
+      if (isDocumentDeliveryLeg && deliveryMethod) {
+        const { error: dmErr } = await supabase.rpc('driver_set_delivery_method', {
+          p_order_id: order.id,
+          p_method: deliveryMethod,
+        })
+        if (dmErr) console.error('delivery method error:', dmErr.message)
+      }
 
       // Fișierele au fost deja urcate de coadă, în fundal, pe măsură ce
       // șoferul le adăuga. Aici doar înregistrăm confirmarea cu aceleași
@@ -2810,6 +2825,61 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
       )}
 
 
+      {/* Dokumentenzustellung: cum a fost predat documentul.
+          Protocolul pe hârtie rămâne dovada oficială — șoferul îl are tipărit
+          și îl completează cu pixul. Dar modul de livrare trebuie să existe și
+          ca informație în sistem, altfel se vede doar deschizând PDF-ul scanat.
+
+          Diferența practică: la Briefkasten nu există cui să semneze, deci nu
+          mai cerem semnătură și nume. Dovada sunt fotografiile. */}
+      {isDocumentDeliveryLeg && (
+        <>
+          <div className="pod-label">{t('deliveryMethodLabel', lang)}</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
+            {[
+              { id: 'briefkasten', key: 'deliveryMethodBriefkasten', note: 'deliveryMethodBriefkastenNote' },
+              { id: 'persoenlich', key: 'deliveryMethodPersoenlich', note: 'deliveryMethodPersoenlichNote' },
+            ].map((m) => {
+              const active = deliveryMethod === m.id
+              return (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => setDeliveryMethod(m.id)}
+                  style={{
+                    width: '100%', textAlign: 'left', cursor: 'pointer',
+                    background: active ? '#FFF6ED' : '#fff',
+                    border: `2px solid ${active ? '#FF7A29' : '#D8DEE8'}`,
+                    borderRadius: 10, padding: '13px 15px',
+                  }}
+                >
+                  <div style={{ fontSize: 15, fontWeight: 700, color: active ? '#B35A12' : '#0F2240' }}>
+                    {active ? '● ' : '○ '}{t(m.key, lang)}
+                  </div>
+                  <div style={{ fontSize: 12, color: '#6B7A90', marginTop: 3, lineHeight: 1.45 }}>
+                    {t(m.note, lang)}
+                  </div>
+                </button>
+              )
+            })}
+            <button
+              type="button"
+              onClick={() => setIncidentOpen(true)}
+              style={{
+                width: '100%', textAlign: 'left', cursor: 'pointer',
+                background: '#fff', border: '1px solid #E4A296', borderRadius: 10,
+                padding: '13px 15px', fontSize: 14.5, fontWeight: 600, color: '#B23A24',
+              }}
+            >
+              ⚠ {t('deliveryMethodImpossible', lang)}
+            </button>
+          </div>
+        </>
+      )}
+
+      {/* La Briefkasten nu are cine semna — nu cerem nume și semnătură. */}
+      {!(isDocumentDeliveryLeg && deliveryMethod === 'briefkasten') && (
+      <>
       <div className="pod-label">{t((leg === 'pickup' || leg === 'return_pickup') ? 'signerNameLabelPickup' : 'signerNameLabelDelivery', lang)}</div>
       <input
         className="bid-input2"
@@ -2820,6 +2890,8 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
       />
 
       <SignatureLine lang={lang} signatureBlob={signatureBlob} onChange={setSignatureBlob} />
+      </>
+      )}
 
       {uploadError && (
         <div style={{ background: '#FCEBE8', border: '1px solid #E4A296', borderRadius: 10, padding: '10px 12px', fontSize: 15.5, color: '#B23A24', marginTop: 4 }}>
@@ -2830,7 +2902,7 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
       <button
         className="btn"
         onClick={confirmLeg}
-        disabled={busy || fileSummary.total === 0 || !fileSummary.allDone}
+        disabled={busy || fileSummary.total === 0 || !fileSummary.allDone || (isDocumentDeliveryLeg && !deliveryMethod)}
         style={{ marginTop: 14 }}
       >
         {busy

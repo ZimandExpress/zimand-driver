@@ -271,6 +271,14 @@ const translations = {
     incident_ware_beschaedigt: 'Ware beschädigt',
     incident_dokument_fehlt: 'Dokument fehlt',
     incident_sonstiges: 'Sonstiges',
+
+    // --- Dokumentenzustellung: Zustellart ---
+    deliveryMethodLabel: 'Wie wurde zugestellt?',
+    deliveryMethodBriefkasten: 'In den Briefkasten gelegt',
+    deliveryMethodBriefkastenNote: 'Namensschild und Adresse vor Ort geprüft — Fotos sind der Nachweis, keine Unterschrift nötig.',
+    deliveryMethodPersoenlich: 'Persönlich an den Empfänger übergeben',
+    deliveryMethodPersoenlichNote: 'Name und Unterschrift des Empfängers erforderlich.',
+    deliveryMethodImpossible: 'Zustellung war nicht möglich',
   },
   en: {
     appName: 'Zimand Driver',
@@ -544,6 +552,14 @@ const translations = {
     incident_ware_beschaedigt: 'Goods damaged',
     incident_dokument_fehlt: 'Document missing',
     incident_sonstiges: 'Other',
+
+    // --- Document delivery: method ---
+    deliveryMethodLabel: 'How was it delivered?',
+    deliveryMethodBriefkasten: 'Placed in the letterbox',
+    deliveryMethodBriefkastenNote: 'Name plate and address checked on site — photos are the proof, no signature needed.',
+    deliveryMethodPersoenlich: 'Handed over personally',
+    deliveryMethodPersoenlichNote: 'Recipient name and signature required.',
+    deliveryMethodImpossible: 'Delivery was not possible',
   },
 }
 

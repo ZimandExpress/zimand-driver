@@ -926,17 +926,32 @@ function RidesScreen({ profile, isOwner, session, lang }) {
 
     let active = true
 
-    supabase
-      .from('orders')
-      .select('*, winning_bid:bids!fk_winner_bid(price)')
-      .in('assigned_driver_id', driverIds)
-      .then(({ data, error }) => {
-        if (error) console.error('orders fetch error:', error.message)
-        if (active) {
-          setOrders(data || [])
-          setLoading(false)
-        }
-      })
+    const loadOrders = () =>
+      supabase
+        .from('orders')
+        .select('*, winning_bid:bids!fk_winner_bid(price)')
+        .in('assigned_driver_id', driverIds)
+        .then(({ data, error }) => {
+          if (error) console.error('orders fetch error:', error.message)
+          if (active) {
+            setOrders(data || [])
+            setLoading(false)
+          }
+        })
+
+    loadOrders()
+
+    // Recitim comenzile când aplicația revine în prim-plan sau când revine
+    // internetul.
+    //
+    // Pe telefon, conexiunea în timp real se închide cât timp aplicația stă
+    // în fundal. Modificările făcute de dispecer în acel interval nu ajung
+    // niciodată, iar la redeschidere ecranul arată datele de dinainte — fără
+    // ca nimic să pară în neregulă.
+    const onWake = () => { if (document.visibilityState === 'visible') loadOrders() }
+    document.addEventListener('visibilitychange', onWake)
+    window.addEventListener('focus', onWake)
+    window.addEventListener('online', onWake)
 
     // Reîncarcă o singură comandă, cu prețul câștigat alăturat.
     const refetchOne = (id) => {
@@ -991,6 +1006,9 @@ function RidesScreen({ profile, isOwner, session, lang }) {
 
     return () => {
       active = false
+      document.removeEventListener('visibilitychange', onWake)
+      window.removeEventListener('focus', onWake)
+      window.removeEventListener('online', onWake)
       supabase.removeChannel(channel)
     }
   }, [profile?.id, driverIds])

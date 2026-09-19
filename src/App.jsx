@@ -1111,16 +1111,19 @@ function RidesScreen({ profile, isOwner, session, lang }) {
 
           const known = ordersRef.current.find((o) => o.id === payload.new.id)
 
-          // O comandă care apare din senin în listă e o atribuire directă:
-          // dispecerul i-a dat-o firmei fără licitație.
+          // O comandă care apare atribuită în listă înseamnă același lucru
+          // din punctul de vedere al șoferului: e a lui.
           //
-          // Până acum nu se auzea nimic. Sunetul se declanșa doar la comenzi
-          // noi în licitație, iar notificarea push se trimitea doar firmelor
-          // eligibile la scoaterea în licitație — o comandă dată direct
-          // ajungea tăcut în listă, iar șoferul o vedea doar dacă intra
-          // singur în aplicație.
+          // Fie firma a câștigat licitația, fie dispecerul i-a dat-o direct,
+          // fie o firmă colaboratoare i-a trimis-o. În toate cazurile sună
+          // confirmarea, nu semnalul de comandă nouă — acela e pentru ce
+          // apare în licitație și încă trebuie câștigat.
+          //
+          // Până acum nu se auzea nimic la atribuire: sunetul se declanșa doar
+          // la comenzi noi în licitație, iar push-ul se trimitea doar firmelor
+          // eligibile. O comandă atribuită ajungea tăcut în listă.
           if (!known && payload.new.status === 'assigned') {
-            playNewOrderSound()
+            playSuccessSound()
             setDirectAwardToast(payload.new.order_number || payload.new.id.slice(0, 8))
             setTimeout(() => setDirectAwardToast(null), 8000)
           }

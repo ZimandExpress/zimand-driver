@@ -687,26 +687,118 @@ if (typeof window !== 'undefined') {
   window.addEventListener('touchstart', unlockAudio, { once: true })
 }
 
+// Sunetele aplicației.
+//
+// Fiecare fișier se descarcă o singură dată și se decodează în contextul audio
+// deja deblocat de prima atingere din aplicație. Redarea printr-un element
+// <audio> obișnuit ar fi blocată de regulile de pornire automată ale
+// browserului pe telefon; prin contextul partajat merge, fiindcă el a fost
+// deblocat de o atingere reală.
+//
+// Dacă un fișier lipsește sau decodarea eșuează, se aud tonurile generate din
+// cod. Un șofer fără sunet e mai rău decât un sunet mai puțin frumos.
+const SOUND_FILES = {
+  // Ceva a intrat și merită privit: comandă nouă în licitație sau comandă
+  // atribuită. Se aude la toate tipurile de cont — firmă sau angajat.
+  incoming: '/sounds/neuer-auftrag.mp3',
+  // Ceva s-a câștigat sau s-a confirmat. Mai rar, deci poate fi mai apăsat.
+  success: '/sounds/auftrag-bestaetigt.mp3',
+}
+
+const soundBuffers = {}
+const soundLoads = {}
+
+function loadSound(name) {
+  if (soundBuffers[name]) return Promise.resolve(soundBuffers[name])
+  if (soundLoads[name]) return soundLoads[name]
+  const url = SOUND_FILES[name]
+  if (!url) return Promise.resolve(null)
+
+  soundLoads[name] = fetch(url)
+    .then((r) => { if (!r.ok) throw new Error(`${name}: ${r.status}`); return r.arrayBuffer() })
+    .then((buf) => getSharedAudioCtx().decodeAudioData(buf))
+    .then((decoded) => { soundBuffers[name] = decoded; return decoded })
+    .catch((err) => { console.error('sound load failed:', err.message); return null })
+  return soundLoads[name]
+}
+
+// Le pregătim din timp, ca prima notificare să nu aștepte descărcarea.
+if (typeof window !== 'undefined') {
+  window.addEventListener('pointerdown', () => {
+    Object.keys(SOUND_FILES).forEach(loadSound)
+  }, { once: true })
+}
+
+function playSound(name, volume) {
+  loadSound(name).then((buffer) => {
+    if (!buffer) { playBusinessChime(); return }
+    try {
+      const ctx = getSharedAudioCtx()
+      if (ctx.state === 'suspended') ctx.resume().catch(() => {})
+      const src = ctx.createBufferSource()
+      const gain = ctx.createGain()
+      gain.gain.value = volume ?? 0.9
+      src.buffer = buffer
+      src.connect(gain)
+      gain.connect(ctx.destination)
+      src.start()
+    } catch (err) {
+      console.error('sound playback failed:', err.message)
+      playBusinessChime()
+    }
+  })
+}
+
+const playNewOrderSound = () => playSound('incoming')
+const playSuccessSound = () => playSound('success')
+
 function playBusinessChime() {
   try {
     const ctx = getSharedAudioCtx()
     if (ctx.state === 'suspended') { ctx.resume().catch(() => {}) }
     const now = ctx.currentTime
-    const playTone = (freq, start, duration, gain = 0.14) => {
+
+    // Sunetul de notificare.
+    //
+    // Construit din trei note ascendente pe acordul de La major — La, Do#,
+    // Mi — cu a treia ținută mai mult. Urcarea se citește ca „ceva a sosit",
+    // nu ca „ceva s-a stricat"; un interval descendent ar suna a eroare.
+    //
+    // Fiecare notă are un armonic slab peste ea, la dublul frecvenței. Fără
+    // el, tonurile sinusoidale pure sună a ceas deșteptător ieftin; cu el,
+    // capătă corp și se aud mai bine în cabină, unde zgomotul de motor
+    // acoperă tocmai frecvențele joase.
+    //
+    // Atacul e de 15 ms, nu instantaneu: o pornire bruscă produce un pocnet
+    // audibil pe difuzoarele de telefon.
+    const note = (freq, start, dur, gain) => {
       const osc = ctx.createOscillator()
+      const harm = ctx.createOscillator()
       const g = ctx.createGain()
+      const hg = ctx.createGain()
+
       osc.type = 'sine'
       osc.frequency.value = freq
+      harm.type = 'sine'
+      harm.frequency.value = freq * 2
+
       g.gain.setValueAtTime(0, now + start)
-      g.gain.linearRampToValueAtTime(gain, now + start + 0.02)
-      g.gain.exponentialRampToValueAtTime(0.001, now + start + duration)
-      osc.connect(g)
-      g.connect(ctx.destination)
-      osc.start(now + start)
-      osc.stop(now + start + duration + 0.05)
+      g.gain.linearRampToValueAtTime(gain, now + start + 0.015)
+      g.gain.exponentialRampToValueAtTime(0.0001, now + start + dur)
+
+      hg.gain.setValueAtTime(0, now + start)
+      hg.gain.linearRampToValueAtTime(gain * 0.22, now + start + 0.015)
+      hg.gain.exponentialRampToValueAtTime(0.0001, now + start + dur * 0.7)
+
+      osc.connect(g); g.connect(ctx.destination)
+      harm.connect(hg); hg.connect(ctx.destination)
+      osc.start(now + start); osc.stop(now + start + dur + 0.05)
+      harm.start(now + start); harm.stop(now + start + dur + 0.05)
     }
-    playTone(880, 0, 0.16)
-    playTone(1174.66, 0.15, 0.24)
+
+    note(880.00, 0.00, 0.20, 0.16)   // La
+    note(1108.73, 0.09, 0.22, 0.15)  // Do#
+    note(1318.51, 0.18, 0.75, 0.17)  // Mi, ținut
   } catch (err) {
     console.error('sound error:', err.message)
   }
@@ -874,6 +966,7 @@ function RidesScreen({ profile, isOwner, session, lang }) {
   const [sortAsc, setSortAsc] = useState(true)
   const [openCount, setOpenCount] = useState(0)
   const [newOrderToast, setNewOrderToast] = useState(false)
+  const [directAwardToast, setDirectAwardToast] = useState(null)
   const [celebration, setCelebration] = useState(null) // number (net earnings) | true (no amount) | null — la nivel de ecran, supraviețuiește comutării spre CompletedOrderDetail
   const [notifyRadiusKm, setNotifyRadiusKm] = useState(null)
   const openCountLoaded = useRef(false)
@@ -932,7 +1025,7 @@ function RidesScreen({ profile, isOwner, session, lang }) {
             }
           }
           if (withinRadius) {
-            playBusinessChime()
+            playNewOrderSound()
             setNewOrderToast(true)
             setTimeout(() => setNewOrderToast(false), 4000)
           }
@@ -1018,6 +1111,20 @@ function RidesScreen({ profile, isOwner, session, lang }) {
 
           const known = ordersRef.current.find((o) => o.id === payload.new.id)
 
+          // O comandă care apare din senin în listă e o atribuire directă:
+          // dispecerul i-a dat-o firmei fără licitație.
+          //
+          // Până acum nu se auzea nimic. Sunetul se declanșa doar la comenzi
+          // noi în licitație, iar notificarea push se trimitea doar firmelor
+          // eligibile la scoaterea în licitație — o comandă dată direct
+          // ajungea tăcut în listă, iar șoferul o vedea doar dacă intra
+          // singur în aplicație.
+          if (!known && payload.new.status === 'assigned') {
+            playNewOrderSound()
+            setDirectAwardToast(payload.new.order_number || payload.new.id.slice(0, 8))
+            setTimeout(() => setDirectAwardToast(null), 8000)
+          }
+
           // Realtime trimite rândul BRUT din `orders`. Prețul câștigat la
           // licitație stă în `bids` și vine doar prin join, la încărcarea
           // inițială — nu e în acest payload. Dacă înlocuim obiectul întreg,
@@ -1087,6 +1194,11 @@ function RidesScreen({ profile, isOwner, session, lang }) {
         {newOrderToast && (
           <div className="new-order-toast">
             <Bell size={16} strokeWidth={2} /> {t('newOrderAlert', lang)}
+          </div>
+        )}
+        {directAwardToast && (
+          <div className="new-order-toast" style={{ background: '#1F7A50' }}>
+            <Bell size={16} strokeWidth={2} /> {t('directAwardAlert', lang)} · {directAwardToast}
           </div>
         )}
         <div className="rides-tabs">

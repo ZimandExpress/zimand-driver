@@ -2643,7 +2643,8 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
   }, [order.id])
 
   // Dokumentenzustellung, doar pe etapa de livrare — la ridicare nu are sens.
-  const isDocumentDeliveryLeg = !!order.is_document_delivery && (leg === 'delivery' || leg === 'return_delivery')
+  const isDocumentDelivery = !!order.is_document_delivery
+  const isDocumentDeliveryLeg = isDocumentDelivery && (leg === 'delivery' || leg === 'return_delivery')
   const [incidentOpen, setIncidentOpen] = useState(false)
   const [incidentBlocking, setIncidentBlocking] = useState(false)
   const [incidentSaved, setIncidentSaved] = useState(false)
@@ -2800,6 +2801,40 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
     setUploadError('')
     try {
       if (signatureBlob) await enqueueSignature(order.id, leg, signatureBlob)
+
+      // Poziția în momentul confirmării — doar la livrările de documente.
+      //
+      // La o predare în cutia poștală nu există semnătură: poziția e singura
+      // dovadă că șoferul a fost efectiv la adresă. O singură citire, aici,
+      // nu urmărire continuă.
+      //
+      // GPS-ul nu are nevoie de internet, deci funcționează și fără semnal.
+      // Dacă telefonul refuză sau întârzie, confirmarea merge mai departe: o
+      // livrare nu se blochează pentru o poziție lipsă.
+      if (isDocumentDelivery) {
+        try {
+          const pos = await new Promise((resolve) => {
+            if (!navigator.geolocation) return resolve(null)
+            const timer = setTimeout(() => resolve(null), 8000)
+            navigator.geolocation.getCurrentPosition(
+              (p) => { clearTimeout(timer); resolve(p) },
+              () => { clearTimeout(timer); resolve(null) },
+              { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 },
+            )
+          })
+          if (pos) {
+            await supabase.rpc('driver_set_confirm_location', {
+              p_order_id: order.id,
+              p_leg: leg === 'pickup' || leg === 'return_pickup' ? 'pickup' : 'delivery',
+              p_lat: pos.coords.latitude,
+              p_lng: pos.coords.longitude,
+              p_accuracy: Math.round(pos.coords.accuracy),
+            })
+          }
+        } catch (err) {
+          console.error('confirm location failed:', err.message)
+        }
+      }
 
       // Modul de livrare se scrie separat: șoferul n-are drept direct pe
       // comenzi, iar RPC-ul de confirmare are o semnătură fixă folosită și de
@@ -2968,6 +3003,24 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
         />
       )}
 
+
+      {/* Șoferul trebuie să știe de ce contează locul în care apasă.
+          Fără explicație, mulți confirmă din mașină sau după ce au plecat —
+          iar atunci dovada arată o poziție greșită, exact în cazul în care
+          ea este singura dovadă existentă. */}
+      {isDocumentDelivery && (
+        <div style={{
+          background: '#EAF0FB', border: '2px solid #2A5299', borderRadius: 10,
+          padding: '13px 15px', marginBottom: 14,
+        }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: '#2A5299', marginBottom: 4 }}>
+            📍 {t('locationNoticeTitle', lang)}
+          </div>
+          <div style={{ fontSize: 13, color: '#2A5299', lineHeight: 1.5 }}>
+            {t('locationNoticeBody', lang)}
+          </div>
+        </div>
+      )}
 
       {/* Dokumentenzustellung: cum a fost predat documentul.
           Protocolul pe hârtie rămâne dovada oficială — șoferul îl are tipărit

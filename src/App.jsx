@@ -2928,24 +2928,34 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
       // livrare nu se blochează pentru o poziție lipsă.
       if (isDocumentDelivery) {
         try {
-          const pos = await new Promise((resolve) => {
-            if (!navigator.geolocation) return resolve(null)
-            const timer = setTimeout(() => resolve(null), 8000)
+          // Reținem și MOTIVUL, când poziția lipsește.
+          //
+          // Telefonul raportează doar trei cauze: permisiune refuzată,
+          // poziție indisponibilă, sau timp depășit. Mai mult nu se poate
+          // ști — browserul nu spune dacă era o parcare subterană sau un
+          // GPS oprit.
+          //
+          // Dar o rubrică goală pe un document se citește ca omisiune, iar
+          // una cu motiv, ca informație. Diferența contează într-o dispută.
+          const REASONS = { 1: 'denied', 2: 'unavailable', 3: 'timeout' }
+          const result = await new Promise((resolve) => {
+            if (!navigator.geolocation) return resolve({ pos: null, error: 'unavailable' })
+            const timer = setTimeout(() => resolve({ pos: null, error: 'timeout' }), 8000)
             navigator.geolocation.getCurrentPosition(
-              (p) => { clearTimeout(timer); resolve(p) },
-              () => { clearTimeout(timer); resolve(null) },
+              (p) => { clearTimeout(timer); resolve({ pos: p, error: null }) },
+              (err) => { clearTimeout(timer); resolve({ pos: null, error: REASONS[err?.code] || 'unavailable' }) },
               { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 },
             )
           })
-          if (pos) {
-            await supabase.rpc('driver_set_confirm_location', {
-              p_order_id: order.id,
-              p_leg: leg === 'pickup' || leg === 'return_pickup' ? 'pickup' : 'delivery',
-              p_lat: pos.coords.latitude,
-              p_lng: pos.coords.longitude,
-              p_accuracy: Math.round(pos.coords.accuracy),
-            })
-          }
+
+          await supabase.rpc('driver_set_confirm_location', {
+            p_order_id: order.id,
+            p_leg: leg === 'pickup' || leg === 'return_pickup' ? 'pickup' : 'delivery',
+            p_lat: result.pos ? result.pos.coords.latitude : null,
+            p_lng: result.pos ? result.pos.coords.longitude : null,
+            p_accuracy: result.pos ? Math.round(result.pos.coords.accuracy) : null,
+            p_error: result.error,
+          })
         } catch (err) {
           console.error('confirm location failed:', err.message)
         }

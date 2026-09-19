@@ -717,7 +717,17 @@ function playBusinessChime() {
 // cât timp aplicația e deschisă pe ecran). Cheia publică e sigură de expus
 // direct în cod — doar cheia PRIVATĂ (păstrată exclusiv pe server) permite
 // trimiterea efectivă de notificări.
-const VAPID_PUBLIC_KEY = 'BEpxgH8YgPfWzEXVtiseNj-kw0TgE3fcj3MPOA2OncaqtAooQnWcMFJsfos9JWVrNd9lRZUkW88UC7XLbwU_RJ4'
+const VAPID_PUBLIC_KEY = 'BLthWKCmDxZ6A-TcmZgJoHh2BygVynBWng6u_9-NhSV1U52y2qlaCKvvy5rQD5cScBKUVsFb9NNeIGxLr8F5f84'
+
+// Cheia de dinainte: BEpxgH8YgPfWzEXVtiseNj-kw0TgE3fcj3MPOA2OncaqtAooQnWcMFJsfos9JWVrNd9lRZUkW88UC7XLbwU_RJ4
+//
+// Ea a rămas în cod, dar cheia PRIVATĂ care i-ar fi corespuns nu a ajuns
+// niciodată în secretele serverului. Rezultatul: telefoanele se abonau, dar
+// nicio notificare nu putea fi trimisă — și nimeni n-avea cum să observe,
+// fiindcă abonarea reușea.
+//
+// Cele trei abonamente făcute cu ea sunt inutilizabile. Codul de mai jos le
+// detectează și le reface automat.
 
 function urlBase64ToUint8Array(base64String) {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
@@ -730,13 +740,40 @@ async function getPushSubscriptionStatus() {
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) return 'unsupported'
   const reg = await navigator.serviceWorker.ready
   const sub = await reg.pushManager.getSubscription()
-  return sub ? 'subscribed' : 'unsubscribed'
+  if (!sub) return 'unsubscribed'
+  // Un abonament cu cheie veche e ca și inexistent: arată-l ca neabonat, ca
+  // șoferul să apese din nou și să se refacă.
+  return subscriptionUsesCurrentKey(sub) ? 'subscribed' : 'unsubscribed'
+}
+
+// Compară cheia cu care a fost făcut un abonament existent cu cea curentă.
+// Telefonul păstrează abonamentul chiar dacă cheia serverului s-a schimbat —
+// iar atunci notificările nu mai ajung niciodată, fără niciun semn.
+function subscriptionUsesCurrentKey(sub) {
+  try {
+    const key = sub?.options?.applicationServerKey
+    if (!key) return true // nu putem verifica: nu forțăm o reabonare inutilă
+    const bytes = new Uint8Array(key)
+    const current = urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+    if (bytes.length !== current.length) return false
+    for (let i = 0; i < bytes.length; i++) if (bytes[i] !== current[i]) return false
+    return true
+  } catch { return true }
 }
 
 async function subscribePush(driverId) {
   const reg = await navigator.serviceWorker.ready
   const permission = await Notification.requestPermission()
   if (permission !== 'granted') throw new Error('Berechtigung für Benachrichtigungen wurde nicht erteilt.')
+
+  // Un abonament vechi, făcut cu altă cheie, trebuie desființat întâi —
+  // altfel browserul refuză abonarea cu cheia nouă.
+  const existing = await reg.pushManager.getSubscription()
+  if (existing && !subscriptionUsesCurrentKey(existing)) {
+    await supabase.from('push_subscriptions').delete().eq('endpoint', existing.endpoint)
+    await existing.unsubscribe()
+  }
+
   const sub = await reg.pushManager.subscribe({
     userVisibleOnly: true,
     applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),

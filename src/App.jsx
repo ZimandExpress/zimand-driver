@@ -9,6 +9,12 @@ import {
 } from './offline/uploadQueue'
 import { pruneOld } from './offline/db'
 import { analyzeDocumentPhoto } from './services/imageQuality'
+// Comprimarea pozelor atașate la raportarea unei probleme.
+//
+// Funcția era folosită în IncidentSheet fără să fie importată. Eroarea era
+// prinsă în tăcere, deci raportul se salva — doar că fără nicio poză, iar
+// nici șoferul, nici dispecerul nu aflau.
+import { processImage, PHOTO_PRESET } from './services/imageService'
 
 // Jurnal de utilizare Google API — o linie per apel real, "fire-and-forget",
 // ca să vedem exact de unde vine consumul (raport în panoul de disponent).

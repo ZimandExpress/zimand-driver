@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from './supabaseClient'
 import { t, getLang, setLang, availableLangs } from './i18n'
-import { Truck, CheckCircle2, Wallet, User, LogOut, Menu, Bell, MapPin, FlagTriangleRight, Tag, XCircle, Download, X, Navigation, Trophy, ThumbsUp } from 'lucide-react'
+import { Truck, CheckCircle2, Wallet, User, LogOut, Menu, Bell, MapPin, FlagTriangleRight, Tag, XCircle, Download, X, Navigation, Trophy, ThumbsUp, MessageCircle } from 'lucide-react'
 import './index.css'
 import PodFiles from './components/PodFiles'
 import {
@@ -1416,6 +1416,22 @@ function mapsNavUrl(address) {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`
 }
 
+// Numărul de dispecerat Zimand Express, acelaşi din piciorul e-mailurilor
+// către firme. WhatsApp, nu telefon: şoferul e în stradă, adesea cu
+// mâinile ocupate, iar un mesaj lasă urmă scrisă.
+const DISPATCH_WA = '4915510062480'
+
+// Mesajul pleacă deja completat cu numărul comenzii şi adresa etapei
+// curente, ca dispeceratul să ştie din prima clipă despre ce e vorba —
+// fără schimbul de mesaje „la care comandă?".
+function dispatchWaUrl(order, leg) {
+  const ref = order.order_number || order.reference || (order.id || '').slice(0, 8)
+  const adresa = leg === 'delivery' ? order.delivery_address : order.pickup_address
+  const eticheta = leg === 'delivery' ? 'Zustellung' : 'Abholung'
+  const text = ref + ' · ' + eticheta + ': ' + (adresa || '') + '\n\n'
+  return 'https://wa.me/' + DISPATCH_WA + '?text=' + encodeURIComponent(text)
+}
+
 function useGoogleMapsKey() {
   const [key, setKey] = useState(null)
   useEffect(() => {
@@ -1715,6 +1731,26 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
       <div className="ride-detail-header">
         <span className="ride-ref">{t('orderRef', lang)} {order.order_number || order.reference || order.id.slice(0, 8)}</span>
         <StageBadge order={order} lang={lang} />
+      </div>
+
+      {/* Legătura cu dispeceratul. Vizibilă, nu ascunsă într-un meniu:
+          când ceva se blochează la faţa locului, trebuie găsită din prima. */}
+      <a
+        href={dispatchWaUrl(order, leg)}
+        target="_blank"
+        rel="noreferrer"
+        style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+          background: '#25D366', color: '#fff', fontWeight: 700, fontSize: 14.5,
+          padding: '11px 14px', borderRadius: 9, textDecoration: 'none',
+          margin: '10px 0 2px', boxShadow: '0 1px 2px rgba(0,0,0,.12)',
+        }}
+      >
+        <MessageCircle size={17} strokeWidth={2.2} />
+        {t('dispatchWa', lang)}
+      </a>
+      <div style={{ fontSize: 11.5, color: 'var(--text-soft)', textAlign: 'center', marginBottom: 10 }}>
+        {t('dispatchWaHint', lang)}
       </div>
 
       <StageProgress order={order} lang={lang} />

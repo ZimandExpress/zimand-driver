@@ -438,6 +438,13 @@ body {
   .phone-shell {
     min-height: 844px;
   }
+
+  /* În rama de telefon de pe ecran lat, meniul se aşază peste ramă, nu
+     peste fereastra întreagă. */
+  .menu-overlay {
+    position: absolute;
+    height: 100%;
+  }
 }
 
 .avatar {

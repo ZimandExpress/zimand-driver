@@ -449,24 +449,15 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
   const trebuieActivat = stareCunoscuta && tab !== 'profil' && (lipsesteOnline || lipsescNotificarile)
 
   // Cât timp meniul e deschis, pagina din spate nu are voie să se mişte.
-  // Pe iPhone, degetul care atinge zona întunecată derula conţinutul de
-  // dedesubt — meniul părea o foaie lipită peste o aplicaţie încă vie.
+  //
+  // Doar `overflow: hidden`. Varianta cu `position: fixed` pe corp bloca
+  // derularea, dar pe iPhone schimba înălţimea ecranului — iar panoul
+  // meniului rămânea cu o fâşie goală la bază.
   useEffect(() => {
     if (!menuOpen) return
-    const styluri = document.body.style
-    const vechi = { overflow: styluri.overflow, position: styluri.position, width: styluri.width }
-    const sus = window.scrollY
-    styluri.overflow = 'hidden'
-    styluri.position = 'fixed'
-    styluri.width = '100%'
-    styluri.top = `-${sus}px`
-    return () => {
-      styluri.overflow = vechi.overflow
-      styluri.position = vechi.position
-      styluri.width = vechi.width
-      styluri.top = ''
-      window.scrollTo(0, sus)
-    }
+    const vechi = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = vechi }
   }, [menuOpen])
 
   function navTo(tabId) {

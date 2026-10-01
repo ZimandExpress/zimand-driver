@@ -2852,6 +2852,11 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
   // Şoferul le ştie din instructaj — dar le aplică în faţa uşii, obosit, la
   // a şasea livrare. O regulă semnată acum trei luni nu ajută în clipa aceea.
   const esteEtapaLivrareDoc = isDocumentDelivery && (leg === 'delivery' || leg === 'return_delivery')
+
+  // La predarea documentelor, patru fotografii e minimul care susţine o
+  // dovadă: plăcuţa cu numele, cutia sau uşa, plicul şi predarea propriu-zisă.
+  // Una singură nu demonstrează nimic într-o dispută.
+  const MINIM_POZE_LIVRARE = 4
   const [notitaPlecare, setNotitaPlecare] = useState(false)
   const [regulileDeschise, setRegulileDeschise] = useState(false)
   const [incidentOpen, setIncidentOpen] = useState(false)
@@ -3452,7 +3457,16 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
       {(() => {
         if (!isDocumentDelivery) return null
         const lipsa = []
-        if (fileSummary.photoCount === 0) lipsa.push(t('missingPhotos', lang))
+        const minimPoze = esteEtapaLivrareDoc ? MINIM_POZE_LIVRARE : 1
+        if (fileSummary.photoCount < minimPoze) {
+          lipsa.push(
+            minimPoze > 1
+              ? t('missingPhotosMin', lang)
+                  .replace('{n}', minimPoze)
+                  .replace('{have}', fileSummary.photoCount)
+              : t('missingPhotos', lang)
+          )
+        }
         if (fileSummary.documentCount === 0) lipsa.push(t('missingProtokoll', lang))
         if (isDocumentDeliveryLeg && !deliveryMethod) lipsa.push(t('missingMethod', lang))
         if (!lipsa.length) return null
@@ -3479,7 +3493,10 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
         }}
         disabled={busy || !!blockingIncident || fileSummary.total === 0 || !fileSummary.allDone
           || (isDocumentDeliveryLeg && !deliveryMethod)
-          || (isDocumentDelivery && (fileSummary.photoCount === 0 || fileSummary.documentCount === 0))}
+          || (isDocumentDelivery && (
+                fileSummary.photoCount < (esteEtapaLivrareDoc ? MINIM_POZE_LIVRARE : 1)
+                || fileSummary.documentCount === 0
+              ))}
         style={{ marginTop: 14, ...(distanta.preaDeparte && !avertismentDistanta ? { opacity: 0.45 } : null) }}
       >
         {busy

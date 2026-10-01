@@ -431,7 +431,13 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
 
   const lipsesteOnline = !profile?.is_online
   const lipsescNotificarile = stareNotificari === 'unsubscribed'
-  const trebuieActivat = tab !== 'profil' && (lipsesteOnline || lipsescNotificarile)
+
+  // Banda apare DOAR după ce ştim cu adevărat cum stau lucrurile.
+  // Înainte, la pornire profilul era încă null şi starea notificărilor
+  // „checking" — deci banda clipea o secundă la fiecare deschidere, chiar
+  // şi la cei care aveau totul pornit.
+  const stareCunoscuta = !!profile?.id && stareNotificari !== 'checking'
+  const trebuieActivat = stareCunoscuta && tab !== 'profil' && (lipsesteOnline || lipsescNotificarile)
 
   function navTo(tabId) {
     setTab(tabId)

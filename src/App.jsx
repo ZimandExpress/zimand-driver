@@ -536,6 +536,21 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
 
           <div className="menu-divider" />
 
+          {/* Dispeceratul, la îndemână din orice ecran — nu doar din fişa
+              unei curse. Şoferul are întrebări şi între curse. */}
+          <a
+            className="menu-item"
+            href={`https://wa.me/${DISPATCH_WA}`}
+            target="_blank"
+            rel="noreferrer"
+            onClick={() => setMenuOpen(false)}
+            style={{ color: '#1B9E50', textDecoration: 'none' }}
+          >
+            <span className="ic"><WhatsAppIcon size={18} /></span>{t('menuDispatch', lang)}
+          </a>
+
+          <div className="menu-divider" />
+
           <button className="menu-item logout" onClick={() => supabase.auth.signOut()}>
             <span className="ic"><LogOut size={19} strokeWidth={1.75} /></span>{t('logout', lang)}
           </button>
@@ -5232,6 +5247,26 @@ function ProfileScreen({ session, profile, isOwner, lang, onChangeLang, onProfil
   const [companyDrivers, setCompanyDrivers] = useState([])
   const [autoAssignEnabled, setAutoAssignEnabled] = useState(true)
   const [savingAssignPrefs, setSavingAssignPrefs] = useState(false)
+  // Numărul de telefon al şoferului. Firma îl completează la înregistrare,
+  // dar adesea îl lasă gol sau se schimbă între timp — iar dispeceratul
+  // rămâne fără cale de a-l suna când ceva se blochează la faţa locului.
+  const [telefon, setTelefon] = useState(profile?.phone || '')
+  const [telefonStare, setTelefonStare] = useState(null)
+
+  async function salveazaTelefon() {
+    setTelefonStare({ busy: true })
+    const { error } = await supabase.from('drivers')
+      .update({ phone: telefon.trim() || null })
+      .eq('id', profile.id)
+    if (error) {
+      setTelefonStare({ ok: false, msg: error.message })
+    } else {
+      setTelefonStare({ ok: true, msg: t('phoneSaved', lang) })
+      if (onProfileChange) onProfileChange({ ...profile, phone: telefon.trim() || null })
+      setTimeout(() => setTelefonStare(null), 2500)
+    }
+  }
+
   const [pushStatus, setPushStatus] = useState('checking') // 'checking' | 'unsupported' | 'subscribed' | 'unsubscribed'
   const [pushBusy, setPushBusy] = useState(false)
   const [pushError, setPushError] = useState('')
@@ -5385,6 +5420,36 @@ function ProfileScreen({ session, profile, isOwner, lang, onChangeLang, onProfil
       <p style={{ fontSize: 13, color: 'var(--text-soft)', marginTop: -8 }}>
         📧 {session.user.email}
       </p>
+
+      <div style={{ margin: '10px 0 14px' }}>
+        <label style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-soft)', display: 'block', marginBottom: 5 }}>
+          📞 {t('phoneLabel', lang)}
+        </label>
+        <div style={{ display: 'flex', gap: 7 }}>
+          <input
+            className="bid-input2"
+            type="tel"
+            inputMode="tel"
+            value={telefon}
+            onChange={(e) => setTelefon(e.target.value)}
+            placeholder="+49 …"
+            style={{ flex: 1, margin: 0 }}
+          />
+          <button
+            className="btn"
+            onClick={salveazaTelefon}
+            disabled={telefonStare?.busy || (telefon || '') === (profile?.phone || '')}
+            style={{ width: 'auto', padding: '0 16px' }}
+          >
+            {telefonStare?.busy ? '…' : t('saveLabel', lang)}
+          </button>
+        </div>
+        {telefonStare && !telefonStare.busy && (
+          <div style={{ fontSize: 11.5, marginTop: 4, color: telefonStare.ok ? '#1B6E43' : '#B23A24' }}>
+            {telefonStare.msg}
+          </div>
+        )}
+      </div>
 
       <div className="toggle-row">
         <div className="txt">

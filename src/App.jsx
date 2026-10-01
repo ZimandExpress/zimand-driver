@@ -592,7 +592,12 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
           </div>
         </div>
       </div>,
-        document.body
+        /* În #root, nu în body: pe ecran lat aplicaţia se desenează într-o
+           ramă de telefon centrată, iar meniul trebuie să rămână în ea.
+           Pe telefon, #root e oricum tot ecranul — şi, spre deosebire de
+           .phone-shell, nu are marginea de jos rezervată barei de gesturi,
+           care tăia panoul. */
+        document.getElementById('root') || document.body
       )}
     </div>
   )

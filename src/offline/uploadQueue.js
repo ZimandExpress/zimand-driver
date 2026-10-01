@@ -227,7 +227,11 @@ async function uploadOne(item) {
 
 /** Sumar pentru bara de stare din interfață. */
 export function summarize(files) {
-  const s = { total: files.length, processing: 0, pending: 0, uploaded: 0, failed: 0 }
+  // Fişele pierdute se numără separat: nu se pot urca niciodată, deci nu au
+  // voie să ţină confirmarea blocată. Şoferul vede că lipsesc şi reface poza.
+  const pierdute = files.filter((f) => f.status === 'lost').length
+  files = files.filter((f) => f.status !== 'lost')
+  const s = { total: files.length, processing: 0, pending: 0, uploaded: 0, failed: 0, lost: pierdute }
   for (const f of files) {
     if (f.status === 'processing') s.processing++
     else if (f.status === 'uploaded' || f.status === 'confirmed') s.uploaded++
@@ -336,6 +340,16 @@ async function replayPendingConfirmations() {
 
 let started = false
 export function startQueue() {
+  // Cerem telefonului să NU şteargă datele când rămâne fără spaţiu.
+  // Fără asta, sistemul poate goli baza locală a unei aplicaţii web —
+  // adică fix pozele neurcate — ca să facă loc.
+  if (navigator.storage?.persist) {
+    navigator.storage.persist()
+      .then((ok) => { if (!ok) console.warn('stocare permanentă refuzată de sistem') })
+      .catch(() => {})
+  }
+  curataFisePierdute()
+
   if (started) return
   started = true
   const resume = async () => { await requeueStuck(); pump(); replayPendingConfirmations() }
@@ -347,6 +361,28 @@ export function startQueue() {
 // Un fișier rămas 'uploading' înseamnă că aplicația a fost închisă în timpul
 // încărcării. Îl repunem în coadă — calea fiind stabilă, reluarea suprascrie
 // obiectul parțial, nu creează unul nou.
+// Fişele rămase fără conţinut.
+//
+// Poza se scrie în baza locală abia după prelucrare — redimensionare, uneori
+// conversie în PDF. Dacă telefonul opreşte aplicaţia exact atunci (memorie
+// plină, apel primit, ecran blocat), rămâne o fişă cu status 'processing' şi
+// fără octeţi. Nimic nu o mai putea repara: nu are blob, deci nu se poate
+// urca, dar se numără la total — iar confirmarea cerea ca TOATE fişierele să
+// fie urcate. Şoferul ar fi rămas blocat definitiv, din cauza unei poze care
+// nu există.
+//
+// La fiecare pornire le marcăm ca eşuate, ca să fie vizibile şi refăcute.
+async function curataFisePierdute() {
+  const all = (await dbGetAll(STORE_FILES)) || []
+  const pierdute = all.filter((f) => !f.blob && f.status === 'processing' && Date.now() - (f.createdAt || 0) > 60000)
+  if (!pierdute.length) return
+  await Promise.all(
+    pierdute.map((f) => dbPut(STORE_FILES, { ...f, status: 'lost', error: 'Aufnahme unterbrochen' }))
+  )
+  console.warn('fişiere fără conţinut, marcate ca pierdute:', pierdute.length)
+  emit()
+}
+
 async function requeueStuck() {
   const all = (await dbGetAll(STORE_FILES)) || []
   await Promise.all(

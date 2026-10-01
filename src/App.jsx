@@ -3582,6 +3582,15 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
             </div>
           )}
           <SignatureLine lang={lang} signatureBlob={signatureBlob} onChange={setSignatureBlob} />
+          {/* La ridicare nu întrebăm nimic despre acte: foile de transport
+              se primesc adesea chiar acolo, la încărcare. Doar o mențiune,
+              ca şoferul să ştie că semnătura în aplicaţie nu e necesară
+              dacă oricum semnează pe hârtie. */}
+          {!isDocumentDelivery && (leg === 'pickup' || leg === 'return_pickup') && (
+            <div style={{ fontSize: 11.5, color: 'var(--text-soft)', marginTop: 5, lineHeight: 1.5 }}>
+              {t('pickupSignatureNote', lang)}
+            </div>
+          )}
         </>
       )}
       </>

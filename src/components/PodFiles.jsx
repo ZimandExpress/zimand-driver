@@ -90,7 +90,17 @@ export default function PodFiles({ orderId, leg, lang, maxPhotos = 6, onAddPhoto
 
   const photos = useMemo(() => files.filter((f) => f.kind === 'photo'), [files])
   const documents = useMemo(() => files.filter((f) => f.kind === 'document'), [files])
-  const summary = useMemo(() => summarize(files.filter((f) => f.kind !== 'signature')), [files])
+  // Pe lângă starea încărcării, ecranul de confirmare are nevoie să ştie
+  // CE s-a încărcat: la livrările de documente, Zustellprotokoll-ul e
+  // obligatoriu, iar o poză nu ţine locul lui.
+  const summary = useMemo(() => {
+    const relevante = files.filter((f) => f.kind !== 'signature')
+    return {
+      ...summarize(relevante),
+      photoCount: relevante.filter((f) => f.kind === 'photo').length,
+      documentCount: relevante.filter((f) => f.kind === 'document').length,
+    }
+  }, [files])
 
   useEffect(() => { if (onSummary) onSummary(summary) }, [summary, onSummary])
 

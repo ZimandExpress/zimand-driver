@@ -2864,6 +2864,21 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
   const MINIM_POZE_LIVRARE = 6
   const [notitaPlecare, setNotitaPlecare] = useState(false)
   const [regulileDeschise, setRegulileDeschise] = useState(false)
+
+  // Livrările obişnuite au două drumuri, după cum şoferul are sau nu hârtii
+  // tipărite la el. Cu CMR: semnătura se dă pe hârtie, deci în aplicaţie nu
+  // mai apare, dar documentul trebuie încărcat. Fără: semnătura în aplicaţie
+  // şi numele destinatarului sunt singura dovadă.
+  const esteLivrareNormala = !isDocumentDelivery && (leg === 'delivery' || leg === 'return_delivery')
+  const [areActe, setAreActe] = useState(order.delivery_has_paperwork)
+
+  async function raspundeActe(valoare) {
+    setAreActe(valoare)
+    const { error } = await supabase.rpc('driver_set_delivery_paperwork', {
+      p_order_id: order.id, p_has: valoare,
+    })
+    if (error) console.error('paperwork:', error.message)
+  }
   const [incidentOpen, setIncidentOpen] = useState(false)
   const [incidentBlocking, setIncidentBlocking] = useState(false)
   const [incidentSaved, setIncidentSaved] = useState(false)
@@ -3314,6 +3329,32 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
       </div>
 
       {incidentBlock}
+      {/* Întrebarea se pune o singură dată, la începutul confirmării, şi
+          hotărăşte ce se cere mai jos. Până la răspuns nu arătăm formularul:
+          altfel şoferul completează pe un drum şi află la final că era
+          celălalt. */}
+      {esteLivrareNormala && areActe == null && (
+        <div style={{
+          background: '#FFF6ED', border: '1px solid #FFD2AE', borderRadius: 10,
+          padding: '14px 14px 12px', margin: '10px 0 14px',
+        }}>
+          <div style={{ fontWeight: 800, fontSize: 15, color: '#0F2240', marginBottom: 4 }}>
+            {t('paperworkQuestion', lang)}
+          </div>
+          <div style={{ fontSize: 12.5, color: '#8A5A16', marginBottom: 12, lineHeight: 1.5 }}>
+            {t('paperworkQuestionNote', lang)}
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button className="btn" style={{ flex: 1 }} onClick={() => raspundeActe(true)}>
+              {t('paperworkYes', lang)}
+            </button>
+            <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => raspundeActe(false)}>
+              {t('paperworkNo', lang)}
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="leg-title">{legLabel} · {t('confirmStep', lang)}</div>
 
       {/* Cu cine are de-a face, chiar aici.
@@ -3358,7 +3399,7 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
             ? (deliveryMethod === 'briefkasten'
                 ? [t('hintGebaeude', lang), t('hintUmschlagName', lang), t('hintHalbEingeworfen', lang), t('hintEingeworfen', lang), t('hintUmgebung', lang), t('hintProtokoll', lang)]
                 : (deliveryMethod === 'persoenlich' ? [t('hintGebaeude', lang)] : []))
-            : []
+            : (esteLivrareNormala ? [t('hintWare1', lang), t('hintWare2', lang)] : [])
         }
       />
 
@@ -3529,7 +3570,7 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
           pe hârtie — nu pe ecran. Două semnături pentru acelaşi act înseamnă
           două dovezi care se pot contrazice, iar cea de pe hârtie e cea care
           contează. Deci aici câmpul nici nu apare. */}
-      {!esteEtapaLivrareDoc && (
+      {!esteEtapaLivrareDoc && !(esteLivrareNormala && areActe === true) && (
         <>
           {isDocumentDelivery && (
             <div style={{
@@ -3559,8 +3600,31 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
           livrările de documente lipsa Zustellprotokoll-ului se descoperea
           abia la dispecerat, când omul plecase demult de la adresă. */}
       {(() => {
-        if (!isDocumentDelivery) return null
+        if (!isDocumentDelivery && !esteLivrareNormala) return null
         const lipsa = []
+
+        // Livrare obişnuită: cerinţele depind de răspunsul despre hârtii.
+        if (esteLivrareNormala) {
+          if (areActe == null) return null
+          if (fileSummary.photoCount < 2) {
+            lipsa.push(t('missingPhotosMin', lang).replace('{n}', 2).replace('{have}', fileSummary.photoCount))
+          }
+          if (areActe === true && fileSummary.documentCount === 0) lipsa.push(t('missingCmr', lang))
+          if (areActe === false && !signerName.trim()) lipsa.push(t('missingSigner', lang))
+          if (areActe === false && !signatureBlob) lipsa.push(t('missingSignature', lang))
+          if (!lipsa.length) return null
+          return (
+            <div style={{
+              marginTop: 12, padding: '10px 12px', borderRadius: 9,
+              background: '#FFF6ED', border: '1px solid #FFD2AE', color: '#B35A12',
+              fontSize: 13, lineHeight: 1.6,
+            }}>
+              <div style={{ fontWeight: 700 }}>⚠ {t('requiredBeforeConfirm', lang)}</div>
+              {lipsa.map((x, i) => <div key={i}>• {x}</div>)}
+            </div>
+          )
+        }
+
         // La predarea personală proba e Zustellprotokoll-ul semnat de
         // destinatar; o fotografie a clădirii ajunge. La cutia poştală nu
         // există semnătură, deci fotografiile SUNT singura dovadă.
@@ -3602,6 +3666,12 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
         }}
         disabled={busy || !!blockingIncident || fileSummary.total === 0 || !fileSummary.allDone
           || (isDocumentDeliveryLeg && !deliveryMethod)
+          || (esteLivrareNormala && (
+                areActe == null
+                || fileSummary.photoCount < 2
+                || (areActe === true && fileSummary.documentCount === 0)
+                || (areActe === false && (!signerName.trim() || !signatureBlob))
+              ))
           || (isDocumentDelivery && (
                 fileSummary.photoCount < ((esteEtapaLivrareDoc && deliveryMethod === 'briefkasten') ? MINIM_POZE_LIVRARE : 1)
                 || fileSummary.documentCount === 0

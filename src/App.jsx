@@ -436,8 +436,38 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
   // Înainte, la pornire profilul era încă null şi starea notificărilor
   // „checking" — deci banda clipea o secundă la fiecare deschidere, chiar
   // şi la cei care aveau totul pornit.
-  const stareCunoscuta = !!profile?.id && stareNotificari !== 'checking'
+  // Un răgaz la pornire. Chiar cu datele încărcate, starea „online" se
+  // aşază abia după ce aplicaţia o trimite la server — iar banda clipea
+  // exact în fereastra aceea.
+  const [ragazTrecut, setRagazTrecut] = useState(false)
+  useEffect(() => {
+    const id = setTimeout(() => setRagazTrecut(true), 3000)
+    return () => clearTimeout(id)
+  }, [])
+
+  const stareCunoscuta = ragazTrecut && !!profile?.id && stareNotificari !== 'checking'
   const trebuieActivat = stareCunoscuta && tab !== 'profil' && (lipsesteOnline || lipsescNotificarile)
+
+  // Cât timp meniul e deschis, pagina din spate nu are voie să se mişte.
+  // Pe iPhone, degetul care atinge zona întunecată derula conţinutul de
+  // dedesubt — meniul părea o foaie lipită peste o aplicaţie încă vie.
+  useEffect(() => {
+    if (!menuOpen) return
+    const styluri = document.body.style
+    const vechi = { overflow: styluri.overflow, position: styluri.position, width: styluri.width }
+    const sus = window.scrollY
+    styluri.overflow = 'hidden'
+    styluri.position = 'fixed'
+    styluri.width = '100%'
+    styluri.top = `-${sus}px`
+    return () => {
+      styluri.overflow = vechi.overflow
+      styluri.position = vechi.position
+      styluri.width = vechi.width
+      styluri.top = ''
+      window.scrollTo(0, sus)
+    }
+  }, [menuOpen])
 
   function navTo(tabId) {
     setTab(tabId)
@@ -540,11 +570,14 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
             <span className="ic"><User size={19} strokeWidth={1.75} /></span>{t('tabProfile', lang)}
           </button>
 
-          <div className="menu-divider" style={{ marginTop: 'auto' }} />
+          {/* Grupul de jos, lipit de baza panoului. „marginTop: auto" pus
+              doar pe linia despărţitoare nu împingea nimic atunci când
+              panoul se poate derula — trebuie pe întreg grupul. */}
+          <div style={{ marginTop: 'auto' }}>
+          <div className="menu-divider" />
 
           {/* Dispeceratul, la îndemână din orice ecran — nu doar din fişa
-              unei curse. Şoferul are întrebări şi între curse.
-              Stă jos, lângă deconectare, unde ajunge degetul mare. */}
+              unei curse. Şoferul are întrebări şi între curse. */}
           <a
             className="menu-item"
             href={`https://wa.me/${DISPATCH_WA}`}
@@ -559,6 +592,7 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
           <button className="menu-item logout" onClick={() => supabase.auth.signOut()}>
             <span className="ic"><LogOut size={19} strokeWidth={1.75} /></span>{t('logout', lang)}
           </button>
+          </div>
         </div>
       </div>
     </div>

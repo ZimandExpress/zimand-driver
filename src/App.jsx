@@ -1733,25 +1733,22 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
         <StageBadge order={order} lang={lang} />
       </div>
 
-      {/* Legătura cu dispeceratul. Vizibilă, nu ascunsă într-un meniu:
-          când ceva se blochează la faţa locului, trebuie găsită din prima. */}
+      {/* Legătura cu dispeceratul: discretă, dar recunoscută după culoare.
+          Un rând, lângă antet — nu un panou care împinge cursa în jos. */}
       <a
         href={dispatchWaUrl(order, leg)}
         target="_blank"
         rel="noreferrer"
         style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-          background: '#25D366', color: '#fff', fontWeight: 700, fontSize: 14.5,
-          padding: '11px 14px', borderRadius: 9, textDecoration: 'none',
-          margin: '10px 0 2px', boxShadow: '0 1px 2px rgba(0,0,0,.12)',
+          display: 'inline-flex', alignItems: 'center', gap: 5,
+          color: '#1B9E50', border: '1px solid #BFE8CF', background: '#F3FBF6',
+          fontSize: 12.5, fontWeight: 600, padding: '4px 9px', borderRadius: 20,
+          textDecoration: 'none', margin: '2px 0 8px',
         }}
       >
-        <MessageCircle size={17} strokeWidth={2.2} />
+        <MessageCircle size={13} strokeWidth={2.2} />
         {t('dispatchWa', lang)}
       </a>
-      <div style={{ fontSize: 11.5, color: 'var(--text-soft)', textAlign: 'center', marginBottom: 10 }}>
-        {t('dispatchWaHint', lang)}
-      </div>
 
       <StageProgress order={order} lang={lang} />
 

@@ -3248,7 +3248,9 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
                 ? t('distMeasuring', lang)
                 : distanta.sigur
                   ? t('distKnown', lang).replace('{d}', distanta.metri >= 1000 ? `${(distanta.metri / 1000).toFixed(1)} km` : `${distanta.metri} m`)
-                  : t('distUnsure', lang).replace('{d}', distanta.metri >= 1000 ? `${(distanta.metri / 1000).toFixed(1)} km` : `${distanta.metri} m`)}
+                  : t('distUnsure', lang)
+                      .replace('{d}', distanta.metri >= 1000 ? `${(distanta.metri / 1000).toFixed(1)} km` : `${distanta.metri} m`)
+                      .replace('{m}', distanta.marja != null ? `${distanta.marja}` : '?')}
           </div>
         )}
         {avertismentDistanta != null && (
@@ -3426,6 +3428,15 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
                   </div>
                   {/* Condiţia care face predarea în cutie admisibilă, scrisă
                       chiar pe opţiune — nu într-un document de la instructaj. */}
+                  {m.id === 'persoenlich' && (
+                    <div style={{
+                      fontSize: 12, color: '#1B6E43', background: '#F3FBF6',
+                      border: '1px solid #BFE8CF', borderRadius: 7,
+                      padding: '7px 9px', marginTop: 7, lineHeight: 1.5, fontWeight: 600,
+                    }}>
+                      ✍️ {t('persoenlichCondition', lang)}
+                    </div>
+                  )}
                   {m.id === 'briefkasten' && (
                     <div style={{
                       fontSize: 12, color: '#B35A12', background: '#FFF6ED',
@@ -3471,7 +3482,24 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
         placeholder={t('signerNamePlaceholder', lang)}
       />
 
-      <SignatureLine lang={lang} signatureBlob={signatureBlob} onChange={setSignatureBlob} />
+      {/* La livrarea de documente destinatarul semnează pe Zustellprotokoll,
+          pe hârtie — nu pe ecran. Două semnături pentru acelaşi act înseamnă
+          două dovezi care se pot contrazice, iar cea de pe hârtie e cea care
+          contează. Deci aici câmpul nici nu apare. */}
+      {!esteEtapaLivrareDoc && (
+        <>
+          {isDocumentDelivery && (
+            <div style={{
+              fontSize: 12.5, color: '#B35A12', background: '#FFF6ED',
+              border: '1px solid #FFD2AE', borderRadius: 7,
+              padding: '8px 10px', margin: '8px 0 4px', lineHeight: 1.5, fontWeight: 600,
+            }}>
+              ⚠ {t('pickupSignatureRule', lang)}
+            </div>
+          )}
+          <SignatureLine lang={lang} signatureBlob={signatureBlob} onChange={setSignatureBlob} />
+        </>
+      )}
       </>
       )}
 
@@ -3490,7 +3518,12 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
       {(() => {
         if (!isDocumentDelivery) return null
         const lipsa = []
-        const minimPoze = esteEtapaLivrareDoc ? MINIM_POZE_LIVRARE : 1
+        // La predarea personală proba e Zustellprotokoll-ul semnat de
+        // destinatar; o fotografie a clădirii ajunge. La cutia poştală nu
+        // există semnătură, deci fotografiile SUNT singura dovadă.
+        const minimPoze = (esteEtapaLivrareDoc && deliveryMethod === 'briefkasten')
+          ? MINIM_POZE_LIVRARE
+          : 1
         if (fileSummary.photoCount < minimPoze) {
           lipsa.push(
             minimPoze > 1
@@ -3527,7 +3560,7 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
         disabled={busy || !!blockingIncident || fileSummary.total === 0 || !fileSummary.allDone
           || (isDocumentDeliveryLeg && !deliveryMethod)
           || (isDocumentDelivery && (
-                fileSummary.photoCount < (esteEtapaLivrareDoc ? MINIM_POZE_LIVRARE : 1)
+                fileSummary.photoCount < ((esteEtapaLivrareDoc && deliveryMethod === 'briefkasten') ? MINIM_POZE_LIVRARE : 1)
                 || fileSummary.documentCount === 0
               ))}
         style={{ marginTop: 14, ...(distanta.preaDeparte ? { opacity: 0.45 } : null) }}
@@ -4365,14 +4398,20 @@ function EarningsScreen({ profile, lang }) {
 // e inutilă şi ar ţine şoferul captiv în faţa uşii. În cazul acela lăsăm
 // butonul să meargă şi consemnăm că poziţia era nesigură.
 const PRAG_METRI = 70
-const PRECIZIE_MAXIMA = 50   // peste atât, poziţia nu e de încredere
+
+// Siguranţa măsurătorii nu se judecă printr-o limită fixă: aceeaşi marjă
+// de eroare înseamnă altceva la 100 de metri faţă de 600. Blocăm doar când
+// distanţa e de cel puţin trei ori mai mare decât marja — adică atunci
+// când, chiar şi luând în calcul cea mai mare greşeală posibilă a
+// telefonului, şoferul tot e departe.
+const FACTOR_SIGURANTA = 3
 
 function useDistantaFataDe(target, activ) {
   const [stare, setStare] = useState({ metri: null, sigur: false })
 
   useEffect(() => {
     if (!activ || !target || !('geolocation' in navigator)) {
-      setStare({ metri: null, sigur: false })
+      setStare({ metri: null, marja: null, sigur: false })
       return
     }
     let viu = true
@@ -4380,9 +4419,16 @@ function useDistantaFataDe(target, activ) {
       ({ coords }) => {
         if (!viu) return
         const metri = haversineKm(coords.latitude, coords.longitude, target[0], target[1]) * 1000
-        setStare({ metri: Math.round(metri), sigur: coords.accuracy != null && coords.accuracy <= PRECIZIE_MAXIMA })
+        const marja = coords.accuracy != null ? coords.accuracy : 9999
+        setStare({
+          metri: Math.round(metri),
+          marja: Math.round(marja),
+          // „sigur" = distanţa depăşeşte marja de atâtea ori încât nu mai
+          // poate fi o greşeală de măsurare.
+          sigur: metri >= marja * FACTOR_SIGURANTA,
+        })
       },
-      () => { if (viu) setStare({ metri: null, sigur: false }) },
+      () => { if (viu) setStare({ metri: null, marja: null, sigur: false }) },
       { enableHighAccuracy: true, maximumAge: 10000, timeout: 15000 },
     )
     return () => { viu = false; navigator.geolocation.clearWatch(id) }

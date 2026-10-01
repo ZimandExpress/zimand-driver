@@ -2692,7 +2692,7 @@ function UndoBar({ field, at, lang, onUndo }) {
 
 function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, isOwner, onDeliveryComplete, profile }) {
   const [busy, setBusy] = useState(false)
-  const [fileSummary, setFileSummary] = useState({ total: 0, allDone: false, failed: 0, pending: 0, processing: 0 })
+  const [fileSummary, setFileSummary] = useState({ total: 0, allDone: false, failed: 0, pending: 0, processing: 0, photoCount: 0, documentCount: 0 })
   const [signatureBlob, setSignatureBlob] = useState(null)
   const [signerName, setSignerName] = useState('')
   // Doar la Dokumentenzustellung: cum a fost predat documentul.
@@ -3319,6 +3319,29 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
 
       {/* Aceeaşi plasă la bifa de încărcare/predare: cât timp ştim sigur că
           şoferul e la peste 70 m, butonul e în ceaţă şi explică la atingere. */}
+      {/* Ce îi lipseşte şoferului ca să poată închide etapa.
+          Până acum butonul era doar stins, fără să spună de ce — iar la
+          livrările de documente lipsa Zustellprotokoll-ului se descoperea
+          abia la dispecerat, când omul plecase demult de la adresă. */}
+      {(() => {
+        if (!isDocumentDelivery) return null
+        const lipsa = []
+        if (fileSummary.photoCount === 0) lipsa.push(t('missingPhotos', lang))
+        if (fileSummary.documentCount === 0) lipsa.push(t('missingProtokoll', lang))
+        if (isDocumentDeliveryLeg && !deliveryMethod) lipsa.push(t('missingMethod', lang))
+        if (!lipsa.length) return null
+        return (
+          <div style={{
+            marginTop: 12, padding: '10px 12px', borderRadius: 9,
+            background: '#FFF6ED', border: '1px solid #FFD2AE', color: '#B35A12',
+            fontSize: 13, lineHeight: 1.6,
+          }}>
+            <div style={{ fontWeight: 700 }}>⚠ {t('requiredBeforeConfirm', lang)}</div>
+            {lipsa.map((x, i) => <div key={i}>• {x}</div>)}
+          </div>
+        )
+      })()}
+
       <button
         className="btn"
         onClick={() => {
@@ -3328,7 +3351,9 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
           }
           confirmLeg()
         }}
-        disabled={busy || !!blockingIncident || fileSummary.total === 0 || !fileSummary.allDone || (isDocumentDeliveryLeg && !deliveryMethod)}
+        disabled={busy || !!blockingIncident || fileSummary.total === 0 || !fileSummary.allDone
+          || (isDocumentDeliveryLeg && !deliveryMethod)
+          || (isDocumentDelivery && (fileSummary.photoCount === 0 || fileSummary.documentCount === 0))}
         style={{ marginTop: 14, ...(distanta.preaDeparte && !avertismentDistanta ? { opacity: 0.45 } : null) }}
       >
         {busy

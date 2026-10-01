@@ -421,6 +421,18 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
     }
   }, [profile?.is_online, profile?.id])
 
+  // Cele două comutatoare din Profil fără de care aplicaţia nu îşi face
+  // treaba: dispeceratul nu vede unde e şoferul şi nu îl poate anunţa de
+  // curse noi. Mulţi le lasă oprite pur şi simplu fiindcă nu ştiu că există.
+  const [stareNotificari, setStareNotificari] = useState('checking')
+  useEffect(() => {
+    getPushSubscriptionStatus().then(setStareNotificari).catch(() => setStareNotificari('unsupported'))
+  }, [tab])
+
+  const lipsesteOnline = !profile?.is_online
+  const lipsescNotificarile = stareNotificari === 'unsubscribed'
+  const trebuieActivat = tab !== 'profil' && (lipsesteOnline || lipsescNotificarile)
+
   function navTo(tabId) {
     setTab(tabId)
     setMenuOpen(false)
@@ -434,6 +446,33 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
       </div>
 
       <div className="screen-body">
+        {trebuieActivat && (
+          <div style={{
+            background: '#FFF6ED', border: '1px solid #FF9D4D', borderRadius: 11,
+            padding: '14px 14px 12px', marginBottom: 14,
+          }}>
+            <div style={{ fontSize: 15.5, fontWeight: 800, color: '#B35A12', lineHeight: 1.4 }}>
+              ⚠ {t('setupBannerTitle', lang)}
+            </div>
+            <div style={{ fontSize: 13.5, color: '#8A5A16', marginTop: 5, lineHeight: 1.55 }}>
+              {lipsesteOnline && lipsescNotificarile
+                ? t('setupBannerBoth', lang)
+                : lipsesteOnline ? t('setupBannerOnline', lang) : t('setupBannerPush', lang)}
+            </div>
+            <div style={{ fontSize: 11.5, color: '#A5763E', marginTop: 7, fontStyle: 'italic', lineHeight: 1.5 }}>
+              {lipsesteOnline && lipsescNotificarile
+                ? t('setupBannerBothEn', lang)
+                : lipsesteOnline ? t('setupBannerOnlineEn', lang) : t('setupBannerPushEn', lang)}
+            </div>
+            <button
+              className="btn"
+              style={{ width: '100%', marginTop: 12 }}
+              onClick={() => navTo('profil')}
+            >
+              {t('setupBannerAction', lang)}
+            </button>
+          </div>
+        )}
         {tab === 'curse' && <RidesScreen profile={profile} isOwner={isOwner} session={session} lang={lang} />}
         {tab === 'angebote' && isOwner && <MeineAngeboteScreen profile={profile} session={session} lang={lang} />}
         {tab === 'abgeschlossen' && <CompletedOrdersListScreen profile={profile} isOwner={isOwner} lang={lang} />}

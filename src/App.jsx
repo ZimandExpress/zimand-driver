@@ -534,10 +534,11 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
             <span className="ic"><User size={19} strokeWidth={1.75} /></span>{t('tabProfile', lang)}
           </button>
 
-          <div className="menu-divider" />
+          <div className="menu-divider" style={{ marginTop: 'auto' }} />
 
           {/* Dispeceratul, la îndemână din orice ecran — nu doar din fişa
-              unei curse. Şoferul are întrebări şi între curse. */}
+              unei curse. Şoferul are întrebări şi între curse.
+              Stă jos, lângă deconectare, unde ajunge degetul mare. */}
           <a
             className="menu-item"
             href={`https://wa.me/${DISPATCH_WA}`}
@@ -548,8 +549,6 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
           >
             <span className="ic"><WhatsAppIcon size={18} /></span>{t('menuDispatch', lang)}
           </a>
-
-          <div className="menu-divider" />
 
           <button className="menu-item logout" onClick={() => supabase.auth.signOut()}>
             <span className="ic"><LogOut size={19} strokeWidth={1.75} /></span>{t('logout', lang)}

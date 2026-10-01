@@ -1265,6 +1265,9 @@ body {
   background: rgba(15,34,64,.45);
   z-index: 9999;
   display: none;
+  /* Degetul de pe zona întunecată nu mai derulează pagina de dedesubt. */
+  touch-action: none;
+  overscroll-behavior: contain;
 }
 
 .menu-overlay.show {

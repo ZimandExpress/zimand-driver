@@ -2754,6 +2754,12 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
       console.error(fn, error.message)
       return
     }
+    // La plecarea spre livrarea de documente, o notă scurtă care dispare
+    // singură: şoferul o citeşte în timp ce porneşte, nu trebuie să apese.
+    if (esteEtapaLivrareDoc && /_started$/.test(fn)) {
+      setNotitaPlecare(true)
+      setTimeout(() => setNotitaPlecare(false), 5000)
+    }
     // Numele funcției urmează mereu tiparul driver_mark_{etapă}_started/
     // arrived — deducem câmpul afectat, ca să marcăm local, instant,
     // fără să așteptăm sincronizarea live din baza de date.
@@ -2821,6 +2827,14 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
   const tintaEtapei = useGeocode(isDocumentDelivery ? adresaEtapei : null)
   const distanta = useDistantaFataDe(tintaEtapei, isDocumentDelivery)
   const [avertismentDistanta, setAvertismentDistanta] = useState(null)
+
+  // Regulile predării, aduse acolo unde se ia decizia.
+  //
+  // Şoferul le ştie din instructaj — dar le aplică în faţa uşii, obosit, la
+  // a şasea livrare. O regulă semnată acum trei luni nu ajută în clipa aceea.
+  const esteEtapaLivrareDoc = isDocumentDelivery && (leg === 'delivery' || leg === 'return_delivery')
+  const [notitaPlecare, setNotitaPlecare] = useState(false)
+  const [regulileDeschise, setRegulileDeschise] = useState(false)
   const [incidentOpen, setIncidentOpen] = useState(false)
   const [incidentBlocking, setIncidentBlocking] = useState(false)
   const [incidentSaved, setIncidentSaved] = useState(false)
@@ -3109,6 +3123,14 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
     return (
       <>
         {undoBlock}
+        {notitaPlecare && (
+          <div style={{
+            background: '#FFF6ED', border: '1px solid #FFD2AE', color: '#B35A12',
+            borderRadius: 9, padding: '10px 12px', fontSize: 13, lineHeight: 1.55, marginBottom: 10,
+          }}>
+            📄 {t('docRuleShort', lang)}
+          </div>
+        )}
         {etaBlock}
         {/* La documente, butonul se estompează cât timp şoferul e departe.
             Nu e dezactivat: la atingere spune de ce, cu distanţa în metri,
@@ -3120,6 +3142,12 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
               setAvertismentDistanta(distanta.metri)
               return
             }
+            // La livrarea de documente, regulile apar ÎNAINTE de marcarea
+            // sosirii — adică înainte ca şoferul să sune la uşă.
+            if (esteEtapaLivrareDoc) {
+              setRegulileDeschise(true)
+              return
+            }
             callRpc(arriveFn)
           }}
           disabled={busy}
@@ -3127,6 +3155,47 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
         >
           {t('arrived', lang)}
         </button>
+
+        {/* Regulile predării, într-o fereastră care cere o confirmare.
+            Nu e o bifă în plus la fiecare livrare: apare o singură dată,
+            la sosire, exact înainte de momentul în care contează. */}
+        {regulileDeschise && (
+          <div
+            style={{
+              position: 'fixed', inset: 0, background: 'rgba(15,34,64,.55)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              padding: 18, zIndex: 9999,
+            }}
+          >
+            <div style={{
+              background: '#fff', borderRadius: 14, padding: '20px 18px',
+              maxWidth: 420, width: '100%', maxHeight: '86vh', overflowY: 'auto',
+              boxShadow: '0 10px 40px rgba(0,0,0,.3)',
+            }}>
+              <div style={{ fontSize: 17, fontWeight: 800, color: '#0F2240', marginBottom: 12 }}>
+                📄 {t('docRulesTitle', lang)}
+              </div>
+              <ol style={{ paddingLeft: 20, margin: 0, fontSize: 14, lineHeight: 1.65, color: '#0F2240' }}>
+                <li style={{ marginBottom: 9 }}>{t('docRule1', lang)}</li>
+                <li style={{ marginBottom: 9 }}>{t('docRule2', lang)}</li>
+                <li style={{ marginBottom: 9 }}>{t('docRule3', lang)}</li>
+              </ol>
+              <div style={{
+                background: '#F3FBF6', border: '1px solid #BFE8CF', borderRadius: 9,
+                padding: '10px 12px', fontSize: 13, color: '#1B6E43', lineHeight: 1.55, margin: '14px 0 16px',
+              }}>
+                {t('docRuleContact', lang)}
+              </div>
+              <button
+                className="btn"
+                style={{ width: '100%' }}
+                onClick={() => { setRegulileDeschise(false); callRpc(arriveFn) }}
+              >
+                {t('docRulesAck', lang)}
+              </button>
+            </div>
+          </div>
+        )}
         {/* Starea măsurătorii, scrisă. Un blocaj mut nu se poate verifica:
             dacă poziția nu e încă gata sau e nesigură, butonul arată normal
             și nimeni nu știe de ce. Acum se vede mereu pe ce ne bazăm. */}
@@ -3298,6 +3367,17 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
                   <div style={{ fontSize: 12, color: '#6B7A90', marginTop: 3, lineHeight: 1.45 }}>
                     {t(m.note, lang)}
                   </div>
+                  {/* Condiţia care face predarea în cutie admisibilă, scrisă
+                      chiar pe opţiune — nu într-un document de la instructaj. */}
+                  {m.id === 'briefkasten' && (
+                    <div style={{
+                      fontSize: 12, color: '#B35A12', background: '#FFF6ED',
+                      border: '1px solid #FFD2AE', borderRadius: 7,
+                      padding: '7px 9px', marginTop: 7, lineHeight: 1.5, fontWeight: 600,
+                    }}>
+                      ⚠ {t('briefkastenCondition', lang)}
+                    </div>
+                  )}
                 </button>
               )
             })}

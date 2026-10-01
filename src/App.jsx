@@ -3175,7 +3175,11 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
         <button
           className="btn sticky-cta"
           onClick={() => {
-            if (distanta.preaDeparte && !avertismentDistanta) {
+            // Blocaj real, fără a doua atingere. Portiţa dinainte nu lăsa
+            // nicio urmă: nu se putea şti dacă şoferul a văzut avertismentul
+            // sau a trecut peste el. Cât timp telefonul ştie SIGUR unde e şi
+            // e dincolo de prag, nu se marchează nimic.
+            if (distanta.preaDeparte) {
               setAvertismentDistanta(distanta.metri)
               return
             }
@@ -3188,7 +3192,7 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
             callRpc(arriveFn)
           }}
           disabled={busy}
-          style={distanta.preaDeparte && !avertismentDistanta ? { opacity: 0.45 } : undefined}
+          style={distanta.preaDeparte ? { opacity: 0.45 } : undefined}
         >
           {t('arrived', lang)}
         </button>
@@ -3257,6 +3261,22 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
               ⚠ {t('tooFarTitle', lang).replace('{m}', avertismentDistanta)}
             </div>
             <div style={{ marginTop: 3 }}>{t('tooFarHint', lang)}</div>
+            {/* Singura ieşire când poziţia chiar e greşită: dispeceratul.
+                Aşa rămâne o urmă scrisă, în loc de o a doua atingere
+                despre care nimeni nu află niciodată. */}
+            <a
+              href={dispatchWaUrl(order, leg)}
+              target="_blank"
+              rel="noreferrer"
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                marginTop: 10, background: '#25D366', color: '#fff', fontWeight: 700,
+                fontSize: 13.5, padding: '9px 12px', borderRadius: 8, textDecoration: 'none',
+              }}
+            >
+              <WhatsAppIcon size={14} />
+              {t('tooFarContact', lang)}
+            </a>
           </div>
         )}
         {incidentBlock}
@@ -3498,7 +3518,7 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
       <button
         className="btn"
         onClick={() => {
-          if (distanta.preaDeparte && !avertismentDistanta) {
+          if (distanta.preaDeparte) {
             setAvertismentDistanta(distanta.metri)
             return
           }
@@ -3510,7 +3530,7 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
                 fileSummary.photoCount < (esteEtapaLivrareDoc ? MINIM_POZE_LIVRARE : 1)
                 || fileSummary.documentCount === 0
               ))}
-        style={{ marginTop: 14, ...(distanta.preaDeparte && !avertismentDistanta ? { opacity: 0.45 } : null) }}
+        style={{ marginTop: 14, ...(distanta.preaDeparte ? { opacity: 0.45 } : null) }}
       >
         {busy
           ? t('uploadingLabel', lang)

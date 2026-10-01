@@ -3125,6 +3125,20 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
         >
           {t('arrived', lang)}
         </button>
+        {/* Starea măsurătorii, scrisă. Un blocaj mut nu se poate verifica:
+            dacă poziția nu e încă gata sau e nesigură, butonul arată normal
+            și nimeni nu știe de ce. Acum se vede mereu pe ce ne bazăm. */}
+        {isDocumentDelivery && (
+          <div style={{ fontSize: 11.5, color: 'var(--text-soft)', textAlign: 'center', marginTop: 6 }}>
+            {!tintaEtapei
+              ? t('distUnknownAddress', lang)
+              : distanta.metri == null
+                ? t('distMeasuring', lang)
+                : distanta.sigur
+                  ? t('distKnown', lang).replace('{d}', distanta.metri >= 1000 ? `${(distanta.metri / 1000).toFixed(1)} km` : `${distanta.metri} m`)
+                  : t('distUnsure', lang).replace('{d}', distanta.metri >= 1000 ? `${(distanta.metri / 1000).toFixed(1)} km` : `${distanta.metri} m`)}
+          </div>
+        )}
         {avertismentDistanta != null && (
           <div style={{
             marginTop: 8, padding: '10px 12px', borderRadius: 9,

@@ -1280,9 +1280,13 @@ body {
   max-width: 80vw;
   background: #fff;
   box-shadow: -6px 0 20px rgba(15,34,64,.25);
-  padding: 20px 0;
+  /* Pe iPhone, panoul porneşte de sub bara de stare şi de sub crestătură:
+     fără asta, numele firmei intra chiar sub ceas şi se vedea tăiat.
+     Jos, aceeaşi grijă pentru bara de gesturi. */
+  padding: calc(20px + env(safe-area-inset-top, 0px)) 0 calc(20px + env(safe-area-inset-bottom, 0px));
   display: flex;
   flex-direction: column;
+  overflow-y: auto;
 }
 
 .menu-header {

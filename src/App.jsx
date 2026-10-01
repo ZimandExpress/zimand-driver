@@ -2853,10 +2853,15 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
   // a şasea livrare. O regulă semnată acum trei luni nu ajută în clipa aceea.
   const esteEtapaLivrareDoc = isDocumentDelivery && (leg === 'delivery' || leg === 'return_delivery')
 
-  // La predarea documentelor, patru fotografii e minimul care susţine o
-  // dovadă: plăcuţa cu numele, cutia sau uşa, plicul şi predarea propriu-zisă.
-  // Una singură nu demonstrează nimic într-o dispută.
-  const MINIM_POZE_LIVRARE = 4
+  // La predarea în cutia poştală, şase fotografii: clădirea, plicul lângă
+  // cutie cu numele vizibile, plicul pe jumătate introdus, plicul intrat
+  // complet, cadrul larg cu împrejurimile şi protocolul completat.
+  //
+  // Cea cu plicul pe jumătate pare de prisos lângă cea cu plicul intrat —
+  // dar la cutiile adânci plicul dispare cu totul, iar ultima fotografie nu
+  // mai arată nimic. Aceea e singura care prinde gestul.
+  // Nu există semnătură: fotografiile SUNT dovada.
+  const MINIM_POZE_LIVRARE = 6
   const [notitaPlecare, setNotitaPlecare] = useState(false)
   const [regulileDeschise, setRegulileDeschise] = useState(false)
   const [incidentOpen, setIncidentOpen] = useState(false)
@@ -3346,7 +3351,15 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
         leg={leg}
         lang={lang}
         onAddPhoto={() => setPhotoSourceOpen(true)}
+        maxPhotos={esteEtapaLivrareDoc && deliveryMethod === 'briefkasten' ? 8 : 6}
         onSummary={setFileSummary}
+        photoHints={
+          esteEtapaLivrareDoc
+            ? (deliveryMethod === 'briefkasten'
+                ? [t('hintGebaeude', lang), t('hintUmschlagName', lang), t('hintHalbEingeworfen', lang), t('hintEingeworfen', lang), t('hintUmgebung', lang), t('hintProtokoll', lang)]
+                : (deliveryMethod === 'persoenlich' ? [t('hintGebaeude', lang)] : []))
+            : []
+        }
       />
 
       {photoSourceOpen && (

@@ -1265,6 +1265,9 @@ body {
   background: rgba(15,34,64,.45);
   z-index: 9999;
   display: none;
+  /* dvh urmăreşte înălţimea REALĂ a ecranului pe telefon, inclusiv când
+     barele de sistem se arată sau se ascund. Cu 100% rămânea o fâşie. */
+  height: 100dvh;
   /* Degetul de pe zona întunecată nu mai derulează pagina de dedesubt. */
   touch-action: none;
   overscroll-behavior: contain;
@@ -1281,6 +1284,7 @@ body {
   bottom: 0;
   width: 270px;
   max-width: 80vw;
+  height: 100%;
   background: #fff;
   box-shadow: -6px 0 20px rgba(15,34,64,.25);
   /* Pe iPhone, panoul porneşte de sub bara de stare şi de sub crestătură:

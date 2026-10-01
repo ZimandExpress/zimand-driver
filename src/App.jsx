@@ -4470,6 +4470,28 @@ function BidCard({ order, lang, courierProfileId, open, onToggle, onBidPlaced })
         <div className="bid-stop"><span className="addr"><MapPin size={13} strokeWidth={1.8} /> {cityCountryOnly(order.pickup_address)}</span></div>
         <div className="bid-stop"><span className="addr"><FlagTriangleRight size={13} strokeWidth={1.8} /> {cityCountryOnly(order.delivery_address)}</span>{order.km != null && <span className="val">📍 {order.km} km</span>}</div>
 
+        {/* Orele alternative, acolo unde se hotărăște prețul.
+            Erau afișate doar în cursa deja atribuită — dar firma trebuie să
+            le vadă ÎNAINTE de a licita: o ridicare la 15:00 în loc de 11:37
+            schimbă dacă o cursă merită sau nu. */}
+        {(order.pickup_alt_date || order.delivery_alt_date) && (
+          <div style={{ background: '#FFF6ED', border: '1px solid #FF7A29', borderRadius: 6,
+                        padding: '6px 10px', marginTop: 6, fontSize: 12.5, color: '#E86317', lineHeight: 1.6 }}>
+            {order.pickup_alt_date && (
+              <div>
+                ⏰ {t('altPickupLabel', lang)}: {fmtDate(order.pickup_alt_date)}
+                {order.pickup_alt_from ? ` ${fmtTime(order.pickup_alt_from)}${order.pickup_alt_to ? `–${fmtTime(order.pickup_alt_to)}` : ''}` : ''}
+              </div>
+            )}
+            {order.delivery_alt_date && (
+              <div>
+                ⏰ {t('altDeliveryLabel', lang)}: {fmtDate(order.delivery_alt_date)}
+                {order.delivery_alt_from ? ` ${fmtTime(order.delivery_alt_from)}${order.delivery_alt_to ? `–${fmtTime(order.delivery_alt_to)}` : ''}` : ''}
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="bid-divider" />
         <div className="bid-zustellung-label">{t('delivery', lang)}</div>
         <div className="bid-zustellung-val">

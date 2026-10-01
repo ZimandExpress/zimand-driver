@@ -1274,6 +1274,9 @@ body {
   /* dvh urmăreşte înălţimea REALĂ a ecranului pe telefon, inclusiv când
      barele de sistem se arată sau se ascund. Cu 100% rămânea o fâşie. */
   height: 100dvh;
+  /* şi peste zona barei de gesturi, nu până la ea */
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  box-sizing: border-box;
   /* Degetul de pe zona întunecată nu mai derulează pagina de dedesubt. */
   touch-action: none;
   overscroll-behavior: contain;
@@ -1287,7 +1290,7 @@ body {
   position: absolute;
   top: 0;
   right: 0;
-  bottom: 0;
+  bottom: calc(-1 * env(safe-area-inset-bottom, 0px));
   width: 270px;
   max-width: 80vw;
   height: 100%;

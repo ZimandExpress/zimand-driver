@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { supabase } from './supabaseClient'
 import { t, getLang, setLang, availableLangs } from './i18n'
 import { Truck, CheckCircle2, Wallet, User, LogOut, Menu, Bell, MapPin, FlagTriangleRight, Tag, XCircle, Download, X, Navigation, Trophy, ThumbsUp } from 'lucide-react'
@@ -518,6 +519,11 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
         )}
       </div>
 
+      {createPortal(
+        /* Meniul se desenează direct în pagină, nu înăuntrul panoului
+           aplicaţiei. Acolo moştenea marginea de jos rezervată barei de
+           gesturi a iPhone-ului, iar panoul alb se oprea cu un centimetru
+           mai sus decât ecranul. */
       <div className={`menu-overlay ${menuOpen ? 'show' : ''}`} onClick={(e) => { if (e.target === e.currentTarget) setMenuOpen(false) }}>
         <div className="menu-drawer">
           <div className="menu-header">
@@ -585,7 +591,9 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
           </button>
           </div>
         </div>
-      </div>
+      </div>,
+        document.body
+      )}
     </div>
   )
 }

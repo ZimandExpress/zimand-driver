@@ -3147,12 +3147,25 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
     return (
       <>
         {undoBlock}
+        {/* Pe tot ecranul, nu o casetă pe margine: şoferul tocmai a apăsat
+            „pornesc" şi se uită la telefon o clipă — în clipa aceea trebuie
+            să dea peste regulă, nu s-o caute. Dispare singură. */}
         {notitaPlecare && (
-          <div style={{
-            background: '#FFF6ED', border: '1px solid #FFD2AE', color: '#B35A12',
-            borderRadius: 9, padding: '10px 12px', fontSize: 13, lineHeight: 1.55, marginBottom: 10,
-          }}>
-            📄 {t('docRuleShort', lang)}
+          <div
+            onClick={() => setNotitaPlecare(false)}
+            style={{
+              position: 'fixed', inset: 0, zIndex: 9998, background: '#B35A12',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+              padding: 28, textAlign: 'center', color: '#fff', cursor: 'pointer',
+            }}
+          >
+            <div style={{ fontSize: 46, marginBottom: 18 }}>📄</div>
+            <div style={{ fontSize: 21, fontWeight: 800, lineHeight: 1.4, maxWidth: 420 }}>
+              {t('docRuleShort', lang)}
+            </div>
+            <div style={{ fontSize: 13, opacity: 0.85, marginTop: 22 }}>
+              {t('docRuleAutoClose', lang)}
+            </div>
           </div>
         )}
         {etaBlock}
@@ -3186,23 +3199,23 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
         {regulileDeschise && (
           <div
             style={{
-              position: 'fixed', inset: 0, background: 'rgba(15,34,64,.55)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              padding: 18, zIndex: 9999,
+              position: 'fixed', inset: 0, background: '#fff', zIndex: 9999,
+              display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
+              overflowY: 'auto',
+              paddingTop: 'calc(26px + env(safe-area-inset-top, 0px))',
+              paddingBottom: 'calc(26px + env(safe-area-inset-bottom, 0px))',
+              paddingLeft: 20, paddingRight: 20,
             }}
           >
-            <div style={{
-              background: '#fff', borderRadius: 14, padding: '20px 18px',
-              maxWidth: 420, width: '100%', maxHeight: '86vh', overflowY: 'auto',
-              boxShadow: '0 10px 40px rgba(0,0,0,.3)',
-            }}>
-              <div style={{ fontSize: 17, fontWeight: 800, color: '#0F2240', marginBottom: 12 }}>
-                📄 {t('docRulesTitle', lang)}
+            <div style={{ maxWidth: 440, width: '100%' }}>
+              <div style={{ fontSize: 42, marginBottom: 10 }}>📄</div>
+              <div style={{ fontSize: 21, fontWeight: 800, color: '#0F2240', marginBottom: 16, lineHeight: 1.3 }}>
+                {t('docRulesTitle', lang)}
               </div>
-              <ol style={{ paddingLeft: 20, margin: 0, fontSize: 14, lineHeight: 1.65, color: '#0F2240' }}>
-                <li style={{ marginBottom: 9 }}>{t('docRule1', lang)}</li>
-                <li style={{ marginBottom: 9 }}>{t('docRule2', lang)}</li>
-                <li style={{ marginBottom: 9 }}>{t('docRule3', lang)}</li>
+              <ol style={{ paddingLeft: 22, margin: 0, fontSize: 15, lineHeight: 1.7, color: '#0F2240' }}>
+                <li style={{ marginBottom: 13 }}>{t('docRule1', lang)}</li>
+                <li style={{ marginBottom: 13 }}>{t('docRule2', lang)}</li>
+                <li style={{ marginBottom: 13 }}>{t('docRule3', lang)}</li>
               </ol>
               <div style={{
                 background: '#F3FBF6', border: '1px solid #BFE8CF', borderRadius: 9,

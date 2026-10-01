@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from './supabaseClient'
 import { t, getLang, setLang, availableLangs } from './i18n'
-import { Truck, CheckCircle2, Wallet, User, LogOut, Menu, Bell, MapPin, FlagTriangleRight, Tag, XCircle, Download, X, Navigation, Trophy, ThumbsUp, MessageCircle } from 'lucide-react'
+import { Truck, CheckCircle2, Wallet, User, LogOut, Menu, Bell, MapPin, FlagTriangleRight, Tag, XCircle, Download, X, Navigation, Trophy, ThumbsUp } from 'lucide-react'
 import './index.css'
 import PodFiles from './components/PodFiles'
 import {
@@ -1421,6 +1421,17 @@ function mapsNavUrl(address) {
 // mâinile ocupate, iar un mesaj lasă urmă scrisă.
 const DISPATCH_WA = '4915510062480'
 
+// Silueta WhatsApp. Lucide nu conţine logo-uri de marcă, iar o bulă de chat
+// generică nu spune şoferului unde îl duce butonul.
+function WhatsAppIcon({ size = 14 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M17.47 14.38c-.3-.15-1.76-.87-2.03-.97-.27-.1-.47-.15-.67.15-.2.3-.77.96-.94 1.16-.17.2-.35.22-.65.07-.3-.15-1.26-.46-2.4-1.48-.89-.79-1.49-1.76-1.66-2.06-.17-.3-.02-.46.13-.61.14-.14.3-.35.45-.53.15-.18.2-.3.3-.5.1-.2.05-.38-.02-.53-.08-.15-.67-1.6-.92-2.2-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.8.38-.27.3-1.04 1.02-1.04 2.48s1.07 2.88 1.22 3.08c.15.2 2.1 3.2 5.08 4.49.71.3 1.26.49 1.69.63.71.22 1.36.19 1.87.12.57-.09 1.76-.72 2.01-1.41.25-.69.25-1.29.17-1.41-.07-.12-.27-.2-.57-.35z"/>
+      <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2 22l5.25-1.38a9.87 9.87 0 0 0 4.79 1.22h.01c5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2zm0 1.8c2.17 0 4.2.84 5.73 2.38a8.05 8.05 0 0 1 2.38 5.73c0 4.47-3.64 8.11-8.11 8.11h-.01c-1.45 0-2.88-.39-4.12-1.13l-.3-.18-3.06.8.82-2.99-.19-.31a8.07 8.07 0 0 1-1.24-4.3c0-4.47 3.64-8.11 8.1-8.11z"/>
+    </svg>
+  )
+}
+
 // Mesajul pleacă deja completat cu numărul comenzii şi adresa etapei
 // curente, ca dispeceratul să ştie din prima clipă despre ce e vorba —
 // fără schimbul de mesaje „la care comandă?".
@@ -1746,7 +1757,7 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
           textDecoration: 'none', margin: '2px 0 8px',
         }}
       >
-        <MessageCircle size={13} strokeWidth={2.2} />
+        <WhatsAppIcon size={14} />
         {t('dispatchWa', lang)}
       </a>
 

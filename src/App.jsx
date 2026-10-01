@@ -1401,7 +1401,9 @@ function useGeocode(address) {
   const mapsKey = useGoogleMapsKey()
 
   useEffect(() => {
-    if (!address || !mapsKey) return
+    // Nu mai aşteptăm cheia de browser: dacă lipseşte, geocodarea merge
+    // oricum prin server. Înainte, lipsa cheii oprea totul din start.
+    if (!address) return
     let active = true
     geocodeAddressCached(address, mapsKey).then((point) => {
       if (active && point) setCoords([point.lat, point.lng])
@@ -4258,16 +4260,33 @@ const geocodeCache = new Map()
 const directionsCache = new Map()
 async function geocodeAddressCached(address, mapsKey) {
   if (geocodeCache.has(address)) return geocodeCache.get(address)
-  try {
-    const res = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${mapsKey}`)
-    const data = await res.json()
-    const loc = data?.results?.[0]?.geometry?.location
-    const result = loc ? { lat: loc.lat, lng: loc.lng } : null
-    geocodeCache.set(address, result)
-    return result
-  } catch {
-    return null
+
+  // Întâi din telefon, cât timp merge. Dacă nu — şi de obicei nu merge,
+  // fiindcă o cheie restricţionată pe domeniu e refuzată de serviciul de
+  // geocodare al Google, chiar dacă harta se încarcă — întrebăm serverul,
+  // unde cheia nu are restricţii.
+  let result = null
+  if (mapsKey) {
+    try {
+      const res = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${mapsKey}`)
+      const data = await res.json()
+      const loc = data?.results?.[0]?.geometry?.location
+      if (loc) result = { lat: loc.lat, lng: loc.lng }
+    } catch { /* trecem pe varianta de server */ }
   }
+
+  if (!result) {
+    try {
+      const { data, error } = await supabase.functions.invoke('geocode-address', { body: { address } })
+      if (!error && data?.lat != null && data?.lng != null) result = { lat: data.lat, lng: data.lng }
+      else if (data?.status && data.status !== 'OK') console.warn('geocode server:', data.status)
+    } catch (e) {
+      console.error('geocode server failed:', e.message)
+    }
+  }
+
+  geocodeCache.set(address, result)
+  return result
 }
 
 function useDriverLocation(session) {

@@ -69,7 +69,7 @@ function PhotoTile({ file, lang, onRemove, onRetry }) {
   )
 }
 
-export default function PodFiles({ orderId, leg, lang, maxPhotos = 6, onAddPhoto, onSummary }) {
+export default function PodFiles({ orderId, leg, lang, maxPhotos = 6, onAddPhoto, onSummary, photoHints = [] }) {
   const [files, setFiles] = useState([])
   const [online, setOnline] = useState(isOnline())
 
@@ -88,7 +88,7 @@ export default function PodFiles({ orderId, leg, lang, maxPhotos = 6, onAddPhoto
     return () => { alive = false; unsub(); window.removeEventListener('online', on); window.removeEventListener('offline', off) }
   }, [orderId, leg])
 
-  const photos = useMemo(() => files.filter((f) => f.kind === 'photo'), [files])
+  const photos = useMemo(() => files.filter((f) => f.kind === 'photo' && f.status !== 'lost'), [files])
   const documents = useMemo(() => files.filter((f) => f.kind === 'document'), [files])
   // Pe lângă starea încărcării, ecranul de confirmare are nevoie să ştie
   // CE s-a încărcat: la livrările de documente, Zustellprotokoll-ul e
@@ -113,9 +113,42 @@ export default function PodFiles({ orderId, leg, lang, maxPhotos = 6, onAddPhoto
         {photos.map((f) => (
           <PhotoTile key={f.id} file={f} lang={lang} onRemove={removeFile} onRetry={retryFile} />
         ))}
-        {photos.length < maxPhotos && (
-          <div className="photo-slot" onClick={onAddPhoto}>+</div>
-        )}
+        {/* Locurile goale spun CE se aşteaptă în fiecare.
+            O instrucţiune ascunsă după un buton o citeşte cine era oricum
+            atent; scrisă în pătratul gol, o vede şi cel grăbit — devine o
+            listă de cumpărături, nu o lecţie. */}
+        {photos.length < maxPhotos && (() => {
+          const ramase = Math.max(0, maxPhotos - photos.length)
+          const indicatii = photoHints.slice(photos.length)
+          const locuri = []
+          for (let i = 0; i < ramase; i++) {
+            const hint = indicatii[i]
+            const primul = i === 0
+            locuri.push(
+              <div
+                key={'slot' + i}
+                className="photo-slot"
+                onClick={primul ? onAddPhoto : undefined}
+                style={{
+                  opacity: primul ? 1 : 0.55,
+                  cursor: primul ? 'pointer' : 'default',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center',
+                  justifyContent: 'center', gap: 3, textAlign: 'center', padding: 6,
+                }}
+              >
+                {hint ? (
+                  <>
+                    <span style={{ fontSize: 17, lineHeight: 1 }}>{primul ? '📷' : '○'}</span>
+                    <span style={{ fontSize: 10, fontWeight: 700, lineHeight: 1.25 }}>{hint}</span>
+                  </>
+                ) : (
+                  <span style={{ fontSize: 20, lineHeight: 1 }}>+</span>
+                )}
+              </div>
+            )
+          }
+          return locuri
+        })()}
       </div>
 
       {documents.length > 0 && (
@@ -151,6 +184,11 @@ export default function PodFiles({ orderId, leg, lang, maxPhotos = 6, onAddPhoto
           {summary.allDone && online && <div>✓ {t('allFilesSynced', lang)}</div>}
           {!summary.allDone && online && summary.failed === 0 && (
             <div>↑ {t('filesPendingSync', lang).replace('{n}', summary.pending + summary.processing)}</div>
+          )}
+          {summary.lost > 0 && (
+            <div style={{ marginBottom: 7 }}>
+              ⚠ {t('photosLost', lang).replace('{n}', summary.lost)}
+            </div>
           )}
           {summary.failed > 0 && (
             <>

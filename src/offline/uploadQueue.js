@@ -350,7 +350,23 @@ export function startQueue() {
 async function requeueStuck() {
   const all = (await dbGetAll(STORE_FILES)) || []
   await Promise.all(
-    all.filter((f) => f.status === 'uploading' && f.blob)
-      .map((f) => dbPut(STORE_FILES, { ...f, status: 'queued', progress: 0 }))
+    all.filter((f) => (f.status === 'uploading' || f.status === 'failed') && f.blob)
+      .map((f) => dbPut(STORE_FILES, { ...f, status: 'queued', progress: 0, error: null, attempts: 0 }))
   )
+}
+
+// Reîncercarea tuturor fișierelor căzute, dintr-un singur gest.
+// Până acum fiecare poză trebuia atinsă separat, iar un fișier ajuns
+// 'failed' nu mai pornea singur nici după revenirea semnalului — şoferul
+// rămânea cu confirmarea blocată.
+export async function retryAllFailed() {
+  const all = (await dbGetAll(STORE_FILES)) || []
+  const cazute = all.filter((f) => f.status === 'failed' && f.blob)
+  if (!cazute.length) return 0
+  await Promise.all(
+    cazute.map((f) => dbPut(STORE_FILES, { ...f, status: 'queued', progress: 0, error: null, attempts: 0 }))
+  )
+  emit()
+  pump()
+  return cazute.length
 }

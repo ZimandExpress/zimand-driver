@@ -3355,6 +3355,30 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
         </div>
       )}
 
+      {/* Răspunsul se poate schimba. O apăsare greşită nu are voie să ducă
+          într-o fundătură: fără asta, un „am hârtii" apăsat din greşeală
+          cerea un document inexistent, iar livrarea rămânea deschisă. */}
+      {esteLivrareNormala && areActe != null && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
+          fontSize: 12.5, color: 'var(--text-soft)', margin: '8px 0 2px',
+        }}>
+          <span>
+            {areActe ? '📄 ' + t('paperworkYes', lang) : '✍️ ' + t('paperworkNo', lang)}
+          </span>
+          <button
+            onClick={() => raspundeActe(!areActe)}
+            style={{
+              border: '1px solid var(--border, #E2E7EE)', background: 'transparent',
+              borderRadius: 14, padding: '3px 10px', fontSize: 12, fontWeight: 700,
+              color: 'var(--text-soft)', cursor: 'pointer',
+            }}
+          >
+            {t('paperworkChange', lang)}
+          </button>
+        </div>
+      )}
+
       <div className="leg-title">{legLabel} · {t('confirmStep', lang)}</div>
 
       {/* Cu cine are de-a face, chiar aici.

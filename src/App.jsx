@@ -2824,7 +2824,26 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
   const adresaEtapei = (leg === 'delivery' || leg === 'return_delivery')
     ? (leg === 'return_delivery' ? order.return_delivery_address : order.delivery_address)
     : (leg === 'return_pickup' ? order.return_pickup_address : order.pickup_address)
-  const tintaEtapei = useGeocode(isDocumentDelivery ? adresaEtapei : null)
+  // Coordonatele ţintei: întâi din comandă, dacă au fost deja aflate o dată.
+  // Abia dacă lipsesc întrebăm Google — şi atunci le şi scriem în bază, ca
+  // să nu se mai ceară niciodată pentru aceeaşi comandă.
+  const esteLivrare = leg === 'delivery' || leg === 'return_delivery'
+  const coordSalvate = esteLivrare
+    ? (order.delivery_lat != null && order.delivery_lng != null ? [order.delivery_lat, order.delivery_lng] : null)
+    : (order.pickup_lat != null && order.pickup_lng != null ? [order.pickup_lat, order.pickup_lng] : null)
+
+  const tintaGeocodata = useGeocode(isDocumentDelivery && !coordSalvate ? adresaEtapei : null)
+  const tintaEtapei = coordSalvate || tintaGeocodata
+
+  useEffect(() => {
+    if (!isDocumentDelivery || coordSalvate || !tintaGeocodata) return
+    supabase.rpc('driver_set_address_coords', {
+      p_order_id: order.id,
+      p_leg: esteLivrare ? 'delivery' : 'pickup',
+      p_lat: tintaGeocodata[0],
+      p_lng: tintaGeocodata[1],
+    }).then(({ error }) => { if (error) console.error('coords save:', error.message) })
+  }, [isDocumentDelivery, coordSalvate, tintaGeocodata && tintaGeocodata[0], tintaGeocodata && tintaGeocodata[1]])
   const distanta = useDistantaFataDe(tintaEtapei, isDocumentDelivery)
   const [avertismentDistanta, setAvertismentDistanta] = useState(null)
 

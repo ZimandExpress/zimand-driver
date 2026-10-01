@@ -164,6 +164,7 @@ const translations = {
 
     // --- Upload-Warteschlange / Offline (Batch 1) ---
     retryLabel: 'Erneut versuchen',
+    retryAllLabel: 'Alle erneut senden',
     offlineSyncNote: 'Offline – Daten werden automatisch synchronisiert',
     allFilesSynced: 'Alle Dateien synchronisiert',
     filesPendingSync: '{n} Dateien warten auf Synchronisierung',
@@ -456,6 +457,7 @@ const translations = {
 
     // --- Upload queue / offline (batch 1) ---
     retryLabel: 'Retry',
+    retryAllLabel: 'Send all again',
     offlineSyncNote: 'Offline – data will sync automatically',
     allFilesSynced: 'All files synced',
     filesPendingSync: '{n} files waiting to sync',

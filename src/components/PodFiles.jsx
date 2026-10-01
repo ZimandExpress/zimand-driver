@@ -7,7 +7,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import { t } from '../i18n'
 import {
-  subscribe, listFiles, removeFile, retryFile, summarize, isOnline,
+  subscribe, listFiles, removeFile, retryFile, retryAllFailed, summarize, isOnline,
 } from '../offline/uploadQueue'
 import { formatBytes } from '../services/imageService'
 
@@ -143,7 +143,22 @@ export default function PodFiles({ orderId, leg, lang, maxPhotos = 6, onAddPhoto
             <div>↑ {t('filesPendingSync', lang).replace('{n}', summary.pending + summary.processing)}</div>
           )}
           {summary.failed > 0 && (
-            <div>⚠ {t('filesFailedSync', lang).replace('{n}', summary.failed)}</div>
+            <>
+              <div>⚠ {t('filesFailedSync', lang).replace('{n}', summary.failed)}</div>
+              {/* Un singur buton pentru toate fişierele căzute. Atinsul poză
+                  cu poză era de nefăcut cu mâinile pline, în stradă. */}
+              <button
+                onClick={() => { void retryAllFailed() }}
+                disabled={!online}
+                style={{
+                  marginTop: 7, width: '100%', padding: '9px 12px', borderRadius: 8,
+                  border: 'none', background: online ? RED : '#C9B3AE', color: '#fff',
+                  fontSize: 13.5, fontWeight: 700, cursor: online ? 'pointer' : 'default',
+                }}
+              >
+                ↻ {t('retryAllLabel', lang)}
+              </button>
+            </>
           )}
           <div style={{ marginTop: 4, opacity: .75, color: NAVY }}>
             {t('savedLocallyNote', lang)}

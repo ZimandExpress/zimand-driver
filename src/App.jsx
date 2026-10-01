@@ -2799,6 +2799,15 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
   // Dokumentenzustellung, doar pe etapa de livrare — la ridicare nu are sens.
   const isDocumentDelivery = !!order.is_document_delivery
   const isDocumentDeliveryLeg = isDocumentDelivery && (leg === 'delivery' || leg === 'return_delivery')
+
+  // Verificarea distanţei merge pe AMBELE etape ale unei livrări de
+  // documente — şi ridicarea contează ca probă, nu doar predarea.
+  const adresaEtapei = (leg === 'delivery' || leg === 'return_delivery')
+    ? (leg === 'return_delivery' ? order.return_delivery_address : order.delivery_address)
+    : (leg === 'return_pickup' ? order.return_pickup_address : order.pickup_address)
+  const tintaEtapei = useGeocode(isDocumentDelivery ? adresaEtapei : null)
+  const distanta = useDistantaFataDe(tintaEtapei, isDocumentDelivery)
+  const [avertismentDistanta, setAvertismentDistanta] = useState(null)
   const [incidentOpen, setIncidentOpen] = useState(false)
   const [incidentBlocking, setIncidentBlocking] = useState(false)
   const [incidentSaved, setIncidentSaved] = useState(false)
@@ -2987,6 +2996,21 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
             )
           })
 
+          // Distanţa se calculează AICI, în clipa bifei, şi se îngheaţă în
+          // bază. Dovada o citeşte de acolo, în loc s-o recalculeze din
+          // adresa de atunci — altfel o corectare ulterioară a adresei ar
+          // schimba cifra de pe un document deja emis.
+          //
+          // Coordonatele adresei sunt deja în memorie (geocodare cu cache,
+          // folosită de hartă şi de avertismentul de distanţă), deci nu se
+          // mai cere nimic de la Google.
+          const distantaMetri = (result.pos && tintaEtapei)
+            ? Math.round(haversineKm(
+                result.pos.coords.latitude, result.pos.coords.longitude,
+                tintaEtapei[0], tintaEtapei[1],
+              ) * 1000)
+            : null
+
           await supabase.rpc('driver_set_confirm_location', {
             p_order_id: order.id,
             p_leg: leg === 'pickup' || leg === 'return_pickup' ? 'pickup' : 'delivery',
@@ -2994,6 +3018,7 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
             p_lng: result.pos ? result.pos.coords.longitude : null,
             p_accuracy: result.pos ? Math.round(result.pos.coords.accuracy) : null,
             p_error: result.error,
+            p_distance: distantaMetri,
           })
         } catch (err) {
           console.error('confirm location failed:', err.message)
@@ -3072,9 +3097,35 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
       <>
         {undoBlock}
         {etaBlock}
-        <button className="btn sticky-cta" onClick={() => callRpc(arriveFn)} disabled={busy}>
+        {/* La documente, butonul se estompează cât timp şoferul e departe.
+            Nu e dezactivat: la atingere spune de ce, cu distanţa în metri,
+            şi lasă o portiţă dacă poziţia telefonului e greşită. */}
+        <button
+          className="btn sticky-cta"
+          onClick={() => {
+            if (distanta.preaDeparte && !avertismentDistanta) {
+              setAvertismentDistanta(distanta.metri)
+              return
+            }
+            callRpc(arriveFn)
+          }}
+          disabled={busy}
+          style={distanta.preaDeparte && !avertismentDistanta ? { opacity: 0.45 } : undefined}
+        >
           {t('arrived', lang)}
         </button>
+        {avertismentDistanta != null && (
+          <div style={{
+            marginTop: 8, padding: '10px 12px', borderRadius: 9,
+            background: '#FCEBE8', border: '1px solid #E4A296', color: '#B23A24',
+            fontSize: 13, lineHeight: 1.55,
+          }}>
+            <div style={{ fontWeight: 700 }}>
+              ⚠ {t('tooFarTitle', lang).replace('{m}', avertismentDistanta)}
+            </div>
+            <div style={{ marginTop: 3 }}>{t('tooFarHint', lang)}</div>
+          </div>
+        )}
         {incidentBlock}
       </>
     )
@@ -3266,11 +3317,19 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
         </div>
       )}
 
+      {/* Aceeaşi plasă la bifa de încărcare/predare: cât timp ştim sigur că
+          şoferul e la peste 70 m, butonul e în ceaţă şi explică la atingere. */}
       <button
         className="btn"
-        onClick={confirmLeg}
+        onClick={() => {
+          if (distanta.preaDeparte && !avertismentDistanta) {
+            setAvertismentDistanta(distanta.metri)
+            return
+          }
+          confirmLeg()
+        }}
         disabled={busy || !!blockingIncident || fileSummary.total === 0 || !fileSummary.allDone || (isDocumentDeliveryLeg && !deliveryMethod)}
-        style={{ marginTop: 14 }}
+        style={{ marginTop: 14, ...(distanta.preaDeparte && !avertismentDistanta ? { opacity: 0.45 } : null) }}
       >
         {busy
           ? t('uploadingLabel', lang)
@@ -4097,6 +4156,42 @@ function EarningsScreen({ profile, lang }) {
 
 // Distanța (km) între 2 puncte, formula Haversine — matematică simplă,
 // fără niciun apel de rețea.
+// Cât de departe e şoferul de punctul etapei curente, folosit DOAR la
+// livrările de documente (Zustellung durch Boten), unde proba contează.
+//
+// Nu blocăm orbeşte: dacă telefonul nu ştie sigur unde se află — garaj
+// subteran, hală, curte interioară — `accuracy` e mare, iar atunci măsura
+// e inutilă şi ar ţine şoferul captiv în faţa uşii. În cazul acela lăsăm
+// butonul să meargă şi consemnăm că poziţia era nesigură.
+const PRAG_METRI = 70
+const PRECIZIE_MAXIMA = 50   // peste atât, poziţia nu e de încredere
+
+function useDistantaFataDe(target, activ) {
+  const [stare, setStare] = useState({ metri: null, sigur: false })
+
+  useEffect(() => {
+    if (!activ || !target || !('geolocation' in navigator)) {
+      setStare({ metri: null, sigur: false })
+      return
+    }
+    let viu = true
+    const id = navigator.geolocation.watchPosition(
+      ({ coords }) => {
+        if (!viu) return
+        const metri = haversineKm(coords.latitude, coords.longitude, target[0], target[1]) * 1000
+        setStare({ metri: Math.round(metri), sigur: coords.accuracy != null && coords.accuracy <= PRECIZIE_MAXIMA })
+      },
+      () => { if (viu) setStare({ metri: null, sigur: false }) },
+      { enableHighAccuracy: true, maximumAge: 10000, timeout: 15000 },
+    )
+    return () => { viu = false; navigator.geolocation.clearWatch(id) }
+  }, [activ, target && target[0], target && target[1]])
+
+  // „prea departe" înseamnă: ştim sigur unde suntem ŞI suntem dincolo de prag.
+  const preaDeparte = stare.sigur && stare.metri != null && stare.metri > PRAG_METRI
+  return { ...stare, preaDeparte }
+}
+
 function haversineKm(lat1, lng1, lat2, lng2) {
   const R = 6371
   const dLat = (lat2 - lat1) * Math.PI / 180

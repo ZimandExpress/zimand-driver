@@ -3311,6 +3311,36 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
       {incidentBlock}
       <div className="leg-title">{legLabel} · {t('confirmStep', lang)}</div>
 
+      {/* Cu cine are de-a face, chiar aici.
+          În pasul cu pozele, numele şi adresa rămâneau sus, deci şoferul
+          trebuia să dea înapoi ca să le vadă — tocmai când are telefonul
+          într-o mână şi plicul în cealaltă. La livrare apare şi de unde a
+          fost ridicat, pentru că asta îl întreabă destinatarul. */}
+      {(() => {
+        const laLivrare = leg === 'delivery' || leg === 'return_delivery'
+        const contact = extractContact(order.notes, laLivrare ? 'Kontakt Zustellung: ' : 'Kontakt Abholung: ')
+        const adresa = laLivrare ? order.delivery_address : order.pickup_address
+        if (!contact && !adresa) return null
+        return (
+          <div style={{
+            background: 'var(--surface-soft, #F4F6F9)', border: '1px solid var(--border, #E2E7EE)',
+            borderRadius: 9, padding: '9px 11px', margin: '8px 0 12px', fontSize: 13, lineHeight: 1.55,
+          }}>
+            {contact && (
+              <div style={{ fontWeight: 700 }}>
+                {laLivrare ? '📥' : '📤'} {contact.split(' · Tel.')[0].trim()}
+              </div>
+            )}
+            {adresa && <div style={{ color: 'var(--text-soft)' }}>{adresa}</div>}
+            {laLivrare && order.pickup_address && (
+              <div style={{ color: 'var(--text-soft)', marginTop: 5, fontSize: 12.5 }}>
+                {t('pickedUpFrom', lang)}: {order.pickup_address}
+              </div>
+            )}
+          </div>
+        )
+      })()}
+
       <PodFiles
         orderId={order.id}
         leg={leg}

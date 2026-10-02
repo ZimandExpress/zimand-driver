@@ -4482,11 +4482,30 @@ const COUNTRY_CODES = {
 function cityCountryOnly(address) {
   if (!address) return ''
   const parts = address.split(',').map((s) => s.trim()).filter(Boolean)
-  if (parts.length < 2) return address // format necunoscut — afișăm ce avem, mai sigur decât să ascundem greșit
-  const countryRaw = parts[parts.length - 1]
-  const plzCity = parts[parts.length - 2]
-  const countryCode = COUNTRY_CODES[countryRaw] || countryRaw
-  return `${plzCity} · ${countryCode}`
+
+  // Formatul obişnuit, venit din completarea automată:
+  // „Stradă 1, 80331 München, Deutschland".
+  if (parts.length >= 2) {
+    const countryRaw = parts[parts.length - 1]
+    const plzCity = parts[parts.length - 2]
+    const countryCode = COUNTRY_CODES[countryRaw] || countryRaw
+    return `${plzCity} · ${countryCode}`
+  }
+
+  // Adresă scrisă de mână, fără virgule: „Dienerstr 3 80331 München".
+  //
+  // Varianta veche afişa TOT în acest caz — adică strada şi numărul, exact
+  // ce nu trebuie să vadă un transportator înainte de a câştiga cursa.
+  // Căutăm codul poştal şi păstrăm doar ce urmează după el.
+  const cuPlz = address.match(/(\d{4,5})\s+([^\d,]+)$/)
+  if (cuPlz) return `${cuPlz[1]} ${cuPlz[2].trim()}`
+
+  // Nici cod poştal: tăiem partea care conţine un număr de casă şi păstrăm
+  // restul. Mai bine prea puţin decât adresa întreagă.
+  const faraNumere = address.split(/\s+/).filter((w) => !/\d/.test(w))
+  if (faraNumere.length) return faraNumere.join(' ')
+
+  return ''
 }
 
 const SERVICE_BADGE_PREFIXES = [

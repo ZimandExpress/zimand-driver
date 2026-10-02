@@ -3071,6 +3071,38 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
   const distanta = useDistantaFataDe(tintaEtapei, isDocumentDelivery)
   const [avertismentDistanta, setAvertismentDistanta] = useState(null)
 
+  // Trimiterea documentului către client, direct de la faţa locului.
+  //
+  // Cazul real: şoferul ajunge la încărcare şi expeditorul nu are CMR-ul
+  // tipărit. Până acum suna la dispecerat şi aştepta. Adresa clientului e
+  // propusă de server, ca să n-o scrie greşit de mână.
+  const [docDeschis, setDocDeschis] = useState(false)
+  const [docEmail, setDocEmail] = useState('')
+  const [docStare, setDocStare] = useState(null)
+
+  async function deschideTrimitere() {
+    setDocDeschis(true)
+    setDocStare(null)
+    if (!docEmail) {
+      const { data } = await supabase.rpc('driver_get_order_contact_email', { p_order_id: order.id })
+      if (data) setDocEmail(data)
+    }
+  }
+
+  async function trimiteDocument() {
+    setDocStare({ busy: true })
+    try {
+      const { data, error } = await supabase.functions.invoke('send-order-document', {
+        body: { orderId: order.id, email: docEmail.trim() },
+      })
+      if (error) throw error
+      if (data?.error) throw new Error(data.error)
+      setDocStare({ ok: true, msg: t('docSentOk', lang).replace('{d}', data?.document || '') })
+    } catch (e) {
+      setDocStare({ ok: false, msg: e.message || String(e) })
+    }
+  }
+
   // Regulile predării, aduse acolo unde se ia decizia.
   //
   // Şoferul le ştie din instructaj — dar le aplică în faţa uşii, obosit, la
@@ -3602,6 +3634,68 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
           </button>
         </div>
       )}
+
+      {/* Documentul către client. Un rând discret, deschis doar la nevoie:
+          nu e un pas obligatoriu, ci o ieşire din încurcătură. */}
+      <div style={{ margin: '10px 0 4px' }}>
+        {!docDeschis ? (
+          <button
+            onClick={deschideTrimitere}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              background: 'transparent', border: '1px solid var(--line, #E2E7EE)',
+              borderRadius: 20, padding: '5px 11px', fontSize: 12.5, fontWeight: 600,
+              color: 'var(--text-soft)',
+            }}
+          >
+            📄 {t('sendDocToClient', lang)}
+          </button>
+        ) : (
+          <div style={{
+            background: 'var(--surface-soft, #F4F6F9)', border: '1px solid var(--line, #E2E7EE)',
+            borderRadius: 9, padding: '11px 12px',
+          }}>
+            <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 6 }}>
+              {t('sendDocTitle', lang)}
+            </div>
+            <input
+              className="bid-input2"
+              type="email"
+              inputMode="email"
+              autoCapitalize="off"
+              autoCorrect="off"
+              value={docEmail}
+              onChange={(e) => setDocEmail(e.target.value)}
+              placeholder="kunde@firma.de"
+              style={{ width: '100%', margin: '0 0 8px' }}
+            />
+            <div style={{ display: 'flex', gap: 7 }}>
+              <button
+                className="btn"
+                style={{ flex: 1 }}
+                onClick={trimiteDocument}
+                disabled={docStare?.busy || !docEmail.includes('@')}
+              >
+                {docStare?.busy ? '…' : t('sendDocAction', lang)}
+              </button>
+              <button
+                onClick={() => { setDocDeschis(false); setDocStare(null) }}
+                style={{
+                  background: 'transparent', border: '1px solid var(--line, #E2E7EE)',
+                  borderRadius: 8, padding: '0 14px', fontSize: 13, color: 'var(--text-soft)',
+                }}
+              >
+                {t('cancel', lang)}
+              </button>
+            </div>
+            {docStare && !docStare.busy && (
+              <div style={{ fontSize: 12, marginTop: 7, color: docStare.ok ? '#1B6E43' : '#B23A24' }}>
+                {docStare.ok ? '✓ ' : '⚠ '}{docStare.msg}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
       <div className="leg-title">{legLabel} · {t('confirmStep', lang)}</div>
 

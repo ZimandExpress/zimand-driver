@@ -4481,31 +4481,34 @@ const COUNTRY_CODES = {
 }
 function cityCountryOnly(address) {
   if (!address) return ''
-  const parts = address.split(',').map((s) => s.trim()).filter(Boolean)
 
-  // Formatul obişnuit, venit din completarea automată:
-  // „Stradă 1, 80331 München, Deutschland".
-  if (parts.length >= 2) {
-    const countryRaw = parts[parts.length - 1]
-    const plzCity = parts[parts.length - 2]
-    const countryCode = COUNTRY_CODES[countryRaw] || countryRaw
-    return `${plzCity} · ${countryCode}`
+  // Căutăm CODUL POŞTAL, nu numărăm virgule.
+  //
+  // Varianta dinainte lua penultima bucată dintre virgule drept oraş. La
+  // „Str. 3, 80331 München, Deutschland" ieşea bine, dar la o adresă cu
+  // două bucăţi — „Lindberghstrasse 3, 85399 Deutschland" — penultima e
+  // chiar strada. Adică exact ce nu trebuie arătat înainte de licitare.
+  const bucati = address.split(',').map((x) => x.trim()).filter(Boolean)
+  const cuCod = bucati.find((x) => /\b\d{4,5}\b/.test(x))
+
+  if (cuCod) {
+    const cod = cuCod.match(/\b\d{4,5}\b/)[0]
+    // Ce urmează după cod în aceeaşi bucată e oraşul — dacă nu cumva e
+    // numele ţării, caz în care rămâne doar codul.
+    let oras = cuCod.slice(cuCod.indexOf(cod) + cod.length).trim()
+    const ultima = bucati[bucati.length - 1]
+    // Ţara o reţinem ÎNAINTE de a goli oraşul: la „85399 Deutschland",
+    // ce urmează după cod e chiar ţara, nu un oraş.
+    const tara = COUNTRY_CODES[ultima] || COUNTRY_CODES[oras] || null
+    if (COUNTRY_CODES[oras]) oras = ''
+    const loc = [cod, oras].filter(Boolean).join(' ')
+    return tara ? `${loc} · ${tara}` : loc
   }
 
-  // Adresă scrisă de mână, fără virgule: „Dienerstr 3 80331 München".
-  //
-  // Varianta veche afişa TOT în acest caz — adică strada şi numărul, exact
-  // ce nu trebuie să vadă un transportator înainte de a câştiga cursa.
-  // Căutăm codul poştal şi păstrăm doar ce urmează după el.
-  const cuPlz = address.match(/(\d{4,5})\s+([^\d,]+)$/)
-  if (cuPlz) return `${cuPlz[1]} ${cuPlz[2].trim()}`
-
-  // Nici cod poştal: tăiem partea care conţine un număr de casă şi păstrăm
-  // restul. Mai bine prea puţin decât adresa întreagă.
-  const faraNumere = address.split(/\s+/).filter((w) => !/\d/.test(w))
-  if (faraNumere.length) return faraNumere.join(' ')
-
-  return ''
+  // Adresă fără cod poştal: scoatem tot ce conţine cifre (numărul casei)
+  // şi păstrăm restul. Mai bine prea puţin decât adresa întreagă.
+  const faraNumere = address.split(/[\s,]+/).filter((w) => w && !/\d/.test(w))
+  return faraNumere.join(' ')
 }
 
 const SERVICE_BADGE_PREFIXES = [

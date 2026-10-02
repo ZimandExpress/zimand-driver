@@ -348,11 +348,125 @@ function SetPasswordScreen({ lang, onDone }) {
   )
 }
 
+// Ecranul de acceptare a noilor condiţii, în aplicaţia şoferului.
+// Acelaşi fond ca în panou: rezumatul schimbărilor, linkul, bifa, butonul.
+function AgbGateDriver({ session, setari, lang, onAccepted }) {
+  const [bifat, setBifat] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [eroare, setEroare] = useState(null)
+
+  const versiune = setari?.agb_partner_version
+  const schimbari = (setari?.agb_partner_changes || '').split('\n').filter((x) => x.trim())
+
+  const accepta = async () => {
+    setBusy(true); setEroare(null)
+    try {
+      const { data, error } = await supabase.functions.invoke('accept-agb', { body: {} })
+      if (error) throw error
+      if (data?.error) throw new Error(data.error)
+      onAccepted(versiune)
+    } catch (e) {
+      setEroare(e.message || String(e))
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: '#F6F4F0', zIndex: 99999, overflowY: 'auto',
+                  paddingTop: 'calc(26px + env(safe-area-inset-top, 0px))',
+                  paddingBottom: 'calc(26px + env(safe-area-inset-bottom, 0px))' }}>
+      <div style={{ maxWidth: 560, margin: '0 auto', padding: '0 18px' }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-soft)', letterSpacing: '.06em' }}>
+          ZIMAND EXPRESS e.K.
+        </div>
+        <h2 style={{ fontSize: 21, margin: '8px 0 4px', lineHeight: 1.3 }}>Neue AGB für Transportpartner</h2>
+        <div style={{ fontSize: 13.5, color: 'var(--text-soft)', marginBottom: 16 }}>
+          Fassung {versiune} · Bitte lesen und bestätigen, um fortzufahren.
+        </div>
+
+        <div style={{ background: '#fff', borderRadius: 10, padding: '14px 15px', border: '1px solid var(--line, #E2E7EE)' }}>
+          <div style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--text-soft)', letterSpacing: '.04em', marginBottom: 9 }}>
+            WAS SICH GEÄNDERT HAT
+          </div>
+          {schimbari.map((rand, i) => {
+            const et = rand.split(' ')[0]
+            const culoare = et.startsWith('NEU') ? '#1B6E43' : et.startsWith('GEÄNDERT') ? '#B35A12' : 'var(--text-soft)'
+            return (
+              <div key={i} style={{ fontSize: 13, lineHeight: 1.55, marginBottom: 8, display: 'flex', gap: 7 }}>
+                <span style={{ color: culoare, fontWeight: 800, whiteSpace: 'nowrap' }}>{et}</span>
+                <span>{rand.slice(et.length).trim()}</span>
+              </div>
+            )
+          })}
+        </div>
+
+        <a href={setari?.agb_partner_url} target="_blank" rel="noreferrer"
+           style={{ display: 'inline-block', marginTop: 12, fontWeight: 700, fontSize: 13.5 }}>
+          Vollständige AGB lesen →
+        </a>
+
+        <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginTop: 18,
+                        background: '#fff', border: '1px solid var(--line, #E2E7EE)', borderRadius: 10,
+                        padding: '13px 14px' }}>
+          <input type="checkbox" checked={bifat} onChange={(e) => setBifat(e.target.checked)}
+                 style={{ marginTop: 2, width: 18, height: 18 }} />
+          <span style={{ fontSize: 13.5, lineHeight: 1.5 }}>
+            Ich habe die AGB in der Fassung {versiune} gelesen und akzeptiere sie.
+          </span>
+        </label>
+
+        {eroare && <div style={{ color: '#B23A24', fontSize: 12.5, marginTop: 9 }}>Fehler: {eroare}</div>}
+
+        <button className="btn" style={{ width: '100%', marginTop: 14 }} onClick={accepta} disabled={!bifat || busy}>
+          {busy ? 'Wird gespeichert …' : 'AGB akzeptieren und fortfahren'}
+        </button>
+
+        <div style={{ fontSize: 11.5, color: 'var(--text-soft)', marginTop: 11, lineHeight: 1.5 }}>
+          Sie erhalten anschließend eine E-Mail mit der Bestätigung als PDF und dem Link zur vollständigen Fassung.
+        </div>
+
+        <button onClick={() => supabase.auth.signOut()}
+                style={{ background: 'none', border: 'none', color: 'var(--text-soft)', fontSize: 13,
+                         marginTop: 16, textDecoration: 'underline' }}>
+          {t('logout', lang)}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) {
   const [tab, setTab] = useState('curse')
   const [menuOpen, setMenuOpen] = useState(false)
   const isOwner = profile?.account_type === 'owner_operator'
   const watchIdRef = useRef(null)
+
+  // Noile condiţii, verificate şi aici.
+  //
+  // Doar pentru conturile de FIRMĂ: AGB-ul leagă transportatorul, nu şoferul
+  // angajat. Un angajat blocat în faţa unui contract pe care nu-l poate
+  // semna ar rămâne pur şi simplu fără aplicaţie, la mijlocul unei curse.
+  const [agbSetari, setAgbSetari] = useState(null)
+  useEffect(() => {
+    if (!isOwner) return
+    supabase.from('app_settings')
+      .select('agb_partner_url, agb_partner_version, agb_partner_changes')
+      .limit(1).maybeSingle()
+      .then(({ data }) => setAgbSetari(data || null))
+  }, [isOwner])
+
+  const [agbAcceptat, setAgbAcceptat] = useState(null)
+  useEffect(() => {
+    if (!isOwner || !session?.user?.id) return
+    supabase.from('profiles')
+      .select('agb_version_accepted')
+      .eq('id', session.user.id).maybeSingle()
+      .then(({ data }) => setAgbAcceptat(data?.agb_version_accepted ?? ''))
+  }, [isOwner, session?.user?.id])
+
+  const trebuieAgb =
+    isOwner && agbSetari?.agb_partner_version && agbAcceptat !== null
+    && agbAcceptat !== agbSetari.agb_partner_version
 
   // Numărul de oferte încă în așteptare (comandă deschisă, fără câștigător
   // decis încă) — afișat ca cifră lângă "Meine Angebote" în meniu, vizibil
@@ -464,6 +578,19 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
   function navTo(tabId) {
     setTab(tabId)
     setMenuOpen(false)
+  }
+
+  // Blocajul stă înaintea întregii aplicaţii: cât timp versiunea acceptată
+  // nu e cea curentă, firma nu vede nici curse, nici licitaţii.
+  if (trebuieAgb) {
+    return (
+      <AgbGateDriver
+        session={session}
+        setari={agbSetari}
+        lang={lang}
+        onAccepted={(v) => setAgbAcceptat(v)}
+      />
+    )
   }
 
   return (

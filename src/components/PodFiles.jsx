@@ -97,8 +97,13 @@ export default function PodFiles({ orderId, leg, lang, maxPhotos = 6, onAddPhoto
     const relevante = files.filter((f) => f.kind !== 'signature')
     return {
       ...summarize(relevante),
-      photoCount: relevante.filter((f) => f.kind === 'photo').length,
-      documentCount: relevante.filter((f) => f.kind === 'document').length,
+      // Fişierele pierdute la captură NU se numără.
+      //
+      // `summarize` le scoate deja din total, dar numărătoarea de poze le
+      // lăsa înăuntru: după două poze pierdute şi una refăcută, regula „cel
+      // puţin două poze" se considera îndeplinită cu o singură poză reală.
+      photoCount: relevante.filter((f) => f.kind === 'photo' && f.status !== 'lost').length,
+      documentCount: relevante.filter((f) => f.kind === 'document' && f.status !== 'lost').length,
     }
   }, [files])
 

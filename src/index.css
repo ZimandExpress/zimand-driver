@@ -7,6 +7,9 @@
   --line: #E4E1DA;
   --text: #1B2430;
   --text-soft: #6B7280;
+  /* Acelaşi gri, urcat cât să treacă pragul pe fundal crem (5.03:1 faţă de
+     4.40:1). Pe alb varianta de sus era deja bună, deci rămâne. */
+  --text-soft-cream: #5F6672;
 }
 
 * { box-sizing: border-box; }
@@ -106,7 +109,7 @@ body {
   border: 1.5px solid var(--line);
   border-radius: 10px;
   padding: 10px 12px;
-  font-size: 15.5px;
+  font-size: 16px;
   font-family: 'IBM Plex Sans', sans-serif;
 }
 
@@ -125,6 +128,7 @@ body {
   background: none;
   border: none;
   color: var(--navy);
+  min-height: 44px;
   font-size: 14px;
   text-decoration: underline;
   cursor: pointer;
@@ -147,7 +151,7 @@ body {
   cursor: pointer;
 }
 
-.btn:disabled { opacity: .6; cursor: default; }
+.btn:disabled { opacity: 1; background: #E8D6C8; color: #6B5540; box-shadow: none; cursor: default; }
 
 .topbar {
   background: var(--navy);
@@ -353,7 +357,7 @@ body {
 }
 
 .ride-badge.new { background: #FBF0DC; color: #B9770E; }
-.ride-badge.progress { background: #E7F3ED; color: #2E7D5B; }
+.ride-badge.progress { background: #E7F3ED; color: #1F6B4C; }
 .ride-badge.done { background: #E9E9EE; color: #5B5F6B; }
 .ride-badge.cancelled { background: #FBE7E7; color: #B03A3A; }
 
@@ -373,7 +377,7 @@ body {
   font-size: 13px;
   letter-spacing: .06em;
   text-transform: uppercase;
-  color: var(--text-soft);
+  color: var(--text-soft-cream);
 }
 
 .ride-stop-addr {
@@ -384,7 +388,7 @@ body {
 
 .ride-stop-time {
   font-size: 13px;
-  color: var(--text-soft);
+  color: var(--text-soft-cream);
 }
 
 .ride-cargo {
@@ -480,7 +484,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 14px;
-  padding-bottom: 90px;
+  padding-bottom: calc(118px + env(safe-area-inset-bottom, 0px));
 }
 
 .sticky-cta {
@@ -611,6 +615,8 @@ body {
   text-decoration: none;
   border-radius: 20px;
   padding: 5px 12px;
+  min-height: 44px;
+  justify-content: center;
   font-size: 13px;
   font-weight: 700;
 }
@@ -770,7 +776,7 @@ body {
   border: 1.5px solid var(--line);
   border-radius: 10px;
   padding: 10px 12px;
-  font-size: 15.5px;
+  font-size: 16px;
   color: var(--navy);
   font-family: 'IBM Plex Sans', sans-serif;
   background: #fff;
@@ -875,7 +881,7 @@ body {
 .empty-note {
   margin: 0 4px 14px;
   font-size: 15.5px;
-  color: var(--text-soft);
+  color: var(--text-soft-cream);
 }
 
 /* --- rides screen v2 (screenshot-matched design) --- */
@@ -909,7 +915,7 @@ body {
 
 .count-pill {
   background: var(--cream);
-  color: var(--text-soft);
+  color: var(--text-soft-cream);
   font-family: 'IBM Plex Sans', sans-serif;
   font-size: 13.5px;
   font-weight: 600;
@@ -1142,6 +1148,7 @@ body {
 
 .rides-tab {
   flex: 1;
+  min-width: 0;
   background: none;
   border: none;
   padding: 9px 4px 11px;
@@ -1164,7 +1171,7 @@ body {
 
 .rides-tab-count {
   background: var(--cream);
-  color: var(--text-soft);
+  color: var(--text-soft-cream);
   font-size: 13px;
   padding: 1px 6px;
   border-radius: 20px;
@@ -1649,8 +1656,7 @@ body {
   font-size: 11px;
   font-weight: 500;
   letter-spacing: .02em;
-  color: var(--text-soft);
-  opacity: .7;
+  color: #5A6472;
   margin-bottom: 8px;
 }
 
@@ -1793,7 +1799,7 @@ body {
   border: 1.5px solid var(--line);
   border-radius: 10px;
   padding: 10px 12px;
-  font-size: 15.5px;
+  font-size: 16px;
   margin-bottom: 12px;
   font-family: 'IBM Plex Sans', sans-serif;
 }
@@ -2093,7 +2099,7 @@ textarea.bid-input2 {
   border: 1.5px solid var(--line);
   border-radius: 8px;
   padding: 6px 10px;
-  font-size: 15.5px;
+  font-size: 16px;
   color: var(--navy);
   font-weight: 600;
   font-family: 'IBM Plex Sans', sans-serif;
@@ -2183,6 +2189,8 @@ textarea.bid-input2 {
   text-decoration: none;
   border-radius: 20px;
   padding: 6px 13px 6px 10px;
+  min-height: 44px;
+  justify-content: center;
   font-size: 13.5px;
   font-weight: 700;
   letter-spacing: .02em;
@@ -2256,6 +2264,8 @@ textarea.bid-input2 {
 
 .leg-head-left {
   display: flex;
+  flex-wrap: wrap;
+  min-width: 0;
   align-items: baseline;
 }
 
@@ -2544,4 +2554,220 @@ textarea.bid-input2 {
   cursor: pointer;
   margin-top: 14px;
   box-shadow: 0 10px 22px -8px rgba(232,99,36,.55);
+}
+
+/* ===========================================================================
+   TUR — opriri multiple
+   =========================================================================== */
+
+/* „Stopp nicht möglich": un gest fără întoarcere.
+   Varianta de dinainte moştenea `.link-btn` — o dungă subţire de ~19px,
+   lată cât cardul, la 14px sub butonul „Navigieren". Un deget în mănuşă care
+   rata navigarea raporta un eşec. Acum are ţintă de 44px, e strâns la lăţimea
+   textului şi stă vizibil mai jos, într-o zonă a lui. */
+.danger-link {
+  width: auto;
+  min-height: 44px;
+  padding: 12px 14px;
+  margin-top: 28px;
+  color: #B23A24;
+  text-decoration: none;
+  border: 1px solid #C98D7E;
+  border-radius: 8px;
+  background: #FDF4F2;
+  font-weight: 600;
+  font-size: 13.5px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.danger-link:active { background: #F6DED9; transform: scale(.985); }
+.danger-link:disabled { background: #F3F1EE; border-color: #D8D4CD; color: #7A7369; }
+
+/* Oprirea la care se lucrează ACUM.
+   La douăzeci de opriri, douăzeci de carduri albe identice nu spun nimic:
+   şoferul nu ştie pe care e. Rama portocalie şi pastila „JETZT" sunt singurul
+   lucru care deosebeşte cardul curent de celelalte. */
+.info-card.stop-now {
+  border-color: var(--orange, #FF7A29);
+  outline: 2px solid var(--orange, #FF7A29);
+  outline-offset: -2px;
+  box-shadow: 0 2px 10px rgba(255, 122, 41, .18);
+}
+.stop-now-pill {
+  flex: 0 0 auto;
+  background: #B14300;
+  color: #fff;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  padding: 3px 8px;
+  border-radius: 999px;
+  text-transform: uppercase;
+}
+
+/* Insigna etapei ratate avea `borderColor` fără `border`, deci ieşea plată. */
+.leg-done-badge.failed {
+  background: #FDECEA;
+  color: #8A2A17;
+  border: 1px solid #D98375;
+}
+
+/* Răspuns la atingere.
+   Cu mănuşi, pe un ecran capacitiv, şi cu un drum până la server înainte să se
+   schimbe ceva, şoferul nu ştie dacă apăsarea a prins — şi apasă din nou. */
+.btn:active:not(:disabled) { transform: scale(.985); filter: brightness(.95); }
+.maps-nav-btn:active { filter: brightness(.95); }
+.info-card-head[style*="pointer"]:active { filter: brightness(.97); }
+
+/* Fără temă întunecată, cu bună ştiinţă: aplicaţia se foloseşte afară, în
+   lumină puternică. Declaraţia opreşte modul „force dark" al unor browsere
+   Android, care ar întoarce doar jumătate din culori şi ar lăsa casetele
+   deschise peste carduri închise. */
+:root { color-scheme: light; }
+
+
+/* ===========================================================================
+   TUR — aspect, partea a doua
+   =========================================================================== */
+
+/* Capul ecranului rămâne pe loc.
+   La douăzeci de opriri, numărul comenzii şi eticheta „Stopp 7 / 21" ajung la
+   cinci ecrane deasupra cardului la care lucrează şoferul. Fără ele nu mai
+   ştie nici pe ce oprire e, nici în ce comandă. La o cursă cu două opriri
+   nimic nu se derulează, deci arată exact ca înainte. */
+/* Grupul rămâne grup şi când nu se lipeşte: cele trei elemente erau înainte
+   copii direcţi ai `.ride-detail`, care le dădea 14px între ele. Fără asta, la
+   o cursă obişnuită antetul s-ar fi strâns. */
+.ride-head-group {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+@supports (overflow: clip) {
+  /* Vezi explicaţia de la `.phone-shell`: cu `clip`, panoul nu mai e un
+     container de derulare, aşa că lipirea se raportează la pagină. */
+  .phone-shell { overflow-x: clip; }
+
+  .ride-sticky-head {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    gap: 10px;
+    margin: 0 -20px;
+    padding: calc(8px + env(safe-area-inset-top, 0px)) 20px 10px;
+    background: var(--cream);
+    box-shadow: 0 2px 6px rgba(15, 34, 64, .08);
+  }
+}
+
+/* „Prea departe" nu însemna acelaşi lucru ca „indisponibil", dar arăta la fel:
+   butonul pălea, iar un buton pălit în aplicaţia asta înseamnă „nu merge".
+   Şoferul se oprea din apăsat, deşi apăsarea i-ar fi explicat de ce. */
+.btn.needs-proximity:not(:disabled) {
+  background: #8A5A16;
+  box-shadow: none;
+}
+
+/* Raportarea unui eşec purta aceeaşi culoare şi aceeaşi formă ca „Losfahren",
+   „Angekommen" şi „Lieferung bestätigen" — gestul învăţat pentru „mai departe"
+   declanşa un lucru fără întoarcere. */
+.btn.danger-solid:not(:disabled) {
+  background: #8A2A17;
+  box-shadow: 0 10px 22px -8px rgba(138, 42, 23, .45);
+}
+
+/* Variantele albe ale butonului îşi impun fundalul peste starea dezactivată,
+   pentru că stau mai jos în fişier. Cu `opacity` scos, un buton dezactivat
+   ajunsese să arate exact ca unul activ: se apasă şi nu se întâmplă nimic. */
+.btn.secondary:disabled,
+.btn.danger:disabled {
+  background: #F3F1EE;
+  color: #807A70;
+  border-color: #D8D4CD;
+  box-shadow: none;
+}
+
+/* Umbra care desparte butonul fix de pagină nu are legătură cu starea lui. */
+.sticky-cta:disabled { box-shadow: 0 -4px 14px rgba(15, 34, 64, .10); }
+
+/* Eticheta de tur din istoric stătea în acelaşi rând cu traseul, iar rândul
+   taie ce nu încape: la „Tour · 21 Stopps ·" nu mai rămânea loc de adrese. */
+.ride-row-tour {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--navy);
+  letter-spacing: .02em;
+}
+
+/* O oprire încheiată nu mai are nimic de apăsat: contact, navigare şi marfă
+   înseamnă 230px de card × douăzeci = şase ecrane de derulat pe lângă. */
+.stop-closed-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  align-items: baseline;
+  font-size: 14px;
+  color: var(--navy);
+}
+.stop-closed-line .stop-closed-time {
+  font-size: 12.5px;
+  color: var(--text-soft);
+}
+
+/* Restul atingerilor, cu acelaşi răspuns ca al butoanelor.
+   Fiecare dintre ele e la un drum până la server de orice schimbare vizibilă. */
+.link-btn:active,
+.back-btn:active,
+.rides-tab:active,
+.filter-btn:active,
+.sort-btn:active,
+.ride-card2-action:active,
+.contact-call:active,
+.cmr-chip:active,
+.photo-slot:active,
+.menu-item:active,
+.accept-btn:active,
+.submit-bid-btn:active,
+.doc-add-btn:active,
+.ride-row-compact:active,
+.bid-card2-head:active,
+.cargo-toggle:active,
+.filter-apply:active,
+.celebration-btn:active,
+.profile-photo-btn:active,
+.reassign-toggle:active {
+  filter: brightness(.95);
+  transform: scale(.985);
+}
+
+/* Ţinte de atingere duse la 44px prin `min-height`, nu prin padding: textul
+   rămâne optic unde era, doar suprafaţa creşte. Cele patru butoane-pictogramă
+   (.hbtn, .icon-btn, .sig-pad-clear, .switch) sunt lăsate aşa cum sunt: la ele
+   cutia s-ar vedea că s-a mărit, iar aspectul lor nu a fost cerut schimbat. */
+.rides-tab,
+.filter-btn,
+.sort-btn,
+.ride-card2-action,
+.back-btn,
+.cmr-chip,
+.profile-photo-btn,
+.existing-bid-actions .btn,
+.doc-add-btn,
+.menu-item,
+.lang-switch button {
+  min-height: 44px;
+}
+
+/* Şoferul care a cerut sistemului să oprească mişcarea o avea în continuare:
+   punctul care pulsează în cap de ecran şi camioneta care merge pe fiecare
+   card — la un tur, pe douăzeci de carduri deodată. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+    scroll-behavior: auto !important;
+  }
 }

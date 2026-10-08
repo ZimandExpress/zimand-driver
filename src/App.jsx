@@ -19,6 +19,24 @@ import { analyzeDocumentPhoto } from './services/imageQuality'
 // nici șoferul, nici dispecerul nu aflau.
 import { processImage, PHOTO_PRESET } from './services/imageService'
 
+// Comenzile deschise la licitație vin prin funcția courier_orders.
+// Tabela orders nu mai lasă firmele să citească direct comenzile deschise
+// (adresa completă rămâne ascunsă până la câștig), așa că citirea directă
+// întorcea mereu o listă goală — "Verfügbar 0". Același lucru valabil pentru
+// evenimentele realtime pe orders: nu mai ajung la firme, de aceea lista se
+// reîmprospătează și periodic.
+const OPEN_ORDERS_POLL_MS = 30000
+async function fetchOpenOrdersForCourier() {
+  const { data, error } = await supabase.rpc('courier_orders')
+  if (error) {
+    console.error('courier_orders error:', error.message)
+    return []
+  }
+  return (Array.isArray(data) ? data : [])
+    .filter((o) => o.status === 'open' && !o.on_hold)
+    .sort((a, b) => String(a.pickup_date || '').localeCompare(String(b.pickup_date || '')))
+}
+
 // Jurnal de utilizare Google API — o linie per apel real, "fire-and-forget",
 // ca să vedem exact de unde vine consumul (raport în panoul de disponent).
 function logApiUsage(apiName, page, description) {
@@ -1369,47 +1387,65 @@ function RidesScreen({ profile, isOwner, session, lang }) {
   useEffect(() => {
     if (!isOwner) return
 
-    function refreshOpenCount() {
-      Promise.all([
-        supabase.from('orders').select('id').eq('status', 'open').or('on_hold.is.null,on_hold.eq.false'),
+    let cancelled = false
+    // ID-urile comenzilor deschise văzute deja — o comandă nouă = un ID care
+    // n-a mai fost în lista anterioară. Evenimentul realtime INSERT nu mai
+    // ajunge la firme, așa că sunetul se decide aici, la fiecare reîmprospătare.
+    const knownOpenIds = { current: null }
+
+    async function notifyIfWithinRadius(order) {
+      // Dacă șoferul are o rază preferată setată, notificăm doar pentru
+      // comenzi din acel raion — cele mai îndepărtate rămân vizibile
+      // în listă, dar fără sunet/notificare.
+      let withinRadius = true
+      if (notifyRadiusKm != null && driverLocationForNotify && mapsKeyForNotify && order?.pickup_address) {
+        const point = await geocodeAddressCached(order.pickup_address, mapsKeyForNotify)
+        if (point) {
+          const km = haversineKm(driverLocationForNotify.lat, driverLocationForNotify.lng, point.lat, point.lng)
+          withinRadius = km <= notifyRadiusKm
+        }
+      }
+      if (withinRadius && !cancelled) {
+        playNewOrderSound()
+        setNewOrderToast(true)
+        setTimeout(() => setNewOrderToast(false), 4000)
+      }
+    }
+
+    async function refreshOpenCount() {
+      const [openOrders, bidsRes] = await Promise.all([
+        fetchOpenOrdersForCourier(),
         supabase.from('bids').select('order_id').eq('courier_id', session?.user?.id),
-      ]).then(([openRes, bidsRes]) => {
-        const biddedIds = new Set((bidsRes.data || []).map((b) => b.order_id))
-        const remaining = (openRes.data || []).filter((o) => !biddedIds.has(o.id)).length
-        setOpenCount(remaining)
-      })
+      ])
+      if (cancelled) return
+      const biddedIds = new Set((bidsRes.data || []).map((b) => b.order_id))
+      const remaining = openOrders.filter((o) => !biddedIds.has(o.id))
+      setOpenCount(remaining.length)
+
+      if (knownOpenIds.current) {
+        const fresh = remaining.filter((o) => !knownOpenIds.current.has(o.id))
+        // un singur sunet, chiar dacă au apărut mai multe comenzi deodată
+        const within = fresh[0]
+        if (within && openCountLoaded.current) notifyIfWithinRadius(within)
+      }
+      knownOpenIds.current = new Set(openOrders.map((o) => o.id))
+      openCountLoaded.current = true
     }
 
     refreshOpenCount()
-    openCountLoaded.current = true
+    const poll = setInterval(refreshOpenCount, OPEN_ORDERS_POLL_MS)
 
     const channel = supabase
       .channel('rides-open-count')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: 'status=eq.open' }, async (payload) => {
-        refreshOpenCount()
-        if (payload.eventType === 'INSERT' && openCountLoaded.current && !payload.new?.on_hold) {
-          // Dacă șoferul are o rază preferată setată, notificăm doar pentru
-          // comenzi din acel raion — cele mai îndepărtate rămân vizibile
-          // în listă, dar fără sunet/notificare.
-          let withinRadius = true
-          if (notifyRadiusKm != null && driverLocationForNotify && mapsKeyForNotify && payload.new?.pickup_address) {
-            const point = await geocodeAddressCached(payload.new.pickup_address, mapsKeyForNotify)
-            if (point) {
-              const km = haversineKm(driverLocationForNotify.lat, driverLocationForNotify.lng, point.lat, point.lng)
-              withinRadius = km <= notifyRadiusKm
-            }
-          }
-          if (withinRadius) {
-            playNewOrderSound()
-            setNewOrderToast(true)
-            setTimeout(() => setNewOrderToast(false), 4000)
-          }
-        }
-      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: 'status=eq.open' }, refreshOpenCount)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'bids', filter: `courier_id=eq.${session?.user?.id}` }, refreshOpenCount)
       .subscribe()
 
-    return () => supabase.removeChannel(channel)
+    return () => {
+      cancelled = true
+      clearInterval(poll)
+      supabase.removeChannel(channel)
+    }
   }, [isOwner, notifyRadiusKm, driverLocationForNotify, mapsKeyForNotify, session?.user?.id])
 
   useEffect(() => { ordersRef.current = orders }, [orders])
@@ -5940,16 +5976,13 @@ function BiddingScreen({ profile, session, lang, embedded }) {
 
   useEffect(() => {
     let active = true
-    supabase
-      .from('orders')
-      .select('*')
-      .eq('status', 'open')
-      .or('on_hold.is.null,on_hold.eq.false')
-      .order('pickup_date', { ascending: true })
-      .then(({ data, error }) => {
-        if (error) console.error('open orders fetch error:', error.message)
-        if (active) { setOrders(data || []); setLoading(false) }
+    function refreshOpenOrders() {
+      fetchOpenOrdersForCourier().then((list) => {
+        if (active) { setOrders(list); setLoading(false) }
       })
+    }
+    refreshOpenOrders()
+    const poll = setInterval(refreshOpenOrders, OPEN_ORDERS_POLL_MS)
 
     if (courierProfileId) {
       supabase
@@ -5961,15 +5994,13 @@ function BiddingScreen({ profile, session, lang, embedded }) {
 
     const channel = supabase
       .channel('bidding-open-orders')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: 'status=eq.open' }, () => {
-        supabase.from('orders').select('*').eq('status', 'open').or('on_hold.is.null,on_hold.eq.false').then(({ data }) => setOrders(data || []))
-      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: 'status=eq.open' }, refreshOpenOrders)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'bids', filter: `courier_id=eq.${courierProfileId}` }, () => {
         supabase.from('bids').select('order_id').eq('courier_id', courierProfileId).then(({ data }) => setBiddedOrderIds(new Set((data || []).map((b) => b.order_id))))
       })
       .subscribe()
 
-    return () => { active = false; supabase.removeChannel(channel) }
+    return () => { active = false; clearInterval(poll); supabase.removeChannel(channel) }
   }, [courierProfileId])
 
   // odată ce ai licitat, comanda trece exclusiv la "Meine Angebote" — nu mai

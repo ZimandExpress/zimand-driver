@@ -25,16 +25,40 @@ import { processImage, PHOTO_PRESET } from './services/imageService'
 // întorcea mereu o listă goală — "Verfügbar 0". Același lucru valabil pentru
 // evenimentele realtime pe orders: nu mai ajung la firme, de aceea lista se
 // reîmprospătează și periodic.
+//
+// courier_bid_board e varianta ușoară (fără poze/documente, doar comenzile
+// deschise + cele la care firma are ofertă încă în joc). Badge-ul din meniu,
+// "Verfügbar" și "Meine Angebote" o cer în același timp — cererile se
+// împart: una singură pe server, rezultatul refolosit câteva secunde.
 const OPEN_ORDERS_POLL_MS = 30000
-async function fetchOpenOrdersForCourier() {
-  const { data, error } = await supabase.rpc('courier_orders')
-  if (error) {
-    console.error('courier_orders error:', error.message)
-    return []
-  }
-  return (Array.isArray(data) ? data : [])
+const BOARD_SHARE_MS = 4000
+const boardCache = { at: 0, promise: null }
+function fetchCourierBidBoard(force = false) {
+  const now = Date.now()
+  if (!force && boardCache.promise && now - boardCache.at < BOARD_SHARE_MS) return boardCache.promise
+  boardCache.at = now
+  boardCache.promise = supabase.rpc('courier_bid_board').then(({ data, error }) => {
+    if (error) {
+      console.error('courier_bid_board error:', error.message)
+      boardCache.at = 0 // la eroare nu păstrăm rezultatul gol
+      return []
+    }
+    return Array.isArray(data) ? data : []
+  })
+  return boardCache.promise
+}
+function invalidateCourierBidBoard() { boardCache.at = 0 }
+
+async function fetchOpenOrdersForCourier(force = false) {
+  const board = await fetchCourierBidBoard(force)
+  return board
     .filter((o) => o.status === 'open' && !o.on_hold)
     .sort((a, b) => String(a.pickup_date || '').localeCompare(String(b.pickup_date || '')))
+}
+
+// Telefonul în buzunar / aplicația în fundal: nu mai cerem nimic.
+function pageVisible() {
+  return typeof document === 'undefined' || document.visibilityState !== 'hidden'
 }
 
 // Jurnal de utilizare Google API — o linie per apel real, "fire-and-forget",
@@ -1433,7 +1457,7 @@ function RidesScreen({ profile, isOwner, session, lang }) {
     }
 
     refreshOpenCount()
-    const poll = setInterval(refreshOpenCount, OPEN_ORDERS_POLL_MS)
+    const poll = setInterval(() => { if (pageVisible()) refreshOpenCount() }, OPEN_ORDERS_POLL_MS)
 
     const channel = supabase
       .channel('rides-open-count')
@@ -5183,7 +5207,15 @@ function useCompanyProfileId(session, profile) {
   return id
 }
 
-function useCourierBids(courierProfileId) {
+// Ofertele firmei, fiecare cu comanda ei atașată în b.orders.
+//
+// Comanda NU mai vine din tabela orders (orders!bids_order_id_fkey): acolo
+// firmele nu mai au voie să citească o comandă pe care n-au câștigat-o, așa
+// că b.orders venea null și "Meine Angebote" rămânea gol. Comenzile vin acum
+// din courier_bid_board (deschise + atribuite, ușor). Doar ecranul "Nicht
+// angenommen" are nevoie de comenzile închise — acela cere istoricul complet
+// (courier_orders, mai greu), și numai cât e deschis.
+function useCourierBids(courierProfileId, { includeHistory = false } = {}) {
   const [bids, setBids] = useState([])
   const [loading, setLoading] = useState(true)
   // Numele canalului trebuie să fie unic per instanță — acest hook rulează
@@ -5196,27 +5228,38 @@ function useCourierBids(courierProfileId) {
     if (!courierProfileId) { setLoading(false); return }
     let active = true
 
-    function load() {
-      supabase
-        .from('bids')
-        .select('*, orders!bids_order_id_fkey(*)')
-        .eq('courier_id', courierProfileId)
-        .then(({ data, error }) => {
-          if (error) console.error('bids fetch error:', error.message)
-          if (active) { setBids(data || []); setLoading(false) }
-        })
+    async function load(force = false) {
+      const ordersPromise = includeHistory
+        ? supabase.rpc('courier_orders').then(({ data, error }) => {
+            if (error) console.error('courier_orders error:', error.message)
+            return Array.isArray(data) ? data : []
+          })
+        : fetchCourierBidBoard(force)
+      const [bidsRes, orders] = await Promise.all([
+        supabase.from('bids').select('*').eq('courier_id', courierProfileId),
+        ordersPromise,
+      ])
+      if (bidsRes.error) console.error('bids fetch error:', bidsRes.error.message)
+      const byId = new Map(orders.map((o) => [o.id, o]))
+      const list = (bidsRes.data || []).map((b) => ({ ...b, orders: byId.get(b.order_id) || null }))
+      if (active) { setBids(list); setLoading(false) }
     }
 
     load()
+    const poll = setInterval(() => { if (pageVisible()) load() }, OPEN_ORDERS_POLL_MS)
 
     const channel = supabase
       .channel(channelNameRef.current)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'bids', filter: `courier_id=eq.${courierProfileId}` }, load)
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders' }, load)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'bids', filter: `courier_id=eq.${courierProfileId}` }, () => {
+        // oferta proprie s-a schimbat (nouă, modificată, contraofertă) —
+        // cerem tabla proaspătă, nu cea din ultimele secunde
+        invalidateCourierBidBoard()
+        load(true)
+      })
       .subscribe()
 
-    return () => { active = false; supabase.removeChannel(channel) }
-  }, [courierProfileId])
+    return () => { active = false; clearInterval(poll); supabase.removeChannel(channel) }
+  }, [courierProfileId, includeHistory])
 
   return { bids, loading }
 }
@@ -5345,7 +5388,7 @@ function MeineAngeboteScreen({ profile, session, lang }) {
 
 function NichtAngenommenScreen({ profile, session, lang }) {
   const courierProfileId = session?.user?.id || null
-  const { bids, loading } = useCourierBids(courierProfileId)
+  const { bids, loading } = useCourierBids(courierProfileId, { includeHistory: true })
 
   if (loading) return <PlaceholderScreen title={t('menuNotAccepted', lang)} note={t('loadingRides', lang)} />
 
@@ -5982,7 +6025,7 @@ function BiddingScreen({ profile, session, lang, embedded }) {
       })
     }
     refreshOpenOrders()
-    const poll = setInterval(refreshOpenOrders, OPEN_ORDERS_POLL_MS)
+    const poll = setInterval(() => { if (pageVisible()) refreshOpenOrders() }, OPEN_ORDERS_POLL_MS)
 
     if (courierProfileId) {
       supabase
@@ -6242,6 +6285,7 @@ function BidCard({ order, lang, courierProfileId, open, onToggle, onBidPlaced })
           .single()
         if (error) throw error
         setExistingBid(data)
+        invalidateCourierBidBoard()
         if (onBidPlaced) onBidPlaced(order.id)
       }
       setEditing(false)

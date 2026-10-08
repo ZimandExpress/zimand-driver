@@ -250,7 +250,7 @@ export function summarize(files) {
  * Construiește exact aceiași parametri pe care îi trimite aplicația azi,
  * din fișierele deja urcate. Formatul rămâne identic pentru Disponent.
  */
-export async function buildConfirmPayload(orderId, leg, signerName) {
+export async function buildConfirmPayload(orderId, leg, signerName, extra = null) {
   const files = (await dbGetByLeg(orderId, leg)) || []
   const uploaded = files.filter((f) => f.status === 'uploaded' || f.status === 'confirmed')
   return {
@@ -261,6 +261,10 @@ export async function buildConfirmPayload(orderId, leg, signerName) {
       .map((f) => ({ type: f.docType || 'other', name: f.fileName, path: f.remotePath })),
     p_signature_url: uploaded.find((f) => f.kind === 'signature')?.remotePath || null,
     p_signer_name: signerName || null,
+    // Parametri în plus, pentru opririle unui tur: `p_stop_id`. Etapele
+    // obişnuite (ridicare, livrare, retur) nu trimit nimic aici, deci forma
+    // pe care o primeşte Disponent rămâne neschimbată.
+    ...(extra || {}),
   }
 }
 
@@ -269,17 +273,32 @@ export async function buildConfirmPayload(orderId, leg, signerName) {
  * automat mai târziu — fără să pretindă că e sincronizată (§46).
  * @returns {'synced' | 'pending'}
  */
-export async function confirmLeg({ orderId, leg, rpcName, signerName }) {
-  const payload = await buildConfirmPayload(orderId, leg, signerName)
-  const record = { id: `${orderId}:${leg}`, orderId, leg, rpcName, payload, createdAt: Date.now() }
+export async function confirmLeg({ orderId, leg, rpcName, signerName, extraPayload = null }) {
+  // Întâi aşteptăm dovezile. O confirmare fără semnătură sau fără o poză nu e
+  // o confirmare — e o cursă care pare dovedită şi nu e.
+  const totSus = await asteaptaDovezile(orderId, leg)
+  const payload = await buildConfirmPayload(orderId, leg, signerName, extraPayload)
+  // `extra` se păstrează pe fişa de aşteptare: la reluarea de mai târziu
+  // payloadul se reconstruieşte, iar fără el id-ul opririi s-ar pierde şi
+  // confirmarea ar pleca spre nicăieri.
+  const record = { id: `${orderId}:${leg}`, orderId, leg, rpcName, payload, extra: extraPayload, createdAt: Date.now() }
 
-  if (!isOnline()) {
+  // Fără internet SAU cu o dovadă încă pe telefon: punem confirmarea în
+  // aşteptare, întreagă. La reluare payloadul se reconstruieşte, deci pleacă
+  // cu tot ce a ajuns între timp.
+  if (!isOnline() || !totSus) {
     await dbPut(STORE_CONFIRMATIONS, record)
     return 'pending'
   }
   const { error } = await supabase.rpc(rpcName, payload)
   if (error) {
-    await dbPut(STORE_CONFIRMATIONS, record)
+    // Nu orice eşec merită reîncercat la infinit.
+    //
+    // Un refuz al serverului (drepturi, un declanşator care spune „turul are
+    // opriri neîncheiate") va fi refuzat şi mâine. Pus în aşteptare, se
+    // reîncerca la fiecare deschidere a aplicaţiei, pentru totdeauna, fără ca
+    // nimeni să afle. Doar căderile trecătoare se păstrează.
+    if (eroareTrecatoare(error)) await dbPut(STORE_CONFIRMATIONS, record)
     throw error
   }
   await markConfirmed(orderId, leg)
@@ -290,8 +309,45 @@ export async function confirmLeg({ orderId, leg, rpcName, signerName }) {
 
 async function markConfirmed(orderId, leg) {
   const files = (await dbGetByLeg(orderId, leg)) || []
-  await Promise.all(files.map((f) => dbPut(STORE_FILES, { ...f, status: 'confirmed' })))
+  await Promise.all(files.map((f) => {
+    // Un fişier care încă are conţinut NU a plecat de pe telefon.
+    //
+    // Ştampilat „confirmat", coada nu-l mai ia niciodată — ea caută doar
+    // 'queued' — şi după şapte zile `pruneOld` îl şterge. Dovada dispărea
+    // fără să fi ajuns vreodată pe server, şi fără nicio urmă.
+    if (f.blob && f.status !== 'uploaded' && f.status !== 'confirmed') return Promise.resolve()
+    return dbPut(STORE_FILES, { ...f, status: 'confirmed' })
+  }))
   emit()
+}
+
+/**
+ * Aşteaptă ca dovezile etapei să ajungă sus (sau să eşueze definitiv).
+ *
+ * De ce există: semnătura se punea în coadă şi se construia payloadul în
+ * aceeaşi răsuflare. Payloadul ia doar fişierele cu starea 'uploaded', iar
+ * semnătura era încă 'queued' — aşa că `p_signature_url` plecaa null, de
+ * fiecare dată. Numele semnatarului se salva, semnătura nu: în baza de
+ * producţie, 83 din 95 de livrări confirmate aveau nume şi nicio semnătură.
+ *
+ * Întoarce `true` dacă totul e sus, `false` dacă s-a scurs timpul sau nu e
+ * internet — iar atunci confirmarea se pune în aşteptare, întreagă, în loc să
+ * plece ciuntită.
+ */
+async function asteaptaDovezile(orderId, leg, { timeoutMs = 25000 } = {}) {
+  const totSus = async () => {
+    const files = (await dbGetByLeg(orderId, leg)) || []
+    return files
+      .filter((f) => f.status !== 'lost')
+      .every((f) => f.status === 'uploaded' || f.status === 'confirmed')
+  }
+  const pana = Date.now() + timeoutMs
+  while (true) {
+    if (await totSus()) return true
+    if (!isOnline() || Date.now() > pana) return false
+    pump()
+    await new Promise((r) => setTimeout(r, 400))
+  }
 }
 
 // Sincronizarea către portalul de client — cu reîncercare, spre deosebire de
@@ -311,26 +367,92 @@ async function syncDeliveryDocuments(orderId, leg, attempt = 0) {
   }
 }
 
+// Căderi trecătoare: reţea, timp depăşit, erori de server. Un refuz al
+// serverului (4xx, mesaj de la un declanşator) nu e trecător.
+function eroareTrecatoare(error) {
+  const cod = String(error?.code || '')
+  const mesaj = String(error?.message || '').toLowerCase()
+  if (/^5\d\d$/.test(cod)) return true
+  if (cod === '' && /fetch|network|timeout|failed to fetch|load failed/.test(mesaj)) return true
+  if (/^(08|53|57|58)/.test(cod)) return true   // conexiune, resurse, operator intervention
+  return false
+}
+
+const MAX_REPLAY = 8
+
 /** Câte confirmări așteaptă internet — pentru bannerul de offline. */
 export async function pendingConfirmationCount() {
   const all = (await dbGetAll(STORE_CONFIRMATIONS)) || []
-  return all.length
+  return all.filter((r) => !r.giveUp).length
+}
+
+/**
+ * Starea confirmărilor nelivrate: câte aşteaptă şi câte s-au oprit.
+ *
+ * Până acum nimic nu le arăta. O confirmare pe care serverul a refuzat-o de
+ * opt ori primeşte `giveUp` — ca să nu se reia la infinit — şi de acolo
+ * încolo nu mai apărea nicăieri: nici la server, nici pe ecran. O livrare
+ * cu semnătură putea rămâne pe telefon fără ca nimeni să afle. Numărul de
+ * mai jos e cel pe care îl arată bannerul din lista de curse.
+ */
+export async function confirmationsStatus() {
+  const all = (await dbGetAll(STORE_CONFIRMATIONS)) || []
+  return {
+    asteapta: all.filter((r) => !r.giveUp).length,
+    blocate: all.filter((r) => r.giveUp).length,
+    primaEroare: (all.find((r) => r.giveUp) || {}).lastError || null,
+  }
+}
+
+/** Dă încă o şansă confirmărilor oprite — pentru butonul din banner. */
+export async function retryStuckConfirmations() {
+  const all = (await dbGetAll(STORE_CONFIRMATIONS)) || []
+  await Promise.all(all.filter((r) => r.giveUp)
+    .map((r) => dbPut(STORE_CONFIRMATIONS, { ...r, giveUp: false, attempts: 0 })))
+  emit()
+  await replayPendingConfirmations()
+}
+
+/**
+ * Şterge o confirmare rămasă în aşteptare.
+ *
+ * Cazul real: la o oprire, confirmarea a eşuat şi a rămas în aşteptare; apoi
+ * şoferul a raportat oprirea ca „nu s-a putut". Fără ştergere, reluarea ar
+ * trimite mai târziu confirmarea — şi oprirea ar ajunge şi confirmată şi
+ * ratată, ceea ce baza refuză (sau, mai rău, ar şterge motivul eşecului).
+ */
+export async function cancelPendingConfirmation(orderId, leg) {
+  await dbDelete(STORE_CONFIRMATIONS, `${orderId}:${leg}`)
+  emit()
 }
 
 async function replayPendingConfirmations() {
   if (!isOnline()) return
   const all = (await dbGetAll(STORE_CONFIRMATIONS)) || []
   for (const rec of all) {
+    if (rec.giveUp) continue
     // Recalculăm payloadul: între timp pot fi urcate fișiere care la
     // momentul confirmării erau încă în coadă.
-    const payload = await buildConfirmPayload(rec.orderId, rec.leg, rec.payload.p_signer_name)
+    const payload = await buildConfirmPayload(rec.orderId, rec.leg, rec.payload.p_signer_name, rec.extra || null)
     const { error } = await supabase.rpc(rec.rpcName, payload)
     if (!error) {
       await markConfirmed(rec.orderId, rec.leg)
       await dbDelete(STORE_CONFIRMATIONS, rec.id)
       void syncDeliveryDocuments(rec.orderId, rec.leg)
       emit()
+      continue
     }
+    // Eşecul se numără şi se scrie. Fără asta, o confirmare refuzată de
+    // server se reîncerca la fiecare deschidere a aplicaţiei, la nesfârşit,
+    // fără ca nimeni să ştie că există.
+    const incercari = (rec.attempts || 0) + 1
+    if (!eroareTrecatoare(error) || incercari >= MAX_REPLAY) {
+      await dbPut(STORE_CONFIRMATIONS, { ...rec, attempts: incercari, lastError: error.message || String(error), giveUp: true })
+      console.error('confirmare respinsă definitiv:', rec.id, error.message)
+    } else {
+      await dbPut(STORE_CONFIRMATIONS, { ...rec, attempts: incercari, lastError: error.message || String(error) })
+    }
+    emit()
   }
 }
 

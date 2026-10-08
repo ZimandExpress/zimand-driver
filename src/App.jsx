@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { supabase } from './supabaseClient'
 import { t, getLang, setLang, availableLangs } from './i18n'
@@ -6,7 +6,9 @@ import { Truck, CheckCircle2, Wallet, User, LogOut, Menu, Bell, MapPin, FlagTria
 import './index.css'
 import PodFiles from './components/PodFiles'
 import {
-  startQueue, enqueueFiles, enqueueSignature, confirmLeg as queueConfirmLeg,
+  startQueue, enqueueFiles, enqueueSignature, confirmLeg as queueConfirmLeg, listFiles,
+  cancelPendingConfirmation, isOnline as reteaDisponibila,
+  subscribe as ascultaCoada, confirmationsStatus, retryStuckConfirmations,
 } from './offline/uploadQueue'
 import { pruneOld } from './offline/db'
 import { analyzeDocumentPhoto } from './services/imageQuality'
@@ -828,26 +830,151 @@ function statusLabel(status, lang) {
 // NU înlocuiește statusul din baza de date (open/assigned/done/cancelled) —
 // îl completează. Backendul rămâne sursa de adevăr; asta e doar o citire mai
 // precisă a lui, ca șoferul să vadă unde se află, nu un cuvânt tehnic.
+/* ===========================================================================
+   TURUL — etapele ca listă, nu ca lanţ de patru
+   ===========================================================================
+
+   O cursă obişnuită are două capete: ridicarea şi livrarea, ţinute în
+   coloanele `pickup_*` şi `delivery_*` de pe comandă. Dus-întorsul adaugă
+   două. Un TUR adaugă oricâte opriri între ele, ca rânduri în `trip_stops`.
+
+   Capetele rămân pe coloanele lor, cu funcţiile lor de pe server, neatinse.
+   Opririle din mijloc au funcţiile lor. Aşa, o cursă fără opriri parcurge
+   exact acelaşi drum ca înainte — nicio linie nouă.                         */
+
+// Opririle suplimentare, în ordinea de mers. O cursă A→B nu are niciuna.
+function tourStops(order) {
+  const list = Array.isArray(order?.trip_stops) ? order.trip_stops : []
+  return [...list].sort((a, b) => (a.position || 0) - (b.position || 0))
+}
+
+// Etapele turului, în ordinea în care se conduc: ridicarea principală, apoi
+// ridicările suplimentare, apoi livrările suplimentare, apoi livrarea
+// principală, şi la urmă returul dacă e dus-întors.
+function tourLegSequence(order) {
+  const stops = tourStops(order)
+  const seq = [
+    { key: 'pickup', kind: 'pickup', stop: null },
+    ...stops.filter((s) => s.kind !== 'delivery').map((s) => ({ key: s.id, kind: 'pickup', stop: s })),
+    ...stops.filter((s) => s.kind === 'delivery').map((s) => ({ key: s.id, kind: 'delivery', stop: s })),
+    { key: 'delivery', kind: 'delivery', stop: null },
+  ]
+  if (order?.is_round_trip) {
+    seq.push({ key: 'return_pickup', kind: 'pickup', stop: null })
+    seq.push({ key: 'return_delivery', kind: 'delivery', stop: null })
+  }
+  return seq
+}
+
+const LEG_ADDRESS_FIELD = {
+  pickup: 'pickup_address',
+  delivery: 'delivery_address',
+  return_pickup: 'return_pickup_address',
+  return_delivery: 'return_delivery_address',
+}
+
+// Faptele unei etape, citite la fel fie că stă pe comandă, fie pe o oprire.
+// Tot restul codului vorbeşte prin asta, deci nu mai trebuie să ştie unde
+// sunt datele.
+function legFacts(order, entry) {
+  if (!entry) return null
+  if (entry.stop) {
+    const s = entry.stop
+    return {
+      key: s.id, kind: s.kind, stop: s, isStop: true,
+      startedAt: s.started_at, arrivedAt: s.arrived_at, confirmedAt: s.confirmed_at,
+      failedAt: s.failed_at, failedReason: s.failed_reason,
+      address: s.address, company: s.company,
+      contactName: s.contact_name, contactPhone: s.contact_phone,
+      date: s.stop_date, timeFrom: s.time_from, timeTo: s.time_to,
+      cargo: s.cargo_desc, weightKg: s.cargo_weight_kg,
+      reference: s.reference, note: s.note,
+    }
+  }
+  const k = entry.key
+  const esteRetur = k === 'return_pickup' || k === 'return_delivery'
+  return {
+    key: k, kind: entry.kind, stop: null, isStop: false,
+    startedAt: order?.[`${k}_started_at`],
+    arrivedAt: order?.[`${k}_arrived_at`],
+    confirmedAt: order?.[`${k}_confirmed_at`],
+    failedAt: null, failedReason: null,
+    address: order?.[LEG_ADDRESS_FIELD[k]],
+    company: null, contactName: null, contactPhone: null,
+    date: order?.[`${k}_date`], timeFrom: order?.[`${k}_from`], timeTo: order?.[`${k}_to`],
+    cargo: esteRetur ? order?.return_cargo_desc : order?.cargo_desc,
+    weightKg: order?.weight, reference: order?.reference, note: null,
+  }
+}
+
+// Etapa curentă: prima care n-are nici confirmare, nici motiv de eşec. O
+// oprire marcată „nu s-a putut" e încheiată — turul merge înainte peste ea.
+function currentLegEntry(order) {
+  const seq = tourLegSequence(order)
+  for (const e of seq) {
+    const f = legFacts(order, e)
+    if (!f.confirmedAt && !f.failedAt) return e
+  }
+  return seq[seq.length - 1]
+}
+
+// Numele funcţiilor de pe server, derivate din etapă — nu enumerate. Pentru
+// etapele clasice numele coloanelor şi al funcţiilor se potrivesc deja
+// (`driver_confirm_pickup`, `pickup_confirmed_at`), aşa că nu e nevoie de
+// nicio listă de ramuri.
+function legRpcNames(entry) {
+  if (entry?.stop) {
+    return {
+      start: 'driver_mark_stop_started',
+      arrive: 'driver_mark_stop_arrived',
+      confirm: 'driver_confirm_stop',
+      args: { p_stop_id: entry.stop.id },
+    }
+  }
+  return {
+    start: `driver_mark_${entry.key}_started`,
+    arrive: `driver_mark_${entry.key}_arrived`,
+    confirm: `driver_confirm_${entry.key}`,
+    args: {},
+  }
+}
+
+// „Abholung 2 / 3" la un tur; nimic la o cursă obişnuită, ca ea să arate
+// exact ca înainte. Returul se numără separat, nu intră în socoteală.
+function legCounter(order, entry) {
+  if (!entry || entry.key === 'return_pickup' || entry.key === 'return_delivery') return null
+  const sameKind = tourLegSequence(order).filter(
+    (e) => e.kind === entry.kind && e.key !== 'return_pickup' && e.key !== 'return_delivery',
+  )
+  if (sameKind.length < 2) return null
+  const i = sameKind.findIndex((e) => e.key === entry.key)
+  return i < 0 ? null : { n: i + 1, total: sameKind.length }
+}
+
+// Cheile de text ale etapelor. Cele clasice sunt EXACT cele de dinainte —
+// textul pe care-l vede şoferul la o cursă obişnuită nu se schimbă cu nimic.
+const LEG_STAGE_KEYS = {
+  pickup:          { ready: 'stageAssigned',         to: 'stageToPickup',         at: 'stageAtPickup' },
+  delivery:        { ready: 'stagePickupDone',       to: 'stageToDelivery',       at: 'stageAtDelivery' },
+  return_pickup:   { ready: 'stageReturnReady',      to: 'stageReturnToPickup',   at: 'stageReturnAtPickup' },
+  return_delivery: { ready: 'stageReturnPickupDone', to: 'stageReturnToDelivery', at: 'stageReturnAtDelivery' },
+  _stop:           { ready: 'stageStopReady',        to: 'stageToStop',           at: 'stageAtStop' },
+}
+
 function operationalStage(order) {
   if (!order) return { key: 'statusOpen', cls: 'new' }
   if (order.status === 'cancelled') return { key: 'statusCancelled', cls: 'cancelled' }
   if (order.status === 'done') return { key: 'statusDone', cls: 'done' }
   if (order.status !== 'assigned') return { key: 'statusOpen', cls: 'new' }
 
-  if (!order.pickup_started_at) return { key: 'stageAssigned', cls: 'progress' }
-  if (!order.pickup_arrived_at) return { key: 'stageToPickup', cls: 'progress', moving: true }
-  if (!order.pickup_confirmed_at) return { key: 'stageAtPickup', cls: 'progress' }
-  if (!order.delivery_started_at) return { key: 'stagePickupDone', cls: 'progress' }
-  if (!order.delivery_arrived_at) return { key: 'stageToDelivery', cls: 'progress', moving: true }
-  if (!order.delivery_confirmed_at) return { key: 'stageAtDelivery', cls: 'progress' }
-  if (!order.is_round_trip) return { key: 'statusDone', cls: 'done' }
-
-  if (!order.return_pickup_started_at) return { key: 'stageReturnReady', cls: 'progress' }
-  if (!order.return_pickup_arrived_at) return { key: 'stageReturnToPickup', cls: 'progress', moving: true }
-  if (!order.return_pickup_confirmed_at) return { key: 'stageReturnAtPickup', cls: 'progress' }
-  if (!order.return_delivery_started_at) return { key: 'stageReturnPickupDone', cls: 'progress' }
-  if (!order.return_delivery_arrived_at) return { key: 'stageReturnToDelivery', cls: 'progress', moving: true }
-  if (!order.return_delivery_confirmed_at) return { key: 'stageReturnAtDelivery', cls: 'progress' }
+  for (const e of tourLegSequence(order)) {
+    const f = legFacts(order, e)
+    if (f.confirmedAt || f.failedAt) continue
+    const chei = e.stop ? LEG_STAGE_KEYS._stop : LEG_STAGE_KEYS[e.key]
+    if (!f.startedAt) return { key: chei.ready, cls: 'progress', leg: e }
+    if (!f.arrivedAt) return { key: chei.to, cls: 'progress', moving: true, leg: e }
+    return { key: chei.at, cls: 'progress', leg: e }
+  }
   return { key: 'statusDone', cls: 'done' }
 }
 
@@ -855,16 +982,31 @@ function operationalStage(order) {
 // diferă — nu afișăm un număr fix care ar minți la cursele de retur.
 function stageProgress(order) {
   if (!order || order.status !== 'assigned') return null
-  const done = [
-    order.pickup_started_at, order.pickup_arrived_at, order.pickup_confirmed_at,
-    order.delivery_started_at, order.delivery_arrived_at, order.delivery_confirmed_at,
-    ...(order.is_round_trip ? [
-      order.return_pickup_started_at, order.return_pickup_arrived_at, order.return_pickup_confirmed_at,
-      order.return_delivery_started_at, order.return_delivery_arrived_at, order.return_delivery_confirmed_at,
-    ] : []),
-  ].filter(Boolean).length
-  const total = order.is_round_trip ? 12 : 6
-  return { done, total, current: Math.min(done + 1, total) }
+  const seq = tourLegSequence(order)
+  let done = 0
+  for (const e of seq) {
+    const f = legFacts(order, e)
+    // Oprirea ratată e un pas încheiat: altfel bara ar rămâne în urmă pentru
+    // totdeauna, pe o oprire la care nu se mai întoarce nimeni.
+    if (f.failedAt) { done += 3; continue }
+    if (f.startedAt) done++
+    if (f.arrivedAt) done++
+    if (f.confirmedAt) done++
+  }
+  // Trei paşi pe etapă. La o cursă obişnuită iese 6, la dus-întors 12 —
+  // adică exact cifrele de dinainte.
+  const total = seq.length * 3
+  // La un tur, „Schritt 22/63" nu spune nimic: bara înaintează cu 1,6% la
+  // fiecare apăsare şi pare înţepenită. Numărăm şi opririle, ca eticheta să
+  // poată spune „Stopp 7 / 21".
+  const inchise = seq.filter((e) => {
+    const f = legFacts(order, e)
+    return !!(f.confirmedAt || f.failedAt)
+  }).length
+  return {
+    done, total, current: Math.min(done + 1, total),
+    etape: seq.length, inchise, etapaCurenta: Math.min(inchise + 1, seq.length),
+  }
 }
 
 function StageBadge({ order, lang, style }) {
@@ -885,8 +1027,10 @@ function StageProgress({ order, lang }) {
       <div style={{ flex: 1, height: 4, borderRadius: 4, background: '#E7EAF0', overflow: 'hidden' }}>
         <div style={{ width: `${(p.done / p.total) * 100}%`, height: '100%', background: '#FF7A29', transition: 'width .3s' }} />
       </div>
-      <span style={{ fontSize: 11.5, fontWeight: 700, color: '#6B7A90', whiteSpace: 'nowrap' }}>
-        {t('stepLabel', lang)} {p.current}/{p.total}
+      <span style={{ fontSize: 11.5, fontWeight: 700, color: '#5A6878', whiteSpace: 'nowrap' }}>
+        {p.etape > 2
+          ? `${t('stopCounterLabel', lang)} ${p.etapaCurenta}/${p.etape}`
+          : `${t('stepLabel', lang)} ${p.current}/${p.total}`}
       </span>
     </div>
   )
@@ -1196,6 +1340,7 @@ function RidesScreen({ profile, isOwner, session, lang }) {
   const [sortAsc, setSortAsc] = useState(true)
   const [openCount, setOpenCount] = useState(0)
   const [newOrderToast, setNewOrderToast] = useState(false)
+  const [fetchError, setFetchError] = useState(null)
   const [directAwardToast, setDirectAwardToast] = useState(null)
   const [celebration, setCelebration] = useState(null) // number (net earnings) | true (no amount) | null — la nivel de ecran, supraviețuiește comutării spre CompletedOrderDetail
   const [notifyRadiusKm, setNotifyRadiusKm] = useState(null)
@@ -1289,12 +1434,19 @@ function RidesScreen({ profile, isOwner, session, lang }) {
     const loadOrders = () =>
       supabase
         .from('orders')
-        .select('*, winning_bid:bids!fk_winner_bid(price)')
+        .select('*, winning_bid:bids!fk_winner_bid(price), trip_stops(*)')
         .in('assigned_driver_id', driverIds)
         .then(({ data, error }) => {
           if (error) console.error('orders fetch error:', error.message)
           if (active) {
-            setOrders(data || [])
+            // O interogare căzută nu goleşte lista.
+            //
+            // PostgREST respinge toată cererea dacă o îmbinare e refuzată
+            // (`trip_stops(*)`), iar lista golită arăta „nicio cursă" — mai
+            // rău decât un tur fără opriri, fiindcă şoferul credea că n-are
+            // nimic de lucru. Păstrăm ce aveam şi spunem că n-a reuşit.
+            if (error) setFetchError(error.message || 'fetch')
+            else { setOrders(data || []); setFetchError(null) }
             setLoading(false)
           }
         })
@@ -1317,7 +1469,7 @@ function RidesScreen({ profile, isOwner, session, lang }) {
     const refetchOne = (id) => {
       supabase
         .from('orders')
-        .select('*, winning_bid:bids!fk_winner_bid(price)')
+        .select('*, winning_bid:bids!fk_winner_bid(price), trip_stops(*)')
         .eq('id', id)
         .maybeSingle()
         .then(({ data }) => {
@@ -1379,6 +1531,22 @@ function RidesScreen({ profile, isOwner, session, lang }) {
         },
       )
     })
+    // Opririle unui tur stau în `trip_stops`, nu pe comandă — deci o
+    // modificare a lor NU trezeşte abonamentul de mai sus. Fără asta, un
+    // şofer care ţine aplicaţia deschisă conduce la adresa veche după ce
+    // dispeceratul a schimbat-o, şi nu află niciodată.
+    //
+    // Fără filtru: politicile din bază limitează deja rândurile la cursele
+    // lui, iar un filtru per comandă ar cere un abonament per cursă.
+    channel = channel.on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'trip_stops' },
+      (payload) => {
+        const orderId = payload.new?.order_id || payload.old?.order_id
+        if (orderId && ordersRef.current.some((o) => o.id === orderId)) refetchOne(orderId)
+      },
+    )
+
     channel.subscribe()
 
     return () => {
@@ -1389,6 +1557,50 @@ function RidesScreen({ profile, isOwner, session, lang }) {
       supabase.removeChannel(channel)
     }
   }, [profile?.id, driverIds])
+
+  const [stareCoada, setStareCoada] = useState({ asteapta: 0, blocate: 0, primaEroare: null })
+  useEffect(() => {
+    let viu = true
+    const citeste = () => confirmationsStatus().then((x) => { if (viu) setStareCoada(x) }).catch(() => {})
+    citeste()
+    const stop = ascultaCoada(citeste)
+    return () => { viu = false; if (typeof stop === 'function') stop() }
+  }, [])
+
+  const bannerDovezi = (stareCoada.asteapta > 0 || stareCoada.blocate > 0) ? (
+    <div style={{
+      background: stareCoada.blocate > 0 ? '#FDECEA' : '#FFF7E8',
+      border: `1.5px solid ${stareCoada.blocate > 0 ? '#D98375' : '#D99A1F'}`,
+      borderRadius: 10, padding: '12px 14px', margin: '0 0 12px',
+      fontSize: 13.5, color: stareCoada.blocate > 0 ? '#8A2A17' : '#6B5430', lineHeight: 1.5,
+    }}>
+      <div style={{ fontWeight: 700 }}>
+        {stareCoada.blocate > 0
+          ? `⚠ ${t('proofStuckTitle', lang)}`
+          : `⏳ ${t('proofPendingTitle', lang)}`}
+      </div>
+      <div>
+        {stareCoada.blocate > 0
+          ? t('proofStuckBody', lang)
+          : t('proofPendingBody', lang)}
+      </div>
+      {stareCoada.blocate > 0 && (
+        <button type="button" className="btn secondary" style={{ marginTop: 10 }}
+                onClick={() => retryStuckConfirmations()}>
+          {t('proofStuckRetry', lang)}
+        </button>
+      )}
+    </div>
+  ) : null
+
+  const bannerEroare = fetchError ? (
+    <div style={{
+      background: '#FFF7E8', border: '1.5px solid #D99A1F', borderRadius: 10,
+      padding: '12px 14px', margin: '0 0 12px', fontSize: 13.5, color: '#6B5430', lineHeight: 1.5,
+    }}>
+      ⚠ {t('ridesFetchFailed', lang)}
+    </div>
+  ) : null
 
   if (loading) return <PlaceholderScreen title={t('tabRides', lang)} note={t('loadingRides', lang)} />
 
@@ -1453,6 +1665,8 @@ function RidesScreen({ profile, isOwner, session, lang }) {
 
         {currentTab === 'mine' && (
           <>
+            {bannerDovezi}
+            {bannerEroare}
             <div className="rides-toolbar">
               <button className="filter-btn" disabled title={t('comingSoon', lang)}>
                 ⏷ {t('filter', lang)}
@@ -1494,12 +1708,14 @@ function CompletedOrdersListScreen({ profile, isOwner, lang }) {
     if (!profile?.id) { setLoading(false); return }
     supabase
       .from('orders')
-      .select('*, winning_bid:bids!fk_winner_bid(price)')
+      .select('*, winning_bid:bids!fk_winner_bid(price), trip_stops(*)')
       .eq('assigned_driver_id', profile.id)
       .in('status', ['done', 'cancelled'])
       .then(({ data, error }) => {
+        // O interogare căzută nu goleşte istoricul: fără date noi păstrăm ce e
+        // deja pe ecran, ca şoferul să nu creadă că i-au dispărut cursele.
         if (error) console.error('completed orders fetch error:', error.message)
-        setOrders(data || [])
+        else setOrders(data || [])
         setLoading(false)
       })
   }, [profile?.id])
@@ -1539,7 +1755,17 @@ function RideCard({ order, isOwner, lang, onClick, compact }) {
         <div className={`ride-row-icon ${isCancelled ? 'cancelled' : 'done'}`}>{isCancelled ? '✕' : '✓'}</div>
         <div className="ride-row-body">
           <span className="ride-row-id">{order.order_number || order.reference || order.id.slice(0, 8)}</span>
-          <span className="ride-row-route">{order.pickup_address} → {order.delivery_address}</span>
+          {/* Contorul stă în FAŢĂ. Rândul are `text-overflow: ellipsis` şi
+              nowrap, iar două adrese germane îl depăşesc de la jumătatea
+              primei — pus la coadă, contorul nu se vedea pe niciun telefon. */}
+          {tourStops(order).length > 0 && (
+            <span className="ride-row-tour">
+              {t('tourLabel', lang)} · {tourStops(order).length + 2} {t('tourStopsLabel', lang)}
+            </span>
+          )}
+          <span className="ride-row-route">
+            {order.pickup_address} → {order.delivery_address}
+          </span>
           {isCancelled ? (
             <span className="ride-row-date">{statusLabel(order.status, lang)}</span>
           ) : completionRefDate(order) && (
@@ -1583,6 +1809,35 @@ function RideCard({ order, isOwner, lang, onClick, compact }) {
         <StageProgress order={order} lang={lang} />
 
         <div className="bid-stop"><span className="addr"><MapPin size={13} strokeWidth={1.8} /> {order.pickup_address}</span></div>
+        {/* Cel mult trei rânduri. La douăzeci de opriri, cardul creştea la o
+            mie de pixeli — o listă în care nu mai puteai compara două comenzi,
+            iar butonul de la bază ieşea de pe ecran. Lista întreagă e pe
+            ecranul comenzii, unde îi e locul.
+            Fără opacitate pe rând: stingea şi bifa, singurul lucru pentru care
+            se citesc rândurile astea. */}
+        {tourStops(order).slice(0, 3).map((st) => (
+          <div className="bid-stop" key={st.id}>
+            <span className="addr" style={{ paddingLeft: 12, color: 'var(--text-soft)', minWidth: 0 }}>
+              {st.kind === 'delivery'
+                ? <FlagTriangleRight size={12} strokeWidth={1.8} />
+                : <MapPin size={12} strokeWidth={1.8} />}
+              {' '}
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{st.address}</span>
+              {(st.confirmed_at || st.failed_at) && (
+                <span style={{ marginLeft: 6, color: st.failed_at ? '#B23A24' : '#1F7A50', fontWeight: 700, flex: '0 0 auto' }}>
+                  {st.failed_at ? '✕' : '✓'}
+                </span>
+              )}
+            </span>
+          </div>
+        ))}
+        {tourStops(order).length > 3 && (
+          <div className="bid-stop">
+            <span className="addr" style={{ paddingLeft: 12, color: 'var(--text-soft)' }}>
+              + {tourStops(order).length - 3} {t('stopsMoreLabel', lang)}
+            </span>
+          </div>
+        )}
         <div className="bid-stop"><span className="addr"><FlagTriangleRight size={13} strokeWidth={1.8} /> {order.delivery_address}</span></div>
 
         <div className="bid-divider" />
@@ -1638,6 +1893,41 @@ function useGeocode(address) {
   return coords
 }
 
+// Coordonatele mai multor adrese, cu UN singur efect.
+//
+// `useGeocode` e un hook: chemat o dată per oprire, ar schimba numărul de
+// hook-uri de la o randare la alta — exact ce React nu iartă. Aici lista e
+// doar un argument.
+function useGeocodeMany(addresses) {
+  const [puncte, setPuncte] = useState({})
+  const mapsKey = useGoogleMapsKey()
+  const cheie = (addresses || []).filter(Boolean).join('|')
+
+  useEffect(() => {
+    const lista = (addresses || []).filter(Boolean)
+    if (!lista.length) return
+    let active = true
+    // O SINGURĂ scriere de stare la final, nu una per adresă.
+    //
+    // Cu una per adresă, deschiderea unui tur cu douăzeci de opriri dădea
+    // douăzeci de randări, deci douăzeci de desene de hartă şi douăzeci de
+    // cereri de traseu la Google — plătite, şi cu polilinia reanimată de
+    // douăzeci de ori sub ochii şoferului.
+    ;(async () => {
+      const rezultate = await Promise.all(
+        lista.map((a) => geocodeAddressCached(a, mapsKey).then((pt) => [a, pt]).catch(() => [a, null])),
+      )
+      if (!active) return
+      const gasite = {}
+      for (const [a, pt] of rezultate) if (pt) gasite[a] = [pt.lat, pt.lng]
+      if (Object.keys(gasite).length) setPuncte((m) => ({ ...gasite, ...m }))
+    })()
+    return () => { active = false }
+  }, [cheie, mapsKey]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  return puncte
+}
+
 function mapsNavUrl(address) {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`
 }
@@ -1661,10 +1951,13 @@ function WhatsAppIcon({ size = 14 }) {
 // Mesajul pleacă deja completat cu numărul comenzii şi adresa etapei
 // curente, ca dispeceratul să ştie din prima clipă despre ce e vorba —
 // fără schimbul de mesaje „la care comandă?".
-function dispatchWaUrl(order, leg) {
+// `fapte` vine din `legFacts`: la o oprire de tur, `leg` e un id, nu „pickup"
+// sau „delivery" — comparat cu text, mesajul pleca mereu cu adresa de la
+// depozitul principal, oriunde s-ar fi aflat şoferul.
+function dispatchWaUrl(order, fapte) {
   const ref = order.order_number || order.reference || (order.id || '').slice(0, 8)
-  const adresa = leg === 'delivery' ? order.delivery_address : order.pickup_address
-  const eticheta = leg === 'delivery' ? 'Zustellung' : 'Abholung'
+  const adresa = fapte?.address || order.pickup_address
+  const eticheta = fapte?.kind === 'delivery' ? 'Zustellung' : 'Abholung'
   const text = ref + ' · ' + eticheta + ': ' + (adresa || '') + '\n\n'
   return 'https://wa.me/' + DISPATCH_WA + '?text=' + encodeURIComponent(text)
 }
@@ -1765,7 +2058,7 @@ function scanDocument(file) {
   })
 }
 
-function GoogleLiveMap({ pickupCoords, deliveryCoords }) {
+function GoogleLiveMap({ pickupCoords, deliveryCoords, stopCoords }) {
   const mapRef = useRef(null)
   const mapInstanceRef = useRef(null)
   const directionsRendererRef = useRef(null)
@@ -1807,7 +2100,7 @@ function GoogleLiveMap({ pickupCoords, deliveryCoords }) {
       const marker = new window.google.maps.Marker({
         position: { lat: coords[0], lng: coords[1] },
         map,
-        label: { text: label, color: '#fff', fontWeight: '700', fontSize: '12px' },
+        label: { text: label, color: '#fff', fontWeight: '700', fontSize: '13px' },
         icon: {
           path: window.google.maps.SymbolPath.CIRCLE,
           scale: 14,
@@ -1820,14 +2113,38 @@ function GoogleLiveMap({ pickupCoords, deliveryCoords }) {
       markersRef.current.push(marker)
     }
 
-    if (pickupCoords) addMarker(pickupCoords, 'A', '#FF7A29')
+    // Alb pe #FF7A29 dă 2,6:1 — nelizibil. Aceeaşi familie de portocaliu,
+    // închisă cât trebuie ca cifra să se vadă.
+    if (pickupCoords) addMarker(pickupCoords, 'A', '#B04A10')
+    // Opririle turului, numerotate între cele două capete. Ridicările în
+    // portocaliu ca A, livrările în bleumarin ca B — aceeaşi logică de culoare.
+    // Eticheta vine de la oprire, nu de la poziţia din listă.
+    //
+    // Numerotarea după index se schimba pe măsură ce adresele se aflau una
+    // după alta, iar o adresă negăsită muta toate numerele de după ea cu unu:
+    // semnul „7" era oprirea 8. Acum numărul e acelaşi cu cel de pe card.
+    // Portocaliul de dinainte (#E8631A) avea 3,37:1 cu alb — prea slab pentru
+    // cifre de 12px peste o hartă, în lumină de zi.
+    const intermediare = (stopCoords || []).filter((x) => x && x.coords)
+    intermediare.forEach((x, i) => {
+      addMarker(x.coords, x.label || String(i + 1), x.kind === 'delivery' ? '#1F4E8C' : '#B04A10')
+    })
     if (deliveryCoords) addMarker(deliveryCoords, 'B', '#0F2240')
 
     if (pickupCoords && deliveryCoords) {
       // Traseul dintre două puncte fixe nu se schimbă. Îl memorăm, altfel se
       // cerea din nou de la Google la fiecare deschidere a comenzii — de zeci
       // de ori pe zi pentru aceeași cursă.
-      const routeKey = `${pickupCoords[0]},${pickupCoords[1]}|${deliveryCoords[0]},${deliveryCoords[1]}`
+      // Google acceptă până la 23 de puncte intermediare într-o cerere; la un
+      // tur mai lung desenăm primele şi lăsăm restul ca semne pe hartă.
+      const waypoints = intermediare.slice(0, 23).map((x) => ({
+        location: { lat: x.coords[0], lng: x.coords[1] }, stopover: true,
+      }))
+      const routeKey = [
+        `${pickupCoords[0]},${pickupCoords[1]}`,
+        ...waypoints.map((w) => `${w.location.lat},${w.location.lng}`),
+        `${deliveryCoords[0]},${deliveryCoords[1]}`,
+      ].join('|')
       const cachedRoute = directionsCache.get(routeKey)
       if (cachedRoute) { renderer.setDirections(cachedRoute); return }
 
@@ -1837,6 +2154,7 @@ function GoogleLiveMap({ pickupCoords, deliveryCoords }) {
         {
           origin: { lat: pickupCoords[0], lng: pickupCoords[1] },
           destination: { lat: deliveryCoords[0], lng: deliveryCoords[1] },
+          waypoints,
           travelMode: window.google.maps.TravelMode.DRIVING,
         },
         (result, status) => {
@@ -1856,7 +2174,7 @@ function GoogleLiveMap({ pickupCoords, deliveryCoords }) {
       map.setCenter({ lat: pickupCoords[0], lng: pickupCoords[1] })
       map.setZoom(12)
     }
-  }, [pickupCoords, deliveryCoords, ready])
+  }, [pickupCoords, deliveryCoords, stopCoords, ready])
 
   if (!mapsKey || !ready) {
     return <div className="live-map"><div className="live-map-loading">🗺️</div></div>
@@ -1884,18 +2202,314 @@ function ContactRow({ contact, lang }) {
   )
 }
 
+/* ---------------------------------------------------------------------------
+   Cardul unei opriri de tur.
+   ---------------------------------------------------------------------------
+   Aceleaşi clase şi aceeaşi anatomie ca cele patru carduri scrise de mână
+   pentru capetele cursei — cap de card, insignă de terminat, pastilă „pe
+   drum", corp cu contact, adresă şi buton de navigare. Pe acelea nu le-am
+   atins: o cursă obişnuită arată exact ca înainte.
+   --------------------------------------------------------------------------- */
+function StopLegCard({ order, entry, lang, isCurrent, onOpenConfirm, onFailed }) {
+  const f = legFacts(order, entry)
+  const nr = legCounter(order, entry)
+  const esteLivrare = entry.kind === 'delivery'
+  const peDrum = f.startedAt && !f.arrivedAt && !f.confirmedAt && !f.failedAt
+  const seDeschide = isCurrent && f.arrivedAt && !f.confirmedAt && !f.failedAt
+
+  // Firma şi persoana, amândouă: „Rewe Markt Bahnhofstraße" e adesea singurul
+  // fel de a găsi poarta, iar „Herr Müller" nu ajută la asta. Dacă nu există
+  // niciun nume, nu construim un şir care ar afişa telefonul ca nume.
+  const numeContact = [f.company, f.contactName].filter(Boolean).join(' · ')
+  const contact = numeContact
+    ? [numeContact, f.contactPhone ? `· Tel. ${f.contactPhone}` : null].filter(Boolean).join(' ')
+    : null
+
+  const interval = [f.timeFrom, f.timeTo].filter(Boolean).map((x) => fmtTime(x)).join('–')
+
+  const acum = isCurrent && !f.confirmedAt && !f.failedAt
+  const inchisa = Boolean(f.confirmedAt || f.failedAt)
+  // Strânsă, dar nu pierdută: capul se apasă şi cardul revine întreg.
+  const [desfasurat, setDesfasurat] = useState(false)
+  const strinsa = inchisa && !desfasurat
+
+  // Ecranul sare la oprirea la rând.
+  //
+  // La douăzeci de opriri, cardul curent poate fi la al şaselea ecran de
+  // derulat. Fără asta, şoferul deschide comanda şi vede o oprire pe care a
+  // terminat-o acum o oră.
+  const cardRef = useRef(null)
+  useEffect(() => {
+    if (!acum || !cardRef.current) return
+    const liniste = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
+    cardRef.current.scrollIntoView({ block: 'center', behavior: liniste ? 'auto' : 'smooth' })
+  }, [acum, entry?.stop?.id])
+
+  return (
+    <div ref={cardRef} className={`info-card ${acum ? 'stop-now' : ''}`}>
+      <div
+        className={`info-card-head leg-head-line ${peDrum ? 'en-route' : ''}`}
+        {...(seDeschide
+          ? { onClick: onOpenConfirm, style: { cursor: 'pointer' } }
+          : inchisa
+            ? { onClick: () => setDesfasurat((v) => !v), style: { cursor: 'pointer' }, title: t('stopReopenHint', lang) }
+            : {})}
+      >
+        <span className="leg-head-left">
+          {esteLivrare ? '🅑' : '🅐'} {esteLivrare ? t('delivery', lang) : t('pickup', lang)}
+          {nr ? ` ${nr.n} / ${nr.total}` : ''}
+          {(f.date || interval) && (
+            <span className="leg-head-time">
+              {' · '}
+              {f.date ? fmtDate(f.date) : ''}
+              {interval ? `${f.date ? ' · ' : ''}${interval}` : ''}
+            </span>
+          )}
+        </span>
+        {f.confirmedAt && (
+          <span className="leg-done-badge">✓ {esteLivrare ? t('deliveredLabel', lang) : t('pickedUpLabel', lang)}</span>
+        )}
+        {f.failedAt && (
+          <span className="leg-done-badge failed">
+            ✕ {t('stopFailedLabel', lang)}
+          </span>
+        )}
+        {peDrum && (
+          <span className="leg-en-route-pill">{t('enRouteLabel', lang)} <span className="moving-van">🚚</span></span>
+        )}
+        {acum && !peDrum && <span className="stop-now-pill">{t('stopNowLabel', lang)}</span>}
+      </div>
+      <div className="info-card-body">
+        {strinsa ? (
+          <div className="stop-closed-line">
+            <span className="address-text">{f.address || '—'}</span>
+            <span className="stop-closed-time">
+              {f.confirmedAt ? `✓ ${fmtDateTime(f.confirmedAt)}` : `✕ ${fmtDateTime(f.failedAt)}`}
+              {' · '}{t('stopReopenHint', lang)}
+            </span>
+          </div>
+        ) : (
+          <>
+            <ContactRow contact={contact} lang={lang} />
+            <div className="info-row address-row">
+              <span className="address-text">{f.address || '—'}</span>
+              {f.address && (
+                <a className="maps-nav-btn" href={mapsNavUrl(f.address)} target="_blank" rel="noreferrer">
+                  <Navigation size={13} strokeWidth={2.2} /> {t('navigateButton', lang)}
+                </a>
+              )}
+            </div>
+            {f.confirmedAt && <div className="info-row-time">✓ {fmtDateTime(f.confirmedAt)}</div>}
+            {f.failedAt && <div className="info-row-time" style={{ color: '#8A2A17' }}>✕ {fmtDateTime(f.failedAt)}</div>}
+          </>
+        )}
+        {f.failedAt && f.failedReason && (
+          <div className="leg-notiz" style={{ background: '#FDECEA', borderColor: '#D98375', color: '#8A2A17' }}>
+            {f.failedReason}
+          </div>
+        )}
+        {/* Marfa se vede mereu — e motivul opririi. Referinţa şi menţiunea
+            pentru şofer doar la oprirea la rând şi la cele încheiate: la
+            douăzeci de opriri, trei casete pe fiecare card adăugau vreo mie
+            opt sute de pixeli pe care nimeni nu-i citeşte în avans. */}
+        {!strinsa && (f.cargo || f.weightKg) && (
+          <div className="leg-notiz">
+            📦 {[f.cargo, f.weightKg ? `${f.weightKg} kg` : null].filter(Boolean).join(' · ')}
+          </div>
+        )}
+        {(acum || desfasurat) && f.reference && <div className="leg-notiz">🧾 {f.reference}</div>}
+        {(acum || desfasurat) && f.note && <div className="leg-notiz">📝 {f.note}</div>}
+        {isCurrent && !f.confirmedAt && !f.failedAt && onFailed && (
+          <button
+            type="button"
+            className="link-btn danger-link"
+            onClick={onFailed}
+          >
+            ✕ {t('stopFailedButton', lang)}
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/* ---------------------------------------------------------------------------
+   „Oprirea n-a fost posibilă".
+   ---------------------------------------------------------------------------
+   Nu e nimeni, e închis, marfa e refuzată. Fără asta, oprirea rămâne pe veci
+   deschisă şi — fiindcă baza de date nu lasă turul să se încheie cu opriri
+   fără dovadă — şoferul ar rămâne blocat în faţa unei uşi închise.
+   --------------------------------------------------------------------------- */
+function StopFailedSheet({ stop, orderId, lang, onClose, onSaved }) {
+  const [motiv, setMotiv] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const [sumar, setSumar] = useState({ total: 0, allDone: false, photoCount: 0 })
+  const fileRef = useRef(null)
+
+  async function salveaza() {
+    if (!motiv.trim()) { setError(t('stopFailedMissingReason', lang)); return }
+    if (sumar.photoCount < 1) { setError(t('stopFailedMissingPhoto', lang)); return }
+    // Aşteptăm urcarea doar cât timp există internet. În subsol, poza rămâne
+    // în coadă şi urcă singură; motivul pleacă acum, ca turul să meargă.
+    if (reteaDisponibila() && !sumar.allDone) { setError(t('stopFailedWaitUpload', lang)); return }
+    setBusy(true)
+    setError('')
+    // Căile pozelor deja urcate, din coada din telefon — acelaşi mecanism ca
+    // la confirmarea unei etape, deci şi aici o poză făcută în subsol se urcă
+    // singură când revine semnalul.
+    const fisiere = (await listFiles(orderId, stop.id)) || []
+    const poze = fisiere
+      .filter((f) => f.kind === 'photo' && (f.status === 'uploaded' || f.status === 'confirmed'))
+      .map((f) => f.remotePath)
+      .filter(Boolean)
+    const { error: err } = await supabase.rpc('driver_stop_failed', {
+      p_stop_id: stop.id,
+      p_reason: motiv.trim(),
+      p_photos: poze,
+    })
+    if (!err) {
+      // O confirmare a acestei opriri rămasă în aşteptare trebuie ştearsă.
+      // Altfel se reia mai târziu, iar oprirea ar ajunge şi confirmată şi
+      // ratată — ceea ce baza refuză, deci reluarea ar cădea la fiecare
+      // deschidere a aplicaţiei, pentru totdeauna.
+      await cancelPendingConfirmation(orderId, stop.id).catch(() => {})
+    }
+    setBusy(false)
+    if (err) {
+      console.error('stop failed report:', err.message)
+      setError(t('stopFailedFailed', lang))
+      return
+    }
+    onSaved(motiv.trim())
+  }
+
+  const sheet = {
+    background: '#fff', borderRadius: '16px 16px 0 0',
+    padding: '20px 20px calc(20px + env(safe-area-inset-bottom))',
+    maxHeight: '92vh', overflowY: 'auto',
+  }
+
+  return (
+    <div className="sig-fullscreen" style={{ justifyContent: 'flex-end', background: 'rgba(15,34,64,.55)' }}>
+      <div style={sheet}>
+        <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: 17, color: '#0F2240', textTransform: 'uppercase', letterSpacing: '.03em', marginBottom: 4 }}>
+          {t('stopFailedTitle', lang)}
+        </div>
+        {/* #6B7A90 pe alb dă 4,36:1 — sub pragul de 4,5:1, iar asta e chiar
+            textul care explică un gest fără întoarcere. */}
+        <p style={{ fontSize: 13.5, color: '#5A6878', margin: '0 0 16px', lineHeight: 1.5 }}>
+          {t('stopFailedNote', lang)}
+        </p>
+
+        <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: '#5A6878', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 6 }}>
+          {t('stopFailedReason', lang)}
+        </label>
+        {/* 16px, nu 15: sub 16px, Safari pe iPhone măreşte singur pagina la
+            atingerea câmpului şi n-o mai micşorează. */}
+        <textarea
+          rows={3}
+          value={motiv}
+          onChange={(e) => setMotiv(e.target.value)}
+          placeholder={t('stopFailedReasonPlaceholder', lang)}
+          style={{ width: '100%', padding: '11px 12px', fontSize: 16, border: '1px solid #D8DEE8', borderRadius: 8, resize: 'vertical' }}
+        />
+
+        {/* Dovada. Aceeaşi componentă şi aceeaşi coadă de urcare ca la
+            confirmarea unei etape. */}
+        <div style={{ marginTop: 14 }}>
+          <PodFiles
+            orderId={orderId}
+            leg={stop.id}
+            lang={lang}
+            maxPhotos={2}
+            onAddPhoto={() => fileRef.current?.click()}
+            onSummary={setSumar}
+            photoHints={[t('stopFailedPhotoHint', lang)]}
+          />
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            multiple
+            style={{ display: 'none' }}
+            onChange={(e) => {
+              const f = Array.from(e.target.files || [])
+              if (f.length) enqueueFiles(orderId, stop.id, f, { kind: 'photo' })
+              e.target.value = ''
+            }}
+          />
+        </div>
+
+        {error && <div style={{ color: '#B23A24', fontSize: 12.5, marginTop: 8 }}>{error}</div>}
+
+        <button className="btn danger-solid" onClick={salveaza}
+                disabled={busy || !motiv.trim() || sumar.photoCount < 1 || (reteaDisponibila() && !sumar.allDone)}
+                style={{ width: '100%', marginTop: 14 }}>
+          {busy ? t('stopFailedSaving', lang) : t('stopFailedSave', lang)}
+        </button>
+        <button type="button" className="link-btn" onClick={onClose} disabled={busy} style={{ marginTop: 8 }}>
+          {t('back', lang)}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, onStatusChange, onDeliveryComplete, profile }) {
   // Actualizare optimistă — de îndată ce un buton (Losfahren/Angekommen/
   // confirmare) reușește, marcăm local, imediat, fără să așteptăm ca
   // sincronizarea live (Realtime) să confirme din baza de date — asta
   // dădea senzația de aplicație lentă la fiecare apăsare.
+  // Marcarea locală are termen de viaţă.
+  //
+  // Înainte se ştergea numai la schimbarea comenzii. Dacă dispeceratul
+  // desfăcea o confirmare (poze proaste, de refăcut), valoarea locală se
+  // punea peste cea de la server şi oprirea rămânea bifată pe telefon —
+  // fără nicio cale de a o redeschide. După treizeci de secunde, serverul
+  // are ultimul cuvânt, cum se cuvine.
+  const OPTIMIST_MS = 30000
   const [optimistic, setOptimistic] = useState({})
-  const order = { ...orderProp, ...optimistic }
-  useEffect(() => { setOptimistic({}) }, [orderProp.id])
+  // Opririle turului se marchează separat: ele nu stau pe comandă, ci pe
+  // rândurile lor. Fără asta, confirmarea unei opriri n-ar muta etapa până la
+  // următoarea reîncărcare — şoferul ar apăsa şi nu s-ar întâmpla nimic.
+  const [optimisticStops, setOptimisticStops] = useState({})
+  const acumMs = Date.now()
+  const proaspete = (m) => {
+    const out = {}
+    for (const k of Object.keys(m || {})) {
+      const e = m[k]
+      if (e && typeof e === 'object' && 'at' in e && (e.at === Infinity || acumMs - e.at < OPTIMIST_MS)) out[k] = e.v
+    }
+    return out
+  }
+  const orderBaza = { ...orderProp, ...proaspete(optimistic) }
+  const peticOpriri = {}
+  for (const id of Object.keys(optimisticStops)) {
+    const p = proaspete(optimisticStops[id])
+    if (Object.keys(p).length) peticOpriri[id] = p
+  }
+  const order = Object.keys(peticOpriri).length
+    ? {
+        ...orderBaza,
+        trip_stops: (orderBaza.trip_stops || []).map((st) =>
+          peticOpriri[st.id] ? { ...st, ...peticOpriri[st.id] } : st),
+      }
+    : orderBaza
+  useEffect(() => { setOptimistic({}); setOptimisticStops({}) }, [orderProp.id])
   // value === null înseamnă "am anulat etapa" — câmpul trebuie să apară gol
   // imediat, altfel interfața ar rămâne o clipă pe etapa anulată.
-  const setOptimisticField = (field, value) =>
-    setOptimistic((o) => ({ ...o, [field]: value === null ? null : new Date().toISOString() }))
+  //
+  // `fara_expirare` e pentru confirmările rămase în coadă: acolo adevărul e pe
+  // telefon, nu pe server, iar marcajul trebuie să ţină până la reîncărcare.
+  const setOptimisticField = (field, value, faraExpirare = false) =>
+    setOptimistic((o) => ({ ...o, [field]: { v: value === null ? null : new Date().toISOString(), at: faraExpirare ? Infinity : Date.now() } }))
+  const setOptimisticStopField = (stopId, field, value, faraExpirare = false) =>
+    setOptimisticStops((m) => ({
+      ...m,
+      [stopId]: { ...(m[stopId] || {}), [field]: { v: value === null ? null : new Date().toISOString(), at: faraExpirare ? Infinity : Date.now() } },
+    }))
   const pickupCoords = useGeocode(order.pickup_address)
   const deliveryCoords = useGeocode(order.delivery_address)
   const companyName = useCompanyName(order.created_by)
@@ -1906,6 +2520,7 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
   const pickupNotiz = extractContact(order.notes, 'Notiz Abholung: ')
   const deliveryNotiz = extractContact(order.notes, 'Notiz Zustellung: ')
   const [cargoOpen, setCargoOpen] = useState(false)
+  const [opriseEsuata, setOprireEsuata] = useState(null)
   const [reassigning, setReassigning] = useState(false)
   const [reassignTo, setReassignTo] = useState('')
 
@@ -1935,14 +2550,65 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
     onBack()
   }
 
-  // which leg are we on: pickup, delivery, sau (la dus-întors) return_pickup/return_delivery
-  const leg = !order.pickup_confirmed_at ? 'pickup'
-    : !order.delivery_confirmed_at ? 'delivery'
-    : (order.is_round_trip && !order.return_pickup_confirmed_at) ? 'return_pickup'
-    : 'return_delivery'
-  const startedAt = leg === 'pickup' ? order.pickup_started_at : leg === 'delivery' ? order.delivery_started_at : leg === 'return_pickup' ? order.return_pickup_started_at : order.return_delivery_started_at
-  const arrivedAt = leg === 'pickup' ? order.pickup_arrived_at : leg === 'delivery' ? order.delivery_arrived_at : leg === 'return_pickup' ? order.return_pickup_arrived_at : order.return_delivery_arrived_at
-  const confirmedAt = leg === 'pickup' ? order.pickup_confirmed_at : leg === 'delivery' ? order.delivery_confirmed_at : leg === 'return_pickup' ? order.return_pickup_confirmed_at : order.return_delivery_confirmed_at
+  // Etapa curentă: prima din listă care n-are nici confirmare, nici motiv de
+  // eşec. Înainte era un lanţ de patru ramuri scris de mână; acum lista poate
+  // avea oricâte opriri, iar o cursă obişnuită A→B dă exact aceleaşi două
+  // etape ca înainte.
+  const legEntry = currentLegEntry(order)
+  const leg = legEntry.key
+  const legFapte = legFacts(order, legEntry)
+  const startedAt = legFapte.startedAt
+  const arrivedAt = legFapte.arrivedAt
+  const confirmedAt = legFapte.confirmedAt
+  // Marcarea locală merge în locul potrivit: pe comandă sau pe rândul opririi.
+  const onLegStatusChange = (field, value, faraExpirare = false) => {
+    if (legEntry.stop) setOptimisticStopField(legEntry.stop.id, field, value, faraExpirare)
+    else setOptimisticField(field, value, faraExpirare)
+  }
+  // Opririle suplimentare, pentru cardurile dintre cele două capete.
+  const opririTur = tourStops(order)
+  // Ordinea cardurilor trebuie să fie ordinea de MERS, nu cea din bază.
+  //
+  // `tourStops` dă poziţiile aşa cum le-a scris dispeceratul, care pot fi
+  // amestecate (ridicare, livrare, ridicare…). Dar se conduce altfel: întâi
+  // toate ridicările, apoi toate livrările. Cu două liste diferite, etapa
+  // curentă sărea peste carduri, iar lista de pe ecran nu era traseul.
+  const secventaOpriri = tourLegSequence(order).filter((e) => e.stop)
+  // Coordonatele lor, pentru harta cu traseul adevărat. Dacă dispeceratul le-a
+  // salvat pe rând, le folosim de acolo; altfel le aflăm o dată şi rămân în
+  // memoria sesiunii.
+  const coordOpririDupaAdresa = useGeocodeMany(opririTur.map((st) => st.address))
+  // Memorat: fără asta, lista era un obiect nou la fiecare randare, iar harta
+  // se dărâma şi se redesena de fiecare dată.
+  const puncteOpriri = useMemo(() => secventaOpriri
+    .map((e) => {
+      const st = e.stop
+      const c = legCounter(order, e)
+      return {
+        kind: st.kind,
+        label: `${st.kind === 'delivery' ? 'B' : 'A'}${c ? c.n : ''}`,
+        coords: (st.lat != null && st.lng != null) ? [st.lat, st.lng] : coordOpririDupaAdresa[st.address],
+      }
+    })
+    .filter((x) => x.coords),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [JSON.stringify(secventaOpriri.map((e) => [e.stop.id, e.stop.kind, e.stop.address, e.stop.lat, e.stop.lng])), coordOpririDupaAdresa])
+
+  // Tur sau cursă obişnuită. De asta atârnă bara lipită de sus, rama „ACUM"
+  // pe cele două capete şi săritura ecranului la livrarea finală: la o cursă
+  // de la A la B niciuna nu intră în joc şi ecranul rămâne cel de până acum.
+  const esteTur = secventaOpriri.length > 0
+
+  // Livrarea finală e randată după toate opririle. Când îi venea rândul,
+  // ecranul rămânea unde era — la a douăzecea oprire, încheiată — şi şoferul
+  // derula în jos căutând ceva portocaliu.
+  const cardLivrareRef = useRef(null)
+  const livrareLaRand = esteTur && leg === 'delivery' && !order.delivery_confirmed_at
+  useEffect(() => {
+    if (!livrareLaRand || !cardLivrareRef.current) return
+    const liniste = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
+    cardLivrareRef.current.scrollIntoView({ block: 'center', behavior: liniste ? 'auto' : 'smooth' })
+  }, [livrareLaRand])
 
   // Formularul de confirmare (poze/documente/nume/semnătură) se deschide
   // automat de îndată ce șoferul a ajuns la locație. "Zurück" în acest
@@ -1965,31 +2631,33 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
     <div className="ride-detail">
       <button className="back-btn" onClick={handleBack}>← {t('back', lang)}</button>
 
-      <div className="ride-detail-header">
-        <span className="ride-ref">{t('orderRef', lang)} {order.order_number || order.reference || order.id.slice(0, 8)}</span>
-        <StageBadge order={order} lang={lang} />
+      <div className={`ride-head-group ${secventaOpriri.length > 0 ? 'ride-sticky-head' : ''}`}>
+        <div className="ride-detail-header">
+          <span className="ride-ref">{t('orderRef', lang)} {order.order_number || order.reference || order.id.slice(0, 8)}</span>
+          <StageBadge order={order} lang={lang} />
+        </div>
+
+        {/* Legătura cu dispeceratul: discretă, dar recunoscută după culoare.
+            Un rând, lângă antet — nu un panou care împinge cursa în jos. */}
+        <a
+          href={dispatchWaUrl(order, legFapte)}
+          target="_blank"
+          rel="noreferrer"
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: 5,
+            color: '#1B9E50', border: '1px solid #BFE8CF', background: '#F3FBF6',
+            fontSize: 12.5, fontWeight: 600, padding: '4px 9px', borderRadius: 20,
+            textDecoration: 'none', margin: '2px 0 8px',
+          }}
+        >
+          <WhatsAppIcon size={14} />
+          {t('dispatchWa', lang)}
+        </a>
+
+        <StageProgress order={order} lang={lang} />
       </div>
 
-      {/* Legătura cu dispeceratul: discretă, dar recunoscută după culoare.
-          Un rând, lângă antet — nu un panou care împinge cursa în jos. */}
-      <a
-        href={dispatchWaUrl(order, leg)}
-        target="_blank"
-        rel="noreferrer"
-        style={{
-          display: 'inline-flex', alignItems: 'center', gap: 5,
-          color: '#1B9E50', border: '1px solid #BFE8CF', background: '#F3FBF6',
-          fontSize: 12.5, fontWeight: 600, padding: '4px 9px', borderRadius: 20,
-          textDecoration: 'none', margin: '2px 0 8px',
-        }}
-      >
-        <WhatsAppIcon size={14} />
-        {t('dispatchWa', lang)}
-      </a>
-
-      <StageProgress order={order} lang={lang} />
-
-      <GoogleLiveMap pickupCoords={pickupCoords} deliveryCoords={deliveryCoords} />
+      <GoogleLiveMap pickupCoords={pickupCoords} deliveryCoords={deliveryCoords} stopCoords={puncteOpriri} />
 
       {companyName && (
         <div className="info-card">
@@ -1997,21 +2665,43 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
         </div>
       )}
 
-      {order.status === 'assigned' && !confirmedAt && confirmFormOpen && (
-        <LegWorkflow key={leg} order={order} leg={leg} lang={lang} startedAt={startedAt} arrivedAt={arrivedAt} onStatusChange={setOptimisticField} isOwner={isOwner} profile={profile} onDeliveryComplete={() => onDeliveryComplete(isOwner ? (earningsAmount(order) || null) : null)} />
+      {opriseEsuata && (
+        <StopFailedSheet
+          stop={opriseEsuata}
+          orderId={order.id}
+          lang={lang}
+          onClose={() => setOprireEsuata(null)}
+          onSaved={(motiv) => {
+            // Marcăm local, imediat: etapa trece la următoarea oprire fără să
+            // aşteptăm reîncărcarea.
+            const laMs = Date.now()
+            setOptimisticStops((m) => ({
+              ...m,
+              [opriseEsuata.id]: {
+                ...(m[opriseEsuata.id] || {}),
+                failed_at: { v: new Date().toISOString(), at: laMs },
+                failed_reason: { v: motiv, at: laMs },
+              },
+            }))
+            setOprireEsuata(null)
+            setConfirmFormOpen(false)
+          }}
+        />
       )}
 
-      {order.status === 'assigned' && order.pickup_confirmed_at && !order.delivery_confirmed_at && leg === 'delivery' && null}
+      {order.status === 'assigned' && !confirmedAt && confirmFormOpen && (
+        <LegWorkflow key={leg} order={order} leg={leg} legEntry={legEntry} lang={lang} startedAt={startedAt} arrivedAt={arrivedAt} onStatusChange={onLegStatusChange} isOwner={isOwner} profile={profile} onStopFailed={legEntry.stop ? () => setOprireEsuata(legEntry.stop) : undefined} onDeliveryComplete={() => onDeliveryComplete(isOwner ? (earningsAmount(order) || null) : null)} />
+      )}
 
       {!(inConfirmStep && confirmFormOpen) && (
       <>
-      <div className="info-card">
+      <div className={`info-card ${esteTur && leg === 'pickup' && !order.pickup_confirmed_at ? 'stop-now' : ''}`}>
         <div
           className={`info-card-head leg-head-line ${order.pickup_started_at && !order.pickup_arrived_at ? 'en-route' : ''}`}
           {...(leg === 'pickup' && arrivedAt && !confirmedAt ? { onClick: () => setConfirmFormOpen(true), style: { cursor: 'pointer' } } : {})}
         >
           <span className="leg-head-left">
-            🅐 {t('pickup', lang)}
+            🅐 {t('pickup', lang)}{(() => { const c = legCounter(order, { key: 'pickup', kind: 'pickup', stop: null }); return c ? ` ${c.n} / ${c.total}` : '' })()}
             {order.pickup_date && (
               <span className="leg-head-time">
                 {' · '}
@@ -2022,6 +2712,9 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
             )}
           </span>
           {order.pickup_confirmed_at && <span className="leg-done-badge">✓ {t('pickedUpLabel', lang)}</span>}
+          {esteTur && leg === 'pickup' && !order.pickup_confirmed_at && (
+            <span className="stop-now-pill">{t('stopNowLabel', lang)}</span>
+          )}
           {order.pickup_started_at && !order.pickup_arrived_at && (
             <span className="leg-en-route-pill">{t('enRouteLabel', lang)} <span className="moving-van">🚚</span></span>
           )}
@@ -2047,13 +2740,32 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
         </div>
       </div>
 
-      <div className="info-card">
+      {/* Opririle turului, între cele două capete: întâi ridicările
+          suplimentare, apoi livrările suplimentare, apoi livrarea
+          principală — chiar ordinea în care se conduc. La o cursă obişnuită
+          lista e goală şi nu se randează nimic. */}
+      {secventaOpriri.map((intrare) => {
+        const st = intrare.stop
+        return (
+          <StopLegCard
+            key={st.id}
+            order={order}
+            entry={intrare}
+            lang={lang}
+            isCurrent={legEntry.key === st.id}
+            onOpenConfirm={() => setConfirmFormOpen(true)}
+            onFailed={() => setOprireEsuata(st)}
+          />
+        )
+      })}
+
+      <div ref={cardLivrareRef} className={`info-card ${esteTur && leg === 'delivery' && !order.delivery_confirmed_at ? 'stop-now' : ''}`}>
         <div
           className={`info-card-head leg-head-line ${order.delivery_started_at && !order.delivery_arrived_at ? 'en-route' : ''}`}
           {...(leg === 'delivery' && arrivedAt && !confirmedAt ? { onClick: () => setConfirmFormOpen(true), style: { cursor: 'pointer' } } : {})}
         >
           <span className="leg-head-left">
-            🅑 {t('delivery', lang)}
+            🅑 {t('delivery', lang)}{(() => { const c = legCounter(order, { key: 'delivery', kind: 'delivery', stop: null }); return c ? ` ${c.n} / ${c.total}` : '' })()}
             {order.delivery_date && (
               <span className="leg-head-time">
                 {' · '}
@@ -2064,6 +2776,9 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
             )}
           </span>
           {order.delivery_confirmed_at && <span className="leg-done-badge">✓ {t('deliveredLabel', lang)}</span>}
+          {esteTur && leg === 'delivery' && !order.delivery_confirmed_at && (
+            <span className="stop-now-pill">{t('stopNowLabel', lang)}</span>
+          )}
           {order.delivery_started_at && !order.delivery_arrived_at && (
             <span className="leg-en-route-pill">{t('enRouteLabel', lang)} <span className="moving-van">🚚</span></span>
           )}
@@ -2716,7 +3431,7 @@ function IncidentSheet({ order, leg, lang, driverId, blocking, onClose, onSaved 
               onChange={(e) => setComment(e.target.value)}
               placeholder={t('incidentCommentPlaceholder', lang)}
               rows={4}
-              style={{ width: '100%', padding: '11px 12px', fontSize: 15, border: '1px solid #D8DEE8', borderRadius: 8, marginBottom: 12, resize: 'vertical' }}
+              style={{ width: '100%', padding: '11px 12px', fontSize: 16, border: '1px solid #D8DEE8', borderRadius: 8, marginBottom: 12, resize: 'vertical' }}
             />
 
             <div className="photo-grid" style={{ marginBottom: 14 }}>
@@ -2927,7 +3642,7 @@ function UndoBar({ field, at, lang, onUndo }) {
   )
 }
 
-function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, isOwner, onDeliveryComplete, profile }) {
+function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatusChange, isOwner, onDeliveryComplete, profile, onStopFailed }) {
   const [busy, setBusy] = useState(false)
   const [fileSummary, setFileSummary] = useState({ total: 0, allDone: false, failed: 0, pending: 0, processing: 0, photoCount: 0, documentCount: 0 })
   const [signatureBlob, setSignatureBlob] = useState(null)
@@ -2938,19 +3653,50 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
   const cameraInputRef = useRef(null)
   const [photoSourceOpen, setPhotoSourceOpen] = useState(false)
 
-  const startFn = leg === 'pickup' ? 'driver_mark_pickup_started' : leg === 'delivery' ? 'driver_mark_delivery_started' : leg === 'return_pickup' ? 'driver_mark_return_pickup_started' : 'driver_mark_return_delivery_started'
-  const arriveFn = leg === 'pickup' ? 'driver_mark_pickup_arrived' : leg === 'delivery' ? 'driver_mark_delivery_arrived' : leg === 'return_pickup' ? 'driver_mark_return_pickup_arrived' : 'driver_mark_return_delivery_arrived'
-  const confirmFn = leg === 'pickup' ? 'driver_confirm_pickup' : leg === 'delivery' ? 'driver_confirm_delivery' : leg === 'return_pickup' ? 'driver_confirm_return_pickup' : 'driver_confirm_return_delivery'
-  const legLabel = (leg === 'pickup' || leg === 'return_pickup') ? t('pickup', lang) : t('delivery', lang)
+  // Etapa, ca obiect. La o oprire de tur vine din `trip_stops`; la capetele
+  // cursei, din coloanele comenzii. Tot ce urmează citeşte de aici, deci nu
+  // mai trebuie să ştie unde stau datele.
+  const intrare = legEntry || { key: leg, kind: (leg === 'delivery' || leg === 'return_delivery') ? 'delivery' : 'pickup', stop: null }
+  const fapte = legFacts(order, intrare)
+  const esteOprire = !!intrare.stop
+  const esteLivrareEtapa = intrare.kind === 'delivery'
+
+  // Numele funcţiilor de pe server, derivate din etapă — nu enumerate.
+  const rpc = legRpcNames(intrare)
+  const startFn = rpc.start
+  const arriveFn = rpc.arrive
+  const confirmFn = rpc.confirm
+
+  // Numele câmpului pe care-l marcăm local, imediat după ce butonul reuşeşte.
+  // La o oprire câmpurile sunt simple (`arrived_at`); la capetele cursei
+  // purtă prefixul etapei (`pickup_arrived_at`).
+  const campEtapa = (pas) => (esteOprire ? `${pas}_at` : `${intrare.key}_${pas}_at`)
+
+  // Turul nu se încheie cu opriri fără dovadă. Baza de date refuză oricum
+  // (există un declanşator), dar aici îi spunem şoferului CÂTE lipsesc, în loc
+  // să-i arate o eroare de server la ultima apăsare.
+  const opririDeschise = tourStops(order).filter(
+    (st) => !st.confirmed_at && !st.failed_at && st.id !== intrare.key,
+  ).length
+  const esteUltimaEtapa = (() => {
+    const q = tourLegSequence(order)
+    return q.length > 0 && q[q.length - 1].key === intrare.key
+  })()
+  const turIncomplet = esteUltimaEtapa && opririDeschise > 0
+
+  const numar = legCounter(order, intrare)
+  const legLabel = [
+    esteLivrareEtapa ? t('delivery', lang) : t('pickup', lang),
+    numar ? `${numar.n} / ${numar.total}` : null,
+  ].filter(Boolean).join(' ')
 
   // Ultima etapă marcată, cât timp mai poate fi anulată.
   const [undoable, setUndoable] = useState(null) // { field, at } | null
 
   async function undoStage(field) {
-    const { data, error } = await supabase.rpc('driver_undo_stage', {
-      p_order_id: order.id,
-      p_field: field,
-    })
+    const { data, error } = esteOprire
+      ? await supabase.rpc('driver_undo_stop_stage', { p_stop_id: intrare.stop.id, p_field: field })
+      : await supabase.rpc('driver_undo_stage', { p_order_id: order.id, p_field: field })
     if (error) {
       console.error('undo error:', error.message)
       setUndoError(t('undoFailed', lang))
@@ -2972,7 +3718,8 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
   async function callRpc(fn) {
     if (busy) return
     setBusy(true)
-    const { error } = await supabase.rpc(fn, { p_order_id: order.id })
+    // La o oprire se trimite `p_stop_id`; la capetele cursei, `p_order_id`.
+    const { error } = await supabase.rpc(fn, esteOprire ? rpc.args : { p_order_id: order.id })
     setBusy(false)
     if (error) {
       console.error(fn, error.message)
@@ -2984,12 +3731,10 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
       setNotitaPlecare(true)
       setTimeout(() => setNotitaPlecare(false), 5000)
     }
-    // Numele funcției urmează mereu tiparul driver_mark_{etapă}_started/
-    // arrived — deducem câmpul afectat, ca să marcăm local, instant,
-    // fără să așteptăm sincronizarea live din baza de date.
-    const m = fn.match(/^driver_mark_(.+)_(started|arrived)$/)
-    if (m) {
-      const field = `${m[1]}_${m[2]}_at`
+    // Marcăm local, instant, fără să aşteptăm sincronizarea live din bază.
+    const pas = /_started$/.test(fn) ? 'started' : /_arrived$/.test(fn) ? 'arrived' : null
+    if (pas) {
+      const field = campEtapa(pas)
       onStatusChange(field)
       setUndoable({ field, at: Date.now() })
     }
@@ -3041,29 +3786,43 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
 
   // Dokumentenzustellung, doar pe etapa de livrare — la ridicare nu are sens.
   const isDocumentDelivery = !!order.is_document_delivery
-  const isDocumentDeliveryLeg = isDocumentDelivery && (leg === 'delivery' || leg === 'return_delivery')
+  const isDocumentDeliveryLeg = isDocumentDelivery && esteLivrareEtapa
 
   // Verificarea distanţei merge pe AMBELE etape ale unei livrări de
   // documente — şi ridicarea contează ca probă, nu doar predarea.
-  const adresaEtapei = (leg === 'delivery' || leg === 'return_delivery')
-    ? (leg === 'return_delivery' ? order.return_delivery_address : order.delivery_address)
-    : (leg === 'return_pickup' ? order.return_pickup_address : order.pickup_address)
+  const adresaEtapei = fapte.address
   // Coordonatele ţintei: întâi din comandă, dacă au fost deja aflate o dată.
   // Abia dacă lipsesc întrebăm Google — şi atunci le şi scriem în bază, ca
   // să nu se mai ceară niciodată pentru aceeaşi comandă.
-  const esteLivrare = leg === 'delivery' || leg === 'return_delivery'
-  const coordSalvate = esteLivrare
-    ? (order.delivery_lat != null && order.delivery_lng != null ? [order.delivery_lat, order.delivery_lng] : null)
-    : (order.pickup_lat != null && order.pickup_lng != null ? [order.pickup_lat, order.pickup_lng] : null)
+  // Slotul de coordonate urmează ADRESA, nu felul etapei.
+  //
+  // La dus-întors adresele se schimbă între ele: `return_pickup_address` ESTE
+  // adresa de livrare, iar `return_delivery_address` e cea de ridicare. Legat
+  // de felul etapei, codul compara poziţia şoferului cu coordonatele celeilalte
+  // adrese — iar la o livrare de documente, unde distanţa e verificată, asta
+  // putea arăta „eşti la 300 km" şi bloca confirmarea. Şi mai scria
+  // coordonatele greşite în bază, pentru totdeauna.
+  // O oprire de tur îşi are propriile coordonate pe rândul ei. Capetele
+  // cursei folosesc sloturile de pe comandă, iar la dus-întors adresele se
+  // schimbă între ele — de aceea slotul urmează ADRESA, nu felul etapei.
+  const slotCoord = (intrare.key === 'delivery' || intrare.key === 'return_pickup') ? 'delivery' : 'pickup'
+  const coordSalvate = esteOprire
+    ? (intrare.stop.lat != null && intrare.stop.lng != null ? [intrare.stop.lat, intrare.stop.lng] : null)
+    : ((order[`${slotCoord}_lat`] != null && order[`${slotCoord}_lng`] != null)
+        ? [order[`${slotCoord}_lat`], order[`${slotCoord}_lng`]]
+        : null)
 
   const tintaGeocodata = useGeocode(isDocumentDelivery && !coordSalvate ? adresaEtapei : null)
   const tintaEtapei = coordSalvate || tintaGeocodata
 
   useEffect(() => {
-    if (!isDocumentDelivery || coordSalvate || !tintaGeocodata) return
+    // La o oprire nu scriem nimic: coordonatele ei le pune dispeceratul când
+    // alege adresa, iar aici n-avem drept de scriere pe rândul opririi.
+    if (esteOprire || !isDocumentDelivery || coordSalvate || !tintaGeocodata) return
     supabase.rpc('driver_set_address_coords', {
       p_order_id: order.id,
-      p_leg: esteLivrare ? 'delivery' : 'pickup',
+      // Trimitem etapa adevărată; funcţia de pe server alege slotul potrivit.
+      p_leg: leg,
       p_lat: tintaGeocodata[0],
       p_lng: tintaGeocodata[1],
     }).then(({ error }) => { if (error) console.error('coords save:', error.message) })
@@ -3107,7 +3866,7 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
   //
   // Şoferul le ştie din instructaj — dar le aplică în faţa uşii, obosit, la
   // a şasea livrare. O regulă semnată acum trei luni nu ajută în clipa aceea.
-  const esteEtapaLivrareDoc = isDocumentDelivery && (leg === 'delivery' || leg === 'return_delivery')
+  const esteEtapaLivrareDoc = isDocumentDeliveryLeg
 
   // La predarea în cutia poştală, şase fotografii: clădirea, plicul lângă
   // cutie cu numele vizibile, plicul pe jumătate introdus, plicul intrat
@@ -3125,7 +3884,7 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
   // tipărite la el. Cu CMR: semnătura se dă pe hârtie, deci în aplicaţie nu
   // mai apare, dar documentul trebuie încărcat. Fără: semnătura în aplicaţie
   // şi numele destinatarului sunt singura dovadă.
-  const esteLivrareNormala = !isDocumentDelivery && (leg === 'delivery' || leg === 'return_delivery')
+  const esteLivrareNormala = !isDocumentDelivery && esteLivrareEtapa
   const [areActe, setAreActe] = useState(order.delivery_has_paperwork)
 
   async function raspundeActe(valoare) {
@@ -3140,7 +3899,12 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
   const [incidentSaved, setIncidentSaved] = useState(false)
   const [etaOpen, setEtaOpen] = useState(false)
   const [etaToast, setEtaToast] = useState('')
-  const etaAvailable = leg === 'pickup' || leg === 'delivery'
+  // ETA rămâne doar pe cele două capete, cu bună ştiinţă: trimiterea cere o
+  // funcţie de server care scrie în `pickup_eta_*` / `delivery_eta_*`.
+  // Opririle au acum coloanele lor (`trip_stops.eta_*`), dar funcţia care
+  // scrie în ele nu e încă făcută — iar un buton care pare să trimită şi nu
+  // trimite e mai rău decât unul care lipseşte.
+  const etaAvailable = intrare.key === 'pickup' || intrare.key === 'delivery'
   const etaCount = leg === 'pickup' ? (order.pickup_eta_count || 0) : (order.delivery_eta_count || 0)
 
   const etaBlock = etaAvailable ? (
@@ -3338,15 +4102,21 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
               ) * 1000)
             : null
 
-          await supabase.rpc('driver_set_confirm_location', {
-            p_order_id: order.id,
-            p_leg: leg === 'pickup' || leg === 'return_pickup' ? 'pickup' : 'delivery',
+          // Etapa adevărată, nu strivită în două.
+          //
+          // Înainte, poziţia de la o etapă de retur se scria peste poziţia de
+          // la etapa de dus: dovada primei livrări dispărea. Acum fiecare
+          // etapă are coloanele ei — iar o oprire de tur le are pe rândul ei.
+          const pozitie = {
             p_lat: result.pos ? result.pos.coords.latitude : null,
             p_lng: result.pos ? result.pos.coords.longitude : null,
             p_accuracy: result.pos ? Math.round(result.pos.coords.accuracy) : null,
             p_error: result.error,
             p_distance: distantaMetri,
-          })
+          }
+          await (esteOprire
+            ? supabase.rpc('driver_set_stop_confirm_location', { p_stop_id: intrare.stop.id, ...pozitie })
+            : supabase.rpc('driver_set_confirm_location', { p_order_id: order.id, p_leg: intrare.key, ...pozitie }))
         } catch (err) {
           console.error('confirm location failed:', err.message)
         }
@@ -3355,7 +4125,10 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
       // Modul de livrare se scrie separat: șoferul n-are drept direct pe
       // comenzi, iar RPC-ul de confirmare are o semnătură fixă folosită și de
       // Disponent, pe care n-o schimbăm.
-      if (isDocumentDeliveryLeg && deliveryMethod) {
+      // Numai la capetele cursei: ambele funcţii scriu pe COMANDĂ, nu pe
+      // oprire. La un tur cu cinci livrări, răspunsul fiecărei opriri îl
+      // ştergea pe cel dinainte, iar dispeceratul vedea doar ultimul.
+      if (!esteOprire && isDocumentDeliveryLeg && deliveryMethod) {
         const { error: dmErr } = await supabase.rpc('driver_set_delivery_method', {
           p_order_id: order.id,
           p_method: deliveryMethod,
@@ -3372,9 +4145,17 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
         leg,
         rpcName: confirmFn,
         signerName,
+        // La o oprire, funcţia de pe server are nevoie şi de id-ul ei.
+        extraPayload: esteOprire ? rpc.args : null,
       })
 
-      onStatusChange(`${leg}_confirmed_at`)
+      // Marcăm etapa încheiată chiar dacă trimiterea aşteaptă internet.
+      //
+      // E o alegere, nu o scăpare: la un tur cu douăzeci de opriri, a lăsa
+      // şoferul blocat pe oprirea 7 până revine semnalul ar opri toată ziua.
+      // Mesajul de dedesubt îi spune limpede că trimiterea e în aşteptare, iar
+      // sărbătoarea de la final nu se declanşează până nu pleacă.
+      onStatusChange(campEtapa('confirmed'), undefined, result === 'pending')
 
       if (result === 'pending') {
         // Nu declanșăm ecranul de succes: datele sunt în siguranță pe telefon,
@@ -3384,7 +4165,11 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
         return
       }
 
-      if ((leg === 'delivery' && !order.is_round_trip) || leg === 'return_delivery') {
+      // Ultima etapă a turului, oricâte ar fi. Înainte era scris de mână
+      // („livrarea, dacă nu e dus-întors, sau livrarea de retur"), ceea ce la
+      // un tur cu cinci livrări ar fi sărbătorit după prima.
+      const seq = tourLegSequence(order)
+      if (seq.length && seq[seq.length - 1].key === intrare.key) {
         if (onDeliveryComplete) onDeliveryComplete()
       }
     } catch (err) {
@@ -3412,8 +4197,11 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
     return (
       <>
         {undoBlock}
+        {/* Butonul spune încotro. La un tur cu douăzeci de opriri, „Losfahren"
+            singur nu-i spune şoferului nimic: toate cardurile arată la fel,
+            iar el apasă fără să ştie spre care adresă porneşte. */}
         <button className="btn sticky-cta" onClick={() => callRpc(startFn)} disabled={busy}>
-          {t('startDriving', lang)}
+          {t('startDriving', lang)}{numar ? ` · ${legLabel}` : ''}
         </button>
       </>
     )
@@ -3449,7 +4237,7 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
             Nu e dezactivat: la atingere spune de ce, cu distanţa în metri,
             şi lasă o portiţă dacă poziţia telefonului e greşită. */}
         <button
-          className="btn sticky-cta"
+          className={`btn sticky-cta ${distanta.preaDeparte ? 'needs-proximity' : ''}`}
           onClick={() => {
             // Blocaj real, fără a doua atingere. Portiţa dinainte nu lăsa
             // nicio urmă: nu se putea şti dacă şoferul a văzut avertismentul
@@ -3468,9 +4256,8 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
             callRpc(arriveFn)
           }}
           disabled={busy}
-          style={distanta.preaDeparte ? { opacity: 0.45 } : undefined}
         >
-          {t('arrived', lang)}
+          {t('arrived', lang)}{numar ? ` · ${legLabel}` : ''}
         </button>
 
         {/* Regulile predării, într-o fereastră care cere o confirmare.
@@ -3543,7 +4330,7 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
                 Aşa rămâne o urmă scrisă, în loc de o a doua atingere
                 despre care nimeni nu află niciodată. */}
             <a
-              href={dispatchWaUrl(order, leg)}
+              href={dispatchWaUrl(order, fapte)}
               target="_blank"
               rel="noreferrer"
               style={{
@@ -3705,9 +4492,21 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
           într-o mână şi plicul în cealaltă. La livrare apare şi de unde a
           fost ridicat, pentru că asta îl întreabă destinatarul. */}
       {(() => {
-        const laLivrare = leg === 'delivery' || leg === 'return_delivery'
-        const contact = extractContact(order.notes, laLivrare ? 'Kontakt Zustellung: ' : 'Kontakt Abholung: ')
-        const adresa = laLivrare ? order.delivery_address : order.pickup_address
+        // `esteLivrareEtapa` şi `fapte` vin din etapa adevărată. Comparat cu
+        // text, `leg` (un id de oprire) ieşea mereu „ridicare", deci caseta
+        // arăta adresa depozitului principal în timp ce şoferul stătea la
+        // livrarea 7 din 20 — exact informaţia pentru care există caseta.
+        const laLivrare = esteLivrareEtapa
+        // Adresa şi contactul vin din `fapte`, adică din etapa adevărată.
+        //
+        // Înainte se luau din coloanele comenzii: la livrarea 7 din 20, caseta
+        // arăta adresa destinatarului principal şi contactul lui — alt nume,
+        // altă stradă, exact informaţia pentru care există caseta.
+        const contact = esteOprire
+          ? ([fapte.company, fapte.contactName].filter(Boolean).join(' · ')
+             + (fapte.contactPhone ? ` · Tel. ${fapte.contactPhone}` : '')).trim() || null
+          : extractContact(order.notes, laLivrare ? 'Kontakt Zustellung: ' : 'Kontakt Abholung: ')
+        const adresa = fapte.address
         if (!contact && !adresa) return null
         return (
           <div style={{
@@ -3720,7 +4519,7 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
               </div>
             )}
             {adresa && <div style={{ color: 'var(--text-soft)' }}>{adresa}</div>}
-            {laLivrare && order.pickup_address && (
+            {laLivrare && !esteOprire && order.pickup_address && (
               <div style={{ color: 'var(--text-soft)', marginTop: 5, fontSize: 12.5 }}>
                 {t('pickedUpFrom', lang)}: {order.pickup_address}
               </div>
@@ -3899,7 +4698,7 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
       {/* La Briefkasten nu are cine semna — nu cerem nume și semnătură. */}
       {!(isDocumentDeliveryLeg && deliveryMethod === 'briefkasten') && (
       <>
-      <div className="pod-label">{t((leg === 'pickup' || leg === 'return_pickup') ? 'signerNameLabelPickup' : 'signerNameLabelDelivery', lang)}</div>
+      <div className="pod-label">{t(esteLivrareEtapa ? 'signerNameLabelDelivery' : 'signerNameLabelPickup', lang)}</div>
       <input
         className="bid-input2"
         type="text"
@@ -3928,7 +4727,7 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
               se primesc adesea chiar acolo, la încărcare. Doar o mențiune,
               ca şoferul să ştie că semnătura în aplicaţie nu e necesară
               dacă oricum semnează pe hârtie. */}
-          {!isDocumentDelivery && (leg === 'pickup' || leg === 'return_pickup') && (
+          {!isDocumentDelivery && !esteLivrareEtapa && (
             <div style={{ fontSize: 11.5, color: 'var(--text-soft)', marginTop: 5, lineHeight: 1.5 }}>
               {t('pickupSignatureNote', lang)}
             </div>
@@ -3950,6 +4749,17 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
           Până acum butonul era doar stins, fără să spună de ce — iar la
           livrările de documente lipsa Zustellprotokoll-ului se descoperea
           abia la dispecerat, când omul plecase demult de la adresă. */}
+      {turIncomplet && (
+        <div style={{ background: '#FFF7E8', border: '1px solid #F0B94D', borderRadius: 10, padding: '11px 13px', marginTop: 12 }}>
+          <div style={{ fontSize: 13.5, fontWeight: 700, color: '#7A4E10', marginBottom: 3 }}>
+            {t('tourIncompleteTitle', lang)}
+          </div>
+          <div style={{ fontSize: 12.5, color: '#6B5430', lineHeight: 1.5 }}>
+            {t('tourIncompleteNote', lang)} ({opririDeschise})
+          </div>
+        </div>
+      )}
+
       {(() => {
         if (!isDocumentDelivery && !esteLivrareNormala) return null
         const lipsa = []
@@ -4007,7 +4817,7 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
       })()}
 
       <button
-        className="btn"
+        className={`btn ${distanta.preaDeparte ? 'needs-proximity' : ''}`}
         onClick={() => {
           if (distanta.preaDeparte) {
             setAvertismentDistanta(distanta.metri)
@@ -4015,7 +4825,13 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
           }
           confirmLeg()
         }}
-        disabled={busy || !!blockingIncident || fileSummary.total === 0 || !fileSummary.allDone
+        // Fără internet, dovezile rămân în coadă şi `allDone` nu devine
+        // niciodată adevărat. Blocat pe asta, şoferul nu putea nici confirma,
+        // nici merge mai departe — stătea într-un subsol cu turul oprit.
+        // Acum confirmarea se pune în aşteptare, întreagă, şi pleacă singură
+        // când revine semnalul.
+        disabled={busy || !!blockingIncident || turIncomplet || fileSummary.total === 0
+          || (reteaDisponibila() && !fileSummary.allDone)
           || (isDocumentDeliveryLeg && !deliveryMethod)
           || (esteLivrareNormala && (
                 areActe == null
@@ -4027,14 +4843,30 @@ function LegWorkflow({ order, leg, lang, startedAt, arrivedAt, onStatusChange, i
                 fileSummary.photoCount < ((esteEtapaLivrareDoc && deliveryMethod === 'briefkasten') ? MINIM_POZE_LIVRARE : 1)
                 || fileSummary.documentCount === 0
               ))}
-        style={{ marginTop: 14, ...(distanta.preaDeparte ? { opacity: 0.45 } : null) }}
+        style={{ marginTop: 14 }}
       >
         {busy
           ? t('uploadingLabel', lang)
           : fileSummary.total > 0 && !fileSummary.allDone
             ? t('waitingForUploads', lang)
-            : (leg === 'pickup' || leg === 'return_pickup') ? t('confirmPickup', lang) : t('confirmDelivery', lang)}
+            : esteLivrareEtapa ? t('confirmDelivery', lang) : t('confirmPickup', lang)}
       </button>
+
+      {/* Scăparea, exact unde e nevoie de ea.
+          Înainte butonul exista doar pe cardul opririi — iar cardurile se
+          ascund tocmai în pasul de confirmare. Şoferul ajungea la o poartă
+          închisă, apăsa „Am ajuns", şi rămânea în faţa unui formular de poze
+          pe care nu-l putea completa, fără nicio ieşire. */}
+      {esteOprire && onStopFailed && (
+        <button
+          type="button"
+          className="link-btn danger-link"
+          onClick={onStopFailed}
+          disabled={busy}
+        >
+          ✕ {t('stopFailedButton', lang)}
+        </button>
+      )}
     </div>
   )
 }
@@ -4107,22 +4939,55 @@ function DocumentLink({ doc, lang }) {
   )
 }
 
-function TimelineLeg({ leg, order, lang }) {
-  const startedAt = leg === 'pickup' ? order.pickup_started_at : order.delivery_started_at
-  const arrivedAt = leg === 'pickup' ? order.pickup_arrived_at : order.delivery_arrived_at
-  const confirmedAt = leg === 'pickup' ? order.pickup_confirmed_at : order.delivery_confirmed_at
-  const photoPaths = leg === 'pickup' ? order.pickup_photos : order.delivery_photos
-  const documents = (leg === 'pickup' ? order.pickup_documents : order.delivery_documents) || []
-  const signaturePath = leg === 'pickup' ? order.pickup_signature_url : order.delivery_signature_url
-  const signerName = leg === 'pickup' ? order.pickup_signer_name : order.delivery_signer_name
+function TimelineLeg({ leg, entry, order, lang }) {
+  // Etapa, fie ca obiect (din listă), fie ca text, pentru apelurile vechi.
+  const intrare = entry || {
+    key: leg,
+    kind: (leg === 'delivery' || leg === 'return_delivery') ? 'delivery' : 'pickup',
+    stop: null,
+  }
+  const esteOprire = !!intrare.stop
+  const f = legFacts(order, intrare)
+  const startedAt = f.startedAt
+  const arrivedAt = f.arrivedAt
+  const confirmedAt = f.confirmedAt
+  // Numele coloanelor urmează numele etapei, deci merge şi pentru retur —
+  // până acum dovezile de la dus-întors nu se vedeau deloc aici.
+  const photoPaths = esteOprire ? intrare.stop.photos : order[`${intrare.key}_photos`]
+  const docBrut = esteOprire ? intrare.stop.documents : order[`${intrare.key}_documents`]
+  const documents = Array.isArray(docBrut) ? docBrut : []
+  const signaturePath = esteOprire ? intrare.stop.signature_url : order[`${intrare.key}_signature_url`]
+  const signerName = esteOprire ? intrare.stop.signer_name : order[`${intrare.key}_signer_name`]
   const photoUrls = useSignedUrls(photoPaths || [])
   const signatureUrl = useSignedUrl(signaturePath)
 
-  if (!startedAt) return null
+  // Oprirea ratată n-a început niciodată, dar trebuie să se vadă: ea e
+  // explicaţia unei livrări care lipseşte.
+  if (!startedAt && !f.failedAt) return null
+
+  const numar = legCounter(order, intrare)
+  const esteLivrareEtapa = intrare.kind === 'delivery'
+  const eticheta = [
+    esteLivrareEtapa ? `🅑 ${t('delivery', lang)}` : `🅐 ${t('pickup', lang)}`,
+    numar ? `${numar.n} / ${numar.total}` : null,
+    (intrare.key === 'return_pickup' || intrare.key === 'return_delivery') ? `(${t('returnLabel', lang)})` : null,
+  ].filter(Boolean).join(' ')
+
+  if (f.failedAt) {
+    return (
+      <>
+        <div className="tl-leg-label">{eticheta}</div>
+        <div className="tl-step">
+          <div className="tl-title" style={{ color: '#8A2A17' }}>✕ {t('stopFailedLabel', lang)}</div>
+          <div className="tl-time">{fmtDateTime(f.failedAt)}{f.failedReason ? ` · ${f.failedReason}` : ''}</div>
+        </div>
+      </>
+    )
+  }
 
   return (
     <>
-      <div className="tl-leg-label">{leg === 'pickup' ? '🅐 ' + t('pickup', lang) : '🅑 ' + t('delivery', lang)}</div>
+      <div className="tl-leg-label">{eticheta}</div>
       <div className="tl-step">
         <div className="tl-title">{t('startDriving', lang)}</div>
         <div className="tl-time">{fmtDateTime(startedAt)}</div>
@@ -4135,7 +5000,7 @@ function TimelineLeg({ leg, order, lang }) {
       )}
       {confirmedAt && (
         <div className="tl-step">
-          <div className="tl-title">{leg === 'pickup' ? t('confirmPickup', lang) : t('confirmDelivery', lang)}</div>
+          <div className="tl-title">{esteLivrareEtapa ? t('confirmDelivery', lang) : t('confirmPickup', lang)}</div>
           <div className="tl-time">{fmtDateTime(confirmedAt)} · {durationLabel(arrivedAt, confirmedAt)}</div>
           {photoUrls.length > 0 && (
             <div className="tl-photos">
@@ -4159,6 +5024,25 @@ function CompletedOrderDetail({ order, isOwner, lang, onBack }) {
   const pickupCoords = useGeocode(order.pickup_address)
   const deliveryCoords = useGeocode(order.delivery_address)
   const companyName = useCompanyName(order.created_by)
+  const opririTur = tourStops(order)
+  // Aceeaşi ordine ca pe ecranul cursei în desfăşurare: ordinea de mers.
+  const secventaOpriri = tourLegSequence(order).filter((e) => e.stop)
+  const coordOpririDupaAdresa = useGeocodeMany(opririTur.map((st) => st.address))
+  // Memorat: fără asta, lista era un obiect nou la fiecare randare, iar harta
+  // se dărâma şi se redesena de fiecare dată.
+  const puncteOpriri = useMemo(() => secventaOpriri
+    .map((e) => {
+      const st = e.stop
+      const c = legCounter(order, e)
+      return {
+        kind: st.kind,
+        label: `${st.kind === 'delivery' ? 'B' : 'A'}${c ? c.n : ''}`,
+        coords: (st.lat != null && st.lng != null) ? [st.lat, st.lng] : coordOpririDupaAdresa[st.address],
+      }
+    })
+    .filter((x) => x.coords),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [JSON.stringify(secventaOpriri.map((e) => [e.stop.id, e.stop.kind, e.stop.address, e.stop.lat, e.stop.lng])), coordOpririDupaAdresa])
 
   const net = earningsAmount(order)
 
@@ -4197,12 +5081,15 @@ function CompletedOrderDetail({ order, isOwner, lang, onBack }) {
         </div>
       )}
 
-      <GoogleLiveMap pickupCoords={pickupCoords} deliveryCoords={deliveryCoords} />
+      <GoogleLiveMap pickupCoords={pickupCoords} deliveryCoords={deliveryCoords} stopCoords={puncteOpriri} />
 
       {order.status !== 'cancelled' && (
         <div className="timeline">
-          <TimelineLeg leg="pickup" order={order} lang={lang} />
-          <TimelineLeg leg="delivery" order={order} lang={lang} />
+          {/* Toate etapele turului, nu doar cele două capete. Până acum
+              dus-întorsul îşi pierdea dovezile de la retur chiar aici. */}
+          {tourLegSequence(order).map((e) => (
+            <TimelineLeg key={e.key} entry={e} order={order} lang={lang} />
+          ))}
         </div>
       )}
     </div>
@@ -4323,6 +5210,35 @@ function AssignDriverCard({ order, lang, companyDrivers, onAssigned }) {
       <div className="bid-body-inner" style={{ paddingTop: 16 }}>
         <div className="bid-order-id">{t('orderRef', lang)} {order.order_number || order.id.slice(0, 8)}</div>
         <div className="bid-stop"><span className="addr"><MapPin size={13} strokeWidth={1.8} /> {order.pickup_address}</span></div>
+        {/* Cel mult trei rânduri. La douăzeci de opriri, cardul creştea la o
+            mie de pixeli — o listă în care nu mai puteai compara două comenzi,
+            iar butonul de la bază ieşea de pe ecran. Lista întreagă e pe
+            ecranul comenzii, unde îi e locul.
+            Fără opacitate pe rând: stingea şi bifa, singurul lucru pentru care
+            se citesc rândurile astea. */}
+        {tourStops(order).slice(0, 3).map((st) => (
+          <div className="bid-stop" key={st.id}>
+            <span className="addr" style={{ paddingLeft: 12, color: 'var(--text-soft)', minWidth: 0 }}>
+              {st.kind === 'delivery'
+                ? <FlagTriangleRight size={12} strokeWidth={1.8} />
+                : <MapPin size={12} strokeWidth={1.8} />}
+              {' '}
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{st.address}</span>
+              {(st.confirmed_at || st.failed_at) && (
+                <span style={{ marginLeft: 6, color: st.failed_at ? '#B23A24' : '#1F7A50', fontWeight: 700, flex: '0 0 auto' }}>
+                  {st.failed_at ? '✕' : '✓'}
+                </span>
+              )}
+            </span>
+          </div>
+        ))}
+        {tourStops(order).length > 3 && (
+          <div className="bid-stop">
+            <span className="addr" style={{ paddingLeft: 12, color: 'var(--text-soft)' }}>
+              + {tourStops(order).length - 3} {t('stopsMoreLabel', lang)}
+            </span>
+          </div>
+        )}
         <div className="bid-stop"><span className="addr"><FlagTriangleRight size={13} strokeWidth={1.8} /> {order.delivery_address}</span></div>
         <label className="bid-field-label">{t('assignDriverLabel', lang)}</label>
         <select className="doc-type-select" style={{ marginBottom: 10 }} value={selected} onChange={(e) => setSelected(e.target.value)}>
@@ -4776,7 +5692,7 @@ function EarningsScreen({ profile, lang }) {
     if (!profile?.id) { setLoading(false); return }
     supabase
       .from('orders')
-      .select('*, winning_bid:bids!fk_winner_bid(price)')
+      .select('*, winning_bid:bids!fk_winner_bid(price), trip_stops(*)')
       .eq('assigned_driver_id', profile.id)
       .eq('status', 'done')
       .then(({ data, error }) => {

@@ -6,8 +6,8 @@ import { Truck, CheckCircle2, Wallet, User, LogOut, Menu, Bell, MapPin, FlagTria
 import './index.css'
 import PodFiles from './components/PodFiles'
 import {
-  startQueue, enqueueFiles, enqueueSignature, confirmLeg as queueConfirmLeg, listFiles,
-  cancelPendingConfirmation, isOnline as reteaDisponibila,
+  startQueue, enqueueFiles, enqueueSignature, confirmLeg as queueConfirmLeg,
+  isOnline as reteaDisponibila, reportStopFailed,
   subscribe as ascultaCoada, confirmationsStatus, retryStuckConfirmations,
 } from './offline/uploadQueue'
 import { pruneOld } from './offline/db'
@@ -18,48 +18,6 @@ import { analyzeDocumentPhoto } from './services/imageQuality'
 // prinsă în tăcere, deci raportul se salva — doar că fără nicio poză, iar
 // nici șoferul, nici dispecerul nu aflau.
 import { processImage, PHOTO_PRESET } from './services/imageService'
-
-// Comenzile deschise la licitație vin prin funcția courier_orders.
-// Tabela orders nu mai lasă firmele să citească direct comenzile deschise
-// (adresa completă rămâne ascunsă până la câștig), așa că citirea directă
-// întorcea mereu o listă goală — "Verfügbar 0". Același lucru valabil pentru
-// evenimentele realtime pe orders: nu mai ajung la firme, de aceea lista se
-// reîmprospătează și periodic.
-//
-// courier_bid_board e varianta ușoară (fără poze/documente, doar comenzile
-// deschise + cele la care firma are ofertă încă în joc). Badge-ul din meniu,
-// "Verfügbar" și "Meine Angebote" o cer în același timp — cererile se
-// împart: una singură pe server, rezultatul refolosit câteva secunde.
-const OPEN_ORDERS_POLL_MS = 30000
-const BOARD_SHARE_MS = 4000
-const boardCache = { at: 0, promise: null }
-function fetchCourierBidBoard(force = false) {
-  const now = Date.now()
-  if (!force && boardCache.promise && now - boardCache.at < BOARD_SHARE_MS) return boardCache.promise
-  boardCache.at = now
-  boardCache.promise = supabase.rpc('courier_bid_board').then(({ data, error }) => {
-    if (error) {
-      console.error('courier_bid_board error:', error.message)
-      boardCache.at = 0 // la eroare nu păstrăm rezultatul gol
-      return []
-    }
-    return Array.isArray(data) ? data : []
-  })
-  return boardCache.promise
-}
-function invalidateCourierBidBoard() { boardCache.at = 0 }
-
-async function fetchOpenOrdersForCourier(force = false) {
-  const board = await fetchCourierBidBoard(force)
-  return board
-    .filter((o) => o.status === 'open' && !o.on_hold)
-    .sort((a, b) => String(a.pickup_date || '').localeCompare(String(b.pickup_date || '')))
-}
-
-// Telefonul în buzunar / aplicația în fundal: nu mai cerem nimic.
-function pageVisible() {
-  return typeof document === 'undefined' || document.visibilityState !== 'hidden'
-}
 
 // Jurnal de utilizare Google API — o linie per apel real, "fire-and-forget",
 // ca să vedem exact de unde vine consumul (raport în panoul de disponent).
@@ -929,6 +887,9 @@ function legFacts(order, entry) {
       address: s.address, company: s.company,
       contactName: s.contact_name, contactPhone: s.contact_phone,
       date: s.stop_date, timeFrom: s.time_from, timeTo: s.time_to,
+      // Oră fixă: nu e un interval scurt, e o obligaţie. Scrisă ca interval,
+      // şoferul care se uită o clipă pe ecran n-avea cum s-o deosebească.
+      timeFixed: !!s.time_fixed, timeAt: s.time_at,
       cargo: s.cargo_desc, weightKg: s.cargo_weight_kg,
       reference: s.reference, note: s.note,
     }
@@ -944,6 +905,12 @@ function legFacts(order, entry) {
     address: order?.[LEG_ADDRESS_FIELD[k]],
     company: null, contactName: null, contactPhone: null,
     date: order?.[`${k}_date`], timeFrom: order?.[`${k}_from`], timeTo: order?.[`${k}_to`],
+    // Capetele cursei au de mult ora fixă în bază (`pickup_fixed` +
+    // `pickup_time`), dar aplicaţia şoferului n-o citea: pe telefon apărea
+    // rubrica de interval goală, deşi clientul plătise în plus pentru ea.
+    // Returul n-are coloanele astea, deci acolo rămâne fals.
+    timeFixed: !esteRetur && !!order?.[`${k}_fixed`],
+    timeAt: esteRetur ? null : order?.[`${k}_time`],
     cargo: esteRetur ? order?.return_cargo_desc : order?.cargo_desc,
     weightKg: order?.weight, reference: order?.reference, note: null,
   }
@@ -1411,65 +1378,47 @@ function RidesScreen({ profile, isOwner, session, lang }) {
   useEffect(() => {
     if (!isOwner) return
 
-    let cancelled = false
-    // ID-urile comenzilor deschise văzute deja — o comandă nouă = un ID care
-    // n-a mai fost în lista anterioară. Evenimentul realtime INSERT nu mai
-    // ajunge la firme, așa că sunetul se decide aici, la fiecare reîmprospătare.
-    const knownOpenIds = { current: null }
-
-    async function notifyIfWithinRadius(order) {
-      // Dacă șoferul are o rază preferată setată, notificăm doar pentru
-      // comenzi din acel raion — cele mai îndepărtate rămân vizibile
-      // în listă, dar fără sunet/notificare.
-      let withinRadius = true
-      if (notifyRadiusKm != null && driverLocationForNotify && mapsKeyForNotify && order?.pickup_address) {
-        const point = await geocodeAddressCached(order.pickup_address, mapsKeyForNotify)
-        if (point) {
-          const km = haversineKm(driverLocationForNotify.lat, driverLocationForNotify.lng, point.lat, point.lng)
-          withinRadius = km <= notifyRadiusKm
-        }
-      }
-      if (withinRadius && !cancelled) {
-        playNewOrderSound()
-        setNewOrderToast(true)
-        setTimeout(() => setNewOrderToast(false), 4000)
-      }
-    }
-
-    async function refreshOpenCount() {
-      const [openOrders, bidsRes] = await Promise.all([
-        fetchOpenOrdersForCourier(),
+    function refreshOpenCount() {
+      Promise.all([
+        supabase.from('orders').select('id').eq('status', 'open').or('on_hold.is.null,on_hold.eq.false'),
         supabase.from('bids').select('order_id').eq('courier_id', session?.user?.id),
-      ])
-      if (cancelled) return
-      const biddedIds = new Set((bidsRes.data || []).map((b) => b.order_id))
-      const remaining = openOrders.filter((o) => !biddedIds.has(o.id))
-      setOpenCount(remaining.length)
-
-      if (knownOpenIds.current) {
-        const fresh = remaining.filter((o) => !knownOpenIds.current.has(o.id))
-        // un singur sunet, chiar dacă au apărut mai multe comenzi deodată
-        const within = fresh[0]
-        if (within && openCountLoaded.current) notifyIfWithinRadius(within)
-      }
-      knownOpenIds.current = new Set(openOrders.map((o) => o.id))
-      openCountLoaded.current = true
+      ]).then(([openRes, bidsRes]) => {
+        const biddedIds = new Set((bidsRes.data || []).map((b) => b.order_id))
+        const remaining = (openRes.data || []).filter((o) => !biddedIds.has(o.id)).length
+        setOpenCount(remaining)
+      })
     }
 
     refreshOpenCount()
-    const poll = setInterval(() => { if (pageVisible()) refreshOpenCount() }, OPEN_ORDERS_POLL_MS)
+    openCountLoaded.current = true
 
     const channel = supabase
       .channel('rides-open-count')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: 'status=eq.open' }, refreshOpenCount)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: 'status=eq.open' }, async (payload) => {
+        refreshOpenCount()
+        if (payload.eventType === 'INSERT' && openCountLoaded.current && !payload.new?.on_hold) {
+          // Dacă șoferul are o rază preferată setată, notificăm doar pentru
+          // comenzi din acel raion — cele mai îndepărtate rămân vizibile
+          // în listă, dar fără sunet/notificare.
+          let withinRadius = true
+          if (notifyRadiusKm != null && driverLocationForNotify && mapsKeyForNotify && payload.new?.pickup_address) {
+            const point = await geocodeAddressCached(payload.new.pickup_address, mapsKeyForNotify)
+            if (point) {
+              const km = haversineKm(driverLocationForNotify.lat, driverLocationForNotify.lng, point.lat, point.lng)
+              withinRadius = km <= notifyRadiusKm
+            }
+          }
+          if (withinRadius) {
+            playNewOrderSound()
+            setNewOrderToast(true)
+            setTimeout(() => setNewOrderToast(false), 4000)
+          }
+        }
+      })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'bids', filter: `courier_id=eq.${session?.user?.id}` }, refreshOpenCount)
       .subscribe()
 
-    return () => {
-      cancelled = true
-      clearInterval(poll)
-      supabase.removeChannel(channel)
-    }
+    return () => supabase.removeChannel(channel)
   }, [isOwner, notifyRadiusKm, driverLocationForNotify, mapsKeyForNotify, session?.user?.id])
 
   useEffect(() => { ordersRef.current = orders }, [orders])
@@ -2285,7 +2234,9 @@ function StopLegCard({ order, entry, lang, isCurrent, onOpenConfirm, onFailed })
     ? [numeContact, f.contactPhone ? `· Tel. ${f.contactPhone}` : null].filter(Boolean).join(' ')
     : null
 
-  const interval = [f.timeFrom, f.timeTo].filter(Boolean).map((x) => fmtTime(x)).join('–')
+  const interval = f.timeFixed
+    ? (f.timeAt ? fmtTime(f.timeAt) : '')
+    : [f.timeFrom, f.timeTo].filter(Boolean).map((x) => fmtTime(x)).join('–')
 
   const acum = isCurrent && !f.confirmedAt && !f.failedAt
   const inchisa = Boolean(f.confirmedAt || f.failedAt)
@@ -2322,7 +2273,10 @@ function StopLegCard({ order, entry, lang, isCurrent, onOpenConfirm, onFailed })
             <span className="leg-head-time">
               {' · '}
               {f.date ? fmtDate(f.date) : ''}
-              {interval ? `${f.date ? ' · ' : ''}${interval}` : ''}
+              {interval ? `${f.date ? ' · ' : ''}` : ''}
+              {interval && (f.timeFixed
+                ? <strong className="leg-head-fix">🔒 {interval}</strong>
+                : interval)}
             </span>
           )}
         </span>
@@ -2410,38 +2364,35 @@ function StopFailedSheet({ stop, orderId, lang, onClose, onSaved }) {
   async function salveaza() {
     if (!motiv.trim()) { setError(t('stopFailedMissingReason', lang)); return }
     if (sumar.photoCount < 1) { setError(t('stopFailedMissingPhoto', lang)); return }
-    // Aşteptăm urcarea doar cât timp există internet. În subsol, poza rămâne
-    // în coadă şi urcă singură; motivul pleacă acum, ca turul să meargă.
-    if (reteaDisponibila() && !sumar.allDone) { setError(t('stopFailedWaitUpload', lang)); return }
+    // Nu mai aşteptăm aici. Coada aşteaptă poza în locul nostru: dacă nu
+    // ajunge sus la timp, raportul rămâne pe telefon întreg şi pleacă singur.
+    //
+    // Blocarea de dinainte se potrivea cu subsolul, dar nu şi cu cazul
+    // obişnuit al unui telefon în mişcare: o bară de semnal, cu care
+    // `navigator.onLine` spune „sunt online" şi poza tot nu urcă. Acolo
+    // butonul rămânea blocat şi şoferul nu putea raporta deloc — iar fără
+    // raport, turul nu se mai putea încheia.
     setBusy(true)
     setError('')
     // Căile pozelor deja urcate, din coada din telefon — acelaşi mecanism ca
     // la confirmarea unei etape, deci şi aici o poză făcută în subsol se urcă
     // singură când revine semnalul.
-    const fisiere = (await listFiles(orderId, stop.id)) || []
-    const poze = fisiere
-      .filter((f) => f.kind === 'photo' && (f.status === 'uploaded' || f.status === 'confirmed'))
-      .map((f) => f.remotePath)
-      .filter(Boolean)
-    const { error: err } = await supabase.rpc('driver_stop_failed', {
-      p_stop_id: stop.id,
-      p_reason: motiv.trim(),
-      p_photos: poze,
-    })
-    if (!err) {
-      // O confirmare a acestei opriri rămasă în aşteptare trebuie ştearsă.
-      // Altfel se reia mai târziu, iar oprirea ar ajunge şi confirmată şi
-      // ratată — ceea ce baza refuză, deci reluarea ar cădea la fiecare
-      // deschidere a aplicaţiei, pentru totdeauna.
-      await cancelPendingConfirmation(orderId, stop.id).catch(() => {})
-    }
-    setBusy(false)
-    if (err) {
-      console.error('stop failed report:', err.message)
+    // Raportul merge prin coadă, ca o confirmare. Fără semnal rămâne pe
+    // telefon şi pleacă singur când revine — înainte, apăsarea cădea cu o
+    // eroare şi oprirea rămânea deschisă, deşi şoferul fusese acolo, scrisese
+    // motivul şi făcuse poza. Ştergerea unei confirmări rămase în aşteptare
+    // pentru aceeaşi oprire se face acum înăuntru, pe amândouă drumurile.
+    let rezultat
+    try {
+      rezultat = await reportStopFailed({ orderId, stopId: stop.id, reason: motiv.trim() })
+    } catch (err) {
+      setBusy(false)
+      console.error('stop failed report:', err?.message || err)
       setError(t('stopFailedFailed', lang))
       return
     }
-    onSaved(motiv.trim())
+    setBusy(false)
+    onSaved(motiv.trim(), rezultat === 'pending')
   }
 
   const sheet = {
@@ -2505,7 +2456,7 @@ function StopFailedSheet({ stop, orderId, lang, onClose, onSaved }) {
         {error && <div style={{ color: '#B23A24', fontSize: 12.5, marginTop: 8 }}>{error}</div>}
 
         <button className="btn danger-solid" onClick={salveaza}
-                disabled={busy || !motiv.trim() || sumar.photoCount < 1 || (reteaDisponibila() && !sumar.allDone)}
+                disabled={busy || !motiv.trim() || sumar.photoCount < 1}
                 style={{ width: '100%', marginTop: 14 }}>
           {busy ? t('stopFailedSaving', lang) : t('stopFailedSave', lang)}
         </button>
@@ -2731,10 +2682,15 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
           orderId={order.id}
           lang={lang}
           onClose={() => setOprireEsuata(null)}
-          onSaved={(motiv) => {
+          onSaved={(motiv, inAsteptare) => {
             // Marcăm local, imediat: etapa trece la următoarea oprire fără să
             // aşteptăm reîncărcarea.
-            const laMs = Date.now()
+            //
+            // Când raportul aşteaptă semnal, semnul NU expiră. Cu termenul de
+            // treizeci de secunde, oprirea reapărea deschisă după o jumătate
+            // de minut, deşi şoferul o raportase — iar el ar fi raportat-o a
+            // doua oară, sau ar fi crezut că nu s-a salvat.
+            const laMs = inAsteptare ? Infinity : Date.now()
             setOptimisticStops((m) => ({
               ...m,
               [opriseEsuata.id]: {
@@ -3529,9 +3485,30 @@ function IncidentSheet({ order, leg, lang, driverId, blocking, onClose, onSaved 
 // din Google Directions — un apel de rute la fiecare deschidere ar readuce
 // exact problema de consum pe care încercăm s-o reducem. Prepopulăm din
 // fereastra programată a comenzii, iar șoferul ajustează.
-function EtaSheet({ order, leg, lang, driverPhone, onClose, onSent }) {
-  const scheduledFrom = leg === 'pickup' ? (order.pickup_time || order.pickup_from) : (order.delivery_time || order.delivery_from)
-  const scheduledTo = leg === 'pickup' ? order.pickup_to : order.delivery_to
+function EtaSheet({ order, leg, entry, lang, driverPhone, onClose, onSent }) {
+  // La o oprire de tur, intervalul programat, numărătoarea şi textul vin din
+  // rândul opririi, nu din coloanele comenzii. `leg` e acolo id-ul opririi,
+  // deci comparaţiile cu 'pickup' nu mai spun nimic despre felul etapei.
+  const oprire = entry?.stop || null
+  const esteLivrareEta = entry ? entry.kind === 'delivery' : leg === 'delivery'
+  // La oră fixă, intervalul programat e un singur ceas. Îl luăm ca început şi
+  // punem o jumătate de oră după el: şoferul anunţă oricum un interval, iar
+  // fără capătul de sus câmpul s-ar fi umplut cu „acum + 90 de minute", care
+  // la o oprire de la 14:00 putea ieşi ÎNAINTEA începutului şi refuza
+  // trimiterea cu „interval greşit".
+  const plusJumatateDeOra = (hhmm) => {
+    const [h, m] = String(hhmm).slice(0, 5).split(':').map(Number)
+    if (!Number.isFinite(h) || !Number.isFinite(m)) return null
+    const tot = (h * 60 + m + 30) % (24 * 60)
+    return `${String(Math.floor(tot / 60)).padStart(2, '0')}:${String(tot % 60).padStart(2, '0')}`
+  }
+  const oraFixa = oprire ? (oprire.time_fixed ? oprire.time_at : null) : null
+  const scheduledFrom = oprire
+    ? (oraFixa || oprire.time_from)
+    : (esteLivrareEta ? (order.delivery_time || order.delivery_from) : (order.pickup_time || order.pickup_from))
+  const scheduledTo = oprire
+    ? (oraFixa ? plusJumatateDeOra(oraFixa) : oprire.time_to)
+    : (esteLivrareEta ? order.delivery_to : order.pickup_to)
 
   function plusMinutes(min) {
     const d = new Date(Date.now() + min * 60000)
@@ -3550,7 +3527,9 @@ function EtaSheet({ order, leg, lang, driverPhone, onClose, onSent }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
-  const sentCount = leg === 'pickup' ? (order.pickup_eta_count || 0) : (order.delivery_eta_count || 0)
+  const sentCount = oprire
+    ? (oprire.eta_count || 0)
+    : (esteLivrareEta ? (order.delivery_eta_count || 0) : (order.pickup_eta_count || 0))
 
   async function send() {
     setError('')
@@ -3579,6 +3558,7 @@ function EtaSheet({ order, leg, lang, driverPhone, onClose, onSent }) {
         bad_window: 'etaBadWindow',
         not_assigned: 'etaFailed',
         bad_leg: 'etaFailed',
+        already_done: 'etaAlreadyDone',
       }
       setError(t(reasons[data?.reason] || 'etaFailed', lang))
       return
@@ -3596,7 +3576,10 @@ function EtaSheet({ order, leg, lang, driverPhone, onClose, onSent }) {
           {t('etaTitle', lang)}
         </div>
         <p style={{ fontSize: 12.5, color: '#6B7A90', margin: '0 0 16px', lineHeight: 1.5 }}>
-          {t(leg === 'pickup' ? 'etaSubtitlePickup' : 'etaSubtitleDelivery', lang)}
+          {t(esteLivrareEta ? 'etaSubtitleDelivery' : 'etaSubtitlePickup', lang)}
+          {oprire && (
+            <><br /><strong style={{ color: '#0F2240' }}>{oprire.company || oprire.address}</strong></>
+          )}
         </p>
 
         <label style={label}>{t('etaDateLabel', lang)}</label>
@@ -3959,13 +3942,14 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
   const [incidentSaved, setIncidentSaved] = useState(false)
   const [etaOpen, setEtaOpen] = useState(false)
   const [etaToast, setEtaToast] = useState('')
-  // ETA rămâne doar pe cele două capete, cu bună ştiinţă: trimiterea cere o
-  // funcţie de server care scrie în `pickup_eta_*` / `delivery_eta_*`.
-  // Opririle au acum coloanele lor (`trip_stops.eta_*`), dar funcţia care
-  // scrie în ele nu e încă făcută — iar un buton care pare să trimită şi nu
-  // trimite e mai rău decât unul care lipseşte.
-  const etaAvailable = intrare.key === 'pickup' || intrare.key === 'delivery'
-  const etaCount = leg === 'pickup' ? (order.pickup_eta_count || 0) : (order.delivery_eta_count || 0)
+  // ETA e acum şi pe opriri: funcţia de server scrie în `trip_stops.eta_*`
+  // şi trimite acelaşi email, cu adresa opririi şi „Stopp 7 von 20" în faţă.
+  // Rămâne în afară doar returul — acolo nu există coloane, iar un buton care
+  // pare să trimită şi nu trimite e mai rău decât unul care lipseşte.
+  const etaAvailable = intrare.key === 'pickup' || intrare.key === 'delivery' || esteOprire
+  const etaCount = esteOprire
+    ? (intrare.stop.eta_count || 0)
+    : (intrare.key === 'pickup' ? (order.pickup_eta_count || 0) : (order.delivery_eta_count || 0))
 
   const etaBlock = etaAvailable ? (
     <>
@@ -3991,6 +3975,7 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
         <EtaSheet
           order={order}
           leg={leg}
+          entry={intrare}
           lang={lang}
           driverPhone={profile?.phone}
           onClose={() => setEtaOpen(false)}
@@ -5207,15 +5192,7 @@ function useCompanyProfileId(session, profile) {
   return id
 }
 
-// Ofertele firmei, fiecare cu comanda ei atașată în b.orders.
-//
-// Comanda NU mai vine din tabela orders (orders!bids_order_id_fkey): acolo
-// firmele nu mai au voie să citească o comandă pe care n-au câștigat-o, așa
-// că b.orders venea null și "Meine Angebote" rămânea gol. Comenzile vin acum
-// din courier_bid_board (deschise + atribuite, ușor). Doar ecranul "Nicht
-// angenommen" are nevoie de comenzile închise — acela cere istoricul complet
-// (courier_orders, mai greu), și numai cât e deschis.
-function useCourierBids(courierProfileId, { includeHistory = false } = {}) {
+function useCourierBids(courierProfileId) {
   const [bids, setBids] = useState([])
   const [loading, setLoading] = useState(true)
   // Numele canalului trebuie să fie unic per instanță — acest hook rulează
@@ -5228,38 +5205,27 @@ function useCourierBids(courierProfileId, { includeHistory = false } = {}) {
     if (!courierProfileId) { setLoading(false); return }
     let active = true
 
-    async function load(force = false) {
-      const ordersPromise = includeHistory
-        ? supabase.rpc('courier_orders').then(({ data, error }) => {
-            if (error) console.error('courier_orders error:', error.message)
-            return Array.isArray(data) ? data : []
-          })
-        : fetchCourierBidBoard(force)
-      const [bidsRes, orders] = await Promise.all([
-        supabase.from('bids').select('*').eq('courier_id', courierProfileId),
-        ordersPromise,
-      ])
-      if (bidsRes.error) console.error('bids fetch error:', bidsRes.error.message)
-      const byId = new Map(orders.map((o) => [o.id, o]))
-      const list = (bidsRes.data || []).map((b) => ({ ...b, orders: byId.get(b.order_id) || null }))
-      if (active) { setBids(list); setLoading(false) }
+    function load() {
+      supabase
+        .from('bids')
+        .select('*, orders!bids_order_id_fkey(*)')
+        .eq('courier_id', courierProfileId)
+        .then(({ data, error }) => {
+          if (error) console.error('bids fetch error:', error.message)
+          if (active) { setBids(data || []); setLoading(false) }
+        })
     }
 
     load()
-    const poll = setInterval(() => { if (pageVisible()) load() }, OPEN_ORDERS_POLL_MS)
 
     const channel = supabase
       .channel(channelNameRef.current)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'bids', filter: `courier_id=eq.${courierProfileId}` }, () => {
-        // oferta proprie s-a schimbat (nouă, modificată, contraofertă) —
-        // cerem tabla proaspătă, nu cea din ultimele secunde
-        invalidateCourierBidBoard()
-        load(true)
-      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'bids', filter: `courier_id=eq.${courierProfileId}` }, load)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders' }, load)
       .subscribe()
 
-    return () => { active = false; clearInterval(poll); supabase.removeChannel(channel) }
-  }, [courierProfileId, includeHistory])
+    return () => { active = false; supabase.removeChannel(channel) }
+  }, [courierProfileId])
 
   return { bids, loading }
 }
@@ -5388,7 +5354,7 @@ function MeineAngeboteScreen({ profile, session, lang }) {
 
 function NichtAngenommenScreen({ profile, session, lang }) {
   const courierProfileId = session?.user?.id || null
-  const { bids, loading } = useCourierBids(courierProfileId, { includeHistory: true })
+  const { bids, loading } = useCourierBids(courierProfileId)
 
   if (loading) return <PlaceholderScreen title={t('menuNotAccepted', lang)} note={t('loadingRides', lang)} />
 
@@ -6019,13 +5985,16 @@ function BiddingScreen({ profile, session, lang, embedded }) {
 
   useEffect(() => {
     let active = true
-    function refreshOpenOrders() {
-      fetchOpenOrdersForCourier().then((list) => {
-        if (active) { setOrders(list); setLoading(false) }
+    supabase
+      .from('orders')
+      .select('*')
+      .eq('status', 'open')
+      .or('on_hold.is.null,on_hold.eq.false')
+      .order('pickup_date', { ascending: true })
+      .then(({ data, error }) => {
+        if (error) console.error('open orders fetch error:', error.message)
+        if (active) { setOrders(data || []); setLoading(false) }
       })
-    }
-    refreshOpenOrders()
-    const poll = setInterval(() => { if (pageVisible()) refreshOpenOrders() }, OPEN_ORDERS_POLL_MS)
 
     if (courierProfileId) {
       supabase
@@ -6037,13 +6006,15 @@ function BiddingScreen({ profile, session, lang, embedded }) {
 
     const channel = supabase
       .channel('bidding-open-orders')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: 'status=eq.open' }, refreshOpenOrders)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: 'status=eq.open' }, () => {
+        supabase.from('orders').select('*').eq('status', 'open').or('on_hold.is.null,on_hold.eq.false').then(({ data }) => setOrders(data || []))
+      })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'bids', filter: `courier_id=eq.${courierProfileId}` }, () => {
         supabase.from('bids').select('order_id').eq('courier_id', courierProfileId).then(({ data }) => setBiddedOrderIds(new Set((data || []).map((b) => b.order_id))))
       })
       .subscribe()
 
-    return () => { active = false; clearInterval(poll); supabase.removeChannel(channel) }
+    return () => { active = false; supabase.removeChannel(channel) }
   }, [courierProfileId])
 
   // odată ce ai licitat, comanda trece exclusiv la "Meine Angebote" — nu mai
@@ -6285,7 +6256,6 @@ function BidCard({ order, lang, courierProfileId, open, onToggle, onBidPlaced })
           .single()
         if (error) throw error
         setExistingBid(data)
-        invalidateCourierBidBoard()
         if (onBidPlaced) onBidPlaced(order.id)
       }
       setEditing(false)

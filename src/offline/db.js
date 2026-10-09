@@ -67,12 +67,17 @@ export function localId() {
 
 // Curățenie: fișierele deja urcate și confirmate nu mai au rost să ocupe
 // spațiu pe telefon. Păstrăm 7 zile ca plasă de siguranță.
+//
+// Fişele pierdute se şterg şi ele, după acelaşi răgaz. Ele n-au conţinut şi
+// nu pot urca niciodată, deci nu primesc ştampila de confirmare — iar fără
+// rândul de mai jos rămâneau în telefon cât ţine instalarea, cu avertismentul
+// „N poze pierdute" atârnat de o etapă încheiată acum trei săptămâni.
 export async function pruneOld(maxAgeMs = 7 * 24 * 3600 * 1000) {
   const all = await dbGetAll(STORE_FILES)
   const cutoff = Date.now() - maxAgeMs
   await Promise.all(
     (all || [])
-      .filter((f) => f.status === 'confirmed' && f.createdAt < cutoff)
+      .filter((f) => (f.status === 'confirmed' || f.status === 'lost') && f.createdAt < cutoff)
       .map((f) => dbDelete(STORE_FILES, f.id))
   )
 }

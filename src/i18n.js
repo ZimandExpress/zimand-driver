@@ -274,6 +274,7 @@ const translations = {
     etaLimitReached: 'Maximal 3 Benachrichtigungen pro Etappe erreicht.',
     etaNoRecipient: 'Für diesen Auftrag ist keine Kunden-E-Mail hinterlegt.',
     etaFailed: 'Ankunftszeit konnte nicht gesendet werden.',
+    etaAlreadyDone: 'Dieser Stopp ist bereits abgeschlossen.',
 
     // --- Verdienst im Menü ---
     earningsMonthLabel: 'Diesen Monat',
@@ -657,6 +658,7 @@ const translations = {
     etaLimitReached: 'Maximum of 3 notifications per leg reached.',
     etaNoRecipient: 'No client email is stored for this order.',
     etaFailed: 'Could not send arrival time.',
+    etaAlreadyDone: 'This stop is already completed.',
 
     // --- Earnings in the menu ---
     earningsMonthLabel: 'This month',

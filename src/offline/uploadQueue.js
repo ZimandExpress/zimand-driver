@@ -190,7 +190,15 @@ async function pump() {
       })
     }
   } finally {
-    if (running === 0) pumping = false
+    if (running === 0) {
+      pumping = false
+      // Dovezile au ajuns sus — acum e momentul confirmărilor care aşteptau
+      // după ele. Fără asta, reluarea se încerca o singură dată, la revenirea
+      // semnalului, când pozele abia porneau: le sărea pe toate şi nimic n-o
+      // mai chema înapoi. Confirmarea rămânea pe telefon până când şoferul
+      // închidea şi redeschidea aplicaţia.
+      if (!reluareInCurs) setTimeout(() => { void replayPendingConfirmations() }, 0)
+    }
   }
 }
 
@@ -255,7 +263,10 @@ export async function buildConfirmPayload(orderId, leg, signerName, extra = null
   const uploaded = files.filter((f) => f.status === 'uploaded' || f.status === 'confirmed')
   return {
     p_order_id: orderId,
-    p_photos: uploaded.filter((f) => f.kind === 'photo').map((f) => f.remotePath),
+    // `.filter(Boolean)`: o fişă ştampilată „urcat" fără cale ar fi pus un
+    // element gol în `trip_stops.photos`, iar galeria dispeceratului ar fi
+    // încercat să ceară o adresă semnată pentru nimic.
+    p_photos: uploaded.filter((f) => f.kind === 'photo').map((f) => f.remotePath).filter(Boolean),
     p_documents: uploaded
       .filter((f) => f.kind === 'document')
       .map((f) => ({ type: f.docType || 'other', name: f.fileName, path: f.remotePath })),
@@ -286,8 +297,12 @@ export async function confirmLeg({ orderId, leg, rpcName, signerName, extraPaylo
   // Fără internet SAU cu o dovadă încă pe telefon: punem confirmarea în
   // aşteptare, întreagă. La reluare payloadul se reconstruieşte, deci pleacă
   // cu tot ce a ajuns între timp.
+  // Întâi scriem fişa nouă, pe urmă o ştergem pe cea soră. Invers, o
+  // aplicaţie închisă între cele două gesturi rămânea fără niciuna.
   if (!isOnline() || !totSus) {
     await dbPut(STORE_CONFIRMATIONS, record)
+    await dbDelete(STORE_CONFIRMATIONS, `${orderId}:${leg}:esec`)
+    emit()
     return 'pending'
   }
   const { error } = await supabase.rpc(rpcName, payload)
@@ -298,24 +313,123 @@ export async function confirmLeg({ orderId, leg, rpcName, signerName, extraPaylo
     // opriri neîncheiate") va fi refuzat şi mâine. Pus în aşteptare, se
     // reîncerca la fiecare deschidere a aplicaţiei, pentru totdeauna, fără ca
     // nimeni să afle. Doar căderile trecătoare se păstrează.
-    if (eroareTrecatoare(error)) await dbPut(STORE_CONFIRMATIONS, record)
+    if (eroareTrecatoare(error)) {
+      await dbPut(STORE_CONFIRMATIONS, record)
+      await dbDelete(STORE_CONFIRMATIONS, `${orderId}:${leg}:esec`)
+      emit()
+    }
+    // Un refuz care nu se reia lasă lucrurile EXACT cum erau. Ştearsă din
+    // prima, cum se făcea, fişa de „nu s-a putut" a aceleiaşi opriri pleca şi
+    // ea, fără ca nimic să-i ia locul: şoferul rămânea fără amândouă.
     throw error
   }
   await markConfirmed(orderId, leg)
   await dbDelete(STORE_CONFIRMATIONS, record.id)
+  await dbDelete(STORE_CONFIRMATIONS, `${orderId}:${leg}:esec`)
   void syncDeliveryDocuments(orderId, leg)
   return 'synced'
 }
 
-async function markConfirmed(orderId, leg) {
+/**
+ * Raportează o oprire ca „nu s-a putut" — şi fără internet.
+ *
+ * DE CE EXISTĂ. Până acum raportul pleca direct către server. Dacă nu era
+ * semnal, apăsarea cădea cu o eroare şi atât: oprirea rămânea deschisă, iar
+ * şoferul — care fusese acolo, scrisese motivul şi făcuse poza — trebuia să
+ * ţină minte să se întoarcă la ea. Dacă nu se întorcea, turul nu se mai
+ * putea încheia (baza nu lasă o comandă să plece livrată cu opriri fără
+ * dovadă) şi nimeni nu ştia de ce.
+ *
+ * Pozele mergeau deja în coadă şi urcau singure. Doar motivul rămânea agăţat
+ * de semnal. Acum intră în aceeaşi coadă ca o confirmare şi pleacă singur,
+ * cu pozele care au ajuns între timp.
+ *
+ * @returns {'synced' | 'pending'}
+ */
+export async function reportStopFailed({ orderId, stopId, reason }) {
+  const motiv = String(reason || '').trim()
+  if (!orderId || !stopId || !motiv) throw new Error('reportStopFailed: date lipsă')
+
+  const record = {
+    id: `${orderId}:${stopId}:esec`, fel: 'esec',
+    orderId, leg: stopId, reason: motiv,
+    rpcName: 'driver_stop_failed', payload: null, createdAt: Date.now(),
+  }
+
+  // O confirmare a aceleiaşi opriri rămasă în aşteptare se şterge numai când
+  // se ştie că raportul a luat locul ei — ori plecat, ori pus la coadă.
+  //
+  // Ştearsă din prima, cum era, un refuz care nu merită reluat (un token
+  // expirat, de pildă) o arunca fără să pună nimic în loc: semnătura strânsă
+  // la oprirea aceea dispărea de pe telefon, raportul nu pleca, iar şoferul
+  // vedea doar „nu s-a putut salva".
+  const iaLocul = async () => { await dbDelete(STORE_CONFIRMATIONS, `${orderId}:${stopId}`) }
+  const puneSiIaLocul = async () => {
+    await dbPut(STORE_CONFIRMATIONS, record)
+    await iaLocul()
+  }
+
+  // Întâi aşteptăm poza. Serverul scrie `photos` peste ce era, fără să
+  // întrebe, deci un raport plecat înainte ca poza să urce o şterge definitiv
+  // — exact poza pe care aplicaţia o cere obligatoriu înainte de a lăsa
+  // şoferul să raporteze. Dacă nu ajunge la timp, raportul aşteaptă pe
+  // telefon şi pleacă întreg mai târziu, ca o confirmare.
+  const totSus = await asteaptaDovezile(orderId, stopId, { timeoutMs: 8000, doarPoze: true })
+
+  if (!isOnline() || !totSus) {
+    await puneSiIaLocul()
+    emit()
+    return 'pending'
+  }
+
+  const { error } = await supabase.rpc('driver_stop_failed', payloadEsec(orderId, stopId, motiv, await dbGetByLeg(orderId, stopId)))
+  if (error) {
+    // Semnal slab, server picat: raportul rămâne pe telefon şi pleacă singur.
+    // Pentru şofer asta NU e un eşec — e exact ce trebuie să se întâmple — şi
+    // nu mai are de ce să afle o eroare. Înainte fişa se punea la coadă şi
+    // tot se arunca o eroare: raportul ajungea mai târziu, dar şoferul
+    // plecase de la uşă convins că nu s-a salvat nimic.
+    if (eroareTrecatoare(error)) {
+      await puneSiIaLocul()
+      emit()
+      return 'pending'
+    }
+    throw error
+  }
+  await iaLocul()
+  await markConfirmed(orderId, stopId, { doarPoze: true })
+  emit()
+  return 'synced'
+}
+
+// Forma pe care o aşteaptă `driver_stop_failed`. Scoasă aparte fiindcă se
+// construieşte în două locuri: la apăsare şi la reluarea de mai târziu —
+// unde pozele pot fi mai multe decât erau atunci.
+function payloadEsec(orderId, stopId, motiv, fisiere) {
+  const poze = (fisiere || [])
+    .filter((f) => f.kind === 'photo' && (f.status === 'uploaded' || f.status === 'confirmed'))
+    .map((f) => f.remotePath)
+    .filter(Boolean)
+  return { p_stop_id: stopId, p_reason: motiv, p_photos: poze }
+}
+
+async function markConfirmed(orderId, leg, { doarPoze = false } = {}) {
   const files = (await dbGetByLeg(orderId, leg)) || []
   await Promise.all(files.map((f) => {
-    // Un fişier care încă are conţinut NU a plecat de pe telefon.
+    // Ştampila spune „a ajuns unde trebuia". La un raport „nu s-a putut",
+    // semnătura şi actele n-au ajuns nicăieri: serverul nu le scrie. Puse
+    // sub aceeaşi ştampilă, le-ar fi şters `pruneOld` după şapte zile ca pe
+    // nişte dovezi predate.
+    if (doarPoze && f.kind !== 'photo') return Promise.resolve()
+    // Se ştampilează DOAR ce a ajuns într-adevăr sus.
     //
-    // Ştampilat „confirmat", coada nu-l mai ia niciodată — ea caută doar
-    // 'queued' — şi după şapte zile `pruneOld` îl şterge. Dovada dispărea
-    // fără să fi ajuns vreodată pe server, şi fără nicio urmă.
-    if (f.blob && f.status !== 'uploaded' && f.status !== 'confirmed') return Promise.resolve()
+    // Prima oară condiţia cerea să mai aibă conţinut: un fişier care încă are
+    // blob n-a plecat de pe telefon, iar ştampilat „confirmat" coada nu-l mai
+    // ia niciodată — ea caută doar 'queued' — şi după şapte zile `pruneOld`
+    // îl şterge. Dar lăsa pe dinafară tocmai fişele FĂRĂ conţinut şi fără
+    // cale: una pierdută, sau una prinsă în prelucrare. Alea primeau ştampila
+    // şi apoi se socoteau urcate peste tot.
+    if (f.status !== 'uploaded' && f.status !== 'confirmed') return Promise.resolve()
     return dbPut(STORE_FILES, { ...f, status: 'confirmed' })
   }))
   emit()
@@ -334,11 +448,28 @@ async function markConfirmed(orderId, leg) {
  * internet — iar atunci confirmarea se pune în aşteptare, întreagă, în loc să
  * plece ciuntită.
  */
-async function asteaptaDovezile(orderId, leg, { timeoutMs = 25000 } = {}) {
+/**
+ * Mai e vreo dovadă pe drum pentru etapa asta?
+ *
+ * „Pe drum" înseamnă că poate ajunge singură: aşteaptă la rând, se prelucrează
+ * sau tocmai urcă. O fişă pierdută sau una la care coada a renunţat NU se
+ * socoteşte — ea nu mai pleacă nici peste o oră, iar aşteptată, ar ţine
+ * confirmarea pe telefon pentru totdeauna.
+ */
+async function dovezInZbor(orderId, leg) {
+  const files = (await dbGetByLeg(orderId, leg)) || []
+  return files.some((f) => f.status === 'queued' || f.status === 'processing' || f.status === 'uploading')
+}
+
+async function asteaptaDovezile(orderId, leg, { timeoutMs = 25000, doarPoze = false } = {}) {
   const totSus = async () => {
     const files = (await dbGetByLeg(orderId, leg)) || []
     return files
       .filter((f) => f.status !== 'lost')
+      // La un raport „nu s-a putut" serverul scrie doar pozele. A aştepta şi
+      // semnătura ar ţine şoferul în faţa unei uşi închise pentru un fişier
+      // pe care nimeni nu-l va citi.
+      .filter((f) => !doarPoze || f.kind === 'photo')
       .every((f) => f.status === 'uploaded' || f.status === 'confirmed')
   }
   const pana = Date.now() + timeoutMs
@@ -379,6 +510,13 @@ function eroareTrecatoare(error) {
 }
 
 const MAX_REPLAY = 8
+// De câte ori la rând poate fi amânată o fişă fiindcă dovezile ei nu sunt
+// încă sus. Cu reluarea chemată la golirea cozii, o urcare normală ia una
+// sau două runde; treizeci înseamnă că nu mai urcă niciodată.
+const MAX_ASTEPTARI = 30
+// Reluarea nu se cheamă pe ea însăşi: `pump()` din interiorul ei ar porni o
+// a doua rundă peste prima, iar aceeaşi fişă ar pleca de două ori.
+let reluareInCurs = false
 
 /** Câte confirmări așteaptă internet — pentru bannerul de offline. */
 export async function pendingConfirmationCount() {
@@ -427,18 +565,68 @@ export async function cancelPendingConfirmation(orderId, leg) {
 }
 
 async function replayPendingConfirmations() {
-  if (!isOnline()) return
+  if (!isOnline() || reluareInCurs) return
+  reluareInCurs = true
+  try {
+    await ruleazaReluarea()
+  } finally {
+    reluareInCurs = false
+  }
+}
+
+async function ruleazaReluarea() {
   const all = (await dbGetAll(STORE_CONFIRMATIONS)) || []
   for (const rec of all) {
     if (rec.giveUp) continue
+    // Două feluri de fişe aşteaptă aici: confirmări de etapă şi rapoarte
+    // „nu s-a putut". Se reiau pe acelaşi drum, dar nu cu acelaşi payload —
+    // iar o fişă veche, scrisă înainte să existe al doilea fel, n-are `fel`
+    // şi e o confirmare, ca până acum.
+    const esteEsec = rec.fel === 'esec'
+    // Nu trimitem cât timp o poză sau o semnătură mai e pe drum.
+    //
+    // Reluarea porneşte în aceeaşi răsuflare cu urcarea (`resume` cheamă
+    // `pump()` fără să-l aştepte), deci la revenirea semnalului payloadul se
+    // construia din fişierele urcate ATUNCI — adesea niciunul. Iar serverul
+    // scrie `photos` peste, fără să întrebe: `coalesce(p_photos, '{}')`. Poza
+    // făcută la uşa închisă urca o secundă mai târziu şi rămânea în depozit,
+    // nelegată de nimic, pe vecie. Mai bine mai aşteptăm o rundă.
+    if (await dovezInZbor(rec.orderId, rec.leg)) {
+      // Amânăm — dar numărăm amânările. O poză pe care coada o reîncearcă la
+      // nesfârşit (`requeueStuck` îi şterge socoteala la fiecare pornire)
+      // arăta mereu „pe drum", deci fişa era sărită de fiecare dată, nu
+      // aduna încercări, nu primea niciodată `giveUp` — şi nu apărea în
+      // bannerul de dovezi blocate. Oprirea rămânea deschisă pe server,
+      // bifată pe telefon, iar turul nu se mai putea încheia, fără ca nimic
+      // să spună de ce.
+      const asteptari = (rec.asteptari || 0) + 1
+      if (asteptari >= MAX_ASTEPTARI) {
+        await dbPut(STORE_CONFIRMATIONS, {
+          ...rec, asteptari,
+          lastError: 'Fotos/Unterschrift konnten nicht hochgeladen werden.',
+          giveUp: true,
+        })
+        console.error('dovezi blocate, confirmarea nu poate pleca:', rec.id)
+      } else {
+        await dbPut(STORE_CONFIRMATIONS, { ...rec, asteptari })
+      }
+      pump()
+      emit()
+      continue
+    }
     // Recalculăm payloadul: între timp pot fi urcate fișiere care la
     // momentul confirmării erau încă în coadă.
-    const payload = await buildConfirmPayload(rec.orderId, rec.leg, rec.payload.p_signer_name, rec.extra || null)
+    const payload = esteEsec
+      ? payloadEsec(rec.orderId, rec.leg, rec.reason, await dbGetByLeg(rec.orderId, rec.leg))
+      : await buildConfirmPayload(rec.orderId, rec.leg, rec.payload.p_signer_name, rec.extra || null)
     const { error } = await supabase.rpc(rec.rpcName, payload)
     if (!error) {
-      await markConfirmed(rec.orderId, rec.leg)
+      // Acelaşi `doarPoze` ca la apăsare: un raport „nu s-a putut" nu duce
+      // semnătura nicăieri, deci nici n-o ştampilează ca dusă.
+      await markConfirmed(rec.orderId, rec.leg, { doarPoze: esteEsec })
       await dbDelete(STORE_CONFIRMATIONS, rec.id)
-      void syncDeliveryDocuments(rec.orderId, rec.leg)
+      // O oprire ratată n-are documente de livrare de sincronizat.
+      if (!esteEsec) void syncDeliveryDocuments(rec.orderId, rec.leg)
       emit()
       continue
     }
@@ -528,4 +716,3 @@ export async function retryAllFailed() {
   pump()
   return cazute.length
 }
-

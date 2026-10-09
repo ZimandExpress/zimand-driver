@@ -19,6 +19,31 @@ import { analyzeDocumentPhoto } from './services/imageQuality'
 // nici șoferul, nici dispecerul nu aflau.
 import { processImage, PHOTO_PRESET } from './services/imageService'
 
+// --- Comenzile, aşa cum le vede o firmă de transport ------------------------
+//
+// Nu se mai citeşte direct din `orders`. Dreptul firmelor de a citi tabela a
+// fost scos odată cu mascarea adreselor, aşa că
+// `from('orders').eq('status','open')` întoarce de atunci ZERO rânduri — nu o
+// eroare, o listă goală. Pe ecran asta arăta exact ca „nu e nicio licitaţie",
+// deşi licitaţiile erau acolo.
+//
+// Funcţia din bază întoarce aceleaşi rânduri — comenzile la licitaţie, cele pe
+// care firma a licitat, cele atribuite şoferilor ei — plus ofertele proprii şi
+// şoferul atribuit, cu adresele tăiate până la câştig. Un singur apel, folosit
+// de toate ecranele firmei, ca să nu se mai poată desincroniza unul de altul.
+//
+// La eroare întoarce null, nu listă goală: cine o cheamă păstrează ce avea pe
+// ecran. O listă golită de o interogare căzută înseamnă pentru şofer „n-am de
+// lucru", iar asta e mai rău decât o listă veche.
+async function comenzileFirmei() {
+  const { data, error } = await supabase.rpc('courier_orders')
+  if (error) { console.error('courier_orders error:', error.message); return null }
+  return Array.isArray(data) ? data : []
+}
+
+const esteLaLicitatie = (o) => !!o && o.status === 'open' && !o.on_hold
+
+
 // Jurnal de utilizare Google API — o linie per apel real, "fire-and-forget",
 // ca să vedem exact de unde vine consumul (raport în panoul de disponent).
 function logApiUsage(apiName, page, description) {
@@ -1354,6 +1379,8 @@ function RidesScreen({ profile, isOwner, session, lang }) {
   const [celebration, setCelebration] = useState(null) // number (net earnings) | true (no amount) | null — la nivel de ecran, supraviețuiește comutării spre CompletedOrderDetail
   const [notifyRadiusKm, setNotifyRadiusKm] = useState(null)
   const openCountLoaded = useRef(false)
+  // Id-urile licitaţiilor deja văzute — de aici ştim care e nouă.
+  const licitatiiVazute = useRef(null)
   // Oglindă a listei de comenzi, citibilă din handler-ul Realtime fără să-l
   // legăm de starea curentă (altfel abonamentul s-ar reface la fiecare
   // schimbare de comandă).
@@ -1378,47 +1405,78 @@ function RidesScreen({ profile, isOwner, session, lang }) {
   useEffect(() => {
     if (!isOwner) return
 
+    // Anunţul unei licitaţii noi: sunet şi mesaj, dacă e în raza aleasă.
+    // Scos din mâna realtime-ului şi pus deoparte, fiindcă îl cheamă acum şi
+    // verificarea periodică.
+    async function anuntaComandaNoua(comanda) {
+      if (!comanda || comanda.on_hold) return
+      // Dacă șoferul are o rază preferată setată, notificăm doar pentru
+      // comenzi din acel raion — cele mai îndepărtate rămân vizibile
+      // în listă, dar fără sunet/notificare.
+      let withinRadius = true
+      if (notifyRadiusKm != null && driverLocationForNotify && mapsKeyForNotify && comanda.pickup_address) {
+        const point = await geocodeAddressCached(comanda.pickup_address, mapsKeyForNotify)
+        if (point) {
+          const km = haversineKm(driverLocationForNotify.lat, driverLocationForNotify.lng, point.lat, point.lng)
+          withinRadius = km <= notifyRadiusKm
+        }
+      }
+      if (withinRadius) {
+        playNewOrderSound()
+        setNewOrderToast(true)
+        setTimeout(() => setNewOrderToast(false), 4000)
+      }
+    }
+
     function refreshOpenCount() {
       Promise.all([
-        supabase.from('orders').select('id').eq('status', 'open').or('on_hold.is.null,on_hold.eq.false'),
+        comenzileFirmei(),
         supabase.from('bids').select('order_id').eq('courier_id', session?.user?.id),
-      ]).then(([openRes, bidsRes]) => {
+      ]).then(([comenzi, bidsRes]) => {
+        // null = interogarea a căzut. Nu stingem numărul de pe ecran.
+        if (!comenzi) return
         const biddedIds = new Set((bidsRes.data || []).map((b) => b.order_id))
-        const remaining = (openRes.data || []).filter((o) => !biddedIds.has(o.id)).length
-        setOpenCount(remaining)
+        const deschise = comenzi.filter(esteLaLicitatie)
+        setOpenCount(deschise.filter((o) => !biddedIds.has(o.id)).length)
+
+        // Care sunt noi faţă de data trecută. La prima încărcare nu sună
+        // nimic — altfel ar ţiui la fiecare deschidere a aplicaţiei.
+        const acum = new Set(deschise.map((o) => o.id))
+        const inainte = licitatiiVazute.current
+        if (inainte) {
+          deschise.filter((o) => !inainte.has(o.id) && !biddedIds.has(o.id)).forEach(anuntaComandaNoua)
+        }
+        licitatiiVazute.current = acum
       })
     }
 
     refreshOpenCount()
     openCountLoaded.current = true
 
+    // Realtime pe `orders` nu mai ajunge la firme: abonamentul trece tot prin
+    // drepturile de citire, iar acelea nu mai există. Rămâne pe loc pentru
+    // cine are dreptul, dar nu ne mai bazăm pe el — licitaţiile noi se văd
+    // dintr-o verificare la fiecare 25 de secunde.
+    const ceas = setInterval(refreshOpenCount, 25000)
+    const laTrezire = () => refreshOpenCount()
+    window.addEventListener('focus', laTrezire)
+
     const channel = supabase
       .channel('rides-open-count')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: 'status=eq.open' }, async (payload) => {
         refreshOpenCount()
         if (payload.eventType === 'INSERT' && openCountLoaded.current && !payload.new?.on_hold) {
-          // Dacă șoferul are o rază preferată setată, notificăm doar pentru
-          // comenzi din acel raion — cele mai îndepărtate rămân vizibile
-          // în listă, dar fără sunet/notificare.
-          let withinRadius = true
-          if (notifyRadiusKm != null && driverLocationForNotify && mapsKeyForNotify && payload.new?.pickup_address) {
-            const point = await geocodeAddressCached(payload.new.pickup_address, mapsKeyForNotify)
-            if (point) {
-              const km = haversineKm(driverLocationForNotify.lat, driverLocationForNotify.lng, point.lat, point.lng)
-              withinRadius = km <= notifyRadiusKm
-            }
-          }
-          if (withinRadius) {
-            playNewOrderSound()
-            setNewOrderToast(true)
-            setTimeout(() => setNewOrderToast(false), 4000)
-          }
+          await anuntaComandaNoua(payload.new)
         }
       })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'bids', filter: `courier_id=eq.${session?.user?.id}` }, refreshOpenCount)
       .subscribe()
 
-    return () => supabase.removeChannel(channel)
+    return () => {
+      clearInterval(ceas)
+      window.removeEventListener('focus', laTrezire)
+      supabase.removeChannel(channel)
+    }
   }, [isOwner, notifyRadiusKm, driverLocationForNotify, mapsKeyForNotify, session?.user?.id])
 
   useEffect(() => { ordersRef.current = orders }, [orders])
@@ -2547,10 +2605,16 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
   async function reassignDriver() {
     if (!reassignTo) return
     setReassigning(true)
-    const { error } = await supabase
-      .from('orders')
-      .update({ assigned_driver_id: reassignTo })
-      .eq('id', order.id)
+    // Atribuirea trece prin funcţia din bază, nu printr-un UPDATE direct.
+    // Un UPDATE cu `.eq('id', ...)` are nevoie şi de drept de CITIRE pe rândul
+    // acela — pe care firma nu-l mai are — iar PostgREST răspunde 204 şi când
+    // n-a schimbat nimic. Butonul ar fi arătat verde fără să fi atribuit pe
+    // nimeni. Funcţia verifică şi câştigătorul, şi că şoferul e al firmei, şi
+    // aruncă o eroare adevărată la refuz.
+    const { error } = await supabase.rpc('courier_assign_driver', {
+      p_order_id: order.id,
+      p_driver_id: reassignTo,
+    })
     setReassigning(false)
     if (error) {
       console.error('reassign error:', error.message)
@@ -5205,15 +5269,22 @@ function useCourierBids(courierProfileId) {
     if (!courierProfileId) { setLoading(false); return }
     let active = true
 
+    // Îmbinarea `orders(...)` trecea şi ea prin drepturile de citire, deci
+    // pentru o ofertă pusă pe o comandă ÎNCĂ DESCHISĂ venea `orders: null` —
+    // şi atunci "Meine Angebote" nu mai număra nicio ofertă în aşteptare.
+    // Comanda se ia acum din acelaşi loc ca restul ecranelor şi se lipeşte
+    // lângă ofertă, cu aceeaşi formă ca înainte.
     function load() {
-      supabase
-        .from('bids')
-        .select('*, orders!bids_order_id_fkey(*)')
-        .eq('courier_id', courierProfileId)
-        .then(({ data, error }) => {
-          if (error) console.error('bids fetch error:', error.message)
-          if (active) { setBids(data || []); setLoading(false) }
-        })
+      Promise.all([
+        supabase.from('bids').select('*').eq('courier_id', courierProfileId),
+        comenzileFirmei(),
+      ]).then(([bidsRes, comenzi]) => {
+        if (!active) return
+        if (bidsRes.error) console.error('bids fetch error:', bidsRes.error.message)
+        const dupaId = new Map((comenzi || []).map((o) => [o.id, o]))
+        setBids((bidsRes.data || []).map((b) => ({ ...b, orders: dupaId.get(b.order_id) || null })))
+        setLoading(false)
+      })
     }
 
     load()
@@ -5237,10 +5308,16 @@ function AssignDriverCard({ order, lang, companyDrivers, onAssigned }) {
   async function assign() {
     if (!selected) return
     setSaving(true)
-    const { error } = await supabase
-      .from('orders')
-      .update({ assigned_driver_id: selected })
-      .eq('id', order.id)
+    // Atribuirea trece prin funcţia din bază, nu printr-un UPDATE direct.
+    // Un UPDATE cu `.eq('id', ...)` are nevoie şi de drept de CITIRE pe rândul
+    // acela — pe care firma nu-l mai are — iar PostgREST răspunde 204 şi când
+    // n-a schimbat nimic. Butonul ar fi arătat verde fără să fi atribuit pe
+    // nimeni. Funcţia verifică şi câştigătorul, şi că şoferul e al firmei, şi
+    // aruncă o eroare adevărată la refuz.
+    const { error } = await supabase.rpc('courier_assign_driver', {
+      p_order_id: order.id,
+      p_driver_id: selected,
+    })
     setSaving(false)
     if (error) {
       console.error('assign driver error:', error.message)
@@ -5985,16 +6062,21 @@ function BiddingScreen({ profile, session, lang, embedded }) {
 
   useEffect(() => {
     let active = true
-    supabase
-      .from('orders')
-      .select('*')
-      .eq('status', 'open')
-      .or('on_hold.is.null,on_hold.eq.false')
-      .order('pickup_date', { ascending: true })
-      .then(({ data, error }) => {
-        if (error) console.error('open orders fetch error:', error.message)
-        if (active) { setOrders(data || []); setLoading(false) }
+    const incarcaLicitatiile = () =>
+      comenzileFirmei().then((comenzi) => {
+        if (!active) return
+        // null = interogarea a căzut; lista de pe ecran rămâne cum era.
+        if (comenzi) {
+          setOrders(
+            comenzi
+              .filter(esteLaLicitatie)
+              .sort((a, b) => String(a.pickup_date || '').localeCompare(String(b.pickup_date || ''))),
+          )
+        }
+        setLoading(false)
       })
+
+    incarcaLicitatiile()
 
     if (courierProfileId) {
       supabase
@@ -6007,14 +6089,26 @@ function BiddingScreen({ profile, session, lang, embedded }) {
     const channel = supabase
       .channel('bidding-open-orders')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: 'status=eq.open' }, () => {
-        supabase.from('orders').select('*').eq('status', 'open').or('on_hold.is.null,on_hold.eq.false').then(({ data }) => setOrders(data || []))
+        incarcaLicitatiile()
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'bids', filter: `courier_id=eq.${courierProfileId}` }, () => {
         supabase.from('bids').select('order_id').eq('courier_id', courierProfileId).then(({ data }) => setBiddedOrderIds(new Set((data || []).map((b) => b.order_id))))
       })
       .subscribe()
 
-    return () => { active = false; supabase.removeChannel(channel) }
+    // Abonamentul de mai sus nu mai primeşte nimic pentru firme — trece prin
+    // drepturile de citire pe `orders`, care nu mai există. Lista se
+    // împrospătează singură, şi la revenirea în aplicaţie.
+    const ceas = setInterval(incarcaLicitatiile, 25000)
+    const laTrezire = () => incarcaLicitatiile()
+    window.addEventListener('focus', laTrezire)
+
+    return () => {
+      active = false
+      clearInterval(ceas)
+      window.removeEventListener('focus', laTrezire)
+      supabase.removeChannel(channel)
+    }
   }, [courierProfileId])
 
   // odată ce ai licitat, comanda trece exclusiv la "Meine Angebote" — nu mai

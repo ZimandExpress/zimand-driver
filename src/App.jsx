@@ -3749,6 +3749,205 @@ function UndoBar({ field, at, lang, onUndo }) {
   )
 }
 
+// ——— Celălalt capăt al cursei, chiar în pasul cu pozele ———
+//
+// Șoferul stă la rampă cu telefonul într-o mână: știe unde e, dar nu știe
+// pentru cine încarcă. Iar la a șaptea livrare din zi nu mai ţine minte de la
+// cine a ridicat — exact ce-l întreabă destinatarul. Datele erau deja în
+// comandă, numai că rămâneau sus, în cardul de detalii: trebuia ieșit din pasul
+// cu pozele, pe lângă butoanele care confirmă. Aici nu se confirmă nimic.
+//
+// Contactele stau în `notes`, scrise de pipeline la fel de fiecare dată
+// ("Kontakt Abholung: Nume (Firmă) · Tel. …"), iar opririle le au pe coloane
+// proprii. Funcţia citește din ambele și dă o listă cu același format.
+function capeteCursa(order, spreLivrare) {
+  const opriri = tourStops(order)
+  const dinOprire = (s) => ({
+    address: s.address || null,
+    contact: ([s.company, s.contact_name].filter(Boolean).join(' \u00b7 ')
+      + (s.contact_phone ? ` \u00b7 Tel. ${s.contact_phone}` : '')).trim() || null,
+    note: s.note || null,
+    reference: s.reference || null,
+    cargo: s.cargo_desc || null,
+    quantity: null,
+    weight: s.cargo_weight_kg || null,
+    date: s.stop_date || null,
+    timeFixed: !!s.time_fixed,
+    timeAt: s.time_at || null,
+    timeFrom: s.time_from || null,
+    timeTo: s.time_to || null,
+  })
+  const dinComanda = (k, prefixContact, prefixNota) => ({
+    address: order?.[LEG_ADDRESS_FIELD[k]] || null,
+    contact: extractContact(order?.notes, prefixContact),
+    note: extractContact(order?.notes, prefixNota),
+    reference: order?.reference || null,
+    cargo: order?.cargo_desc || null,
+    quantity: order?.quantity || null,
+    weight: order?.weight || null,
+    date: order?.[`${k}_date`] || null,
+    timeFixed: !!order?.[`${k}_fixed`],
+    timeAt: order?.[`${k}_time`] || null,
+    timeFrom: order?.[`${k}_from`] || null,
+    timeTo: order?.[`${k}_to`] || null,
+  })
+  const lista = spreLivrare
+    ? [
+        ...opriri.filter((s) => s.kind === 'delivery').map(dinOprire),
+        dinComanda('delivery', 'Kontakt Zustellung: ', 'Notiz Zustellung: '),
+      ]
+    : [
+        dinComanda('pickup', 'Kontakt Abholung: ', 'Notiz Abholung: '),
+        ...opriri.filter((s) => s.kind !== 'delivery').map(dinOprire),
+      ]
+  // Returul n-are coloane proprii de contact — adresa și fereastra de timp
+  // sunt tot ce există în bază, deci atât se arată.
+  if (order?.is_round_trip) {
+    const k = spreLivrare ? 'return_delivery' : 'return_pickup'
+    const adresa = order?.[LEG_ADDRESS_FIELD[k]]
+    if (adresa) {
+      lista.push({
+        address: adresa, contact: null, note: null,
+        reference: order?.reference || null,
+        cargo: order?.return_cargo_desc || null, quantity: null, weight: null,
+        date: order?.[`${k}_date`] || null,
+        timeFixed: false, timeAt: null,
+        timeFrom: order?.[`${k}_from`] || null, timeTo: order?.[`${k}_to`] || null,
+      })
+    }
+  }
+  return lista.filter((x) => x.address || x.contact)
+}
+
+function AltCapat({ order, lang, spreLivrare }) {
+  const [deschis, setDeschis] = useState(false)
+  const lista = capeteCursa(order, spreLivrare)
+  if (!lista.length) return null
+  const titluButon = spreLivrare ? t('otherEndDeliveryBtn', lang) : t('otherEndPickupBtn', lang)
+  const titluPanou = spreLivrare ? t('otherEndDeliveryTitle', lang) : t('otherEndPickupTitle', lang)
+  const semn = spreLivrare ? '\ud83c\udd51' : '\ud83c\udd50'
+  const multiple = lista.length > 1
+  return (
+    <>
+      {/* Punctat și fără culoare: nu seamănă cu niciun buton care confirmă,
+          deci nu se apasă din greșeală cu telefonul într-o mână. */}
+      <button
+        type="button"
+        onClick={() => setDeschis(true)}
+        style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+          width: '100%', margin: '0 0 12px', padding: '10px 12px',
+          background: 'transparent', border: '1px dashed var(--border, #C8D2E0)',
+          borderRadius: 9, color: 'var(--text-soft, #6B7A90)',
+          fontSize: 13.5, fontWeight: 600, cursor: 'pointer',
+        }}
+      >
+        {semn} {titluButon}
+      </button>
+
+      {deschis && (
+        <div
+          style={{
+            position: 'fixed', inset: 0, background: '#fff', zIndex: 9999, overflowY: 'auto',
+            paddingTop: 'calc(22px + env(safe-area-inset-top, 0px))',
+            paddingBottom: 'calc(22px + env(safe-area-inset-bottom, 0px))',
+            paddingLeft: 18, paddingRight: 18,
+          }}
+        >
+          <div style={{ maxWidth: 440, margin: '0 auto' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+              <div style={{ fontSize: 19, fontWeight: 800, color: '#0F2240', lineHeight: 1.3 }}>
+                {semn} {titluPanou}
+              </div>
+              <button
+                type="button"
+                onClick={() => setDeschis(false)}
+                aria-label={t('back', lang)}
+                style={{ background: 'transparent', border: 0, fontSize: 26, lineHeight: 1, color: '#6B7A90', cursor: 'pointer', padding: '0 2px' }}
+              >
+                {'×'}
+              </button>
+            </div>
+            <div style={{ fontSize: 12, color: '#6B7A90', margin: '4px 0 16px', lineHeight: 1.5 }}>
+              {order?.order_number ? `${order.order_number} \u00b7 ` : ''}{t('otherEndInfoOnly', lang)}
+            </div>
+
+            {lista.map((c, i) => {
+              const interval = c.timeFixed
+                ? (c.timeAt ? fmtTime(c.timeAt) : '')
+                : [c.timeFrom, c.timeTo].filter(Boolean).map((x) => fmtTime(x)).join('\u2013')
+              const telefon = extractPhone(c.contact)
+              const marfa = [
+                c.quantity ? `${c.quantity}\u00d7` : null,
+                c.cargo || null,
+                c.weight ? `${c.weight} kg` : null,
+              ].filter(Boolean).join(' \u00b7 ')
+              return (
+                <div key={i} style={{ border: '1px solid #E2E7EE', borderRadius: 10, padding: '12px 13px', marginBottom: 10 }}>
+                  {multiple && (
+                    <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em', color: '#6B7A90', marginBottom: 6 }}>
+                      {spreLivrare ? t('delivery', lang) : t('pickup', lang)} {i + 1} / {lista.length}
+                    </div>
+                  )}
+                  {c.contact && (
+                    <div style={{ fontSize: 15.5, fontWeight: 800, color: '#0F2240', lineHeight: 1.4 }}>
+                      {c.contact.split(' \u00b7 Tel.')[0].trim()}
+                    </div>
+                  )}
+                  {c.address && (
+                    <div style={{ fontSize: 14, color: '#0F2240', marginTop: 3, lineHeight: 1.5 }}>{c.address}</div>
+                  )}
+                  {(c.date || interval) && (
+                    <div style={{ fontSize: 13, color: '#6B7A90', marginTop: 5 }}>
+                      {c.date ? fmtDate(c.date) : ''}
+                      {c.date && interval ? ' \u00b7 ' : ''}
+                      {interval ? (c.timeFixed ? `\ud83d\udd12 ${interval}` : interval) : ''}
+                    </div>
+                  )}
+                  {telefon && (
+                    <a
+                      href={`tel:${telefon.replace(/[^\d+]/g, '')}`}
+                      style={{
+                        display: 'inline-block', marginTop: 9, fontSize: 14, fontWeight: 700,
+                        color: '#0F2240', textDecoration: 'none',
+                        border: '1px solid #D8DEE8', borderRadius: 8, padding: '7px 11px',
+                      }}
+                    >
+                      {'📞'} {telefon}
+                    </a>
+                  )}
+                  {c.reference && (
+                    <div style={{ fontSize: 13, color: '#0F2240', marginTop: 9 }}>
+                      <strong>{t('referenceLabel', lang)}:</strong> {c.reference}
+                    </div>
+                  )}
+                  {marfa && (
+                    <div style={{ fontSize: 13, color: '#0F2240', marginTop: 4 }}>
+                      <strong>{t('cargoLabel', lang)}:</strong> {marfa}
+                    </div>
+                  )}
+                  {c.note && (
+                    <div style={{
+                      background: '#FFF6ED', border: '1px solid #FFD2AE', borderRadius: 8,
+                      padding: '8px 10px', fontSize: 13, color: '#8A5A16', lineHeight: 1.5, marginTop: 9,
+                    }}>
+                      {c.note}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+
+            <button type="button" className="btn" style={{ width: '100%', marginTop: 4 }} onClick={() => setDeschis(false)}>
+              {t('back', lang)}
+            </button>
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
+
 function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatusChange, isOwner, onDeliveryComplete, profile, onStopFailed }) {
   const [busy, setBusy] = useState(false)
   const [fileSummary, setFileSummary] = useState({ total: 0, allDone: false, failed: 0, pending: 0, processing: 0, photoCount: 0, documentCount: 0 })
@@ -4616,6 +4815,9 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
              + (fapte.contactPhone ? ` · Tel. ${fapte.contactPhone}` : '')).trim() || null
           : extractContact(order.notes, laLivrare ? 'Kontakt Zustellung: ' : 'Kontakt Abholung: ')
         const adresa = fapte.address
+        // Expeditorul, citit o singură dată: și pe linia "Abgeholt bei", și
+        // la butonul de mai jos.
+        const contactRidicare = extractContact(order.notes, 'Kontakt Abholung: ')
         if (!contact && !adresa) return null
         return (
           <div style={{
@@ -4628,14 +4830,25 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
               </div>
             )}
             {adresa && <div style={{ color: 'var(--text-soft)' }}>{adresa}</div>}
-            {laLivrare && !esteOprire && order.pickup_address && (
+            {/* Adresa singură nu-i spunea nimic destinatarului care întreabă
+                "de la cine vine?". Numele și firma expeditorului stau în
+                `notes`, lângă adresă. Se arată și la opriri: tocmai la livrarea
+                7 din 20 nu mai ţine minte nimeni de unde a plecat marfa. */}
+            {laLivrare && (contactRidicare || order.pickup_address) && (
               <div style={{ color: 'var(--text-soft)', marginTop: 5, fontSize: 12.5 }}>
-                {t('pickedUpFrom', lang)}: {order.pickup_address}
+                {t('pickedUpFrom', lang)}: {[
+                  contactRidicare ? contactRidicare.split(' \u00b7 Tel.')[0].trim() : null,
+                  order.pickup_address || null,
+                ].filter(Boolean).join(' \u00b7 ')}
               </div>
             )}
           </div>
         )
       })()}
+
+      {/* La ridicare arată unde merge marfa; la livrare, de la cine a fost
+          luată. Deasupra pozelor, în pasul în care șoferul se uită oricum. */}
+      <AltCapat order={order} lang={lang} spreLivrare={!esteLivrareEtapa} />
 
       <PodFiles
         orderId={order.id}

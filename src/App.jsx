@@ -467,6 +467,10 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
   const [menuOpen, setMenuOpen] = useState(false)
   const isOwner = profile?.account_type === 'owner_operator'
   const watchIdRef = useRef(null)
+  // Starea permisiunii de locaţie: și pe ecranul șoferului, și în bază,
+  // pentru dispecerat. Un refuz scris doar în consolă nu-l citește nimeni.
+  const [stareLocatie, setStareLocatie] = useState(null)
+  const stareLocatieRef = useRef(null)
 
   // Noile condiţii, verificate şi aici.
   //
@@ -512,7 +516,39 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
       return
     }
 
-    if (!('geolocation' in navigator)) return
+    // Starea se scrie o dată la fiecare schimbare, nu la fiecare măsurătoare:
+    // altfel ar fi o scriere la fiecare secundă de mers.
+    const scrieStare = (stare) => {
+      if (stareLocatieRef.current === stare) return
+      stareLocatieRef.current = stare
+      setStareLocatie(stare)
+      supabase
+        .from('drivers')
+        .update({ location_status: stare, location_status_at: new Date().toISOString() })
+        .eq('id', profile.id)
+        .then(({ error }) => {
+          if (error) console.error('location status error:', error.message)
+        })
+    }
+
+    if (!('geolocation' in navigator)) { scrieStare('unsupported'); return }
+
+    // Refuzul se poate afla ȘI înainte de prima măsurătoare, când browserul
+    // știe deja răspunsul — și se poate afla când șoferul schimbă setarea cu
+    // aplicaţia deschisă, fără să o repornească.
+    let opresteAscultarea = null
+    if (navigator.permissions?.query) {
+      navigator.permissions.query({ name: 'geolocation' })
+        .then((p) => {
+          if (p.state === 'denied') scrieStare('denied')
+          p.onchange = () => {
+            if (p.state === 'denied') scrieStare('denied')
+            else if (p.state === 'granted') stareLocatieRef.current = null
+          }
+          opresteAscultarea = () => { p.onchange = null }
+        })
+        .catch(() => {})
+    }
 
     // Scriem în baza de date doar când poziția s-a schimbat semnificativ.
     //
@@ -547,15 +583,20 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
         })
     }
 
+    const MOTIVE = { 1: 'denied', 2: 'unavailable', 3: 'timeout' }
     watchIdRef.current = navigator.geolocation.watchPosition(
-      (pos) => sendPosition(pos.coords),
-      (err) => console.error('geolocation error:', err.message),
+      (pos) => { scrieStare('granted'); sendPosition(pos.coords) },
+      (err) => {
+        console.error('geolocation error:', err.message)
+        scrieStare(MOTIVE[err?.code] || 'unavailable')
+      },
       // Precizie normală, nu maximă: pentru harta dispeceratului diferența e
       // nesemnificativă, iar consumul de baterie scade considerabil.
       { enableHighAccuracy: false, maximumAge: 15000, timeout: 20000 }
     )
 
     return () => {
+      if (opresteAscultarea) opresteAscultarea()
       if (watchIdRef.current !== null) {
         navigator.geolocation.clearWatch(watchIdRef.current)
         watchIdRef.current = null
@@ -628,6 +669,38 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
       </div>
 
       <div className="screen-body">
+        {/* Locaţia refuzată sau indisponibilă, spusă șoferului în clar.
+            Comutatorul „Online" poate fi pornit și totuși dispeceratul să nu
+            vadă nimic: permisiunea e a telefonului, nu a aplicaţiei. Atunci
+            șoferul crede că e văzut, iar dispecerul crede că șoferul s-a
+            ascuns. Textul spune și ce are de făcut. */}
+        {profile?.is_online && stareLocatie && stareLocatie !== 'granted' && (
+          <div style={{
+            background: stareLocatie === 'denied' || stareLocatie === 'unsupported' ? '#FCEBE8' : '#FFF6ED',
+            border: `1px solid ${stareLocatie === 'denied' || stareLocatie === 'unsupported' ? '#E4A296' : '#FFD2AE'}`,
+            borderRadius: 11, padding: '13px 14px', marginBottom: 14,
+          }}>
+            <div style={{
+              fontSize: 15.5, fontWeight: 800, lineHeight: 1.4,
+              color: stareLocatie === 'denied' || stareLocatie === 'unsupported' ? '#B23A24' : '#B35A12',
+            }}>
+              \ud83d\udccd {t(stareLocatie === 'denied' || stareLocatie === 'unsupported' ? 'locBlockedTitle' : 'locUnavailableTitle', lang)}
+            </div>
+            <div style={{
+              fontSize: 13.5, marginTop: 5, lineHeight: 1.55,
+              color: stareLocatie === 'denied' || stareLocatie === 'unsupported' ? '#8A3A28' : '#8A5A16',
+            }}>
+              {t(stareLocatie === 'denied' ? 'locBlockedBody'
+                : stareLocatie === 'unsupported' ? 'locUnsupportedBody'
+                : 'locUnavailableBody', lang)}
+            </div>
+            {stareLocatie === 'denied' && (
+              <div style={{ fontSize: 11.5, color: '#A5763E', marginTop: 7, fontStyle: 'italic', lineHeight: 1.5 }}>
+                {t('locBlockedBodyEn', lang)}
+              </div>
+            )}
+          </div>
+        )}
         {trebuieActivat && (
           <div style={{
             background: '#FFF6ED', border: '1px solid #FF9D4D', borderRadius: 11,

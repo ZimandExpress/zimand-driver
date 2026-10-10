@@ -2351,6 +2351,24 @@ function StopLegCard({ order, entry, lang, isCurrent, onOpenConfirm, onFailed })
         )}
         {acum && !peDrum && <span className="stop-now-pill">{t('stopNowLabel', lang)}</span>}
       </div>
+      {/* Același însemn, pe oprirea la care stă curierul. La un tur cu
+          douăzeci de opriri, un cuvânt în antet nu spune la care anume. */}
+      {seDeschide && (
+        <div
+          onClick={onOpenConfirm}
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            gap: 10, flexWrap: 'wrap', cursor: 'pointer',
+            background: '#FFF6ED', borderTop: '1px solid #FFD2AE', borderBottom: '1px solid #FFD2AE',
+            padding: '8px 12px',
+          }}
+        >
+          <StageBadge order={order} lang={lang} />
+          <span style={{ fontSize: 12.5, fontWeight: 700, color: '#B35A12', whiteSpace: 'nowrap' }}>
+            {t('stepOpenLabel', lang)} →
+          </span>
+        </div>
+      )}
       <div className="info-card-body">
         {strinsa ? (
           <div className="stop-closed-line">
@@ -2694,6 +2712,40 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
   const [confirmFormOpen, setConfirmFormOpen] = useState(true)
   const inConfirmStep = order.status === 'assigned' && !!arrivedAt && !confirmedAt
 
+  // „An Abholung angekommen“, scris pe cardul etapei la care stă curierul —
+  // nu sus, lângă „Zurück“.
+  //
+  // Sus era un cuvânt despre altceva decât ce se vedea dedesubt: scria
+  // „angekommen“, iar sub el două carduri la fel, fără să spună la CARE
+  // dintre ele. Acum însemnul stă pe cardul respectiv, sub data și ora, și
+  // duce înapoi la pasul cu pozele la o atingere — fiindcă exact de acolo a
+  // ieșit curierul când a apăsat „Zurück“.
+  //
+  // Celălalt card nu se aprinde și nu duce nicăieri: nu e rândul lui.
+  const stareCursa = operationalStage(order)
+  const insemnEtapa = (cheie) => {
+    const e = stareCursa.leg
+    if (!e || e.stop || e.key !== cheie) return null
+    const f = legFacts(order, e)
+    if (!f.arrivedAt || f.confirmedAt || f.failedAt) return null
+    return (
+      <div
+        onClick={() => setConfirmFormOpen(true)}
+        style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          gap: 10, flexWrap: 'wrap', cursor: 'pointer',
+          background: '#FFF6ED', border: '1px solid #FFD2AE', borderRadius: 9,
+          padding: '8px 10px', margin: '0 0 10px',
+        }}
+      >
+        <StageBadge order={order} lang={lang} />
+        <span style={{ fontSize: 12.5, fontWeight: 700, color: '#B35A12', whiteSpace: 'nowrap' }}>
+          {t('stepOpenLabel', lang)} →
+        </span>
+      </div>
+    )
+  }
+
   function handleBack() {
     if (inConfirmStep && confirmFormOpen) {
       setConfirmFormOpen(false)
@@ -2704,13 +2756,12 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
 
   return (
     <div className="ride-detail">
-      {/* Un singur rând sus: înapoi, starea cursei și hârtiile.
-          Numărul comenzii a coborât în cardul Fracht, iar legătura cu
-          dispeceratul a coborât sub butonul de confirmare — acolo e căutată,
-          când ceva nu merge, nu în antet la fiecare deschidere. */}
+      {/* Un singur rând sus: înapoi și hârtiile către client.
+          Restul a coborât acolo unde e căutat: numărul comenzii în cardul
+          Fracht, legătura cu dispeceratul sub butonul de confirmare, iar
+          însemnul „a ajuns" pe cardul etapei la care stă curierul. */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
         <button className="back-btn" style={{ margin: 0 }} onClick={handleBack}>← {t('back', lang)}</button>
-        <StageBadge order={order} lang={lang} />
         <span style={{ marginLeft: 'auto' }}>
           <TrimiteDocument order={order} lang={lang} />
         </span>
@@ -2792,6 +2843,7 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
           )}
         </div>
         <div className="info-card-body">
+          {insemnEtapa('pickup')}
           <ContactRow contact={pickupContact} lang={lang} />
           <div className="info-row address-row">
             <span className="address-text">{order.pickup_address}</span>
@@ -2856,6 +2908,7 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
           )}
         </div>
         <div className="info-card-body">
+          {insemnEtapa('delivery')}
           <ContactRow contact={deliveryContact} lang={lang} />
           <div className="info-row address-row">
             <span className="address-text">{order.delivery_address}</span>
@@ -2894,6 +2947,7 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
               )}
             </div>
             <div className="info-card-body">
+              {insemnEtapa('return_pickup')}
               <div className="info-row address-row">
                 <span className="address-text">{order.return_pickup_address}</span>
                 <a className="maps-nav-btn" href={mapsNavUrl(order.return_pickup_address)} target="_blank" rel="noreferrer"><Navigation size={13} strokeWidth={2.2} /> {t('navigateButton', lang)}</a>
@@ -2917,6 +2971,7 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
               )}
             </div>
             <div className="info-card-body">
+              {insemnEtapa('return_delivery')}
               <div className="info-row address-row">
                 <span className="address-text">{order.return_delivery_address}</span>
                 <a className="maps-nav-btn" href={mapsNavUrl(order.return_delivery_address)} target="_blank" rel="noreferrer"><Navigation size={13} strokeWidth={2.2} /> {t('navigateButton', lang)}</a>

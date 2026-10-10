@@ -5,6 +5,7 @@ import { t, getLang, setLang, availableLangs } from './i18n'
 import { Truck, CheckCircle2, Wallet, User, LogOut, Menu, Bell, MapPin, FlagTriangleRight, Tag, XCircle, Download, X, Navigation, Trophy, ThumbsUp } from 'lucide-react'
 import './index.css'
 import PodFiles from './components/PodFiles'
+import DocumentCamera from './components/DocumentCamera'
 import {
   startQueue, enqueueFiles, enqueueSignature, confirmLeg as queueConfirmLeg,
   isOnline as reteaDisponibila, reportStopFailed,
@@ -3371,6 +3372,10 @@ function DocumentCapture({ lang, onPick, onClose }) {
   const [review, setReview] = useState(null) // { file, url, checking, result }
   const cameraRef = useRef(null)
   const galleryRef = useRef(null)
+  // Camera din aplicaţie, cu cadru şi declanşator blocat. Deschisă pentru
+  // hârtiile obligatorii; la „Sonstiges" rămâne camera telefonului, fiindcă
+  // acolo şoferul fotografiază lucruri pe care nu le alegem noi.
+  const [cameraCadru, setCameraCadru] = useState(false)
 
   const chosen = DOC_TYPES.find((d) => d.id === type)
 
@@ -3406,6 +3411,26 @@ function DocumentCapture({ lang, onPick, onClose }) {
     if (review?.url) URL.revokeObjectURL(review.url)
     setReview(null)
     cameraRef.current?.click()
+  }
+
+  if (cameraCadru && chosen) {
+    return (
+      <DocumentCamera
+        lang={lang}
+        titlu={t(chosen.labelKey, lang)}
+        onCancel={() => setCameraCadru(false)}
+        onSystemCamera={() => { setCameraCadru(false); cameraRef.current?.click() }}
+        onCapture={async (file) => {
+          // Poza trece și prin verificarea de după: după cadrul verde ar
+          // trebui să fie curată, dar aici se măsoară și rezoluţia
+          // fișierului final, nu doar a previzualizării.
+          setCameraCadru(false)
+          setReview({ file, url: URL.createObjectURL(file), checking: true, result: null })
+          const result = await analyzeDocumentPhoto(file)
+          setReview((r) => (r && r.file === file ? { ...r, checking: false, result } : r))
+        }}
+      />
+    )
   }
 
   return (
@@ -3519,9 +3544,29 @@ function DocumentCapture({ lang, onPick, onClose }) {
               <li>{t('docRuleReadable', lang)}</li>
             </ul>
 
+            {/* Pentru hârtiile obligatorii, camera cu cadru e singura cale
+                către poză: declanşatorul nu se aprinde până nu e încadrat,
+                drept şi clar. Camera telefonului rămâne ca ieșire, dar numai
+                dacă browserul nu dă camera (o rezolvă componenta singură). */}
+            {type !== 'other' ? (
+              <>
+                <button
+                  type="button"
+                  className="btn"
+                  style={{ width: '100%', marginTop: 0 }}
+                  onClick={() => setCameraCadru(true)}
+                >
+                  {t('frameOpen', lang)}
+                </button>
+                <div style={{ fontSize: 11.5, color: '#6B7A90', textAlign: 'center', marginTop: 6, lineHeight: 1.5 }}>
+                  {t('frameOpenNote', lang)}
+                </div>
+              </>
+            ) : (
             <button type="button" className="btn" style={{ width: '100%', marginTop: 0 }} onClick={() => cameraRef.current?.click()}>
               {t('docOpenCamera', lang)}
             </button>
+            )}
             <button type="button" className="btn secondary" style={{ width: '100%', marginTop: 10 }} onClick={() => galleryRef.current?.click()}>
               {t('docFromGallery', lang)}
             </button>

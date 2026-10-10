@@ -2704,33 +2704,25 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
 
   return (
     <div className="ride-detail">
-      <button className="back-btn" onClick={handleBack}>← {t('back', lang)}</button>
-
-      <div className={`ride-head-group ${secventaOpriri.length > 0 ? 'ride-sticky-head' : ''}`}>
-        <div className="ride-detail-header">
-          <span className="ride-ref">{t('orderRef', lang)} {order.order_number || order.reference || order.id.slice(0, 8)}</span>
-          <StageBadge order={order} lang={lang} />
-        </div>
-
-        {/* Legătura cu dispeceratul: discretă, dar recunoscută după culoare.
-            Un rând, lângă antet — nu un panou care împinge cursa în jos. */}
-        <a
-          href={dispatchWaUrl(order, legFapte)}
-          target="_blank"
-          rel="noreferrer"
-          style={{
-            display: 'inline-flex', alignItems: 'center', gap: 5,
-            color: '#1B9E50', border: '1px solid #BFE8CF', background: '#F3FBF6',
-            fontSize: 12.5, fontWeight: 600, padding: '4px 9px', borderRadius: 20,
-            textDecoration: 'none', margin: '2px 0 8px',
-          }}
-        >
-          <WhatsAppIcon size={14} />
-          {t('dispatchWa', lang)}
-        </a>
-
-        <StageProgress order={order} lang={lang} />
+      {/* Un singur rând sus: înapoi, starea cursei și hârtiile.
+          Numărul comenzii a coborât în cardul Fracht, iar legătura cu
+          dispeceratul a coborât sub butonul de confirmare — acolo e căutată,
+          când ceva nu merge, nu în antet la fiecare deschidere. */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
+        <button className="back-btn" style={{ margin: 0 }} onClick={handleBack}>← {t('back', lang)}</button>
+        <StageBadge order={order} lang={lang} />
+        <span style={{ marginLeft: 'auto' }}>
+          <TrimiteDocument order={order} lang={lang} />
+        </span>
       </div>
+
+      {/* Bara de progres rămâne lipită sus la tururi. Goală n-o mai desenăm:
+          altfel rămânea o dungă fără nimic în ea. */}
+      {(stageProgress(order)?.done || 0) > 0 && (
+        <div className={`ride-head-group ${secventaOpriri.length > 0 ? 'ride-sticky-head' : ''}`}>
+          <StageProgress order={order} lang={lang} />
+        </div>
+      )}
 
       <GoogleLiveMap pickupCoords={pickupCoords} deliveryCoords={deliveryCoords} stopCoords={puncteOpriri} />
 
@@ -2939,7 +2931,17 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
 
       <div className="info-card">
         <div className="info-card-head cargo-toggle" onClick={() => setCargoOpen((v) => !v)}>
-          <span>📦 {t('cargoLabel', lang)}</span>
+          {/* Numărul comenzii, coborât aici din antet: sus începea fiecare
+              ecran cu un rând pe care șoferul nu-l citește — îl caută doar
+              când sună la dispecerat. */}
+          <span>📦 {t('cargoLabel', lang)}
+            <span style={{
+              marginLeft: 8, fontFamily: 'monospace', fontSize: 11.5,
+              fontWeight: 600, color: 'var(--text-soft, #6B7A90)', letterSpacing: '.02em',
+            }}>
+              {order.order_number || order.reference || order.id.slice(0, 8)}
+            </span>
+          </span>
           <span className={`cargo-chev ${cargoOpen ? 'open' : ''}`}>▼</span>
         </div>
         {cargoOpen && (
@@ -3749,6 +3751,183 @@ function UndoBar({ field, at, lang, onUndo }) {
   )
 }
 
+// ——— Hârtiile către client, din bara de sus ———
+//
+// Cazul real: șoferul ajunge la încărcare și expeditorul nu are hârtiile
+// tipărite. Butonul stătea în pasul cu pozele, deci exista numai după
+// "Angekommen" — iar înghesuia tocmai ecranul în care șoferul lucrează. Acum
+// stă sus, pe linia cu "Zurück", și se poate apăsa oricând.
+//
+// La comenzile de documente confidenţiale pleacă Zustellprotokoll-ul ȘI
+// Botenbestătigung-ul; la marfă, CMR-ul. Alegerea o face serverul, după
+// comandă — aici doar se scrie pe buton care dintre ele e.
+function mascheazaEmail(x) {
+  const s = String(x || '').trim()
+  const i = s.indexOf('@')
+  if (i < 1) return s ? '\u2022\u2022\u2022' : ''
+  const scurt = (v, n) => v.slice(0, n) + '\u2022'.repeat(Math.max(2, Math.min(6, v.length - n)))
+  const domeniu = s.slice(i + 1)
+  const punct = domeniu.lastIndexOf('.')
+  const nume = punct > 0 ? domeniu.slice(0, punct) : domeniu
+  const tld = punct > 0 ? domeniu.slice(punct) : ''
+  return `${scurt(s.slice(0, i), 1)}@${scurt(nume, 1)}${tld}`
+}
+
+function TrimiteDocument({ order, lang }) {
+  const [deschis, setDeschis] = useState(false)
+  // Adresa clientului nu se arată întreagă: șoferul duce plicul, nu are
+  // nevoie să știe cu cine lucrează firma. Dar o poate înlocui, căci la
+  // ridicare poate fi altcineva care primește hârtia.
+  const [adresa, setAdresa] = useState('')
+  const [alta, setAlta] = useState(null)
+  const [stare, setStare] = useState(null)
+
+  const esteDoc = !!order?.is_document_delivery
+  const eticheta = esteDoc ? t('docBtnDocs', lang) : t('docBtnCmr', lang)
+  const titlu = esteDoc ? t('docSheetTitleDocs', lang) : t('docSheetTitleCmr', lang)
+  const inEditare = alta != null || !adresa
+  const destinatar = (alta == null ? adresa : alta).trim()
+  const poateTrimite = destinatar.includes('@') && destinatar.includes('.')
+
+  async function deschide() {
+    setDeschis(true)
+    setStare(null)
+    if (!adresa) {
+      const { data } = await supabase.rpc('driver_get_order_contact_email', { p_order_id: order.id })
+      if (data) setAdresa(String(data))
+    }
+  }
+
+  async function trimite() {
+    setStare({ busy: true })
+    try {
+      const { data, error } = await supabase.functions.invoke('send-order-document', {
+        body: { orderId: order.id, email: destinatar },
+      })
+      if (error) throw error
+      if (data?.error) throw new Error(data.error)
+      setStare({ ok: true, msg: t('docSentOk', lang).replace('{d}', data?.document || '') })
+    } catch (e) {
+      setStare({ ok: false, msg: e.message || String(e) })
+    }
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={deschide}
+        style={{
+          display: 'inline-flex', alignItems: 'center', gap: 5,
+          background: '#fff', border: '1px solid #D8DEE8', borderRadius: 20,
+          padding: '6px 11px', fontSize: 12.5, fontWeight: 700,
+          color: '#0F2240', cursor: 'pointer', whiteSpace: 'nowrap',
+        }}
+      >
+        📄 {eticheta}
+      </button>
+
+      {deschis && (
+        <div className="sig-fullscreen" style={{ justifyContent: 'flex-end', background: 'rgba(15,34,64,.55)' }}>
+          <div style={{
+            background: '#fff', borderRadius: '16px 16px 0 0',
+            padding: '20px 20px calc(20px + env(safe-area-inset-bottom))',
+            maxHeight: '92vh', overflowY: 'auto',
+          }}>
+            <div style={{
+              fontFamily: "'Oswald', sans-serif", fontSize: 17, color: '#0F2240',
+              textTransform: 'uppercase', letterSpacing: '.03em', marginBottom: 4,
+            }}>
+              {titlu}
+            </div>
+            <p style={{ fontSize: 12.5, color: '#6B7A90', margin: '0 0 16px', lineHeight: 1.5 }}>
+              {t('docSheetHint', lang)}
+            </p>
+
+            {!inEditare ? (
+              <>
+                <div style={{
+                  fontSize: 11.5, fontWeight: 700, textTransform: 'uppercase',
+                  letterSpacing: '.04em', color: '#6B7A90', marginBottom: 5,
+                }}>
+                  {t('docEmailHidden', lang)}
+                </div>
+                <div style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+                  border: '1px solid #D8DEE8', borderRadius: 9, padding: '11px 12px',
+                  background: '#F6F8FA',
+                }}>
+                  <span style={{ fontFamily: 'monospace', fontSize: 14.5, color: '#0F2240', letterSpacing: '.02em' }}>
+                    {mascheazaEmail(adresa)}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setAlta('')}
+                    style={{
+                      background: 'transparent', border: '1px solid #D8DEE8', borderRadius: 14,
+                      padding: '4px 11px', fontSize: 12, fontWeight: 700, color: '#6B7A90',
+                      cursor: 'pointer', whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {t('docEmailChange', lang)}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="pod-label">{t('docEmailOther', lang)}</div>
+                <input
+                  className="bid-input2"
+                  type="email"
+                  inputMode="email"
+                  autoCapitalize="off"
+                  autoCorrect="off"
+                  value={alta || ''}
+                  onChange={(e) => setAlta(e.target.value)}
+                  placeholder="name@firma.de"
+                  style={{ width: '100%', margin: '0 0 6px' }}
+                />
+                {adresa ? (
+                  <button type="button" className="link-btn" onClick={() => setAlta(null)}>
+                    {t('docEmailBack', lang)}
+                  </button>
+                ) : null}
+              </>
+            )}
+
+            <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+              <button
+                className="btn"
+                style={{ flex: 1 }}
+                onClick={trimite}
+                disabled={stare?.busy || !poateTrimite}
+              >
+                {stare?.busy ? '\u2026' : t('sendDocAction', lang)}
+              </button>
+              <button
+                type="button"
+                onClick={() => { setDeschis(false); setStare(null) }}
+                style={{
+                  background: 'transparent', border: '1px solid #D8DEE8', borderRadius: 9,
+                  padding: '0 16px', fontSize: 13.5, color: '#6B7A90', cursor: 'pointer',
+                }}
+              >
+                {t('cancel', lang)}
+              </button>
+            </div>
+
+            {stare && !stare.busy && (
+              <div style={{ fontSize: 12.5, marginTop: 9, lineHeight: 1.5, color: stare.ok ? '#1B6E43' : '#B23A24' }}>
+                {stare.ok ? '\u2713 ' : '\u26a0 '}{stare.msg}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
+
 // ——— Celălalt capăt al cursei, chiar în pasul cu pozele ———
 //
 // Șoferul stă la rampă cu telefonul într-o mână: știe unde e, dar nu știe
@@ -4141,33 +4320,6 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
   // Cazul real: şoferul ajunge la încărcare şi expeditorul nu are CMR-ul
   // tipărit. Până acum suna la dispecerat şi aştepta. Adresa clientului e
   // propusă de server, ca să n-o scrie greşit de mână.
-  const [docDeschis, setDocDeschis] = useState(false)
-  const [docEmail, setDocEmail] = useState('')
-  const [docStare, setDocStare] = useState(null)
-
-  async function deschideTrimitere() {
-    setDocDeschis(true)
-    setDocStare(null)
-    if (!docEmail) {
-      const { data } = await supabase.rpc('driver_get_order_contact_email', { p_order_id: order.id })
-      if (data) setDocEmail(data)
-    }
-  }
-
-  async function trimiteDocument() {
-    setDocStare({ busy: true })
-    try {
-      const { data, error } = await supabase.functions.invoke('send-order-document', {
-        body: { orderId: order.id, email: docEmail.trim() },
-      })
-      if (error) throw error
-      if (data?.error) throw new Error(data.error)
-      setDocStare({ ok: true, msg: t('docSentOk', lang).replace('{d}', data?.document || '') })
-    } catch (e) {
-      setDocStare({ ok: false, msg: e.message || String(e) })
-    }
-  }
-
   // Regulile predării, aduse acolo unde se ia decizia.
   //
   // Şoferul le ştie din instructaj — dar le aplică în faţa uşii, obosit, la
@@ -4679,7 +4831,6 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
         </span>
       </div>
 
-      {incidentBlock}
       {/* Întrebarea se pune o singură dată, la începutul confirmării, şi
           hotărăşte ce se cere mai jos. Până la răspuns nu arătăm formularul:
           altfel şoferul completează pe un drum şi află la final că era
@@ -4729,68 +4880,6 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
           </button>
         </div>
       )}
-
-      {/* Documentul către client. Un rând discret, deschis doar la nevoie:
-          nu e un pas obligatoriu, ci o ieşire din încurcătură. */}
-      <div style={{ margin: '10px 0 4px' }}>
-        {!docDeschis ? (
-          <button
-            onClick={deschideTrimitere}
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: 6,
-              background: 'transparent', border: '1px solid var(--line, #E2E7EE)',
-              borderRadius: 20, padding: '5px 11px', fontSize: 12.5, fontWeight: 600,
-              color: 'var(--text-soft)',
-            }}
-          >
-            📄 {t('sendDocToClient', lang)}
-          </button>
-        ) : (
-          <div style={{
-            background: 'var(--surface-soft, #F4F6F9)', border: '1px solid var(--line, #E2E7EE)',
-            borderRadius: 9, padding: '11px 12px',
-          }}>
-            <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 6 }}>
-              {t('sendDocTitle', lang)}
-            </div>
-            <input
-              className="bid-input2"
-              type="email"
-              inputMode="email"
-              autoCapitalize="off"
-              autoCorrect="off"
-              value={docEmail}
-              onChange={(e) => setDocEmail(e.target.value)}
-              placeholder="kunde@firma.de"
-              style={{ width: '100%', margin: '0 0 8px' }}
-            />
-            <div style={{ display: 'flex', gap: 7 }}>
-              <button
-                className="btn"
-                style={{ flex: 1 }}
-                onClick={trimiteDocument}
-                disabled={docStare?.busy || !docEmail.includes('@')}
-              >
-                {docStare?.busy ? '…' : t('sendDocAction', lang)}
-              </button>
-              <button
-                onClick={() => { setDocDeschis(false); setDocStare(null) }}
-                style={{
-                  background: 'transparent', border: '1px solid var(--line, #E2E7EE)',
-                  borderRadius: 8, padding: '0 14px', fontSize: 13, color: 'var(--text-soft)',
-                }}
-              >
-                {t('cancel', lang)}
-              </button>
-            </div>
-            {docStare && !docStare.busy && (
-              <div style={{ fontSize: 12, marginTop: 7, color: docStare.ok ? '#1B6E43' : '#B23A24' }}>
-                {docStare.ok ? '✓ ' : '⚠ '}{docStare.msg}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
 
       <div className="leg-title">{legLabel} · {t('confirmStep', lang)}</div>
 
@@ -5189,6 +5278,29 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
           ✕ {t('stopFailedButton', lang)}
         </button>
       )}
+
+      {/* Ieșirile, mutate sub butonul de confirmare.
+          Sus, deasupra pozelor, "Problem melden" era primul lucru pe care îl
+          vedea șoferul în pasul de confirmare — și cel mai ușor de atins din
+          greșeală cu telefonul într-o mână. Aici sunt căutate: după ce
+          confirmarea nu merge. */}
+      <div style={{ marginTop: 18, paddingTop: 14, borderTop: '1px solid var(--line, #E2E7EE)' }}>
+        {incidentBlock}
+        <a
+          href={dispatchWaUrl(order, fapte)}
+          target="_blank"
+          rel="noreferrer"
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+            color: '#1B9E50', border: '1px solid #BFE8CF', background: '#F3FBF6',
+            fontSize: 13.5, fontWeight: 600, padding: '10px 12px', borderRadius: 10,
+            textDecoration: 'none',
+          }}
+        >
+          <WhatsAppIcon size={15} />
+          {t('dispatchWa', lang)}
+        </a>
+      </div>
     </div>
   )
 }

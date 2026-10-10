@@ -2761,10 +2761,25 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
           Fracht, legătura cu dispeceratul sub butonul de confirmare, iar
           însemnul „a ajuns" pe cardul etapei la care stă curierul. */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
-        <button className="back-btn" style={{ margin: 0 }} onClick={handleBack}>← {t('back', lang)}</button>
-        <span style={{ marginLeft: 'auto' }}>
-          <TrimiteDocument order={order} lang={lang} />
-        </span>
+        <button className="back-btn" style={{ margin: 0, alignSelf: 'center' }} onClick={handleBack}>← {t('back', lang)}</button>
+        <TrimiteDocument order={order} lang={lang} />
+        {/* Wartezeit, calculată din ora sosirii — nu dintr-un cronometru ţinut
+            în memorie: dacă șoferul reîncarcă aplicaţia, timpul rămâne corect.
+            Stătea în pasul cu pozele, deci dispărea de sub ochi exact când
+            șoferul ieșea să se uite la comandă. Aici merge mai departe. */}
+        {arrivedAt && !confirmedAt && (
+          <span
+            title={t('waitingTime', lang)}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              background: 'rgba(15,34,64,.08)', borderRadius: 10,
+              padding: '8px 12px', whiteSpace: 'nowrap', alignSelf: 'center',
+            }}
+          >
+            <span style={{ fontSize: 14 }}>⏱</span>
+            <ElapsedTimer startedAt={arrivedAt} compact />
+          </span>
+        )}
       </div>
 
       {/* Bara de progres rămâne lipită sus la tururi. Goală n-o mai desenăm:
@@ -3154,7 +3169,7 @@ function SignaturePad({ onChange }) {
   )
 }
 
-function ElapsedTimer({ startedAt }) {
+function ElapsedTimer({ startedAt, compact }) {
   const [now, setNow] = useState(Date.now())
 
   useEffect(() => {
@@ -3166,6 +3181,20 @@ function ElapsedTimer({ startedAt }) {
   const hh = String(Math.floor(seconds / 3600)).padStart(2, '0')
   const mm = String(Math.floor((seconds % 3600) / 60)).padStart(2, '0')
   const ss = String(seconds % 60).padStart(2, '0')
+
+  // Același cronometru, două mărimi. Clasa `timer` scrie cu 24px — bună
+  // pentru o casetă lăţită, prea mare pentru un rând de butoane. Cifrele
+  // rămân monospaţiate, altfel ceasul s-ar zbate la fiecare secundă.
+  if (compact) {
+    return (
+      <span style={{
+        fontFamily: "'IBM Plex Mono', monospace", fontSize: 15, fontWeight: 700,
+        color: 'var(--navy, #0F2240)', letterSpacing: '.02em',
+      }}>
+        {hh}:{mm}:{ss}
+      </span>
+    )
+  }
 
   return <div className="timer">{hh}:{mm}:{ss}</div>
 }
@@ -3869,14 +3898,16 @@ function TrimiteDocument({ order, lang }) {
 
   return (
     <>
+      {/* Aceeași clasă ca butonul „Zurück“, deci aceeași înălţime și același
+          fel de apăsare. Un alt desen pe același rând arăta ca o greșeală. */}
       <button
         type="button"
+        className="back-btn"
         onClick={deschide}
         style={{
-          display: 'inline-flex', alignItems: 'center', gap: 5,
-          background: '#fff', border: '1px solid #D8DEE8', borderRadius: 20,
-          padding: '6px 11px', fontSize: 12.5, fontWeight: 700,
-          color: '#0F2240', cursor: 'pointer', whiteSpace: 'nowrap',
+          margin: 0, alignSelf: 'center',
+          display: 'inline-flex', alignItems: 'center', gap: 6,
+          whiteSpace: 'nowrap',
         }}
       >
         📄 {eticheta}
@@ -4868,23 +4899,6 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
     <div className="leg-workflow">
       {undoBlock}
       {waitingBlock}
-
-      {/* Wartezeit — calculată din ora sosirii, nu dintr-un cronometru ținut
-          în memorie. Dacă șoferul reîncarcă aplicația sau o închide, timpul
-          rămâne corect. Componenta exista deja în cod, dar nu era folosită
-          nicăieri. */}
-      <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        background: '#F6F8FA', border: '1px solid #D8DEE8', borderRadius: 10,
-        padding: '10px 14px', marginBottom: 12,
-      }}>
-        <span style={{ fontSize: 11.5, fontWeight: 700, color: '#6B7A90', textTransform: 'uppercase', letterSpacing: '.04em' }}>
-          {t('waitingTime', lang)}
-        </span>
-        <span style={{ fontFamily: 'monospace', fontSize: 18, fontWeight: 700, color: '#0F2240' }}>
-          <ElapsedTimer startedAt={arrivedAt} />
-        </span>
-      </div>
 
       {/* Întrebarea se pune o singură dată, la începutul confirmării, şi
           hotărăşte ce se cere mai jos. Până la răspuns nu arătăm formularul:

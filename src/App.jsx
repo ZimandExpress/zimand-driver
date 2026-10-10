@@ -2756,13 +2756,12 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
 
   return (
     <div className="ride-detail">
-      {/* Un singur rând sus: înapoi și hârtiile către client.
-          Restul a coborât acolo unde e căutat: numărul comenzii în cardul
-          Fracht, legătura cu dispeceratul sub butonul de confirmare, iar
-          însemnul „a ajuns" pe cardul etapei la care stă curierul. */}
+      {/* Sus doar „Zurück" și ceasul de așteptare. Restul a coborât acolo
+          unde e căutat: numărul comenzii și hârtiile în cardul Fracht,
+          legătura cu dispeceratul sub butonul de confirmare, iar însemnul
+          „a ajuns" pe cardul etapei la care stă curierul. */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
         <button className="back-btn" style={{ margin: 0, alignSelf: 'center' }} onClick={handleBack}>← {t('back', lang)}</button>
-        <TrimiteDocument order={order} lang={lang} />
         {/* Wartezeit, calculată din ora sosirii — nu dintr-un cronometru ţinut
             în memorie: dacă șoferul reîncarcă aplicaţia, timpul rămâne corect.
             Stătea în pasul cu pozele, deci dispărea de sub ochi exact când
@@ -2774,6 +2773,7 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
               display: 'inline-flex', alignItems: 'center', gap: 6,
               background: 'rgba(15,34,64,.08)', borderRadius: 10,
               padding: '8px 12px', whiteSpace: 'nowrap', alignSelf: 'center',
+              marginLeft: 'auto',
             }}
           >
             <span style={{ fontSize: 14 }}>⏱</span>
@@ -3034,6 +3034,10 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
         )}
       </div>
 
+      {/* Hârtiile către client, sub Fracht: acolo stă marfa, deci acolo se
+          caută și actele ei. */}
+      <TrimiteDocument order={order} lang={lang} />
+
       {isOwner && companyDrivers.length > 0 && !order.pickup_started_at && (
         <div className="reassign-footer">
           {!reassigning && !reassignTo ? (
@@ -3189,9 +3193,9 @@ function ElapsedTimer({ startedAt, compact }) {
     return (
       <span style={{
         fontFamily: "'IBM Plex Mono', monospace", fontSize: 15, fontWeight: 700,
-        color: 'var(--navy, #0F2240)', letterSpacing: '.02em',
+        color: 'var(--navy, #0F2240)', letterSpacing: 0,
       }}>
-        {hh}:{mm}:{ss}
+        {hh === '00' ? '' : `${hh}:`}{mm}:{ss}
       </span>
     )
   }
@@ -3900,17 +3904,28 @@ function TrimiteDocument({ order, lang }) {
     <>
       {/* Aceeași clasă ca butonul „Zurück“, deci aceeași înălţime și același
           fel de apăsare. Un alt desen pe același rând arăta ca o greșeală. */}
+      {/* Un bloc pe toată lăţimea, nu o pastilă înghesuită sus.
+          Pe un rând cu „Zurück“ și ceasul, eticheta întreagă nu încape pe un
+          telefon de 360 de punăţi — măsurat: 337 de puncte pe 320. Aici încape,
+          și mai încape și rândul care spune LA CE e bun butonul. */}
       <button
         type="button"
-        className="back-btn"
         onClick={deschide}
         style={{
-          margin: 0, alignSelf: 'center',
-          display: 'inline-flex', alignItems: 'center', gap: 6,
-          whiteSpace: 'nowrap',
+          display: 'flex', alignItems: 'center', gap: 11, width: '100%', textAlign: 'left',
+          background: '#fff', border: '1px solid var(--line, #D8DEE8)', borderRadius: 12,
+          padding: '12px 14px', cursor: 'pointer',
         }}
       >
-        📄 {eticheta}
+        <span style={{ fontSize: 20, flexShrink: 0 }}>📄</span>
+        <span style={{ minWidth: 0 }}>
+          <span style={{ display: 'block', fontSize: 15, fontWeight: 700, color: '#0F2240' }}>
+            {eticheta}
+          </span>
+          <span style={{ display: 'block', fontSize: 12, color: '#6B7A90', marginTop: 2, lineHeight: 1.45 }}>
+            {t('docBtnNote', lang)}
+          </span>
+        </span>
       </button>
 
       {deschis && (
@@ -3926,9 +3941,20 @@ function TrimiteDocument({ order, lang }) {
             }}>
               {titlu}
             </div>
-            <p style={{ fontSize: 12.5, color: '#6B7A90', margin: '0 0 16px', lineHeight: 1.5 }}>
+            <p style={{ fontSize: 12.5, color: '#6B7A90', margin: '0 0 10px', lineHeight: 1.5 }}>
               {t('docSheetHint', lang)}
             </p>
+            {/* Cazul pentru care există butonul: la rampă nu e tipărit nimic.
+                Telefonul se dă omului de acolo, el își scrie adresa și hârtia
+                îi vine în clipă — fără telefon la dispecerat și fără ca șoferul
+                să ghicească o adresă dictată pe jumătate. */}
+            <div style={{
+              background: '#F3FBF6', border: '1px solid #BFE8CF', borderRadius: 9,
+              padding: '9px 11px', fontSize: 12.5, color: '#1B6E43', lineHeight: 1.5,
+              margin: '0 0 14px',
+            }}>
+              {t('docSheetHandover', lang)}
+            </div>
 
             {!inEditare ? (
               <>
@@ -5007,6 +5033,13 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
       {/* La ridicare arată unde merge marfa; la livrare, de la cine a fost
           luată. Deasupra pozelor, în pasul în care șoferul se uită oricum. */}
       <AltCapat order={order} lang={lang} spreLivrare={!esteLivrareEtapa} />
+
+      {/* Același bloc și aici: când șoferul e la rampă și expeditorul nu are
+          nimic tipărit, el stă în pasul cu pozele — cardurile de sus sunt
+          ascunse, deci butonul de acolo nu i-ar fi la îndemână. */}
+      <div style={{ marginBottom: 12 }}>
+        <TrimiteDocument order={order} lang={lang} />
+      </div>
 
       <PodFiles
         orderId={order.id}

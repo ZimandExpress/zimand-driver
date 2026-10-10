@@ -3271,6 +3271,7 @@ function CelebrationScreen({ amount, lang, onClose }) {
 const DOC_TYPES = [
   { id: 'cmr', labelKey: 'docTypeCmr', guideKey: 'docGuideCmrText' },
   { id: 'zustellprotokoll', labelKey: 'docTypeProtocol', guideKey: 'docGuideProtocolText' },
+  { id: 'botenbestaetigung', labelKey: 'docTypeBote', guideKey: 'docGuideBoteText' },
   { id: 'other', labelKey: 'docTypeOther', guideKey: 'docGuideOtherText' },
 ]
 
@@ -3380,14 +3381,30 @@ function DocumentCapture({ lang, onPick, onClose }) {
                 >
                   {t('qRetake', lang)}
                 </button>
-                <button
-                  type="button"
-                  className={review.result?.ok ? 'btn' : 'btn secondary'}
-                  style={{ width: '100%', marginTop: 10 }}
-                  onClick={() => onPick(review.file, type)}
-                >
-                  {review.result?.ok ? t('qUse', lang) : t('qUseAnyway', lang)}
-                </button>
+                {/* „Totuși“ dispare la hârtiile obligatorii.
+                    Un CMR neînţeles sau un Zustellprotokoll tăiat pe jumătate
+                    nu e o dovadă — iar până acum se putea trece peste
+                    avertisment cu o atingere, din grăbire, și nimeni nu afla
+                    decât când clientul cerea actul. La „Sonstiges“ rămâne:
+                    acolo șoferul fotografiază lucruri pe care nu le alegem noi. */}
+                {(review.result?.ok || type === 'other') ? (
+                  <button
+                    type="button"
+                    className={review.result?.ok ? 'btn' : 'btn secondary'}
+                    style={{ width: '100%', marginTop: 10 }}
+                    onClick={() => onPick(review.file, type)}
+                  >
+                    {review.result?.ok ? t('qUse', lang) : t('qUseAnyway', lang)}
+                  </button>
+                ) : (
+                  <div style={{
+                    marginTop: 10, fontSize: 12.5, lineHeight: 1.5, color: '#B23A24',
+                    background: '#FCEBE8', border: '1px solid #E4A296',
+                    borderRadius: 9, padding: '9px 11px',
+                  }}>
+                    {t('qMustRetake', lang)}
+                  </div>
+                )}
               </>
             )}
           </>
@@ -4484,6 +4501,36 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
   const cereDocument = esteMarfa && (modDoc === 'cmr' || (intreabaSoferul && areActe === true))
   const cereSemnatura = esteMarfa && (modDoc === 'signature' || (intreabaSoferul && areActe === false))
 
+  // Câte poze și ce hârtii, pe fiecare etapă.
+  //
+  // Scrise O SINGURĂ DATĂ și folosite și de lista cu ce lipsește, și de
+  // butonul de confirmare. Până acum cele două erau scrise separat, cu
+  // condiţii asemănătoare dar nu identice — iar când nu se potriveau,
+  // șoferul rămânea cu un buton stins și o listă care nu-i cerea nimic.
+  const minimPoze = isDocumentDelivery
+    ? (esteLivrareEtapa ? (deliveryMethod === 'briefkasten' ? MINIM_POZE_LIVRARE : 4) : 1)
+    : (esteLivrareEtapa ? 2 : 1)
+
+  // La ridicarea unei curse de documente pleacă două formulare: protocolul
+  // și declaraţia de predare. La livrare doar protocolul — declaraţia a
+  // rămas la expeditor.
+  const docCerute = isDocumentDelivery
+    ? (esteLivrareEtapa ? ['zustellprotokoll'] : ['zustellprotokoll', 'botenbestaetigung'])
+    : (cereDocument ? ['cmr'] : [])
+  // Tipurile vin din coada de încărcare. Pe o versiune mai veche a
+  // componentei de fișiere lista nu există — atunci numărăm doar câte
+  // documente s-au încărcat, ca aplicaţia să nu blocheze pe loc.
+  const tipuriIncarcate = Array.isArray(fileSummary.documentTypes) ? fileSummary.documentTypes : null
+  const docLipsa = tipuriIncarcate
+    ? docCerute.filter((tip) => !tipuriIncarcate.includes(tip))
+    : docCerute.slice(Math.min(fileSummary.documentCount, docCerute.length))
+
+  // Semnătura în aplicaţie: la marfă doar pentru clienţii care au ales-o;
+  // la documente, numai la ridicare (la livrare se semnează pe protocol).
+  const semnaturaCeruta = isDocumentDelivery ? !esteLivrareEtapa : cereSemnatura
+  const numeCerut = cereDocument || cereSemnatura
+    || (isDocumentDelivery && (!esteLivrareEtapa || deliveryMethod === 'persoenlich'))
+
   async function raspundeActe(valoare) {
     setAreActe(valoare)
     const { error } = await supabase.rpc('driver_set_delivery_paperwork', {
@@ -5085,12 +5132,6 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
           luată. Deasupra pozelor, în pasul în care șoferul se uită oricum. */}
       <AltCapat order={order} lang={lang} spreLivrare={!esteLivrareEtapa} />
 
-      {/* Același bloc și aici: când șoferul e la rampă și expeditorul nu are
-          nimic tipărit, el stă în pasul cu pozele — cardurile de sus sunt
-          ascunse, deci butonul de acolo nu i-ar fi la îndemână. */}
-      <div style={{ marginBottom: 12 }}>
-        <TrimiteDocument order={order} lang={lang} />
-      </div>
 
       <PodFiles
         orderId={order.id}
@@ -5098,6 +5139,7 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
         lang={lang}
         onAddPhoto={() => setPhotoSourceOpen(true)}
         maxPhotos={esteEtapaLivrareDoc && deliveryMethod === 'briefkasten' ? 8 : 6}
+        minPhotos={minimPoze}
         onSummary={setFileSummary}
         photoHints={
           esteEtapaLivrareDoc
@@ -5287,15 +5329,6 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
             </div>
           )}
           <SignatureLine lang={lang} signatureBlob={signatureBlob} onChange={setSignatureBlob} />
-          {/* La ridicare nu întrebăm nimic despre acte: foile de transport
-              se primesc adesea chiar acolo, la încărcare. Doar o mențiune,
-              ca şoferul să ştie că semnătura în aplicaţie nu e necesară
-              dacă oricum semnează pe hârtie. */}
-          {!isDocumentDelivery && !esteLivrareEtapa && (
-            <div style={{ fontSize: 11.5, color: 'var(--text-soft)', marginTop: 5, lineHeight: 1.5 }}>
-              {t('pickupSignatureNote', lang)}
-            </div>
-          )}
         </>
       )}
       </>
@@ -5325,50 +5358,30 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
       )}
 
       {(() => {
-        if (!isDocumentDelivery && !cereDocument && !cereSemnatura && !intreabaSoferul) return null
+        // Cât timp întrebarea despre hârtii n-a primit răspuns (doar la
+        // oaspeţi), nu are rost să cerem nimic: cerinţele depind de el.
+        if (intreabaSoferul && areActe == null) return null
         const lipsa = []
-
-        // Cursă de marfă: cerinţele vin din alegerea clientului.
-        if (esteMarfa) {
-          if (intreabaSoferul && areActe == null) return null
-          // Cele două fotografii se cer la livrare, ca și până acum. La
-          // încărcare dovada e hârtia sau semnătura, nu un album.
-          if (esteLivrareEtapa && fileSummary.photoCount < 2) {
-            lipsa.push(t('missingPhotosMin', lang).replace('{n}', 2).replace('{have}', fileSummary.photoCount))
-          }
-          if (cereDocument && fileSummary.documentCount === 0) lipsa.push(t('missingCmr', lang))
-          if (cereSemnatura && !signerName.trim()) lipsa.push(t('missingSigner', lang))
-          if (cereSemnatura && !signatureBlob) lipsa.push(t('missingSignature', lang))
-          if (!lipsa.length) return null
-          return (
-            <div style={{
-              marginTop: 12, padding: '10px 12px', borderRadius: 9,
-              background: '#FFF6ED', border: '1px solid #FFD2AE', color: '#B35A12',
-              fontSize: 13, lineHeight: 1.6,
-            }}>
-              <div style={{ fontWeight: 700 }}>⚠ {t('requiredBeforeConfirm', lang)}</div>
-              {lipsa.map((x, i) => <div key={i}>• {x}</div>)}
-            </div>
-          )
-        }
-
-        // La predarea personală proba e Zustellprotokoll-ul semnat de
-        // destinatar; o fotografie a clădirii ajunge. La cutia poştală nu
-        // există semnătură, deci fotografiile SUNT singura dovadă.
-        const minimPoze = (esteEtapaLivrareDoc && deliveryMethod === 'briefkasten')
-          ? MINIM_POZE_LIVRARE
-          : 1
         if (fileSummary.photoCount < minimPoze) {
-          lipsa.push(
-            minimPoze > 1
-              ? t('missingPhotosMin', lang)
-                  .replace('{n}', minimPoze)
-                  .replace('{have}', fileSummary.photoCount)
-              : t('missingPhotos', lang)
-          )
+          lipsa.push(minimPoze > 1
+            ? t('missingPhotosMin', lang)
+                .replace('{n}', minimPoze)
+                .replace('{have}', fileSummary.photoCount)
+            : t('missingPhotos', lang))
         }
-        if (fileSummary.documentCount === 0) lipsa.push(t('missingProtokoll', lang))
+        for (const tip of docLipsa) {
+          lipsa.push(t(
+            tip === 'cmr' ? 'missingCmr'
+              : tip === 'botenbestaetigung' ? 'missingBote'
+              : 'missingProtokoll',
+            lang,
+          ))
+        }
         if (isDocumentDeliveryLeg && !deliveryMethod) lipsa.push(t('missingMethod', lang))
+        if (numeCerut && !signerName.trim()) {
+          lipsa.push(t(esteLivrareEtapa ? 'missingSigner' : 'missingSignerPickup', lang))
+        }
+        if (semnaturaCeruta && !signatureBlob) lipsa.push(t('missingSignature', lang))
         if (!lipsa.length) return null
         return (
           <div style={{
@@ -5396,19 +5409,21 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
         // nici merge mai departe — stătea într-un subsol cu turul oprit.
         // Acum confirmarea se pune în aşteptare, întreagă, şi pleacă singură
         // când revine semnalul.
+        // Aceeași regulă ca lista de mai sus, nu o copie a ei.
+        //
+        // Fără internet, dovezile rămân în coadă și `allDone` nu devine
+        // niciodată adevărat. Blocat pe asta, șoferul nu putea nici confirma,
+        // nici merge mai departe — stătea într-un subsol cu turul oprit.
+        // Acum confirmarea se pune în așteptare, întreagă, și pleacă singură
+        // când revine semnalul.
         disabled={busy || !!blockingIncident || turIncomplet || fileSummary.total === 0
           || (reteaDisponibila() && !fileSummary.allDone)
+          || (intreabaSoferul && areActe == null)
+          || fileSummary.photoCount < minimPoze
+          || docLipsa.length > 0
           || (isDocumentDeliveryLeg && !deliveryMethod)
-          || (esteMarfa && (
-                (intreabaSoferul && areActe == null)
-                || (esteLivrareEtapa && fileSummary.photoCount < 2)
-                || (cereDocument && fileSummary.documentCount === 0)
-                || (cereSemnatura && (!signerName.trim() || !signatureBlob))
-              ))
-          || (isDocumentDelivery && (
-                fileSummary.photoCount < ((esteEtapaLivrareDoc && deliveryMethod === 'briefkasten') ? MINIM_POZE_LIVRARE : 1)
-                || fileSummary.documentCount === 0
-              ))}
+          || (numeCerut && !signerName.trim())
+          || (semnaturaCeruta && !signatureBlob)}
         style={{ marginTop: 14 }}
       >
         {busy

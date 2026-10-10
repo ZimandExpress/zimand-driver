@@ -44,7 +44,7 @@ const pill = (bg) => ({
   minWidth: 18, textAlign: 'center',
 })
 
-function PhotoTile({ file, lang, onRemove, onRetry }) {
+function PhotoTile({ file, lang, onRemove, onRetry, onOpen }) {
   const url = useThumbUrl(file.thumb)
   const busy = file.status === 'processing' || file.status === 'uploading'
   return (
@@ -52,8 +52,11 @@ function PhotoTile({ file, lang, onRemove, onRetry }) {
       className="photo-slot filled"
       style={{ position: 'relative', opacity: file.status === 'processing' ? 0.55 : 1 }}
       onClick={() => {
+        // Atins pe poză ȘTERGEA, pe loc și fără întrebare. Șoferul care
+        // voia doar să vadă ce-a ieșit rămânea fără poză și fără marfa în
+        // faţă. Acum se deschide mare, iar ștersul e un buton acolo.
         if (file.status === 'failed') onRetry(file.id)
-        else if (!busy) onRemove(file.id)
+        else if (!busy) onOpen(file)
       }}
     >
       {url
@@ -69,9 +72,49 @@ function PhotoTile({ file, lang, onRemove, onRetry }) {
   )
 }
 
-export default function PodFiles({ orderId, leg, lang, maxPhotos = 6, onAddPhoto, onSummary, photoHints = [] }) {
+// Poza, pe tot ecranul. De aici se șterge — nu dintr-o atingere greșită
+// pe grila de miniaturi.
+function PhotoPreview({ file, lang, onClose, onDelete }) {
+  const url = useThumbUrl(file.thumb)
+  return (
+    <div
+      className="sig-fullscreen"
+      style={{ background: 'rgba(15,34,64,.92)', flexDirection: 'column', justifyContent: 'center', padding: 16 }}
+    >
+      {url
+        ? <img src={url} alt="" style={{ maxWidth: '100%', maxHeight: '70vh', objectFit: 'contain', borderRadius: 10 }} />
+        : <div style={{ color: '#fff', fontSize: 14 }}>{t('photoOpenLabel', lang)}</div>}
+      <div style={{ display: 'flex', gap: 10, marginTop: 18, width: '100%', maxWidth: 420 }}>
+        <button
+          type="button"
+          onClick={onDelete}
+          style={{
+            flex: 1, padding: '12px 14px', borderRadius: 10, border: 'none',
+            background: RED, color: '#fff', fontSize: 14.5, fontWeight: 700, cursor: 'pointer',
+          }}
+        >
+          {t('photoDeleteLabel', lang)}
+        </button>
+        <button
+          type="button"
+          onClick={onClose}
+          style={{
+            flex: 1, padding: '12px 14px', borderRadius: 10,
+            border: '1px solid rgba(255,255,255,.35)', background: 'transparent',
+            color: '#fff', fontSize: 14.5, fontWeight: 700, cursor: 'pointer',
+          }}
+        >
+          {t('back', lang)}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+export default function PodFiles({ orderId, leg, lang, maxPhotos = 6, minPhotos = 0, onAddPhoto, onSummary, photoHints = [] }) {
   const [files, setFiles] = useState([])
   const [online, setOnline] = useState(isOnline())
+  const [privita, setPrivita] = useState(null)
 
   useEffect(() => {
     let alive = true
@@ -104,6 +147,12 @@ export default function PodFiles({ orderId, leg, lang, maxPhotos = 6, onAddPhoto
       // puţin două poze" se considera îndeplinită cu o singură poză reală.
       photoCount: relevante.filter((f) => f.kind === 'photo' && f.status !== 'lost').length,
       documentCount: relevante.filter((f) => f.kind === 'document' && f.status !== 'lost').length,
+      // CARE documente, nu doar câte. La o ridicare de documente se cer
+      // două formulare anume; numărate, două poze oarecare treceau drept
+      // protocol și declaraţie de predare.
+      documentTypes: relevante
+        .filter((f) => f.kind === 'document' && f.status !== 'lost')
+        .map((f) => f.docType || 'other'),
     }
   }, [files])
 
@@ -113,10 +162,22 @@ export default function PodFiles({ orderId, leg, lang, maxPhotos = 6, onAddPhoto
 
   return (
     <>
-      <div className="pod-label">{t('photosLabel', lang)} ({photos.length}/{maxPhotos})</div>
-      <div className="photo-grid">
+      {/* Numărul cerut stă pe aceeași linie: „Fotos (1/6) · min. 2“.
+          Altfel șoferul afla câte trebuie abia de la butonul stins. */}
+      <div className="pod-label" style={{ display: 'flex', alignItems: 'baseline', gap: 7 }}>
+        <span>{t('photosLabel', lang)} ({photos.length}/{maxPhotos})</span>
+        {minPhotos > 0 && photos.length < minPhotos && (
+          <span style={{ fontSize: 11, fontWeight: 700, color: ORANGE, letterSpacing: 0 }}>
+            {t('minPhotosInline', lang).replace('{n}', minPhotos)}
+          </span>
+        )}
+      </div>
+      {/* Mai strâns: patru pe rând în loc de trei. Șase locuri intrau pe două
+          rânduri înalte care împingeau restul formularului sub marginea
+          ecranului, iar șoferul derula ca să ajungă la nume și semnătură. */}
+      <div className="photo-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
         {photos.map((f) => (
-          <PhotoTile key={f.id} file={f} lang={lang} onRemove={removeFile} onRetry={retryFile} />
+          <PhotoTile key={f.id} file={f} lang={lang} onRemove={removeFile} onRetry={retryFile} onOpen={setPrivita} />
         ))}
         {/* Locurile goale spun CE se aşteaptă în fiecare.
             O instrucţiune ascunsă după un buton o citeşte cine era oricum
@@ -156,6 +217,15 @@ export default function PodFiles({ orderId, leg, lang, maxPhotos = 6, onAddPhoto
         })()}
       </div>
 
+      {privita && (
+        <PhotoPreview
+          file={privita}
+          lang={lang}
+          onClose={() => setPrivita(null)}
+          onDelete={() => { removeFile(privita.id); setPrivita(null) }}
+        />
+      )}
+
       {documents.length > 0 && (
         <div className="doc-chip-list">
           {documents.map((f) => (
@@ -166,6 +236,7 @@ export default function PodFiles({ orderId, leg, lang, maxPhotos = 6, onAddPhoto
             >
               {f.docType === 'cmr' ? t('docTypeCmr', lang)
                 : f.docType === 'zustellprotokoll' ? t('docTypeProtocol', lang)
+                : f.docType === 'botenbestaetigung' ? t('docTypeBote', lang)
                 : t('docTypeOther', lang)}
               {' · '}{f.fileName}
               {' · '}

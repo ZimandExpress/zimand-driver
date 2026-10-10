@@ -3108,6 +3108,37 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
         )}
       </div>
 
+      {/* Ce dovadă cere comanda asta, scris pe ecranul ei.
+          Cerinţa apărea abia în pasul de confirmare, după „Losfahren" — adică
+          după ce şoferul plecase. Cine duce o cursă cu CMR trebuie s-o ştie
+          cât încă poate face ceva. */}
+      {(() => {
+        const mod = order.doc_mode || 'ask'
+        if (order.is_document_delivery || (mod !== 'cmr' && mod !== 'signature')) return null
+        const cmr = mod === 'cmr'
+        return (
+          <div style={{
+            background: cmr ? '#FFF6ED' : '#F3FBF6',
+            border: `1px solid ${cmr ? '#FFD2AE' : '#BFE8CF'}`,
+            borderRadius: 10, padding: '11px 13px', margin: '10px 0',
+          }}>
+            <div style={{
+              fontSize: 14.5, fontWeight: 800, lineHeight: 1.35,
+              color: cmr ? '#B35A12' : '#1B6E43',
+            }}>
+              {cmr ? '\ud83d\udcc4 ' : '\u270d\ufe0f '}
+              {t(cmr ? 'requireCmrTitle' : 'requireSignatureTitle', lang)}
+            </div>
+            <div style={{
+              fontSize: 12.5, lineHeight: 1.5, marginTop: 3,
+              color: cmr ? '#8A5A16' : '#1B6E43',
+            }}>
+              {t(cmr ? 'requireCmrNote' : 'requireSignatureNote', lang)}
+            </div>
+          </div>
+        )
+      })()}
+
       {/* Hârtiile către client, sub Fracht: acolo stă marfa, deci acolo se
           caută și actele ei. */}
       <TrimiteDocument order={order} lang={lang} />
@@ -3140,13 +3171,16 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
   )
 }
 
-function SignatureLine({ lang, signatureBlob, onChange }) {
+function SignatureLine({ lang, signatureBlob, onChange, obligatoriu }) {
   const [open, setOpen] = useState(false)
 
   return (
     <>
       <button type="button" className="sig-line-toggle" onClick={() => setOpen(true)}>
-        <span>✍️ {t('signatureLabel', lang)} <span className="sig-optional">({t('optionalLabel', lang)})</span></span>
+        <span>
+          ✍️ {t('signatureLabel', lang)}
+          {obligatoriu && <span style={{ color: '#B35A12', fontWeight: 800 }}> · {t('requiredWord', lang)}</span>}
+        </span>
         {signatureBlob ? <span className="sig-done">✓</span> : <span className="sig-chev">›</span>}
       </button>
 
@@ -5446,7 +5480,7 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
               ⚠ {t('pickupSignatureRule', lang)}
             </div>
           )}
-          <SignatureLine lang={lang} signatureBlob={signatureBlob} onChange={setSignatureBlob} />
+          <SignatureLine lang={lang} signatureBlob={signatureBlob} onChange={setSignatureBlob} obligatoriu={semnaturaCeruta} />
         </>
       )}
       </>

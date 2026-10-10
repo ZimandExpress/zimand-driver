@@ -3870,6 +3870,7 @@ function TrimiteDocument({ order, lang }) {
   const [alta, setAlta] = useState(null)
   const [stare, setStare] = useState(null)
 
+  const modDoc = order?.doc_mode || 'ask'
   const esteDoc = !!order?.is_document_delivery
   const eticheta = esteDoc ? t('docBtnDocs', lang) : t('docBtnCmr', lang)
   const titlu = esteDoc ? t('docSheetTitleDocs', lang) : t('docSheetTitleCmr', lang)
@@ -3900,13 +3901,19 @@ function TrimiteDocument({ order, lang }) {
     }
   }
 
+  // Clientul care a cerut semnătura digitală nu are CMR de tipărit, deci
+  // butonul n-ar duce nicăieri. Nu-l arătăm deloc — nici sub Fracht, nici
+  // în pasul cu pozele.
+  //
+  // Garda stă DUPĂ toate hook-urile: un `return` pus înaintea lor ar
+  // chema hook-urile pe sărite, iar React se oprește cu o eroare.
+  if (modDoc === 'signature') return null
+
   return (
     <>
-      {/* Aceeași clasă ca butonul „Zurück“, deci aceeași înălţime și același
-          fel de apăsare. Un alt desen pe același rând arăta ca o greșeală. */}
       {/* Un bloc pe toată lăţimea, nu o pastilă înghesuită sus.
           Pe un rând cu „Zurück“ și ceasul, eticheta întreagă nu încape pe un
-          telefon de 360 de punăţi — măsurat: 337 de puncte pe 320. Aici încape,
+          telefon de 360 de puncte — măsurat: 337 de puncte pe 320. Aici încape,
           și mai încape și rândul care spune LA CE e bun butonul. */}
       <button
         type="button"
@@ -4457,6 +4464,26 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
   const esteLivrareNormala = !isDocumentDelivery && esteLivrareEtapa
   const [areActe, setAreActe] = useState(order.delivery_has_paperwork)
 
+  // Dovada o alege CLIENTUL, nu șoferul.
+  //
+  // Până acum aplicaţia îl întreba pe șofer „ai hârtii la tine?“, și din
+  // răspunsul lui ieșea ce se cere mai jos. Dar alegerea clientului — CMR
+  // sau semnătură digitală — stă de mult în bază, pe contul lui; doar că
+  // șoferul n-o vedea. Așa, un client care ceruse CMR putea primi o
+  // semnătură pe ecran, și invers, fără ca cineva să afle până la factură.
+  //
+  // `doc_mode` vine calculat de la server, un singur cuvânt:
+  //   'cmr'       — fără document încărcat nu se confirmă etapa
+  //   'signature' — nume și semnătură în aplicaţie; documentele rămân
+  //                 posibile, dar nu obligatorii
+  //   'protokoll' — curse de documente confidenţiale, regulile lor
+  //   'ask'       — oaspeţi: rămâne întrebarea de dinainte
+  const modDoc = order.doc_mode || 'ask'
+  const esteMarfa = !isDocumentDelivery
+  const intreabaSoferul = esteMarfa && modDoc === 'ask' && esteLivrareEtapa
+  const cereDocument = esteMarfa && (modDoc === 'cmr' || (intreabaSoferul && areActe === true))
+  const cereSemnatura = esteMarfa && (modDoc === 'signature' || (intreabaSoferul && areActe === false))
+
   async function raspundeActe(valoare) {
     setAreActe(valoare)
     const { error } = await supabase.rpc('driver_set_delivery_paperwork', {
@@ -4926,11 +4953,35 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
       {undoBlock}
       {waitingBlock}
 
+      {/* Ce se cere aici, scris înainte ca șoferul să înceapă — nu descoperit
+          la final, când butonul de confirmare rămâne stins și nu se știe de ce. */}
+      {(cereDocument || cereSemnatura) && (
+        <div style={{
+          background: cereDocument ? '#FFF6ED' : '#F3FBF6',
+          border: `1px solid ${cereDocument ? '#FFD2AE' : '#BFE8CF'}`,
+          borderRadius: 10, padding: '11px 13px', marginBottom: 12,
+        }}>
+          <div style={{
+            fontSize: 14.5, fontWeight: 800, lineHeight: 1.35,
+            color: cereDocument ? '#B35A12' : '#1B6E43',
+          }}>
+            {cereDocument ? '\ud83d\udcc4 ' : '\u270d\ufe0f '}
+            {t(cereDocument ? 'requireCmrTitle' : 'requireSignatureTitle', lang)}
+          </div>
+          <div style={{
+            fontSize: 12.5, lineHeight: 1.5, marginTop: 3,
+            color: cereDocument ? '#8A5A16' : '#1B6E43',
+          }}>
+            {t(cereDocument ? 'requireCmrNote' : 'requireSignatureNote', lang)}
+          </div>
+        </div>
+      )}
+
       {/* Întrebarea se pune o singură dată, la începutul confirmării, şi
           hotărăşte ce se cere mai jos. Până la răspuns nu arătăm formularul:
           altfel şoferul completează pe un drum şi află la final că era
           celălalt. */}
-      {esteLivrareNormala && areActe == null && (
+      {intreabaSoferul && areActe == null && (
         <div style={{
           background: '#FFF6ED', border: '1px solid #FFD2AE', borderRadius: 10,
           padding: '14px 14px 12px', margin: '10px 0 14px',
@@ -4955,7 +5006,7 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
       {/* Răspunsul se poate schimba. O apăsare greşită nu are voie să ducă
           într-o fundătură: fără asta, un „am hârtii" apăsat din greşeală
           cerea un document inexistent, iar livrarea rămânea deschisă. */}
-      {esteLivrareNormala && areActe != null && (
+      {intreabaSoferul && areActe != null && (
         <div style={{
           display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
           fontSize: 12.5, color: 'var(--text-soft)', margin: '8px 0 2px',
@@ -5224,7 +5275,7 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
           pe hârtie — nu pe ecran. Două semnături pentru acelaşi act înseamnă
           două dovezi care se pot contrazice, iar cea de pe hârtie e cea care
           contează. Deci aici câmpul nici nu apare. */}
-      {!esteEtapaLivrareDoc && !(esteLivrareNormala && areActe === true) && (
+      {!esteEtapaLivrareDoc && !cereDocument && (
         <>
           {isDocumentDelivery && (
             <div style={{
@@ -5274,18 +5325,20 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
       )}
 
       {(() => {
-        if (!isDocumentDelivery && !esteLivrareNormala) return null
+        if (!isDocumentDelivery && !cereDocument && !cereSemnatura && !intreabaSoferul) return null
         const lipsa = []
 
-        // Livrare obişnuită: cerinţele depind de răspunsul despre hârtii.
-        if (esteLivrareNormala) {
-          if (areActe == null) return null
-          if (fileSummary.photoCount < 2) {
+        // Cursă de marfă: cerinţele vin din alegerea clientului.
+        if (esteMarfa) {
+          if (intreabaSoferul && areActe == null) return null
+          // Cele două fotografii se cer la livrare, ca și până acum. La
+          // încărcare dovada e hârtia sau semnătura, nu un album.
+          if (esteLivrareEtapa && fileSummary.photoCount < 2) {
             lipsa.push(t('missingPhotosMin', lang).replace('{n}', 2).replace('{have}', fileSummary.photoCount))
           }
-          if (areActe === true && fileSummary.documentCount === 0) lipsa.push(t('missingCmr', lang))
-          if (areActe === false && !signerName.trim()) lipsa.push(t('missingSigner', lang))
-          if (areActe === false && !signatureBlob) lipsa.push(t('missingSignature', lang))
+          if (cereDocument && fileSummary.documentCount === 0) lipsa.push(t('missingCmr', lang))
+          if (cereSemnatura && !signerName.trim()) lipsa.push(t('missingSigner', lang))
+          if (cereSemnatura && !signatureBlob) lipsa.push(t('missingSignature', lang))
           if (!lipsa.length) return null
           return (
             <div style={{
@@ -5346,11 +5399,11 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
         disabled={busy || !!blockingIncident || turIncomplet || fileSummary.total === 0
           || (reteaDisponibila() && !fileSummary.allDone)
           || (isDocumentDeliveryLeg && !deliveryMethod)
-          || (esteLivrareNormala && (
-                areActe == null
-                || fileSummary.photoCount < 2
-                || (areActe === true && fileSummary.documentCount === 0)
-                || (areActe === false && (!signerName.trim() || !signatureBlob))
+          || (esteMarfa && (
+                (intreabaSoferul && areActe == null)
+                || (esteLivrareEtapa && fileSummary.photoCount < 2)
+                || (cereDocument && fileSummary.documentCount === 0)
+                || (cereSemnatura && (!signerName.trim() || !signatureBlob))
               ))
           || (isDocumentDelivery && (
                 fileSummary.photoCount < ((esteEtapaLivrareDoc && deliveryMethod === 'briefkasten') ? MINIM_POZE_LIVRARE : 1)

@@ -21,6 +21,8 @@
 //
 // CUM ARATĂ O POZĂ BUNĂ DE DOCUMENT — cele şapte condiţii măsurate:
 //
+//   0. există o foaie în cadru      — ceva luminos ŞI (desprindere de fundal
+//                                     SAU tipar în cadru, când foaia îl umple)
 //   1. hârtia umple cadrul          — minim 70% din dreptunghi
 //   2. nu iese din cadru            — banda din jur: cel mult 25% hârtie,
 //                                     altfel lipsesc colţuri sau margini
@@ -49,6 +51,7 @@ export const PRAGURI = {
   separare: 40,        // distanţa minimă hârtie–fundal, ca să existe o foaie
   detaliuBanda: 60,    // sub atât, banda luminoasă e masa, nu documentul
   hartieMin: 110,      // fără nimic mai luminos de atât, nu e nicio foaie
+  tipar: 80,           // detaliu în cadru: tipar, linii de tabel, scris
 }
 
 // Ordinea contează: se arată O SINGURĂ îndrumare, cea mai gravă. Patru
@@ -136,10 +139,6 @@ export function analizeazaCadru(data, w, h, chenar) {
   // prea jos şi masa trece drept hârtie.
   const { prag: pragOtsu, separare } = otsu(hist, total)
   const prag = Math.min(250, Math.max(pragOtsu, (pragOtsu + p95) / 2 - 10))
-  // Există o foaie în cadru? Două semne, amândouă necesare: ceva luminos
-  // (p95) şi o despărţire clară între hârtie şi ce e sub ea.
-  const existaHartie = p95 >= PRAGURI.hartieMin && separare >= PRAGURI.separare
-
   const esteHartie = (v) => v >= prag
 
 
@@ -158,6 +157,27 @@ export function analizeazaCadru(data, w, h, chenar) {
     }
   }
   const claritate = n ? (lapSq / n - (lapS / n) * (lapS / n)) : 0
+
+  // Există o foaie în cadru? Ceva luminos (p95) şi, pe lângă el, UNUL din
+  // două semne — nu amândouă:
+  //
+  //   (a) hârtia se desparte de fundal: Otsu găseşte două grămezi depărtate.
+  //       Aşa se vede o foaie pe o masă mai închisă, cu margine în jur.
+  //
+  //   (b) cadrul e PLIN de hârtie. Atunci nu mai există fundal de care să se
+  //       despartă, iar (a) cade — dar există tipar: linii de tabel, rubrici,
+  //       scris, deci detaliu.
+  //
+  // Doar (a) era o capcană pe care ne-am întins-o singuri: ghidul cere să
+  // umpli cadrul cu foaia, dreptunghiul e format A4, deci când încadrezi
+  // CORECT nu mai rămâne fundal — şi exact atunci se auzea „nu văd nicio
+  // foaie". Pe un CMR e cu atât mai uşor: tiparul lui e albastru-gri subţire,
+  // nu negru plin, deci histograma are un singur vârf.
+  //
+  // Masa goală nu trece nici aşa: o tăblie n-are tipar. În probele generate,
+  // foaia uniformă cu tipar slab dă detaliu 286, masa goală dă 0.
+  const existaHartie = p95 >= PRAGURI.hartieMin
+    && (separare >= PRAGURI.separare || claritate >= PRAGURI.tipar)
 
   // Scurgerea în afară: banda din jurul chenarului. Dacă şi acolo e hârtie,
   // documentul e mai mare decât cadrul — lipsesc colţuri.

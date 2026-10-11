@@ -1961,6 +1961,14 @@ function RideCard({ order, isOwner, lang, onClick, compact }) {
           <StageBadge order={order} lang={lang} />
         </div>
 
+        {/* Serviciile plătite şi avertismentele, ca semne, încă din listă.
+            Stăteau doar înăuntru, în cardul Fracht, care se deschide printr-o
+            apăsare — iar un şofer care se uită în listă doar ca să vadă de
+            unde ridică pleca fără să ştie că are Entladehilfe plătită sau
+            marfă ADR. Aici sunt doar semnele, ca să încapă pe un rând; textul
+            întreg rămâne în Fracht, neatins. */}
+        <SemneServicii order={order} lang={lang} />
+
         <StageProgress order={order} lang={lang} />
 
         <div className="bid-stop"><span className="addr"><MapPin size={13} strokeWidth={1.8} /> {order.pickup_address}</span></div>
@@ -2011,6 +2019,9 @@ function RideCard({ order, isOwner, lang, onClick, compact }) {
             {order.km && <span className="meta-item">📍 {order.km} km</span>}
             {order.weight && <span className="meta-item">⚖ {order.weight} kg</span>}
             {isOwner && effectivePrice(order) != null && <span className="meta-item price">{effectivePrice(order)} €</span>}
+            {extractServiceBadges(order.notes).length === 1 && (
+              <SemnServiciu b={extractServiceBadges(order.notes)[0]} lang={lang} />
+            )}
           </div>
         </div>
       </div>
@@ -2947,6 +2958,7 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
         </div>
         <div className="info-card-body">
           {insemnEtapa('pickup')}
+          <SemneEtapa order={order} etapa="pickup" lang={lang} />
           <ContactRow contact={pickupContact} lang={lang} />
           <div className="info-row address-row">
             <span className="address-text">{order.pickup_address}</span>
@@ -3012,6 +3024,7 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
         </div>
         <div className="info-card-body">
           {insemnEtapa('delivery')}
+          <SemneEtapa order={order} etapa="delivery" lang={lang} />
           <ContactRow contact={deliveryContact} lang={lang} />
           <div className="info-row address-row">
             <span className="address-text">{order.delivery_address}</span>
@@ -3051,6 +3064,7 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
             </div>
             <div className="info-card-body">
               {insemnEtapa('return_pickup')}
+              <SemneEtapa order={order} etapa="pickup" lang={lang} />
               <div className="info-row address-row">
                 <span className="address-text">{order.return_pickup_address}</span>
                 <a className="maps-nav-btn" href={mapsNavUrl(order.return_pickup_address)} target="_blank" rel="noreferrer"><Navigation size={13} strokeWidth={2.2} /> {t('navigateButton', lang)}</a>
@@ -3075,6 +3089,7 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
             </div>
             <div className="info-card-body">
               {insemnEtapa('return_delivery')}
+              <SemneEtapa order={order} etapa="delivery" lang={lang} />
               <div className="info-row address-row">
                 <span className="address-text">{order.return_delivery_address}</span>
                 <a className="maps-nav-btn" href={mapsNavUrl(order.return_delivery_address)} target="_blank" rel="noreferrer"><Navigation size={13} strokeWidth={2.2} /> {t('navigateButton', lang)}</a>
@@ -6209,11 +6224,69 @@ function cityCountryOnly(address) {
   return faraNumere.join(' ')
 }
 
+// `etapa` spune de care capăt al cursei ţine cerinţa: ajutorul la încărcare
+// se cere la ridicare, cel la descărcare şi livrarea neutră la livrare.
+// Fără el, şoferul citea toate cerinţele într-un singur loc şi pleca de la
+// ridicare fără să ştie ce-l aşteaptă la celălalt capăt — sau invers.
+// Marfa periculoasă şi stivuirea nu ţin de un capăt: ele rămân la Fracht.
 const SERVICE_BADGE_PREFIXES = [
-  { prefix: 'Verladehilfe gebucht', icon: '📦⬆️', key: 'loadHelpBadge' },
-  { prefix: 'Entladehilfe gebucht', icon: '📦⬇️', key: 'unloadHelpBadge' },
-  { prefix: 'Neutrale Zustellung', icon: '🕶️', key: 'neutralDeliveryBadge' },
+  { prefix: 'Verladehilfe gebucht', icon: '📦⬆️', key: 'loadHelpBadge', etapa: 'pickup' },
+  { prefix: 'Entladehilfe gebucht', icon: '📦⬇️', key: 'unloadHelpBadge', etapa: 'delivery' },
+  { prefix: 'Neutrale Zustellung', icon: '🕶️', key: 'neutralDeliveryBadge', etapa: 'delivery' },
 ]
+
+// Serviciile şi avertismentele, strânse în semne.
+//
+// Aceleaşi insigne ca în cardul Fracht, dar doar pictograma: în listă şi pe
+// cardul de licitaţie e loc pentru un rând, nu pentru cinci etichete. Textul
+// întreg rămâne în Fracht; aici e cât să nu pleci fără să ştii că ai marfă
+// ADR sau Entladehilfe plătită.
+// Cerinţele care ţin de UN capăt al cursei, scrise întreg pe cardul lui.
+// În listă sunt semne, ca să încapă; aici, pe ecranul comenzii, e loc de
+// cuvinte — iar cuvintele sunt cele care se citesc înainte de a opri maşina.
+function SemneEtapa({ order, etapa, lang }) {
+  const semne = extractServiceBadges(order.notes).filter((b) => b.etapa === etapa)
+  if (!semne.length) return null
+  return (
+    <div className="service-badges" style={{ margin: '2px 0 8px' }}>
+      {semne.map((b, i) => (
+        <span key={b.key || i} className={`service-badge${b.warn ? ' warn' : ''}`}>
+          {b.icon} {b.key ? t(b.key, lang) : b.text}
+        </span>
+      ))}
+    </div>
+  )
+}
+
+function SemnServiciu({ b, lang }) {
+  return (
+    <span
+      title={b.key ? t(b.key, lang) : b.text}
+      style={{
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        minWidth: 26, height: 22, padding: '0 7px', borderRadius: 11,
+        fontSize: 12.5, lineHeight: 1,
+        background: b.warn ? '#FCEBE8' : '#FFF3DC',
+        border: `1px solid ${b.warn ? '#E4A296' : '#F0B94D'}`,
+      }}
+    >
+      {b.icon}
+    </span>
+  )
+}
+
+// Un singur semn încape pe rândul cu vehiculul, kilometrii şi greutatea —
+// acolo e locul lui, lângă celelalte date ale cursei. Mai multe ar împinge
+// preţul de pe rând, aşa că îşi iau un rând al lor.
+function SemneServicii({ order, lang }) {
+  const semne = extractServiceBadges(order.notes)
+  if (semne.length < 2) return null
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, margin: '0 0 8px' }}>
+      {semne.map((b, i) => <SemnServiciu key={b.key || i} b={b} lang={lang} />)}
+    </div>
+  )
+}
 
 function extractServiceBadges(notesText) {
   if (!notesText) return []
@@ -6225,8 +6298,8 @@ function extractServiceBadges(notesText) {
     if (line.startsWith('ADR: ')) badges.push({ icon: '⚠️', key: null, text: line.replace('ADR: ', 'ADR — '), warn: true })
     else if (line.startsWith('Stapelbar: Ja')) badges.push({ icon: '📦', key: null, text: 'Stapelbar', warn: false })
     else if (line.startsWith('Stapelbar: Nein')) badges.push({ icon: '🚫', key: null, text: 'Nicht stapelbar', warn: true })
-    else if (line.includes('frühere Abholung')) badges.push({ icon: '💡', key: null, text: 'Frühere Abholung ggf. möglich', warn: false })
-    else if (line.includes('frühere Zustellung')) badges.push({ icon: '💡', key: null, text: 'Frühere Zustellung ggf. möglich', warn: false })
+    else if (line.includes('frühere Abholung')) badges.push({ icon: '💡', key: null, text: 'Frühere Abholung ggf. möglich', warn: false, etapa: 'pickup' })
+    else if (line.includes('frühere Zustellung')) badges.push({ icon: '💡', key: null, text: 'Frühere Zustellung ggf. möglich', warn: false, etapa: 'delivery' })
   }
   return badges
 }
@@ -7055,6 +7128,9 @@ function BidCard({ order, lang, courierProfileId, open, onToggle, onBidPlaced })
           </div>
         </div>
         <div className="bid-order-mini">{t('orderRef', lang)} {order.order_number || order.id.slice(0, 8)}</div>
+        {/* Şi înainte de a licita: firma trebuie să ştie în ce intră —
+            marfă ADR, ajutor la încărcare plătit, livrare neutră. */}
+        <SemneServicii order={order} lang={lang} />
         {existingBid && (
           <div className="geboten-row">
             <span className="pill geboten">✓ {t('bidPlaced', lang)}: {existingBid.price} €</span>
@@ -7099,6 +7175,9 @@ function BidCard({ order, lang, courierProfileId, open, onToggle, onBidPlaced })
           <VehicleChips vehicles={order.vehicles} />
           <div className="bid-cargo-meta">
             {order.weight && <span className="meta-item">⚖ {order.weight} kg</span>}
+            {extractServiceBadges(order.notes).length === 1 && (
+              <SemnServiciu b={extractServiceBadges(order.notes)[0]} lang={lang} />
+            )}
           </div>
         </div>
       </div>

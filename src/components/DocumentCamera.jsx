@@ -1,5 +1,16 @@
-// DocumentCamera.jsx — camera din aplicaţie, cu cadru şi declanşator care se
-// aprinde doar când poza IESE bună.
+// DocumentCamera.jsx — camera din aplicaţie, cu cadru şi un ghid care SFĂTUIEŞTE.
+//
+// Declanşatorul a fost stins până treceau toate cele şapte condiţii din
+// services/documentFrame.js, de două ori la rând, pe un cadru video de 480 px
+// ţinut în mână. Suna bine şi pe hârtie era corect: nu lăsa să plece o poză
+// proastă. În teren a ieşit altceva — una dintre condiţii nu trecea (pe hârtie
+// albă, bine luminată, „reflexia" e prima care sare), iar şoferul rămânea cu
+// un buton stins, fără nicio cale spre poză. Patruzeci de secunde şi nimic.
+//
+// Un ghid care blochează mută decizia de la om la şapte praguri măsurate pe
+// imagini generate. Acum cadrul, culoarea şi îndrumarea rămân — toate ajută
+// real — dar apăsarea e a şoferului. Poza trece oricum prin verificarea de
+// după, iar dacă iese slabă i se spune şi poate reface.
 //
 // DE CE NU CAMERA TELEFONULUI
 //
@@ -46,6 +57,10 @@ export default function DocumentCamera({ lang, titlu, onCapture, onCancel, onSys
   const [lanterna, setLanterna] = useState(false)
   const [areLanterna, setAreLanterna] = useState(false)
   const [lucreaza, setLucreaza] = useState(false)
+  // După câteva secunde fără cadru bun, arătăm pe ecran şi ieşirea pe camera
+  // telefonului, plus ce anume nu trece — altfel şoferul nu are de unde şti
+  // dacă încearcă degeaba sau mai are un milimetru.
+  const [seChinuie, setSeChinuie] = useState(false)
   // Dimensiunea imaginii de la cameră. Chenarul desenat pe ecran trebuie să
   // fie ACELAŞI cu cel măsurat — altfel şoferul potriveşte documentul într-un
   // dreptunghi, iar verdictul vine din altul. De aceea nu scriem procente
@@ -90,6 +105,12 @@ export default function DocumentCamera({ lang, titlu, onCapture, onCancel, onSys
       streamRef.current = null
     }
   }, [])
+
+  useEffect(() => {
+    if (gata) { setSeChinuie(false); return }
+    const t2 = setTimeout(() => setSeChinuie(true), 7000)
+    return () => clearTimeout(t2)
+  }, [gata])
 
   // Lanterna: nu toate telefoanele o dau prin browser, de aceea butonul
   // apare numai când există.
@@ -257,6 +278,34 @@ export default function DocumentCamera({ lang, titlu, onCapture, onCancel, onSys
         }}>
           {gata ? '✓ ' : ''}{indiciu}
         </div>
+
+        {/* Nu se încadrează. Îi spunem că poate apăsa oricum, îi dăm camera
+            telefonului, şi scriem ce anume nu trece — cuvintele acelea sunt
+            singurul fel în care aflăm, de la distanţă, care prag greşeşte. */}
+        {seChinuie && !gata && (
+          <div style={{ marginTop: 9 }}>
+            <div style={{ fontSize: 12, color: 'rgba(255,255,255,.8)', lineHeight: 1.5, maxWidth: 420, margin: '0 auto' }}>
+              {t('frameStuckNote', lang)}
+            </div>
+            <button
+              type="button"
+              onClick={onSystemCamera}
+              style={{
+                marginTop: 8, background: 'transparent',
+                border: '1px solid rgba(255,255,255,.45)', color: '#fff',
+                borderRadius: 9, padding: '8px 13px', fontSize: 12.5, fontWeight: 700,
+                cursor: 'pointer',
+              }}
+            >
+              {t('frameUseSystem', lang)}
+            </button>
+            {verdict?.issues?.length > 0 && (
+              <div style={{ marginTop: 8, fontSize: 10.5, color: 'rgba(255,255,255,.45)', letterSpacing: 0.2 }}>
+                {verdict.issues.join(' · ')}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <div style={{
@@ -275,18 +324,20 @@ export default function DocumentCamera({ lang, titlu, onCapture, onCancel, onSys
           {t('cancel', lang)}
         </button>
 
-        {/* Declanşatorul: stins până la două cadre bune la rând. Atins
-            devreme, spune de ce — nu rămâne mut. */}
+        {/* Declanşatorul: mereu apăsabil. Verde când cadrul e bun, alb când
+            nu — culoarea spune ce crede ghidul, apăsarea rămâne a şoferului.
+            Stins, era singura cale către poză pentru hârtiile obligatorii:
+            dacă una din şapte condiţii nu trecea, cursa se oprea acolo. */}
         <button
           type="button"
           onClick={fotografiaza}
-          disabled={!gata || lucreaza}
+          disabled={lucreaza}
           style={{
             flex: 1, borderRadius: 12, border: 'none', padding: '14px 16px',
-            background: gata ? '#2FBF71' : 'rgba(255,255,255,.18)',
-            color: gata ? '#06220F' : 'rgba(255,255,255,.55)',
+            background: gata ? '#2FBF71' : 'rgba(255,255,255,.92)',
+            color: gata ? '#06220F' : '#0F2240',
             fontSize: 15.5, fontWeight: 800,
-            cursor: gata ? 'pointer' : 'not-allowed',
+            cursor: 'pointer',
             transition: 'background .18s',
           }}
         >

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { supabase } from './supabaseClient'
 import { t, getLang, setLang, availableLangs } from './i18n'
-import { Truck, CheckCircle2, Wallet, User, LogOut, Menu, Bell, MapPin, FlagTriangleRight, Tag, XCircle, Download, X, Navigation, Trophy, ThumbsUp, ArrowUpFromLine, ArrowDownToLine, EyeOff, Layers, AlertTriangle, Clock, FileText, Signature } from 'lucide-react'
+import { Truck, CheckCircle2, Wallet, User, LogOut, Menu, Bell, MapPin, FlagTriangleRight, Tag, XCircle, Download, X, Navigation, Trophy, ThumbsUp, ArrowUpFromLine, ArrowDownToLine, EyeOff, Layers, AlertTriangle, Clock, FileText, Signature, BookOpen } from 'lucide-react'
 import './index.css'
 import PodFiles from './components/PodFiles'
 import DocumentCamera from './components/DocumentCamera'
@@ -735,6 +735,7 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
         {tab === 'nichtangenommen' && isOwner && <NichtAngenommenScreen profile={profile} session={session} lang={lang} />}
         {tab === 'castiguri' && isOwner && <EarningsScreen profile={profile} lang={lang} />}
         {tab === 'fahrzeuge' && <VehiclesScreen session={session} isOwner={isOwner} lang={lang} />}
+        {tab === 'legenda' && <LegendaScreen lang={lang} />}
         {tab === 'profil' && (
           <ProfileScreen
             session={session}
@@ -793,6 +794,9 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
           </button>
           <button className={`menu-item ${tab === 'profil' ? 'active' : ''}`} onClick={() => navTo('profil')}>
             <span className="ic"><User size={19} strokeWidth={1.75} /></span>{t('tabProfile', lang)}
+          </button>
+          <button className={`menu-item ${tab === 'legenda' ? 'active' : ''}`} onClick={() => navTo('legenda')}>
+            <span className="ic"><BookOpen size={19} strokeWidth={1.75} /></span>{t('menuLegend', lang)}
           </button>
 
           {/* Grupul de jos, lipit de baza panoului. „marginTop: auto" pus
@@ -6262,12 +6266,16 @@ function SemnServiciu({ b, lang }) {
       title={b.key ? t(b.key, lang) : b.text}
       style={{
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-        minWidth: 26, height: 22, padding: '0 6px', borderRadius: 7,
+        gap: b.eticheta ? 4 : 0,
+        minWidth: 26, height: 22, padding: b.eticheta ? '0 8px' : '0 6px', borderRadius: 7,
         background: b.warn ? '#FCEBE8' : '#EDEFF3',
         color: b.warn ? '#B23A24' : '#28344A',
       }}
     >
       {Pictograma ? <Pictograma size={14} strokeWidth={2} /> : null}
+      {b.eticheta ? (
+        <span style={{ fontSize: 11.5, fontWeight: 800, letterSpacing: '.02em' }}>{b.eticheta}</span>
+      ) : null}
     </span>
   )
 }
@@ -6285,6 +6293,127 @@ function SemneServicii({ order, lang }) {
   )
 }
 
+// Legenda: ce înseamnă fiecare semn de pe cardurile din listă.
+//
+// Semnele sunt scurte fiindcă trebuie să încapă pe un rând lângă kilometri şi
+// preţ — iar ce e scurt se învaţă o dată şi apoi se recunoaşte. Până acum se
+// învăţa din greşeli: un şofer nou vedea un triunghi şi un ochi tăiat şi
+// ghicea, sau deschidea comanda ca să afle.
+//
+// Rândurile de mai jos folosesc EXACT componentele din carduri, nu desene
+// făcute de mână după ele. Dacă mâine se schimbă un chip, legenda se schimbă
+// cu el — altfel ar ajunge, în câteva luni, să explice semne care nu mai
+// există.
+function RandLegenda({ semn, titlu, text }) {
+  return (
+    <div style={{ display: 'flex', gap: 11, padding: '11px 0', borderBottom: '1px solid #EDF0F4' }}>
+      <div style={{ flex: '0 0 auto', paddingTop: 1, minWidth: 30 }}>{semn}</div>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: '#0F2240', lineHeight: 1.35 }}>{titlu}</div>
+        <div style={{ fontSize: 12.5, color: '#6B7A90', lineHeight: 1.55, marginTop: 2 }}>{text}</div>
+      </div>
+    </div>
+  )
+}
+
+function LegendaScreen({ lang }) {
+  const grup = (titlu) => (
+    <div style={{
+      fontFamily: "'Oswald', sans-serif", fontSize: 12.5, fontWeight: 700,
+      textTransform: 'uppercase', letterSpacing: '.06em',
+      color: '#8A96A8', margin: '20px 0 2px',
+    }}>
+      {titlu}
+    </div>
+  )
+  const serviciu = (b) => <SemnServiciu b={b} lang={lang} />
+
+  return (
+    <div style={{ padding: '4px 2px 28px' }}>
+      {/* `screen-title` — aceeaşi clasă ca Fahrzeuge şi Abgeschlossen, ca
+          legenda să arate ca un ecran al aplicaţiei, nu ca o pagină lipită. */}
+      <h2 className="screen-title">{t('menuLegend', lang)}</h2>
+      <div style={{ fontSize: 13, color: '#6B7A90', lineHeight: 1.5 }}>{t('legendIntro', lang)}</div>
+
+      {grup(t('legendProofGroup', lang))}
+      <RandLegenda
+        semn={<SemnDovada order={{ doc_mode: 'cmr' }} lang={lang} />}
+        titlu={t('requireCmrTitle', lang)}
+        text={t('legendCmr', lang)}
+      />
+      <RandLegenda
+        semn={<SemnDovada order={{ doc_mode: 'signature' }} lang={lang} />}
+        titlu={t('requireSignatureTitle', lang)}
+        text={t('legendSignature', lang)}
+      />
+
+      {grup(t('legendServiceGroup', lang))}
+      <RandLegenda
+        semn={serviciu({ Icon: AlertTriangle, eticheta: 'ADR', text: 'ADR', warn: true })}
+        titlu="ADR"
+        text={t('legendAdr', lang)}
+      />
+      <RandLegenda
+        semn={serviciu({ Icon: ArrowUpFromLine, key: 'loadHelpBadge' })}
+        titlu={t('loadHelpBadge', lang)}
+        text={t('legendLoadHelp', lang)}
+      />
+      <RandLegenda
+        semn={serviciu({ Icon: ArrowDownToLine, key: 'unloadHelpBadge' })}
+        titlu={t('unloadHelpBadge', lang)}
+        text={t('legendUnloadHelp', lang)}
+      />
+      <RandLegenda
+        semn={serviciu({ Icon: EyeOff, key: 'neutralDeliveryBadge' })}
+        titlu={t('neutralDeliveryBadge', lang)}
+        text={t('legendNeutral', lang)}
+      />
+      {/* Numele acestor trei rămân în germană şi în varianta engleză, cu
+          bună ştiinţă: pe carduri scrie ce scrie clientul în comandă, adică
+          „Stapelbar". Un şofer care caută în legendă cuvântul pe care-l vede
+          pe ecran trebuie să-l găsească acolo — tradus, legenda ar explica un
+          semn care nu există. Se traduce explicaţia, nu eticheta. */}
+      <RandLegenda
+        semn={serviciu({ Icon: Layers, text: 'Stapelbar' })}
+        titlu="Stapelbar"
+        text={t('legendStackable', lang)}
+      />
+      <RandLegenda
+        semn={serviciu({ Icon: Layers, text: 'Nicht stapelbar', warn: true })}
+        titlu="Nicht stapelbar"
+        text={t('legendNotStackable', lang)}
+      />
+      <RandLegenda
+        semn={serviciu({ Icon: Clock, text: 'Frühere Abholung' })}
+        titlu="Frühere Abholung / Zustellung"
+        text={t('legendEarlier', lang)}
+      />
+
+      {grup(t('legendTimeGroup', lang))}
+      <RandLegenda
+        semn={<span className="fixed-time-badge">🔒</span>}
+        titlu={t('fixedPickupBadge', lang)}
+        text={t('legendFixed', lang)}
+      />
+      {/* Insigna adevărată, nu un punct: o comandă cu plecarea marcată dă
+          exact pastila pe care şoferul o vede în listă. */}
+      <RandLegenda
+        semn={<StageBadge order={{ status: 'assigned', pickup_started_at: new Date().toISOString() }} lang={lang} />}
+        titlu={t('legendStatusTitle', lang)}
+        text={t('legendStatus', lang)}
+      />
+
+      <div style={{
+        marginTop: 18, fontSize: 12, color: '#6B7A90', lineHeight: 1.6,
+        background: '#F4F6F9', border: '1px solid #E4E9F0', borderRadius: 10,
+        padding: '11px 13px',
+      }}>
+        {t('legendFootnote', lang)}
+      </div>
+    </div>
+  )
+}
+
 function extractServiceBadges(notesText) {
   if (!notesText) return []
   const lines = notesText.split('\n')
@@ -6292,7 +6421,13 @@ function extractServiceBadges(notesText) {
     .map((b) => ({ ...b, text: null, warn: false }))
 
   for (const line of lines) {
-    if (line.startsWith('ADR: ')) badges.push({ Icon: AlertTriangle, key: null, text: line.replace('ADR: ', 'ADR — '), warn: true })
+    // `eticheta`: cuvantul scris in semnul compact din listă, lângă
+    // pictogramă. Doar ADR o are — un triunghi singur se citeşte „atenţie la
+    // ceva", iar marfa periculoasă nu e un „ceva": şoferul trebuie să ştie
+    // CE, din lista comenzilor, înainte de a porni. Celelalte semne rămân
+    // doar pictogramă: săgeata în sus, ochiul tăiat şi ceasul se înţeleg, iar
+    // textul lor întreg stă oricum în Fracht şi pe cardul etapei.
+    if (line.startsWith('ADR: ')) badges.push({ Icon: AlertTriangle, key: null, eticheta: 'ADR', text: line.replace('ADR: ', 'ADR — '), warn: true })
     else if (line.startsWith('Stapelbar: Ja')) badges.push({ Icon: Layers, key: null, text: 'Stapelbar', warn: false })
     else if (line.startsWith('Stapelbar: Nein')) badges.push({ Icon: Layers, key: null, text: 'Nicht stapelbar', warn: true })
     else if (line.includes('frühere Abholung')) badges.push({ Icon: Clock, key: null, text: 'Frühere Abholung ggf. möglich', warn: false, etapa: 'pickup' })

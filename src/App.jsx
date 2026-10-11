@@ -1998,7 +1998,6 @@ function RideCard({ order, isOwner, lang, onClick, compact }) {
         <div className="bid-cargo-row">
           <VehicleChips vehicles={order.vehicles} />
           <div className="bid-cargo-meta">
-            <span className="meta-item">{t('orderRef', lang)} {order.order_number || order.reference || order.id.slice(0, 8)}</span>
             {order.km && <span className="meta-item">📍 {order.km} km</span>}
             {order.weight && <span className="meta-item">⚖ {order.weight} kg</span>}
             {isOwner && effectivePrice(order) != null && <span className="meta-item price">{effectivePrice(order)} €</span>}
@@ -3080,21 +3079,20 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
 
       <div className="info-card">
         <div className="info-card-head cargo-toggle" onClick={() => setCargoOpen((v) => !v)}>
-          {/* Numărul comenzii, coborât aici din antet: sus începea fiecare
-              ecran cu un rând pe care șoferul nu-l citește — îl caută doar
-              când sună la dispecerat. */}
-          <span>📦 {t('cargoLabel', lang)}
-            <span style={{
-              marginLeft: 8, fontFamily: 'monospace', fontSize: 11.5,
-              fontWeight: 600, color: 'var(--text-soft, #6B7A90)', letterSpacing: '.02em',
-            }}>
-              {order.order_number || order.reference || order.id.slice(0, 8)}
-            </span>
-          </span>
+          {/* Numărul comenzii nu mai stă nici pe capacul cardului.
+              Se caută o dată pe cursă, când suni la dispecerat — deci îi
+              ajunge un rând înăuntru, lângă celelalte date ale mărfii. */}
+          <span>📦 {t('cargoLabel', lang)}</span>
           <span className={`cargo-chev ${cargoOpen ? 'open' : ''}`}>▼</span>
         </div>
         {cargoOpen && (
           <div className="info-card-body">
+            <div className="info-row">
+              <span className="k">{t('orderRef', lang)}</span>
+              <span className="v" style={{ fontFamily: 'monospace', letterSpacing: '.02em' }}>
+                {order.order_number || order.reference || order.id.slice(0, 8)}
+              </span>
+            </div>
             {cargoSummary(order) && <div className="info-row"><span className="k">📦</span><span className="v">{cargoSummary(order)}</span></div>}
             {order.cargo_desc && <div className="info-row"><span className="k">{t('cargoLabel', lang)}</span><span className="v">{order.cargo_desc}</span></div>}
             {order.weight && <div className="info-row"><span className="k">{t('weightLabel', lang)}</span><span className="v">{order.weight} kg</span></div>}

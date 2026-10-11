@@ -3560,24 +3560,21 @@ function DocumentCapture({ lang, onPick, onClose }) {
                     avertisment cu o atingere, din grăbire, și nimeni nu afla
                     decât când clientul cerea actul. La „Sonstiges“ rămâne:
                     acolo șoferul fotografiază lucruri pe care nu le alegem noi. */}
-                {(review.result?.ok || type === 'other') ? (
-                  <button
-                    type="button"
-                    className={review.result?.ok ? 'btn' : 'btn secondary'}
-                    style={{ width: '100%', marginTop: 10 }}
-                    onClick={() => onPick(review.file, type)}
-                  >
-                    {review.result?.ok ? t('qUse', lang) : t('qUseAnyway', lang)}
-                  </button>
-                ) : (
-                  <div style={{
-                    marginTop: 10, fontSize: 12.5, lineHeight: 1.5, color: '#B23A24',
-                    background: '#FCEBE8', border: '1px solid #E4A296',
-                    borderRadius: 9, padding: '9px 11px',
-                  }}>
-                    {t('qMustRetake', lang)}
-                  </div>
-                )}
+                {/* „Totuşi" rămâne şi la hârtiile obligatorii.
+                    A fost scos ca să nu plece un CMR tăiat pe jumătate, şi
+                    motivul e bun — dar fără el, o verificare care greşeşte
+                    opreşte cursa: refacerea pozei duce la acelaşi verdict, iar
+                    şoferul nu mai are nicio ieşire. Rămâne secundar, sub
+                    „refă poza", cu lista problemelor scrisă deasupra: cine
+                    apasă aici ştie ce trimite. */}
+                <button
+                  type="button"
+                  className={review.result?.ok ? 'btn' : 'btn secondary'}
+                  style={{ width: '100%', marginTop: 10 }}
+                  onClick={() => onPick(review.file, type)}
+                >
+                  {review.result?.ok ? t('qUse', lang) : t('qUseAnyway', lang)}
+                </button>
               </>
             )}
           </>

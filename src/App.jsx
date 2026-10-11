@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { supabase } from './supabaseClient'
 import { t, getLang, setLang, availableLangs } from './i18n'
-import { Truck, CheckCircle2, Wallet, User, LogOut, Menu, Bell, MapPin, FlagTriangleRight, Tag, XCircle, Download, X, Navigation, Trophy, ThumbsUp } from 'lucide-react'
+import { Truck, CheckCircle2, Wallet, User, LogOut, Menu, Bell, MapPin, FlagTriangleRight, Tag, XCircle, Download, X, Navigation, Trophy, ThumbsUp, ArrowUpFromLine, ArrowDownToLine, EyeOff, Layers, AlertTriangle, Clock } from 'lucide-react'
 import './index.css'
 import PodFiles from './components/PodFiles'
 import DocumentCamera from './components/DocumentCamera'
@@ -3127,7 +3127,7 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
             {extractServiceBadges(order.notes).length > 0 && (
               <div className="service-badges">
                 {extractServiceBadges(order.notes).map((b, i) => (
-                  <span key={b.key || i} className={`service-badge${b.warn ? ' warn' : ''}`}>{b.icon} {b.key ? t(b.key, lang) : b.text}</span>
+                  <span key={b.key || i} className={`service-badge${b.warn ? ' warn' : ''}`}>{b.Icon ? <b.Icon size={13} strokeWidth={2} /> : null} {b.key ? t(b.key, lang) : b.text}</span>
                 ))}
               </div>
             )}
@@ -6230,9 +6230,9 @@ function cityCountryOnly(address) {
 // ridicare fără să ştie ce-l aşteaptă la celălalt capăt — sau invers.
 // Marfa periculoasă şi stivuirea nu ţin de un capăt: ele rămân la Fracht.
 const SERVICE_BADGE_PREFIXES = [
-  { prefix: 'Verladehilfe gebucht', icon: '📦⬆️', key: 'loadHelpBadge', etapa: 'pickup' },
-  { prefix: 'Entladehilfe gebucht', icon: '📦⬇️', key: 'unloadHelpBadge', etapa: 'delivery' },
-  { prefix: 'Neutrale Zustellung', icon: '🕶️', key: 'neutralDeliveryBadge', etapa: 'delivery' },
+  { prefix: 'Verladehilfe gebucht', Icon: ArrowUpFromLine, key: 'loadHelpBadge', etapa: 'pickup' },
+  { prefix: 'Entladehilfe gebucht', Icon: ArrowDownToLine, key: 'unloadHelpBadge', etapa: 'delivery' },
+  { prefix: 'Neutrale Zustellung', Icon: EyeOff, key: 'neutralDeliveryBadge', etapa: 'delivery' },
 ]
 
 // Serviciile şi avertismentele, strânse în semne.
@@ -6251,26 +6251,33 @@ function SemneEtapa({ order, etapa, lang }) {
     <div className="service-badges" style={{ margin: '2px 0 8px' }}>
       {semne.map((b, i) => (
         <span key={b.key || i} className={`service-badge${b.warn ? ' warn' : ''}`}>
-          {b.icon} {b.key ? t(b.key, lang) : b.text}
+          {b.Icon ? <b.Icon size={13} strokeWidth={2} /> : null} {b.key ? t(b.key, lang) : b.text}
         </span>
       ))}
     </div>
   )
 }
 
+// Semnul compact, în limbajul aplicaţiei.
+//
+// Prima variantă punea emoji într-o pastilă galbenă — arăta a abţibild lipit
+// peste card, nu a parte din el. Restul aplicaţiei vorbeşte în pictograme de
+// linie (aceeaşi familie cu acul de hartă şi steagul de pe adrese) şi în
+// chipuri gri-albăstrui, ca cel cu vehiculul. Aşa arată şi astea acum, iar
+// culoarea caldă rămâne doar pentru ce chiar e avertisment.
 function SemnServiciu({ b, lang }) {
+  const Pictograma = b.Icon
   return (
     <span
       title={b.key ? t(b.key, lang) : b.text}
       style={{
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-        minWidth: 26, height: 22, padding: '0 7px', borderRadius: 11,
-        fontSize: 12.5, lineHeight: 1,
-        background: b.warn ? '#FCEBE8' : '#FFF3DC',
-        border: `1px solid ${b.warn ? '#E4A296' : '#F0B94D'}`,
+        minWidth: 26, height: 22, padding: '0 6px', borderRadius: 7,
+        background: b.warn ? '#FCEBE8' : '#EDEFF3',
+        color: b.warn ? '#B23A24' : '#28344A',
       }}
     >
-      {b.icon}
+      {Pictograma ? <Pictograma size={14} strokeWidth={2} /> : null}
     </span>
   )
 }
@@ -6295,11 +6302,11 @@ function extractServiceBadges(notesText) {
     .map((b) => ({ ...b, text: null, warn: false }))
 
   for (const line of lines) {
-    if (line.startsWith('ADR: ')) badges.push({ icon: '⚠️', key: null, text: line.replace('ADR: ', 'ADR — '), warn: true })
-    else if (line.startsWith('Stapelbar: Ja')) badges.push({ icon: '📦', key: null, text: 'Stapelbar', warn: false })
-    else if (line.startsWith('Stapelbar: Nein')) badges.push({ icon: '🚫', key: null, text: 'Nicht stapelbar', warn: true })
-    else if (line.includes('frühere Abholung')) badges.push({ icon: '💡', key: null, text: 'Frühere Abholung ggf. möglich', warn: false, etapa: 'pickup' })
-    else if (line.includes('frühere Zustellung')) badges.push({ icon: '💡', key: null, text: 'Frühere Zustellung ggf. möglich', warn: false, etapa: 'delivery' })
+    if (line.startsWith('ADR: ')) badges.push({ Icon: AlertTriangle, key: null, text: line.replace('ADR: ', 'ADR — '), warn: true })
+    else if (line.startsWith('Stapelbar: Ja')) badges.push({ Icon: Layers, key: null, text: 'Stapelbar', warn: false })
+    else if (line.startsWith('Stapelbar: Nein')) badges.push({ Icon: Layers, key: null, text: 'Nicht stapelbar', warn: true })
+    else if (line.includes('frühere Abholung')) badges.push({ Icon: Clock, key: null, text: 'Frühere Abholung ggf. möglich', warn: false, etapa: 'pickup' })
+    else if (line.includes('frühere Zustellung')) badges.push({ Icon: Clock, key: null, text: 'Frühere Zustellung ggf. möglich', warn: false, etapa: 'delivery' })
   }
   return badges
 }
@@ -7196,7 +7203,7 @@ function BidCard({ order, lang, courierProfileId, open, onToggle, onBidPlaced })
           {extractServiceBadges(order.notes).length > 0 && (
             <div className="service-badges">
               {extractServiceBadges(order.notes).map((b, i) => (
-                <span key={b.key || i} className={`service-badge${b.warn ? ' warn' : ''}`}>{b.icon} {b.key ? t(b.key, lang) : b.text}</span>
+                <span key={b.key || i} className={`service-badge${b.warn ? ' warn' : ''}`}>{b.Icon ? <b.Icon size={13} strokeWidth={2} /> : null} {b.key ? t(b.key, lang) : b.text}</span>
               ))}
             </div>
           )}

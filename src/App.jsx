@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { supabase } from './supabaseClient'
 import { t, getLang, setLang, availableLangs } from './i18n'
-import { Truck, CheckCircle2, Wallet, User, LogOut, Menu, Bell, MapPin, FlagTriangleRight, Tag, XCircle, Download, X, Navigation, Trophy, ThumbsUp, ArrowUpFromLine, ArrowDownToLine, EyeOff, Layers, AlertTriangle, Clock } from 'lucide-react'
+import { Truck, CheckCircle2, Wallet, User, LogOut, Menu, Bell, MapPin, FlagTriangleRight, Tag, XCircle, Download, X, Navigation, Trophy, ThumbsUp, ArrowUpFromLine, ArrowDownToLine, EyeOff, Layers, AlertTriangle, Clock, FileText, Signature } from 'lucide-react'
 import './index.css'
 import PodFiles from './components/PodFiles'
 import DocumentCamera from './components/DocumentCamera'
@@ -2015,6 +2015,7 @@ function RideCard({ order, isOwner, lang, onClick, compact }) {
             {order.km && <span className="meta-item">📍 {order.km} km</span>}
             {order.weight && <span className="meta-item">⚖ {order.weight} kg</span>}
             {isOwner && effectivePrice(order) != null && <span className="meta-item price">{effectivePrice(order)} €</span>}
+            <SemnDovada order={order} lang={lang} />
             {extractServiceBadges(order.notes).length === 1 && (
               <SemnServiciu b={extractServiceBadges(order.notes)[0]} lang={lang} />
             )}
@@ -3107,20 +3108,20 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
 
       <div className="info-card">
         <div className="info-card-head cargo-toggle" onClick={() => setCargoOpen((v) => !v)}>
-          {/* Numărul comenzii nu mai stă nici pe capacul cardului.
-              Se caută o dată pe cursă, când suni la dispecerat — deci îi
-              ajunge un rând înăuntru, lângă celelalte date ale mărfii. */}
-          <span>📦 {t('cargoLabel', lang)}</span>
+          {/* Numărul comenzii, pe linia cu pachetul: acolo îl vede şi cine
+              nu deschide cardul, iar înăuntru nu se mai repetă. */}
+          <span>📦 {t('cargoLabel', lang)}
+            <span style={{
+              marginLeft: 8, fontFamily: 'monospace', fontSize: 11.5,
+              fontWeight: 600, color: 'var(--text-soft, #6B7A90)', letterSpacing: '.02em',
+            }}>
+              {order.order_number || order.reference || order.id.slice(0, 8)}
+            </span>
+          </span>
           <span className={`cargo-chev ${cargoOpen ? 'open' : ''}`}>▼</span>
         </div>
         {cargoOpen && (
           <div className="info-card-body">
-            <div className="info-row">
-              <span className="k">{t('orderRef', lang)}</span>
-              <span className="v" style={{ fontFamily: 'monospace', letterSpacing: '.02em' }}>
-                {order.order_number || order.reference || order.id.slice(0, 8)}
-              </span>
-            </div>
             {cargoSummary(order) && <div className="info-row"><span className="k">📦</span><span className="v">{cargoSummary(order)}</span></div>}
             {order.cargo_desc && <div className="info-row"><span className="k">{t('cargoLabel', lang)}</span><span className="v">{order.cargo_desc}</span></div>}
             {order.weight && <div className="info-row"><span className="k">{t('weightLabel', lang)}</span><span className="v">{order.weight} kg</span></div>}
@@ -6268,6 +6269,34 @@ function SemneEtapa({ order, etapa, lang }) {
 // linie (aceeaşi familie cu acul de hartă şi steagul de pe adrese) şi în
 // chipuri gri-albăstrui, ca cel cu vehiculul. Aşa arată şi astea acum, iar
 // culoarea caldă rămâne doar pentru ce chiar e avertisment.
+// Ce dovadă cere comanda, scris scurt pe cardul din listă.
+//
+// Până acum şoferul afla abia în pasul de confirmare — adică după ce ajunsese
+// la rampă — că are nevoie de CMR tipărit. Pe listă e o silabă: „CMR" când e
+// hârtie, un condei când e semnătură pe ecran. Mai mult n-ar încăpea lângă
+// kilometri şi greutate, şi nici n-ar fi nevoie.
+function SemnDovada({ order, lang }) {
+  const mod = order.is_document_delivery ? 'protokoll' : (order.doc_mode || 'ask')
+  if (mod !== 'cmr' && mod !== 'signature') return null
+  const cmr = mod === 'cmr'
+  const Pictograma = cmr ? FileText : Signature
+  return (
+    <span
+      title={t(cmr ? 'requireCmrTitle' : 'requireSignatureTitle', lang)}
+      style={{
+        display: 'inline-flex', alignItems: 'center', gap: 4,
+        height: 22, padding: '0 8px', borderRadius: 7,
+        fontSize: 11.5, fontWeight: 700, letterSpacing: '.02em',
+        background: cmr ? '#FFF3DC' : '#EDEFF3',
+        color: cmr ? '#8A5A16' : '#28344A',
+      }}
+    >
+      <Pictograma size={13} strokeWidth={2} />
+      {cmr ? 'CMR' : null}
+    </span>
+  )
+}
+
 function SemnServiciu({ b, lang }) {
   const Pictograma = b.Icon
   return (
@@ -7185,6 +7214,7 @@ function BidCard({ order, lang, courierProfileId, open, onToggle, onBidPlaced })
           <VehicleChips vehicles={order.vehicles} />
           <div className="bid-cargo-meta">
             {order.weight && <span className="meta-item">⚖ {order.weight} kg</span>}
+            <SemnDovada order={order} lang={lang} />
             {extractServiceBadges(order.notes).length === 1 && (
               <SemnServiciu b={extractServiceBadges(order.notes)[0]} lang={lang} />
             )}

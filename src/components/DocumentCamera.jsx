@@ -300,8 +300,19 @@ export default function DocumentCamera({ lang, titlu, onCapture, onCancel, onSys
               {t('frameUseSystem', lang)}
             </button>
             {verdict?.issues?.length > 0 && (
-              <div style={{ marginTop: 8, fontSize: 10.5, color: 'rgba(255,255,255,.45)', letterSpacing: 0.2 }}>
-                {verdict.issues.join(' · ')}
+              <div style={{ marginTop: 8, fontSize: 10.5, color: 'rgba(255,255,255,.45)', letterSpacing: 0.2, lineHeight: 1.5 }}>
+                <div>{verdict.issues.join(' · ')}</div>
+                {/* Măsurătorile, nu doar numele verificării. Cu „frameNoPaper"
+                    singur nu se poate şti CARE din cele două semne lipseşte;
+                    cu cifrele de aici se vede pe loc. */}
+                {verdict.metrics && (
+                  <div>
+                    sep {verdict.metrics.separare} · umpl {verdict.metrics.umplere}
+                    {' · '}prag {verdict.metrics.prag} · clar {verdict.metrics.claritate}
+                    {' · '}contr {verdict.metrics.contrast} · lum {verdict.metrics.lumina}
+                    {' · '}refl {verdict.metrics.reflexie}
+                  </div>
+                )}
               </div>
             )}
           </div>

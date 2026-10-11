@@ -1957,18 +1957,6 @@ function RideCard({ order, isOwner, lang, onClick, compact }) {
             „An Zustellung angekommen" nu mai încăpea şi se rupea la jumătate
             de cuvânt. Numărul s-a mutat jos, la Fracht — acolo îl caută
             oricum cine caută marfa. */}
-        <div style={{ marginBottom: 8 }}>
-          <StageBadge order={order} lang={lang} />
-        </div>
-
-        {/* Serviciile plătite şi avertismentele, ca semne, încă din listă.
-            Stăteau doar înăuntru, în cardul Fracht, care se deschide printr-o
-            apăsare — iar un şofer care se uită în listă doar ca să vadă de
-            unde ridică pleca fără să ştie că are Entladehilfe plătită sau
-            marfă ADR. Aici sunt doar semnele, ca să încapă pe un rând; textul
-            întreg rămâne în Fracht, neatins. */}
-        <SemneServicii order={order} lang={lang} />
-
         <StageProgress order={order} lang={lang} />
 
         <div className="bid-stop"><span className="addr"><MapPin size={13} strokeWidth={1.8} /> {order.pickup_address}</span></div>
@@ -2004,14 +1992,22 @@ function RideCard({ order, isOwner, lang, onClick, compact }) {
         <div className="bid-stop"><span className="addr"><FlagTriangleRight size={13} strokeWidth={1.8} /> {order.delivery_address}</span></div>
 
         <div className="bid-divider" />
-        <div className="bid-zustellung-label">{t('delivery', lang)}</div>
-        <div className="bid-zustellung-val">
+        {/* Eticheta, data şi ora pe acelaşi rând: pe două rânduri ocupau
+            înălţime fără să spună mai mult, iar lângă „Lieferung" rămânea
+            jumătate de card gol. */}
+        <div className="bid-zustellung-val" style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+          <span className="bid-zustellung-label" style={{ margin: 0 }}>{t('delivery', lang)}</span>
           {order.delivery_fixed ? (
             <span className="fixed-time-badge">🔒 {t('fixedDeliveryBadge', lang)} · {fmtDate(order.delivery_date)}{order.delivery_time ? ` · ${fmtTime(order.delivery_time)}` : ''}</span>
           ) : (
-            <>{fmtDate(order.delivery_date)} · {fmtTime(order.delivery_from)}{order.delivery_to ? `–${fmtTime(order.delivery_to)}` : ''}</>
+            <span>{fmtDate(order.delivery_date)} · {fmtTime(order.delivery_from)}{order.delivery_to ? `–${fmtTime(order.delivery_to)}` : ''}</span>
           )}
         </div>
+
+        {/* Serviciile plătite şi avertismentele, sub rândul de livrare:
+            acolo se termină ce trebuie ştiut despre cursă, deci acolo se
+            citesc. Textul întreg rămâne în Fracht, neatins. */}
+        <SemneServicii order={order} lang={lang} />
 
         <div className="bid-cargo-row">
           <VehicleChips vehicles={order.vehicles} />
@@ -2024,6 +2020,13 @@ function RideCard({ order, isOwner, lang, onClick, compact }) {
             )}
           </div>
         </div>
+      </div>
+
+      {/* Starea, chiar deasupra butonului care duce în comandă.
+          Sus se pierdea între dată şi adrese; aici o citeşti în clipa în
+          care te hotărăşti dacă intri în comanda asta sau treci mai jos. */}
+      <div style={{ display: 'flex', justifyContent: 'center', margin: '2px 0 8px' }}>
+        <StageBadge order={order} lang={lang} />
       </div>
 
       <button className="ride-card2-action" onClick={onClick}>

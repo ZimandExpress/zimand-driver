@@ -4672,7 +4672,6 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
   // mai apare, dar documentul trebuie încărcat. Fără: semnătura în aplicaţie
   // şi numele destinatarului sunt singura dovadă.
   const esteLivrareNormala = !isDocumentDelivery && esteLivrareEtapa
-  const [areActe, setAreActe] = useState(order.delivery_has_paperwork)
 
   // Dovada o alege CLIENTUL, nu șoferul.
   //
@@ -4690,9 +4689,17 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
   //   'ask'       — oaspeţi: rămâne întrebarea de dinainte
   const modDoc = order.doc_mode || 'ask'
   const esteMarfa = !isDocumentDelivery
-  const intreabaSoferul = esteMarfa && modDoc === 'ask' && esteLivrareEtapa
-  const cereDocument = esteMarfa && (modDoc === 'cmr' || (intreabaSoferul && areActe === true))
-  const cereSemnatura = esteMarfa && (modDoc === 'signature' || (intreabaSoferul && areActe === false))
+  const cereDocument = esteMarfa && modDoc === 'cmr'
+  const cereSemnatura = esteMarfa && modDoc === 'signature'
+  // Comenzile vechi, fără dovadă aleasă ('ask'), nu mai întreabă nimic.
+  //
+  // Întrebarea „ai hârtii?" apărea la începutul confirmării şi hotărâa ce se
+  // cere mai jos — dar punea şoferul să aleagă regula, iar o apăsare greşită
+  // îi cerea un document inexistent. De când clientul alege obligatoriu la
+  // comandă, 'ask' rămâne doar pe comenzile dinainte: acolo şoferul dă ce are
+  // — document încărcat SAU semnătură în aplicaţie — şi confirmarea cere
+  // exact una dintre ele, fără să întrebe pe nimeni nimic.
+  const dovadaLaAlegere = esteMarfa && modDoc === 'ask' && esteLivrareEtapa
 
   // Câte poze și ce hârtii, pe fiecare etapă.
   //
@@ -4722,15 +4729,9 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
   // la documente, numai la ridicare (la livrare se semnează pe protocol).
   const semnaturaCeruta = isDocumentDelivery ? !esteLivrareEtapa : cereSemnatura
   const numeCerut = cereDocument || cereSemnatura
+    || (dovadaLaAlegere && !!signatureBlob)
     || (isDocumentDelivery && (!esteLivrareEtapa || deliveryMethod === 'persoenlich'))
 
-  async function raspundeActe(valoare) {
-    setAreActe(valoare)
-    const { error } = await supabase.rpc('driver_set_delivery_paperwork', {
-      p_order_id: order.id, p_has: valoare,
-    })
-    if (error) console.error('paperwork:', error.message)
-  }
   const [incidentOpen, setIncidentOpen] = useState(false)
   const [incidentBlocking, setIncidentBlocking] = useState(false)
   const [incidentSaved, setIncidentSaved] = useState(false)
@@ -5217,56 +5218,6 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
         </div>
       )}
 
-      {/* Întrebarea se pune o singură dată, la începutul confirmării, şi
-          hotărăşte ce se cere mai jos. Până la răspuns nu arătăm formularul:
-          altfel şoferul completează pe un drum şi află la final că era
-          celălalt. */}
-      {intreabaSoferul && areActe == null && (
-        <div style={{
-          background: '#FFF6ED', border: '1px solid #FFD2AE', borderRadius: 10,
-          padding: '14px 14px 12px', margin: '10px 0 14px',
-        }}>
-          <div style={{ fontWeight: 800, fontSize: 15, color: '#0F2240', marginBottom: 4 }}>
-            {t('paperworkQuestion', lang)}
-          </div>
-          <div style={{ fontSize: 12.5, color: '#8A5A16', marginBottom: 12, lineHeight: 1.5 }}>
-            {t('paperworkQuestionNote', lang)}
-          </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button className="btn" style={{ flex: 1 }} onClick={() => raspundeActe(true)}>
-              {t('paperworkYes', lang)}
-            </button>
-            <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => raspundeActe(false)}>
-              {t('paperworkNo', lang)}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Răspunsul se poate schimba. O apăsare greşită nu are voie să ducă
-          într-o fundătură: fără asta, un „am hârtii" apăsat din greşeală
-          cerea un document inexistent, iar livrarea rămânea deschisă. */}
-      {intreabaSoferul && areActe != null && (
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
-          fontSize: 12.5, color: 'var(--text-soft)', margin: '8px 0 2px',
-        }}>
-          <span>
-            {areActe ? '📄 ' + t('paperworkYes', lang) : '✍️ ' + t('paperworkNo', lang)}
-          </span>
-          <button
-            onClick={() => raspundeActe(!areActe)}
-            style={{
-              border: '1px solid var(--border, #E2E7EE)', background: 'transparent',
-              borderRadius: 14, padding: '3px 10px', fontSize: 12, fontWeight: 700,
-              color: 'var(--text-soft)', cursor: 'pointer',
-            }}
-          >
-            {t('paperworkChange', lang)}
-          </button>
-        </div>
-      )}
-
       <div className="leg-title">{legLabel} · {t('confirmStep', lang)}</div>
 
       {/* Cu cine are de-a face, chiar aici.
@@ -5551,9 +5502,6 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
       )}
 
       {(() => {
-        // Cât timp întrebarea despre hârtii n-a primit răspuns (doar la
-        // oaspeţi), nu are rost să cerem nimic: cerinţele depind de el.
-        if (intreabaSoferul && areActe == null) return null
         const lipsa = []
         if (fileSummary.photoCount < minimPoze) {
           lipsa.push(minimPoze > 1
@@ -5575,6 +5523,10 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
           lipsa.push(t(esteLivrareEtapa ? 'missingSigner' : 'missingSignerPickup', lang))
         }
         if (semnaturaCeruta && !signatureBlob) lipsa.push(t('missingSignature', lang))
+        // Comenzile vechi: una dintre cele două, la alegerea şoferului.
+        if (dovadaLaAlegere && !signatureBlob && !fileSummary.documentCount) {
+          lipsa.push(t('missingProof', lang))
+        }
         if (!lipsa.length) return null
         return (
           <div style={{
@@ -5611,7 +5563,7 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
         // când revine semnalul.
         disabled={busy || !!blockingIncident || turIncomplet || fileSummary.total === 0
           || (reteaDisponibila() && !fileSummary.allDone)
-          || (intreabaSoferul && areActe == null)
+          || (dovadaLaAlegere && !signatureBlob && !fileSummary.documentCount)
           || fileSummary.photoCount < minimPoze
           || docLipsa.length > 0
           || (isDocumentDeliveryLeg && !deliveryMethod)

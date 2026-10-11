@@ -3184,6 +3184,25 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
         )
       })()}
 
+      {/* Hârtiile cursei, şi pe ecranul comenzii câştigate.
+          La licitaţie le-a citit o dată, acum o săptămână, poate alt om din
+          firmă. Aici le are sub ochi cel care chiar pleacă la drum. */}
+      {order.is_document_delivery && (
+        <div style={{
+          background: '#FFF6ED', border: '1px solid #FFD2AE',
+          borderRadius: 10, padding: '11px 13px', margin: '10px 0',
+        }}>
+          <div style={{ fontSize: 14, fontWeight: 800, color: '#B35A12', marginBottom: 3 }}>
+            {t('docPapersTitle', lang)}
+          </div>
+          <div style={{ fontSize: 12.5, lineHeight: 1.55, color: '#8A5A16' }}>
+            <div>• {t('docPapersProtokoll', lang)}</div>
+            {order.boten_confirmation === true && <div>• {t('docPapersBoten', lang)}</div>}
+            <div>• {t('postOriginalsNote', lang)}</div>
+          </div>
+        </div>
+      )}
+
       {/* Hârtiile către client, sub Fracht: acolo stă marfa, deci acolo se
           caută și actele ei. */}
       <TrimiteDocument order={order} lang={lang} />
@@ -4715,16 +4734,43 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
   // La ridicarea unei curse de documente pleacă două formulare: protocolul
   // și declaraţia de predare. La livrare doar protocolul — declaraţia a
   // rămas la expeditor.
+  // Botenbestätigung: numai unde a cumpărat-o clientul, şi atunci AMBELE pagini.
+  //
+  // Până acum se cerea la fiecare ridicare de documente, gratuit pentru toţi.
+  // De când e serviciu plătit (30 € pe comandă), cine nu l-a cumpărat nu mai
+  // e oprit — iar cine l-a cumpărat nu poate pleca fără el. Steagul vine ca
+  // o coloană pe comandă, deci îl vede şi ecranul care încarcă direct din
+  // tabel, nu doar cel care trece prin funcţia de licitaţii.
+  //
+  // De două ori în listă, nu o dată: declaraţia are două pagini, iar o
+  // singură poză nu e declaraţia, e jumătate din ea. Textul îi spunea deja
+  // şoferului „beide Seiten"; de acum e şi verificat, nu doar scris.
+  const cereBoten = isDocumentDelivery && !esteLivrareEtapa && order.boten_confirmation === true
   const docCerute = isDocumentDelivery
-    ? (esteLivrareEtapa ? ['zustellprotokoll'] : ['zustellprotokoll', 'botenbestaetigung'])
+    ? (esteLivrareEtapa
+        ? ['zustellprotokoll']
+        : (cereBoten ? ['zustellprotokoll', 'botenbestaetigung', 'botenbestaetigung'] : ['zustellprotokoll']))
     : (cereDocument ? ['cmr'] : [])
   // Tipurile vin din coada de încărcare. Pe o versiune mai veche a
   // componentei de fișiere lista nu există — atunci numărăm doar câte
   // documente s-au încărcat, ca aplicaţia să nu blocheze pe loc.
   const tipuriIncarcate = Array.isArray(fileSummary.documentTypes) ? fileSummary.documentTypes : null
-  const docLipsa = tipuriIncarcate
-    ? docCerute.filter((tip) => !tipuriIncarcate.includes(tip))
-    : docCerute.slice(Math.min(fileSummary.documentCount, docCerute.length))
+  // Numărate, nu doar căutate.
+  //
+  // `includes` nu ştie de dubluri: cu două declaraţii cerute şi una urcată,
+  // amândouă treceau verificarea, fiindcă tipul există în listă. Acum fiecare
+  // cerinţă consumă câte un fişier urcat.
+  const docLipsa = (() => {
+    if (!tipuriIncarcate) return docCerute.slice(Math.min(fileSummary.documentCount, docCerute.length))
+    const ramase = [...tipuriIncarcate]
+    const lipsa = []
+    for (const tip of docCerute) {
+      const unde = ramase.indexOf(tip)
+      if (unde >= 0) ramase.splice(unde, 1)
+      else lipsa.push(tip)
+    }
+    return lipsa
+  })()
 
   // Semnătura în aplicaţie: la marfă doar pentru clienţii care au ales-o;
   // la documente, numai la ridicare (la livrare se semnează pe protocol).
@@ -5195,6 +5241,23 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
       {undoBlock}
       {waitingBlock}
 
+      {/* Declaraţia de predare, anunţată din capul etapei.
+          E plătită de client, deci nu e o formalitate pe care şoferul o poate
+          sări: fără ea, serviciul s-a vândut şi nu s-a livrat. */}
+      {cereBoten && (
+        <div style={{
+          background: '#FFF6ED', border: '1px solid #FFD2AE',
+          borderRadius: 10, padding: '11px 13px', marginBottom: 12,
+        }}>
+          <div style={{ fontSize: 14.5, fontWeight: 800, lineHeight: 1.35, color: '#B35A12' }}>
+            \ud83d\udcdd {t('botenRequiredTitle', lang)}
+          </div>
+          <div style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 3, color: '#8A5A16' }}>
+            {t('botenRequiredNote', lang)}
+          </div>
+        </div>
+      )}
+
       {/* Ce se cere aici, scris înainte ca șoferul să înceapă — nu descoperit
           la final, când butonul de confirmare rămâne stins și nu se știe de ce. */}
       {(cereDocument || cereSemnatura) && (
@@ -5511,7 +5574,7 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
                 .replace('{have}', fileSummary.photoCount)
             : t('missingPhotos', lang))
         }
-        for (const tip of docLipsa) {
+        for (const tip of [...new Set(docLipsa)]) {
           lipsa.push(t(
             tip === 'cmr' ? 'missingCmr'
               : tip === 'botenbestaetigung' ? 'missingBote'
@@ -7331,6 +7394,21 @@ function BidCard({ order, lang, courierProfileId, open, onToggle, onBidPlaced })
               {extractServiceBadges(order.notes).map((b, i) => (
                 <span key={b.key || i} className={`service-badge${b.warn ? ' warn' : ''}`}>{b.Icon ? <b.Icon size={13} strokeWidth={2} /> : null} {b.key ? t(b.key, lang) : b.text}</span>
               ))}
+            </div>
+          )}
+
+          {/* Obligaţia de după cursă, spusă ÎNAINTE de licitaţie.
+              La o cursă de documente actele semnate pleacă prin poştă la
+              Zimand în 3 zile. E muncă şi un timbru, nu doar un drum — cine
+              licitează trebuie să ştie în ce intră, nu să afle după. */}
+          {order.is_document_delivery && (
+            <div className="order-notes-box" style={{ borderColor: '#FFD2AE', background: '#FFF6ED' }}>
+              <div className="order-notes-label" style={{ color: '#B35A12' }}>{t('docPapersTitle', lang)}</div>
+              <div style={{ fontSize: 12.5, lineHeight: 1.55, color: '#8A5A16' }}>
+                <div>• {t('docPapersProtokoll', lang)}</div>
+                {order.boten_confirmation === true && <div>• {t('docPapersBoten', lang)}</div>}
+                <div>• {t('postOriginalsNote', lang)}</div>
+              </div>
             </div>
           )}
 

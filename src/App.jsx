@@ -1942,9 +1942,13 @@ function RideCard({ order, isOwner, lang, onClick, compact }) {
           </div>
         </div>
 
-        <div className="bid-order-mini">
-          {t('orderRef', lang)} {order.order_number || order.reference || order.id.slice(0, 8)}
-          <StageBadge order={order} lang={lang} style={{ marginLeft: 8 }} />
+        {/* Statusul, pe rândul lui, sub dată.
+            Stătea lipit după numărul comenzii, pe acelaşi rând: pe telefon
+            „An Zustellung angekommen" nu mai încăpea şi se rupea la jumătate
+            de cuvânt. Numărul s-a mutat jos, la Fracht — acolo îl caută
+            oricum cine caută marfa. */}
+        <div style={{ marginBottom: 8 }}>
+          <StageBadge order={order} lang={lang} />
         </div>
 
         <StageProgress order={order} lang={lang} />
@@ -1994,6 +1998,7 @@ function RideCard({ order, isOwner, lang, onClick, compact }) {
         <div className="bid-cargo-row">
           <VehicleChips vehicles={order.vehicles} />
           <div className="bid-cargo-meta">
+            <span className="meta-item">{t('orderRef', lang)} {order.order_number || order.reference || order.id.slice(0, 8)}</span>
             {order.km && <span className="meta-item">📍 {order.km} km</span>}
             {order.weight && <span className="meta-item">⚖ {order.weight} kg</span>}
             {isOwner && effectivePrice(order) != null && <span className="meta-item price">{effectivePrice(order)} €</span>}

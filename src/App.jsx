@@ -817,6 +817,15 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
           <button className="menu-item logout" onClick={() => supabase.auth.signOut()}>
             <span className="ic"><LogOut size={19} strokeWidth={1.75} /></span>{t('logout', lang)}
           </button>
+
+          {/* Din ce build vine ecranul. Discret, dar citibil la telefon: când
+              o modificare „nu apare", asta e primul lucru de citit. */}
+          <div style={{
+            fontSize: 10.5, color: 'var(--text-soft)', opacity: 0.75,
+            padding: '8px 16px 2px', letterSpacing: 0.2,
+          }}>
+            Build {typeof __BUILD__ === 'string' ? __BUILD__ : '—'}
+          </div>
           </div>
         </div>
       </div>,

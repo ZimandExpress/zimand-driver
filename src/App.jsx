@@ -42,6 +42,23 @@ async function comenzileFirmei() {
   return Array.isArray(data) ? data : []
 }
 
+// Numai licitaţiile deschise, pentru ecranul „Verfügbar" şi pentru numărul
+// din meniu.
+//
+// `courier_orders()` întoarce tot ce poate vedea curierul, inclusiv fiecare
+// cursă din istoricul lui: la contul lui Andrei, 148 de rânduri şi 857 kB,
+// construite pe server în ~900 ms — pentru 4 licitaţii. Iar ecranul le cerea
+// din nou la fiecare 25 de secunde.
+//
+// Funcţia nouă are acelaşi conţinut pe rând, dar aduce doar comenzile
+// deschise: 4 rânduri, 18 kB, 44 ms. Ce a licitat deja se ştie din `bids`,
+// citit separat, deci nimic nu se pierde din ecran.
+async function licitatiileDeschise() {
+  const { data, error } = await supabase.rpc('courier_board_orders')
+  if (error) { console.error('courier_board_orders error:', error.message); return null }
+  return Array.isArray(data) ? data : []
+}
+
 const esteLaLicitatie = (o) => !!o && o.status === 'open' && !o.on_hold
 
 
@@ -1517,7 +1534,7 @@ function RidesScreen({ profile, isOwner, session, lang }) {
 
     function refreshOpenCount() {
       Promise.all([
-        comenzileFirmei(),
+        licitatiileDeschise(),
         supabase.from('bids').select('order_id').eq('courier_id', session?.user?.id),
       ]).then(([comenzi, bidsRes]) => {
         // null = interogarea a căzut. Nu stingem numărul de pe ecran.
@@ -7010,7 +7027,7 @@ function BiddingScreen({ profile, session, lang, embedded }) {
   useEffect(() => {
     let active = true
     const incarcaLicitatiile = () =>
-      comenzileFirmei().then((comenzi) => {
+      licitatiileDeschise().then((comenzi) => {
         if (!active) return
         // null = interogarea a căzut; lista de pe ecran rămâne cum era.
         if (comenzi) {

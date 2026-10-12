@@ -1585,10 +1585,25 @@ function RidesScreen({ profile, isOwner, session, lang }) {
 
     let active = true
 
+    // Numai cursele NETERMINATE.
+    //
+    // Ecranul arată `orders.filter(o => o.status === 'assigned')`, adică de
+    // obicei una sau două curse. Interogarea aducea însă TOT ce a avut
+    // şoferul vreodată: la contul lui Andrei, 139 de rânduri, 678 kB de JSON,
+    // din care 133 erau curse încheiate. La fiecare deschidere a aplicaţiei
+    // şi la fiecare revenire din fundal.
+    //
+    // Istoricul şi câştigurile au interogările lor, cu filtrele lor, deci
+    // nimic nu se pierde — doar nu se mai descarcă de două ori.
+    //
+    // Filtru prin excludere, nu prin listă: dacă apare mâine un status nou
+    // („in_progress"), o listă de permise l-ar ascunde în tăcere, iar şoferul
+    // n-ar mai vedea cursa deloc.
     const loadOrders = () =>
       supabase
         .from('orders')
         .select('*, winning_bid:bids!fk_winner_bid(price), trip_stops(*)')
+        .not('status', 'in', '(done,cancelled)')
         .in('assigned_driver_id', driverIds)
         .then(({ data, error }) => {
           if (error) console.error('orders fetch error:', error.message)
@@ -1865,6 +1880,10 @@ function CompletedOrdersListScreen({ profile, isOwner, lang }) {
       .select('*, winning_bid:bids!fk_winner_bid(price), trip_stops(*)')
       .eq('assigned_driver_id', profile.id)
       .in('status', ['done', 'cancelled'])
+      // Cele mai noi întâi şi cu plafon: ecranul se deschide ca să se vadă
+      // cursele din urmă, nu toate de la începutul colaborării.
+      .order('delivery_date', { ascending: false, nullsFirst: false })
+      .limit(80)
       .then(({ data, error }) => {
         // O interogare căzută nu goleşte istoricul: fără date noi păstrăm ce e
         // deja pe ecran, ca şoferul să nu creadă că i-au dispărut cursele.

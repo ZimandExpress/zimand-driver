@@ -61,6 +61,25 @@ async function licitatiileDeschise() {
 
 const esteLaLicitatie = (o) => !!o && o.status === 'open' && !o.on_hold
 
+// Filtrele firmei, într-un singur loc: lista de licitaţii, numărul de pe
+// clopoţel şi sunetul de comandă nouă trebuie să spună acelaşi lucru. Altfel
+// clopoţelul arată 4, lista arată una, şi nimeni nu înţelege de ce.
+//
+// Ce NU se ascunde niciodată: comanda la care distanţa sau preţul nu se pot
+// afla. O adresă fără cod poştal recunoscut ar dispărea din listă fără ca
+// nimeni să ştie de ce — iar o cursă pierdută din tăcere e mai scumpă decât
+// una citită degeaba.
+function treceFiltrul(o, radiusKm, minPrice, maxPrice) {
+  if (!o) return false
+  if (radiusKm != null && o.distance_km != null && Number(o.distance_km) > radiusKm) return false
+  const p = o.estimated_price
+  if (p != null) {
+    if (minPrice != null && Number(p) < minPrice) return false
+    if (maxPrice != null && Number(p) > maxPrice) return false
+  }
+  return true
+}
+
 
 // Jurnal de utilizare Google API — o linie per apel real, "fire-and-forget",
 // ca să vedem exact de unde vine consumul (raport în panoul de disponent).
@@ -1482,6 +1501,8 @@ function RidesScreen({ profile, isOwner, session, lang }) {
   const [directAwardToast, setDirectAwardToast] = useState(null)
   const [celebration, setCelebration] = useState(null) // number (net earnings) | true (no amount) | null — la nivel de ecran, supraviețuiește comutării spre CompletedOrderDetail
   const [notifyRadiusKm, setNotifyRadiusKm] = useState(null)
+  const [notifyMinPrice, setNotifyMinPrice] = useState(null)
+  const [notifyMaxPrice, setNotifyMaxPrice] = useState(null)
   const openCountLoaded = useRef(false)
   // Id-urile licitaţiilor deja văzute — de aici ştim care e nouă.
   const licitatiiVazute = useRef(null)
@@ -1492,8 +1513,12 @@ function RidesScreen({ profile, isOwner, session, lang }) {
   // La un cont de firmă, toate rândurile de șofer ale firmei. La un angajat
   // cu cont propriu, doar al lui.
   const driverIds = useOwnDriverIds(session, profile)
-  const driverLocationForNotify = useDriverLocation(session)
-  const mapsKeyForNotify = useGoogleMapsKey()
+  // Poziţia telefonului nu mai decide nimic aici — distanţele le calculează
+  // serverul. Dar tot trebuie citită: hook-ul o salvează pe profil, iar de
+  // acolo o ia serverul ca punct de plecare pentru firmele care n-au trecut
+  // nici depozit, nici cod poştal. Fără rândul ăsta, un curier care nu intră
+  // pe ecranul de licitaţii n-ar mai raporta nicio poziţie.
+  useDriverLocation(session)
 
   useEffect(() => {
     if (!isOwner || !profile?.id) return
@@ -1502,8 +1527,13 @@ function RidesScreen({ profile, isOwner, session, lang }) {
     // nimic, iar filtrul pe distanță nu funcționa deloc: șoferul primea sunet
     // pentru orice comandă nouă, oricât de departe. La ecranul de licitații
     // aceeași valoare se citea corect, după session.user.id.
-    supabase.from('profiles').select('preferred_radius_km').eq('id', session.user.id).maybeSingle()
-      .then(({ data }) => { if (data?.preferred_radius_km) setNotifyRadiusKm(data.preferred_radius_km) })
+    supabase.from('profiles').select('preferred_radius_km, filter_min_price, filter_max_price').eq('id', session.user.id).maybeSingle()
+      .then(({ data }) => {
+        if (!data) return
+        if (data.preferred_radius_km) setNotifyRadiusKm(data.preferred_radius_km)
+        if (data.filter_min_price != null) setNotifyMinPrice(Number(data.filter_min_price))
+        if (data.filter_max_price != null) setNotifyMaxPrice(Number(data.filter_max_price))
+      })
   }, [isOwner, session?.user?.id])
 
   useEffect(() => {
@@ -1512,20 +1542,13 @@ function RidesScreen({ profile, isOwner, session, lang }) {
     // Anunţul unei licitaţii noi: sunet şi mesaj, dacă e în raza aleasă.
     // Scos din mâna realtime-ului şi pus deoparte, fiindcă îl cheamă acum şi
     // verificarea periodică.
-    async function anuntaComandaNoua(comanda) {
+    function anuntaComandaNoua(comanda) {
       if (!comanda || comanda.on_hold) return
-      // Dacă șoferul are o rază preferată setată, notificăm doar pentru
-      // comenzi din acel raion — cele mai îndepărtate rămân vizibile
-      // în listă, dar fără sunet/notificare.
-      let withinRadius = true
-      if (notifyRadiusKm != null && driverLocationForNotify && mapsKeyForNotify && comanda.pickup_address) {
-        const point = await geocodeAddressCached(comanda.pickup_address, mapsKeyForNotify)
-        if (point) {
-          const km = haversineKm(driverLocationForNotify.lat, driverLocationForNotify.lng, point.lat, point.lng)
-          withinRadius = km <= notifyRadiusKm
-        }
-      }
-      if (withinRadius) {
+      // Sună doar pentru ce ar apărea şi în listă: aceeaşi rază, aceleaşi
+      // praguri de preţ. Distanţa vine acum pe comandă, calculată de server
+      // din codul poştal — până acum se cerea la Google o geocodare pentru
+      // fiecare comandă nouă, plătită, doar ca să se decidă dacă sună.
+      if (treceFiltrul(comanda, notifyRadiusKm, notifyMinPrice, notifyMaxPrice)) {
         playNewOrderSound()
         setNewOrderToast(true)
         setTimeout(() => setNewOrderToast(false), 4000)
@@ -1541,7 +1564,7 @@ function RidesScreen({ profile, isOwner, session, lang }) {
         if (!comenzi) return
         const biddedIds = new Set((bidsRes.data || []).map((b) => b.order_id))
         const deschise = comenzi.filter(esteLaLicitatie)
-        setOpenCount(deschise.filter((o) => !biddedIds.has(o.id)).length)
+        setOpenCount(deschise.filter((o) => !biddedIds.has(o.id) && treceFiltrul(o, notifyRadiusKm, notifyMinPrice, notifyMaxPrice)).length)
 
         // Care sunt noi faţă de data trecută. La prima încărcare nu sună
         // nimic — altfel ar ţiui la fiecare deschidere a aplicaţiei.
@@ -1581,7 +1604,7 @@ function RidesScreen({ profile, isOwner, session, lang }) {
       window.removeEventListener('focus', laTrezire)
       supabase.removeChannel(channel)
     }
-  }, [isOwner, notifyRadiusKm, driverLocationForNotify, mapsKeyForNotify, session?.user?.id])
+  }, [isOwner, notifyRadiusKm, notifyMinPrice, notifyMaxPrice, session?.user?.id])
 
   useEffect(() => { ordersRef.current = orders }, [orders])
 
@@ -7006,6 +7029,10 @@ function BiddingScreen({ profile, session, lang, embedded }) {
   const [openId, setOpenId] = useState(null)
   const [biddedOrderIds, setBiddedOrderIds] = useState(new Set())
   const [radiusKm, setRadiusKm] = useState(null) // null = alle
+  // Pragurile de preţ: o firmă care nu poate trimite o maşină sub 100 € nu
+  // trebuie să citească zilnic licitaţii de 60 €.
+  const [minPrice, setMinPrice] = useState(null)
+  const [maxPrice, setMaxPrice] = useState(null)
   const courierProfileId = session?.user?.id || null
   const driverLocation = useDriverLocation(session)
   const mapsKey = useGoogleMapsKey()
@@ -7015,13 +7042,29 @@ function BiddingScreen({ profile, session, lang, embedded }) {
   // șoferul deschide aplicația, nu se resetează la "Alle".
   useEffect(() => {
     if (!isOwner || !courierProfileId) return
-    supabase.from('profiles').select('preferred_radius_km').eq('id', courierProfileId).maybeSingle()
-      .then(({ data }) => { if (data?.preferred_radius_km) setRadiusKm(data.preferred_radius_km) })
+    supabase.from('profiles').select('preferred_radius_km, filter_min_price, filter_max_price').eq('id', courierProfileId).maybeSingle()
+      .then(({ data }) => {
+        if (!data) return
+        if (data.preferred_radius_km) setRadiusKm(data.preferred_radius_km)
+        if (data.filter_min_price != null) setMinPrice(Number(data.filter_min_price))
+        if (data.filter_max_price != null) setMaxPrice(Number(data.filter_max_price))
+      })
   }, [isOwner, courierProfileId])
 
   function updateRadius(value) {
     setRadiusKm(value)
     if (courierProfileId) supabase.from('profiles').update({ preferred_radius_km: value }).eq('id', courierProfileId).then(() => {})
+  }
+
+  // Aceeaşi setare e citită şi de panoul firmei: stă pe profil, nu în telefon.
+  function updateMinPrice(value) {
+    setMinPrice(value)
+    if (courierProfileId) supabase.from('profiles').update({ filter_min_price: value }).eq('id', courierProfileId).then(() => {})
+  }
+
+  function updateMaxPrice(value) {
+    setMaxPrice(value)
+    if (courierProfileId) supabase.from('profiles').update({ filter_max_price: value }).eq('id', courierProfileId).then(() => {})
   }
 
   useEffect(() => {
@@ -7077,27 +7120,60 @@ function BiddingScreen({ profile, session, lang, embedded }) {
 
   // odată ce ai licitat, comanda trece exclusiv la "Meine Angebote" — nu mai
   // rămâne și în "Verfügbar"
-  const availableOrders = orders.filter((o) => !biddedOrderIds.has(o.id))
+  const neLicitate = orders.filter((o) => !biddedOrderIds.has(o.id))
 
-  // Calculul de distanță (afișat pe fiecare comandă, "X km bis zu dir")
-  // a fost dezactivat complet — atât varianta cu ruta reală, cât și cea
-  // "gratuită" foloseau geocodificare Google, plătită la scară mare (multe
-  // verificări × mulți șoferi). Sortarea rămâne în ordinea normală.
+  // Distanţa vine acum de pe server, din tabelul de coduri poştale, nu din
+  // geocodări Google plătite la fiecare verificare. De aceea filtrul de
+  // kilometri poate funcţiona în sfârşit: până acum selectorul exista, dar
+  // lista rămânea neatinsă.
+  //
+  // Ce NU se ascunde niciodată: comenzile la care distanţa sau preţul nu se
+  // pot afla. O adresă fără cod poştal recunoscut ar dispărea din listă fără
+  // ca nimeni să ştie de ce — iar o cursă pierdută din tăcere e mai scumpă
+  // decât una citită degeaba.
+  const availableOrders = neLicitate.filter((o) => treceFiltrul(o, radiusKm, minPrice, maxPrice))
+  const ascunseDeFiltru = neLicitate.length - availableOrders.length
   const sortedOrders = availableOrders
 
   if (loading) return <PlaceholderScreen title={embedded ? '' : t('tabBidding', lang)} note={t('loadingRides', lang)} />
 
+  const PRAGURI_PRET = [50, 75, 100, 150, 200, 300, 500]
   const radiusFilter = isOwner && (
-    <div className="radius-filter-row">
-      <span className="radius-filter-label">{t('radiusFilterLabel', lang)}</span>
-      <select className="doc-type-select" value={radiusKm ?? 'all'} onChange={(e) => updateRadius(e.target.value === 'all' ? null : Number(e.target.value))}>
-        <option value="100">100 km</option>
-        <option value="200">200 km</option>
-        <option value="350">350 km</option>
-        <option value="600">600 km</option>
-        <option value="all">{t('radiusFilterAll', lang)}</option>
-      </select>
-    </div>
+    <>
+      <div className="radius-filter-row">
+        <span className="radius-filter-label">{t('radiusFilterLabel', lang)}</span>
+        <select className="doc-type-select" value={radiusKm ?? 'all'} onChange={(e) => updateRadius(e.target.value === 'all' ? null : Number(e.target.value))}>
+          <option value="100">100 km</option>
+          <option value="200">200 km</option>
+          <option value="350">350 km</option>
+          <option value="600">600 km</option>
+          <option value="all">{t('radiusFilterAll', lang)}</option>
+        </select>
+
+        <span className="radius-filter-label">{t('priceFilterLabel', lang)}</span>
+        <select className="doc-type-select" value={minPrice ?? 'all'} onChange={(e) => updateMinPrice(e.target.value === 'all' ? null : Number(e.target.value))}>
+          <option value="all">{t('priceFilterAnyFrom', lang)}</option>
+          {PRAGURI_PRET.map((v) => <option key={v} value={v}>{t('priceFilterFrom', lang)} {v} €</option>)}
+        </select>
+        <select className="doc-type-select" value={maxPrice ?? 'all'} onChange={(e) => updateMaxPrice(e.target.value === 'all' ? null : Number(e.target.value))}>
+          <option value="all">{t('priceFilterAnyTo', lang)}</option>
+          {PRAGURI_PRET.map((v) => <option key={v} value={v}>{t('priceFilterTo', lang)} {v} €</option>)}
+        </select>
+      </div>
+
+      {/* Câte au fost ascunse, scris pe ecran.
+          Fără rândul ăsta, o listă goală arată ca „n-are nimeni nevoie de
+          mine", când de fapt e un filtru pus luna trecută şi uitat. */}
+      {ascunseDeFiltru > 0 && (
+        <div className="filter-hidden-note">
+          {t('filterHiddenNote', lang).replace('{n}', ascunseDeFiltru)}
+          <button type="button" className="filter-reset-btn"
+                  onClick={() => { updateRadius(null); updateMinPrice(null); updateMaxPrice(null) }}>
+            {t('filterReset', lang)}
+          </button>
+        </div>
+      )}
+    </>
   )
 
   if (availableOrders.length === 0) {
@@ -7423,6 +7499,11 @@ function BidCard({ order, lang, courierProfileId, open, onToggle, onBidPlaced })
           )}
           {order.dims && (
             <div className="bid-extra-row">📐 {order.dims} cm</div>
+          )}
+          {/* Câţi kilometri sunt până la ridicare: vine din tabelul de coduri
+              poştale, nu din geocodări plătite, deci se poate afişa mereu. */}
+          {order.distance_km != null && (
+            <div className="bid-extra-row">📍 {t('distanceLabel', lang)}: ca. {order.distance_km} km</div>
           )}
 
           {extractServiceBadges(order.notes).length > 0 && (

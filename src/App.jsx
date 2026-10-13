@@ -3524,7 +3524,14 @@ function DocumentGuideIllustration() {
   )
 }
 
-function DocumentCapture({ lang, onPick, onClose }) {
+function DocumentCapture({ lang, tipuri, onPick, onClose }) {
+  // Lista hartiilor pe care le poate alege soferul vine de la cursa, nu din
+  // modul asta: la o livrare de documente n-are ce cauta CMR-ul, iar
+  // declaratia de predare apare doar unde clientul a cumparat-o.
+  // Fara lista (ecrane mai vechi), raman cele patru de pana acum.
+  const lista = Array.isArray(tipuri) && tipuri.length ? tipuri : DOC_TYPES
+  // `type` tine CHEIA randului, nu tipul documentului: declaratia are doua
+  // randuri cu acelasi tip, iar cautarea dupa tip le-ar confunda.
   const [type, setType] = useState(null)
   const [review, setReview] = useState(null) // { file, url, checking, result }
   const cameraRef = useRef(null)
@@ -3534,7 +3541,7 @@ function DocumentCapture({ lang, onPick, onClose }) {
   // acolo şoferul fotografiază lucruri pe care nu le alegem noi.
   const [cameraCadru, setCameraCadru] = useState(false)
 
-  const chosen = DOC_TYPES.find((d) => d.id === type)
+  const chosen = lista.find((d) => (d.cheie || d.id) === type)
 
   // Eliberăm previzualizarea când componenta dispare.
   useEffect(() => {
@@ -3557,7 +3564,7 @@ function DocumentCapture({ lang, onPick, onClose }) {
     const file = e.target.files?.[0]
     e.target.value = ''
     if (!file || !type) return
-    if (!String(file.type || '').startsWith('image/')) { onPick(file, type); return }
+    if (!String(file.type || '').startsWith('image/')) { onPick(file, chosen.id); return }
 
     setReview({ file, url: URL.createObjectURL(file), checking: true, result: null })
     const result = await analyzeDocumentPhoto(file)
@@ -3653,7 +3660,7 @@ function DocumentCapture({ lang, onPick, onClose }) {
                   type="button"
                   className={review.result?.ok ? 'btn' : 'btn secondary'}
                   style={{ width: '100%', marginTop: 10 }}
-                  onClick={() => onPick(review.file, type)}
+                  onClick={() => onPick(review.file, chosen.id)}
                 >
                   {review.result?.ok ? t('qUse', lang) : t('qUseAnyway', lang)}
                 </button>
@@ -3663,11 +3670,11 @@ function DocumentCapture({ lang, onPick, onClose }) {
         ) : !chosen ? (
           <>
             <div style={title}>{t('docChooseType', lang)}</div>
-            {DOC_TYPES.map((d) => (
+            {lista.map((d) => (
               <button
-                key={d.id}
+                key={d.cheie || d.id}
                 type="button"
-                onClick={() => setType(d.id)}
+                onClick={() => setType(d.cheie || d.id)}
                 style={{
                   width: '100%', textAlign: 'left', background: '#fff',
                   border: '1px solid #D8DEE8', borderRadius: 10,
@@ -3676,8 +3683,12 @@ function DocumentCapture({ lang, onPick, onClose }) {
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                 }}
               >
-                {t(d.labelKey, lang)}
-                <span style={{ color: '#B9C3D1' }}>›</span>
+                <span>{t(d.labelKey, lang)}</span>
+                {/* Randul deja facut se bifeaza: la doua pagini de declaratie,
+                    soferul vede dintr-o privire care i-a mai ramas. */}
+                {d.gata
+                  ? <span style={{ color: '#1F7A50', fontWeight: 700 }}>✓</span>
+                  : <span style={{ color: '#B9C3D1' }}>›</span>}
               </button>
             ))}
             <button type="button" className="link-btn" onClick={onClose}>{t('back', lang)}</button>
@@ -4742,7 +4753,14 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
   // dar la cutiile adânci plicul dispare cu totul, iar ultima fotografie nu
   // mai arată nimic. Aceea e singura care prinde gestul.
   // Nu există semnătură: fotografiile SUNT dovada.
-  const MINIM_POZE_LIVRARE = 6
+  // Trei poze cerute, sase recomandate.
+  //
+  // Sase erau obligatorii, si fiecare avea rostul ei. Dar o cerinta pe care
+  // soferul n-o poate implini in curte, pe ploaie, nu produce sase poze: il
+  // opreste din confirmat. Trei e pragul sub care dovada nu mai spune nimic;
+  // restul raman scrise ca indrumare, cu numele lor, deasupra casutelor.
+  const MINIM_POZE_LIVRARE = 3
+  const POZE_RECOMANDATE = 6
   const [notitaPlecare, setNotitaPlecare] = useState(false)
   const [regulileDeschise, setRegulileDeschise] = useState(false)
 
@@ -4787,7 +4805,7 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
   // condiţii asemănătoare dar nu identice — iar când nu se potriveau,
   // șoferul rămânea cu un buton stins și o listă care nu-i cerea nimic.
   const minimPoze = isDocumentDelivery
-    ? (esteLivrareEtapa ? (deliveryMethod === 'briefkasten' ? MINIM_POZE_LIVRARE : 4) : 1)
+    ? (esteLivrareEtapa ? MINIM_POZE_LIVRARE : 1)
     : (esteLivrareEtapa ? 2 : 1)
 
   // La ridicarea unei curse de documente pleacă două formulare: protocolul
@@ -4814,6 +4832,50 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
   // componentei de fișiere lista nu există — atunci numărăm doar câte
   // documente s-au încărcat, ca aplicaţia să nu blocheze pe loc.
   const tipuriIncarcate = Array.isArray(fileSummary.documentTypes) ? fileSummary.documentTypes : null
+
+  // Ce hartii poate alege soferul AICI.
+  //
+  // Pana acum lista era aceeasi peste tot: CMR, Zustellprotokoll,
+  // Botenbestaetigung, Sonstiges — la orice cursa si la orice etapa. Soferul
+  // alegea dintre patru, din care trei nu aveau ce cauta pe cursa lui, iar
+  // o alegere gresita trimitea documentul intr-un sertar unde nu-l cauta
+  // nimeni.
+  //
+  // Acum lista e a cursei:
+  //   documente, la ridicare, cu declaratie cumparata:
+  //       Botenbestaetigung Seite 1, Seite 2, Zustellprotokoll, Sonstiges
+  //   documente, la ridicare, fara declaratie:
+  //       Zustellprotokoll, Sonstiges
+  //   documente, la livrare:
+  //       Zustellprotokoll, Sonstiges   (declaratia a ramas la expeditor)
+  //   marfa:
+  //       CMR, Sonstiges
+  //
+  // Declaratia are DOUA randuri, nu unul. Se incarca pagina cu pagina, prin
+  // acelasi drum ca pana acum — tipul salvat ramane `botenbestaetigung`
+  // pentru amandoua, deci verificarea care numara doua bucati merge neatinsa.
+  const tipuriDocumente = (() => {
+    const dupaId = (id) => DOC_TYPES.find((d) => d.id === id)
+    const numarate = (tipuriIncarcate || []).reduce((acc, tip) => {
+      acc[tip] = (acc[tip] || 0) + 1
+      return acc
+    }, {})
+    const bifat = (id, cate) => (numarate[id] || 0) >= (cate || 1)
+    if (!isDocumentDelivery) {
+      return [
+        { ...dupaId('cmr'), gata: bifat('cmr') },
+        { ...dupaId('other'), gata: false },
+      ]
+    }
+    const randuri = []
+    if (cereBoten) {
+      randuri.push({ ...dupaId('botenbestaetigung'), cheie: 'bote1', labelKey: 'docTypeBote1', gata: bifat('botenbestaetigung', 1) })
+      randuri.push({ ...dupaId('botenbestaetigung'), cheie: 'bote2', labelKey: 'docTypeBote2', gata: bifat('botenbestaetigung', 2) })
+    }
+    randuri.push({ ...dupaId('zustellprotokoll'), gata: bifat('zustellprotokoll') })
+    randuri.push({ ...dupaId('other'), gata: false })
+    return randuri
+  })()
   // Numărate, nu doar căutate.
   //
   // `includes` nu ştie de dubluri: cu două declaraţii cerute şi una urcată,
@@ -5400,6 +5462,16 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
       <AltCapat order={order} lang={lang} spreLivrare={!esteLivrareEtapa} />
 
 
+      {/* Cate sunt cerute si cate ajuta. Scris langa casute, nu doar in
+          butonul stins de jos. */}
+      {esteEtapaLivrareDoc && (
+        <div style={{ fontSize: 12.5, color: '#6B7A90', lineHeight: 1.5, margin: '0 0 8px' }}>
+          {t('photosMinRecommended', lang)
+            .replace('{min}', String(MINIM_POZE_LIVRARE))
+            .replace('{rec}', String(POZE_RECOMANDATE))}
+        </div>
+      )}
+
       <PodFiles
         orderId={order.id}
         leg={leg}
@@ -5463,6 +5535,7 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
       {docCaptureOpen && (
         <DocumentCapture
           lang={lang}
+          tipuri={tipuriDocumente}
           onClose={() => setDocCaptureOpen(false)}
           onPick={(file, pickedType) => {
             setDocCaptureOpen(false)

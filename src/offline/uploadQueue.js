@@ -31,6 +31,19 @@ const MAX_ATTEMPTS = 6
 const listeners = new Set()
 let running = 0
 let pumping = false
+// Fişierele care se urcă ACUM, în pagina asta. La revenirea în aplicaţie,
+// requeueStuck le repunea în coadă chiar dacă urcarea mergea încă — aceeaşi
+// poză pornea a doua oară în paralel şi ocupa locul alteia.
+const inFlight = new Set()
+
+// Semnal slab: telefonul spune „online", dar nu trece nimic. O urcare fără
+// niciun progres atâta timp e oprită şi reluată, în loc să aştepte minute.
+const STALL_MS = 20000
+// Erorile de reţea nu duc niciodată la „eşuat": poza aşteaptă semnalul şi se
+// reia singură. Pauza între încercări rămâne scurtă, ca la revenirea
+// semnalului să plece în câteva secunde, nu peste un minut.
+const NETWORK_RETRY_MAX_MS = 8000
+const eroareDeRetea = (msg) => /^(network|timeout|stalled|no_session)$/.test(msg || '') || /^storage_(0|408|429|5\d\d)$/.test(msg || '')
 
 export function subscribe(fn) {
   listeners.add(fn)
@@ -145,7 +158,7 @@ export async function removeFile(id) {
 export async function retryFile(id) {
   const f = await dbGet(STORE_FILES, id)
   if (!f) return
-  await patch(id, { status: f.blob ? 'queued' : 'failed', error: null, attempts: 0 })
+  await patch(id, { status: f.blob ? 'queued' : 'failed', error: null, attempts: 0, nextTryAt: null })
   pump()
 }
 
@@ -160,16 +173,35 @@ function uploadWithProgress(path, blob, token, onProgress) {
     xhr.setRequestHeader('Content-Type', blob.type || 'application/octet-stream')
     // x-upsert: un retry pe aceeași cale suprascrie, nu duplică.
     xhr.setRequestHeader('x-upsert', 'true')
+    let ultimulSemn = Date.now()
+    let oprit = false
+    // Paznicul: dacă n-a mai trecut niciun octet de STALL_MS, oprim şi
+    // încercăm din nou. Pe semnal slab o conexiune poate rămâne agăţată
+    // minute întregi fără să cadă.
+    const paznic = setInterval(() => {
+      if (Date.now() - ultimulSemn > STALL_MS) {
+        oprit = true
+        clearInterval(paznic)
+        try { xhr.abort() } catch { /* deja închisă */ }
+        reject(new Error('stalled'))
+      }
+    }, 2000)
+    const gata = () => clearInterval(paznic)
     xhr.upload.onprogress = (e) => {
+      ultimulSemn = Date.now()
       if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100))
     }
     xhr.onload = () => {
+      gata()
       if (xhr.status >= 200 && xhr.status < 300) resolve(path)
       else reject(new Error(`storage_${xhr.status}`))
     }
-    xhr.onerror = () => reject(new Error('network'))
-    xhr.ontimeout = () => reject(new Error('timeout'))
-    xhr.timeout = 120000
+    xhr.onerror = () => { gata(); if (!oprit) reject(new Error('network')) }
+    xhr.ontimeout = () => { gata(); if (!oprit) reject(new Error('timeout')) }
+    xhr.onabort = () => { gata(); if (!oprit) reject(new Error('network')) }
+    // Limita totală doar ca plasă de siguranţă pentru PDF-uri mari pe
+    // conexiuni lente: oprirea reală o face paznicul de mai sus.
+    xhr.timeout = 300000
     xhr.send(blob)
   })
 }
@@ -181,7 +213,10 @@ async function pump() {
     while (running < MAX_CONCURRENT) {
       if (!isOnline()) break
       const all = (await dbGetAll(STORE_FILES)) || []
-      const next = all.find((f) => f.status === 'queued' && f.blob)
+      // nextTryAt: pauza după o încercare căzută. Fără ea, poza se reîncerca
+      // imediat, în buclă, cât timp nu era semnal — baterie consumată degeaba.
+      const acum = Date.now()
+      const next = all.find((f) => f.status === 'queued' && f.blob && !inFlight.has(f.id) && !(f.nextTryAt > acum))
       if (!next) break
       running++
       void uploadOne(next).finally(() => {
@@ -203,9 +238,16 @@ async function pump() {
 }
 
 async function uploadOne(item) {
+  inFlight.add(item.id)
   await patch(item.id, { status: 'uploading', progress: 0 })
   try {
-    const { data } = await supabase.auth.getSession()
+    // Cu tokenul expirat, getSession îl reînnoieşte întâi pe server — iar pe
+    // semnal slab cererea aceea putea atârna fără sfârşit, cu poza blocată
+    // pe „se urcă". O limităm şi reîncercăm.
+    const { data } = await Promise.race([
+      supabase.auth.getSession(),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('no_session')), 15000)),
+    ])
     const token = data?.session?.access_token
     if (!token) throw new Error('no_session')
 
@@ -219,17 +261,27 @@ async function uploadOne(item) {
     await patch(item.id, { status: 'uploaded', progress: 100, remotePath: path, blob: null, error: null })
   } catch (err) {
     const attempts = (item.attempts || 0) + 1
-    const failed = attempts >= MAX_ATTEMPTS
+    const retea = eroareDeRetea(err.message)
+    // Doar un refuz real al serverului (fişier respins, drepturi) poate
+    // marca poza drept eşuată. Lipsa semnalului nu: poza rămâne în coadă
+    // şi pleacă singură când trece din nou ceva.
+    const failed = !retea && attempts >= MAX_ATTEMPTS
+    // Pauza se scrie odată cu starea: altfel coada ar putea lua poza din nou
+    // în intervalul dintre cele două scrieri.
+    const delayPrevazut = Math.min(retea ? NETWORK_RETRY_MAX_MS : 30000, 1000 * 2 ** Math.min(attempts, 5))
     await patch(item.id, {
       status: failed ? 'failed' : 'queued',
       attempts,
       error: err.message || 'upload_failed',
+      nextTryAt: failed ? null : Date.now() + delayPrevazut,
     })
     if (!failed) {
       // backoff: 2s, 4s, 8s… ca să nu batem serverul într-o buclă
-      const delay = Math.min(30000, 1000 * 2 ** attempts)
-      setTimeout(() => pump(), delay)
+      const delay = Math.min(retea ? NETWORK_RETRY_MAX_MS : 30000, 1000 * 2 ** Math.min(attempts, 5))
+      setTimeout(() => pump(), delay + 50)
     }
+  } finally {
+    inFlight.delete(item.id)
   }
 }
 
@@ -716,6 +768,20 @@ export function startQueue() {
   window.addEventListener('online', resume)
   document.addEventListener('visibilitychange', () => { if (!document.hidden) resume() })
   resume()
+
+  // Verificare periodică cât timp aplicaţia e deschisă.
+  //
+  // Reluarea depindea de evenimente: „online" (pe semnal slab nu vine
+  // niciodată, telefonul n-a fost oficial offline) sau ieşirea şi intrarea
+  // înapoi în aplicaţie. Şoferul care stătea cu aplicaţia deschisă aştepta
+  // degeaba. Acum la fiecare 10 secunde tot ce aşteaptă primeşte o şansă.
+  setInterval(() => {
+    if (document.hidden) return
+    void (async () => {
+      const all = (await dbGetAll(STORE_FILES)) || []
+      if (all.some((f) => f.blob && f.status === 'queued')) pump()
+    })()
+  }, 10000)
 }
 
 // Un fișier rămas 'uploading' înseamnă că aplicația a fost închisă în timpul
@@ -746,8 +812,14 @@ async function curataFisePierdute() {
 async function requeueStuck() {
   const all = (await dbGetAll(STORE_FILES)) || []
   await Promise.all(
-    all.filter((f) => (f.status === 'uploading' || f.status === 'failed') && f.blob)
-      .map((f) => dbPut(STORE_FILES, { ...f, status: 'queued', progress: 0, error: null, attempts: 0 }))
+    all.filter((f) => (f.status === 'uploading' || f.status === 'failed') && f.blob && !inFlight.has(f.id))
+      .map((f) => dbPut(STORE_FILES, { ...f, status: 'queued', progress: 0, error: null, attempts: 0, nextTryAt: null })),
+  )
+  // Semnalul a revenit sau şoferul s-a întors în aplicaţie: ce aştepta o
+  // pauză pleacă acum, nu peste câteva secunde.
+  await Promise.all(
+    all.filter((f) => f.status === 'queued' && f.nextTryAt)
+      .map((f) => patch(f.id, { nextTryAt: null }))
   )
 }
 
@@ -760,7 +832,7 @@ export async function retryAllFailed() {
   const cazute = all.filter((f) => f.status === 'failed' && f.blob)
   if (!cazute.length) return 0
   await Promise.all(
-    cazute.map((f) => dbPut(STORE_FILES, { ...f, status: 'queued', progress: 0, error: null, attempts: 0 }))
+    cazute.map((f) => dbPut(STORE_FILES, { ...f, status: 'queued', progress: 0, error: null, attempts: 0, nextTryAt: null }))
   )
   emit()
   pump()

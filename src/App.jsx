@@ -12,6 +12,7 @@ import {
   subscribe as ascultaCoada, confirmationsStatus, retryStuckConfirmations,
 } from './offline/uploadQueue'
 import { pruneOld } from './offline/db'
+import { citesteCache, scrieCache, golesteCache, sesiuneSalvata } from './offline/startCache'
 import { analyzeDocumentPhoto } from './services/imageQuality'
 // Comprimarea pozelor atașate la raportarea unei probleme.
 //
@@ -132,10 +133,25 @@ function InstallPrompt({ lang }) {
 }
 
 // BUILD-MARKER: 2026-08-26-confirmFormOpen-fix
+// Linkurile de invitaţie / resetare aduc o sesiune NOUĂ în adresă. Atunci nu
+// pornim din cea salvată — ar putea fi a altui cont, deschis înainte pe
+// acelaşi telefon.
+function vineDinLink() {
+  const q = new URLSearchParams(window.location.search)
+  return q.get('invite') === '1' || q.has('code') || /access_token|error_description/.test(window.location.hash)
+}
+
 export default function App() {
-  const [session, setSession] = useState(null)
-  const [profile, setProfile] = useState(null)
-  const [loading, setLoading] = useState(true)
+  // Pornim din ce ştie deja telefonul: sesiunea salvată şi ultimul profil.
+  // getSession şi interogarea profilului confirmă sau corectează imediat după.
+  const [pornire] = useState(() => {
+    if (vineDinLink()) return { session: null, profile: null }
+    const s = sesiuneSalvata()
+    return { session: s, profile: s ? citesteCache('profile:' + s.user.id) : null }
+  })
+  const [session, setSession] = useState(pornire.session)
+  const [profile, setProfile] = useState(pornire.profile)
+  const [loading, setLoading] = useState(!pornire.session)
   const [lang, setLangState] = useState(getLang())
   const [needsPassword, setNeedsPassword] = useState(
     () => new URLSearchParams(window.location.search).get('invite') === '1'
@@ -168,17 +184,23 @@ export default function App() {
       setSession(session)
       setLoading(false)
     })
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT') golesteCache()
       setSession(session)
     })
     return () => sub.subscription.unsubscribe()
   }, [])
 
+  // Legat de id-ul contului, nu de obiectul sesiunii: sesiunea salvată şi
+  // cea confirmată de getSession sunt obiecte diferite pentru acelaşi cont,
+  // iar profilul nu trebuie cerut de două ori.
+  const userId = session?.user?.id || null
   useEffect(() => {
     if (!session) {
       setProfile(null)
       return
     }
+    const cheieProfil = 'profile:' + session.user.id
     supabase
       .from('drivers')
       .select('*')
@@ -187,14 +209,20 @@ export default function App() {
       .then(async ({ data, error }) => {
         if (data) {
           setProfile(data)
+          scrieCache(cheieProfil, data)
           return
         }
+        // Fără rând şi fără eroare de reţea: contul chiar nu are profil.
+        // La o eroare de reţea păstrăm profilul de pe telefon, ca şoferul
+        // fără semnal să-şi vadă în continuare cursele.
+        if (error && !/0 rows|PGRST116/i.test(`${error.code} ${error.message} ${error.details}`)) return
         // Nu există încă un rând în drivers pentru acest cont — dacă emailul
         // se potrivește cu un cont de firmă (courier), îl creăm automat,
         // ca firma să aibă direct acces complet, fără pas manual în plus.
         const { data: courierProfileId } = await supabase.rpc('get_courier_profile_id')
         if (!courierProfileId) {
           setProfile(null)
+          scrieCache(cheieProfil, null)
           return
         }
         const { data: companyName } = await supabase.rpc('get_company_name', { p_profile_id: courierProfileId })
@@ -219,8 +247,9 @@ export default function App() {
           return
         }
         setProfile(created)
+        scrieCache(cheieProfil, created)
       })
-  }, [session])
+  }, [userId])
 
   function refreshProfile() {
     if (!session) return
@@ -229,7 +258,11 @@ export default function App() {
       .select('*')
       .eq('auth_user_id', session.user.id)
       .single()
-      .then(({ data }) => setProfile(data || null))
+      .then(({ data, error }) => {
+        if (error && !data && !/PGRST116/.test(String(error.code))) return
+        setProfile(data || null)
+        scrieCache('profile:' + session.user.id, data || null)
+      })
   }
 
   function onPasswordSet() {
@@ -1490,8 +1523,11 @@ function VehiclesScreen({ session, isOwner, lang }) {
 }
 
 function RidesScreen({ profile, isOwner, session, lang }) {
-  const [orders, setOrders] = useState([])
-  const [loading, setLoading] = useState(true)
+  // Ultima listă de curse văzută pe telefonul ăsta — apare imediat, iar
+  // interogarea de mai jos o înlocuieşte în câteva clipe.
+  const cheieCurse = profile?.id ? 'orders:' + profile.id : null
+  const [orders, setOrders] = useState(() => (cheieCurse && citesteCache(cheieCurse)) || [])
+  const [loading, setLoading] = useState(() => !(cheieCurse && citesteCache(cheieCurse)))
   const [selectedId, setSelectedIdState] = useState(() => sessionStorage.getItem('zd-open-order') || null)
   const [activeTab, setActiveTab] = useState('mine')
   const [sortAsc, setSortAsc] = useState(true)
@@ -1655,7 +1691,7 @@ function RidesScreen({ profile, isOwner, session, lang }) {
             // rău decât un tur fără opriri, fiindcă şoferul credea că n-are
             // nimic de lucru. Păstrăm ce aveam şi spunem că n-a reuşit.
             if (error) setFetchError(error.message || 'fetch')
-            else { setOrders(data || []); setFetchError(null) }
+            else { setOrders(data || []); setFetchError(null); scrieCache('orders:' + profile.id, data || []) }
             setLoading(false)
           }
         })
@@ -6322,7 +6358,12 @@ function CompletedOrderDetail({ order, isOwner, lang, onBack }) {
 //
 // Pentru un șofer angajat, cu cont propriu, întoarce doar id-ul lui.
 function useOwnDriverIds(session, profile) {
-  const [ids, setIds] = useState(null)
+  const [ids, setIds] = useState(() => {
+    if (!profile?.id) return null
+    const isCompanyAccount = profile.company_id && session?.user?.id && profile.company_id === session.user.id
+    if (!isCompanyAccount) return [profile.id]
+    return citesteCache('driverIds:' + profile.company_id)
+  })
 
   useEffect(() => {
     if (!profile?.id) { setIds(null); return }
@@ -6331,15 +6372,27 @@ function useOwnDriverIds(session, profile) {
     const isCompanyAccount = profile.company_id && session?.user?.id && profile.company_id === session.user.id
     if (!isCompanyAccount) { setIds([profile.id]); return }
 
+    // Lista de pe telefon porneşte comenzile imediat; cea de pe server o
+    // înlocuieşte doar dacă s-a schimbat (un şofer nou în firmă).
+    const cheie = 'driverIds:' + profile.company_id
+    const salvate = citesteCache(cheie)
+    if (salvate?.length) setIds((cur) => (cur && cur.join() === salvate.join() ? cur : salvate))
+
     supabase
       .from('drivers')
       .select('id')
       .eq('company_id', profile.company_id)
       .then(({ data, error }) => {
         if (!active) return
-        if (error) { console.error('company drivers fetch error:', error.message); setIds([profile.id]); return }
+        if (error) {
+          console.error('company drivers fetch error:', error.message)
+          if (!salvate?.length) setIds([profile.id])
+          return
+        }
         const list = (data || []).map((d) => d.id)
-        setIds(list.length ? list : [profile.id])
+        const noi = list.length ? list : [profile.id]
+        scrieCache(cheie, noi)
+        setIds((cur) => (cur && cur.join() === noi.join() ? cur : noi))
       })
     return () => { active = false }
   }, [profile?.id, profile?.company_id, session?.user?.id])

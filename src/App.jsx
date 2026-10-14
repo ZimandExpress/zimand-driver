@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { supabase } from './supabaseClient'
 import { t, getLang, setLang, availableLangs } from './i18n'
-import { Building2, StickyNote, Receipt, Package, Repeat, Hourglass, Camera, Image as ImageIcon, Mail, Ruler, ChevronDown, Lock, Phone, Truck, CheckCircle2, Wallet, User, LogOut, Menu, Bell, MapPin, FlagTriangleRight, Tag, XCircle, Download, X, Navigation, Trophy, ThumbsUp, ArrowUpFromLine, ArrowDownToLine, EyeOff, Layers, AlertTriangle, Clock, FileText, Signature, BookOpen } from 'lucide-react'
+import { SlidersHorizontal, Building2, StickyNote, Receipt, Package, Repeat, Hourglass, Camera, Image as ImageIcon, Mail, Ruler, ChevronDown, Lock, Phone, Truck, CheckCircle2, Wallet, User, LogOut, Menu, Bell, MapPin, FlagTriangleRight, Tag, XCircle, Download, X, Navigation, Trophy, ThumbsUp, ArrowUpFromLine, ArrowDownToLine, EyeOff, Layers, AlertTriangle, Clock, FileText, Signature, BookOpen } from 'lucide-react'
 import './index.css'
 import PodFiles from './components/PodFiles'
 import DocumentCamera from './components/DocumentCamera'
@@ -7439,7 +7439,14 @@ function BiddingScreen({ profile, session, lang, embedded }) {
   const [standortEroare, setStandortEroare] = useState('')
   const [standortSalvare, setStandortSalvare] = useState(false)
   const reincarcaRef = useRef(() => {})
+  const [filtruDeschis, setFiltruDeschis] = useState(false)
+  const [sursaBaza, setSursaBaza] = useState(null) // 'filtru' | 'depot' | 'plz' | 'telefon' | 'none' | null (necunoscut)
   const courierProfileId = session?.user?.id || null
+  const citesteSursa = () => supabase.rpc('courier_base_coords').then(({ data, error }) => {
+    if (error) return
+    const rand = Array.isArray(data) ? data[0] : data
+    setSursaBaza(rand?.sursa || 'none')
+  })
   const driverLocation = useDriverLocation(session)
   const mapsKey = useGoogleMapsKey()
   const isOwner = profile?.account_type === 'owner_operator'
@@ -7460,7 +7467,11 @@ function BiddingScreen({ profile, session, lang, embedded }) {
         })
         setPlzInput(data.filter_postal_code || '')
         setOrtInput(data.filter_city || '')
+        // „Preis bis" nu mai există în aplicaţie. O limită salvată înainte ar
+        // ascunde în continuare curse — fără ca firma să o mai vadă undeva.
+        if (data.filter_max_price != null) updateMaxPrice(null)
       })
+    citesteSursa()
   }, [isOwner, courierProfileId])
 
   // Anunţă restul aplicaţiei (sunetul şi numărul de pe clopoţel) că s-au
@@ -7487,6 +7498,7 @@ function BiddingScreen({ profile, session, lang, embedded }) {
     setStandort((s) => ({ ...s, plz: cod, ort: oras }))
     setPlzInput(cod)
     setOrtInput(oras)
+    citesteSursa()
     // Distanţele se recalculează pe server, de la noul punct.
     reincarcaRef.current()
     anuntaFiltre()
@@ -7584,54 +7596,73 @@ function BiddingScreen({ profile, session, lang, embedded }) {
   // O valoare salvată înainte (350 km) rămâne vizibilă în listă.
   const razeAfisate = radiusKm != null && !RAZE.includes(radiusKm) ? [...RAZE, radiusKm].sort((a, b) => a - b) : RAZE
   const standortModificat = plzInput.replace(/\s/g, '') !== standort.plz || ortInput.trim() !== standort.ort
-  const punctPlecare = standort.plz
-    ? [standort.plz, standort.ort].filter(Boolean).join(' ')
-    : standort.sediuPlz ? `${t('standortCompany', lang)} (${[standort.sediuPlz, standort.sediuOrt].filter(Boolean).join(' ')})` : t('standortPhone', lang)
+  // De unde măsoară serverul ACUM — luat de la server, nu ghicit: un cod de
+  // sediu necunoscut sau lipsă face ca raza să plece de la telefon.
+  const punctPlecare =
+    sursaBaza === 'filtru' || (!sursaBaza && standort.plz) ? [standort.plz, standort.ort].filter(Boolean).join(' ')
+    : sursaBaza === 'depot' || sursaBaza === 'plz' || (!sursaBaza && standort.sediuPlz) ? `${t('standortCompany', lang)} ${[standort.sediuPlz, standort.sediuOrt].filter(Boolean).join(' ')}`.trim()
+    : sursaBaza === 'telefon' ? t('standortPhone', lang)
+    : null
+  const sumarFiltru = [
+    radiusKm != null
+      ? `${radiusKm} km · ${standort.plz ? [standort.plz, standort.ort].filter(Boolean).join(' ') : sursaBaza === 'telefon' ? t('standortPhoneShort', lang) : t('standortCompany', lang)}`
+      : t('radiusFilterAllKm', lang),
+    minPrice != null ? `${t('priceFilterFrom', lang)} ${minPrice} €` : null,
+  ].filter(Boolean).join(' · ')
   const radiusFilter = isOwner && (
     <>
-      <div className="radius-filter-row">
-        <span className="radius-filter-label">{t('standortLabel', lang)}</span>
+      <button type="button" className={`filtru-sumar${filtruDeschis ? ' deschis' : ''}`} aria-expanded={filtruDeschis}
+              onClick={() => setFiltruDeschis((v) => !v)}>
+        <SlidersHorizontal size={15} strokeWidth={2} />
+        <span className="filtru-sumar-text">{sumarFiltru}</span>
+        <ChevronDown size={16} strokeWidth={2} className="filtru-sumar-chev" />
+      </button>
+
+      {filtruDeschis && (
+      <div className="filtru-panou">
         <form className="standort-row" onSubmit={(e) => { e.preventDefault(); salveazaStandort(plzInput, ortInput) }}>
-          <input className="doc-type-select standort-plz" inputMode="numeric" maxLength={5} autoComplete="postal-code"
-                 placeholder={t('standortPlzPlaceholder', lang)} value={plzInput}
+          <input className="filtru-input standort-plz" inputMode="numeric" maxLength={5} autoComplete="postal-code"
+                 placeholder={t('standortPlzPlaceholder', lang)} value={plzInput} aria-label={t('standortLabel', lang)}
                  onChange={(e) => { setPlzInput(e.target.value.replace(/[^\d]/g, '').slice(0, 5)); setStandortEroare('') }} />
-          <input className="doc-type-select standort-ort" autoComplete="address-level2"
+          <input className="filtru-input standort-ort" autoComplete="address-level2"
                  placeholder={t('standortOrtPlaceholder', lang)} value={ortInput}
                  onChange={(e) => setOrtInput(e.target.value)} />
           {standortModificat && (
-            <button type="submit" className="btn standort-btn" disabled={standortSalvare}>
+            <button type="submit" className="standort-btn" disabled={standortSalvare}>
               {standortSalvare ? '…' : t('standortSave', lang)}
             </button>
           )}
         </form>
         {standortEroare
-          ? <span className="standort-hint standort-err">{standortEroare}</span>
-          : <span className="standort-hint">
-              {t('standortFrom', lang)} {punctPlecare}
+          ? <div className="standort-hint standort-err">{standortEroare}</div>
+          : <div className="standort-hint">
+              {punctPlecare ? `${t('standortFrom', lang)} ${punctPlecare}` : t('standortNone', lang)}
               {standort.plz && (
                 <button type="button" className="standort-clear" onClick={() => salveazaStandort('', '')}>
-                  {t('standortUseCompany', lang)}
+                  {standort.sediuPlz ? t('standortUseCompany', lang) : t('standortRemove', lang)}
                 </button>
               )}
-            </span>}
+            </div>}
 
-        <span className="radius-filter-label">{t('radiusFilterLabel', lang)}</span>
-        <select className="doc-type-select rf-full" value={radiusKm ?? 'all'} onChange={(e) => updateRadius(e.target.value === 'all' ? null : Number(e.target.value))}>
-          {razeAfisate.map((km) => <option key={km} value={km}>{t('radiusUpTo', lang).replace('{km}', km)}</option>)}
-          <option value="all">{t('radiusFilterAllKm', lang)}</option>
-        </select>
-
-        <span className="radius-filter-label">{t('priceFilterLabel', lang)}</span>
-        <select className="doc-type-select" value={minPrice ?? 'all'} onChange={(e) => updateMinPrice(e.target.value === 'all' ? null : Number(e.target.value))}>
-          <option value="all">{t('priceFilterAnyFrom', lang)}</option>
-          {PRAGURI_PRET.map((v) => <option key={v} value={v}>{t('priceFilterFrom', lang)} {v} €</option>)}
-        </select>
-        <select className="doc-type-select" value={maxPrice ?? 'all'} onChange={(e) => updateMaxPrice(e.target.value === 'all' ? null : Number(e.target.value))}>
-          <option value="all">{t('priceFilterAnyTo', lang)}</option>
-          {PRAGURI_PRET.map((v) => <option key={v} value={v}>{t('priceFilterTo', lang)} {v} €</option>)}
-        </select>
-        <span className="standort-hint rf-full">{t('filterNotifyNote', lang)}</span>
+        <div className="filtru-selecturi">
+          <label className="filtru-camp">
+            <span>{t('radiusFilterLabel', lang)}</span>
+            <select className="filtru-input" value={radiusKm ?? 'all'} onChange={(e) => updateRadius(e.target.value === 'all' ? null : Number(e.target.value))}>
+              {razeAfisate.map((km) => <option key={km} value={km}>{t('radiusUpTo', lang).replace('{km}', km)}</option>)}
+              <option value="all">{t('radiusFilterAllShort', lang)}</option>
+            </select>
+          </label>
+          <label className="filtru-camp">
+            <span>{t('priceFilterLabel', lang)}</span>
+            <select className="filtru-input" value={minPrice ?? 'all'} onChange={(e) => updateMinPrice(e.target.value === 'all' ? null : Number(e.target.value))}>
+              <option value="all">{t('priceFilterAnyFrom', lang)}</option>
+              {PRAGURI_PRET.map((v) => <option key={v} value={v}>{t('priceFilterFrom', lang)} {v} €</option>)}
+            </select>
+          </label>
+        </div>
+        <div className="standort-hint">{t('filterNotifyNote', lang)}</div>
       </div>
+      )}
 
       {/* Câte au fost ascunse, scris pe ecran.
           Fără rândul ăsta, o listă goală arată ca „n-are nimeni nevoie de
@@ -7640,7 +7671,7 @@ function BiddingScreen({ profile, session, lang, embedded }) {
         <div className="filter-hidden-note">
           {t('filterHiddenNote', lang).replace('{n}', ascunseDeFiltru)}
           <button type="button" className="filter-reset-btn"
-                  onClick={() => { updateRadius(null); updateMinPrice(null); updateMaxPrice(null) }}>
+                  onClick={() => { updateRadius(null); updateMinPrice(null) }}>
             {t('filterReset', lang)}
           </button>
         </div>

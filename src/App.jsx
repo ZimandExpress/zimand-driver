@@ -5201,7 +5201,9 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
   const semnaturaCeruta = isDocumentDelivery ? (!esteLivrareEtapa && !cereBoten) : cereSemnatura
   const numeCerut = cereDocument || cereSemnatura
     || (dovadaLaAlegere && !!signatureBlob)
-    || (isDocumentDelivery && (!esteLivrareEtapa || deliveryMethod === 'persoenlich'))
+    // Cu Botenbestätigung, numele celui care predă stă deja pe declaraţia
+    // semnată — la ridicare nu-l mai cerem şi pe telefon.
+    || (isDocumentDelivery && ((!esteLivrareEtapa && !cereBoten) || (esteLivrareEtapa && deliveryMethod === 'persoenlich')))
 
   const [incidentOpen, setIncidentOpen] = useState(false)
   const [incidentBlocking, setIncidentBlocking] = useState(false)

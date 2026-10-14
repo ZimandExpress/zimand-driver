@@ -8,7 +8,7 @@ import PodFiles from './components/PodFiles'
 import DocumentCamera from './components/DocumentCamera'
 import {
   startQueue, enqueueFiles, enqueueSignature, confirmLeg as queueConfirmLeg,
-  isOnline as reteaDisponibila, reportStopFailed,
+  isOnline as reteaDisponibila, reportStopFailed, reportDeliveryFailed,
   subscribe as ascultaCoada, confirmationsStatus, retryStuckConfirmations,
 } from './offline/uploadQueue'
 import { pruneOld } from './offline/db'
@@ -2719,6 +2719,149 @@ function StopFailedSheet({ stop, orderId, lang, onClose, onSaved }) {
   )
 }
 
+/* ---------------------------------------------------------------------------
+   „Zustellung nicht möglich" — livrarea principală (sau retur).
+   ---------------------------------------------------------------------------
+   Firmă închisă, nimeni acasă, marfă refuzată. Şoferul scrie motivul şi face
+   o poză; comanda rămâne la el, dispecerul vede imediat încercarea, o
+   confirmă şi îl anunţă pe client. Apoi şoferul (sau dispecerul) porneşte o
+   nouă încercare. Pozele fiecărei încercări stau sub cheia lor, ca să nu se
+   amestece cu ale livrării reuşite.
+   --------------------------------------------------------------------------- */
+function DeliveryFailedSheet({ orderId, etapa, lang, onClose, onSaved }) {
+  const [motiv, setMotiv] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const [sumar, setSumar] = useState({ total: 0, allDone: false, photoCount: 0 })
+  const fileRef = useRef(null)
+  // O cheie nouă la fiecare deschidere — o încercare, un set de poze.
+  const [cheie] = useState(() => `versuch-${etapa}-${Date.now()}`)
+
+  async function salveaza() {
+    if (!motiv.trim()) { setError(t('stopFailedMissingReason', lang)); return }
+    if (sumar.photoCount < 1) { setError(t('deliveryFailedMissingPhoto', lang)); return }
+    setBusy(true)
+    setError('')
+    let rezultat
+    try {
+      rezultat = await reportDeliveryFailed({ orderId, etapa, key: cheie, reason: motiv.trim() })
+    } catch (err) {
+      setBusy(false)
+      console.error('delivery failed report:', err?.message || err)
+      setError(err?.message && !/fetch|network/i.test(err.message) ? err.message : t('stopFailedFailed', lang))
+      return
+    }
+    setBusy(false)
+    onSaved(motiv.trim(), rezultat === 'pending')
+  }
+
+  const sheet = {
+    background: '#fff', borderRadius: '16px 16px 0 0',
+    padding: '20px 20px calc(20px + env(safe-area-inset-bottom))',
+    maxHeight: '92vh', overflowY: 'auto',
+  }
+
+  return (
+    <div className="sig-fullscreen" style={{ justifyContent: 'flex-end', background: 'rgba(15,34,64,.55)' }}>
+      <div style={sheet}>
+        <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: 17, color: '#0F2240', textTransform: 'uppercase', letterSpacing: '.03em', marginBottom: 4 }}>
+          {t('deliveryFailedTitle', lang)}
+        </div>
+        <p style={{ fontSize: 13.5, color: '#5A6878', margin: '0 0 16px', lineHeight: 1.5 }}>
+          {t('deliveryFailedNote', lang)}
+        </p>
+        <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: '#5A6878', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 6 }}>
+          {t('stopFailedReason', lang)}
+        </label>
+        <textarea
+          rows={3}
+          value={motiv}
+          onChange={(e) => setMotiv(e.target.value)}
+          placeholder={t('deliveryFailedReasonPlaceholder', lang)}
+          style={{ width: '100%', padding: '11px 12px', fontSize: 16, border: '1px solid #D8DEE8', borderRadius: 8, resize: 'vertical' }}
+        />
+        <div style={{ marginTop: 14 }}>
+          <PodFiles
+            orderId={orderId}
+            leg={cheie}
+            lang={lang}
+            maxPhotos={3}
+            onAddPhoto={() => fileRef.current?.click()}
+            onSummary={setSumar}
+            photoHints={[t('stopFailedPhotoHint', lang)]}
+          />
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            multiple
+            style={{ display: 'none' }}
+            onChange={(e) => {
+              const f = Array.from(e.target.files || [])
+              if (f.length) pune(lang, orderId, cheie, f, { kind: 'photo' })
+              e.target.value = ''
+            }}
+          />
+        </div>
+        {error && <div style={{ color: '#B23A24', fontSize: 12.5, marginTop: 8 }}>{error}</div>}
+        <button className="btn danger-solid" onClick={salveaza}
+                disabled={busy || !motiv.trim() || sumar.photoCount < 1}
+                style={{ width: '100%', marginTop: 14 }}>
+          {busy ? t('stopFailedSaving', lang) : t('deliveryFailedSave', lang)}
+        </button>
+        <button type="button" className="link-btn" onClick={onClose} disabled={busy} style={{ marginTop: 8 }}>
+          {t('back', lang)}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// Cartea „Zustellversuch fehlgeschlagen", cu ultima încercare şi butonul de
+// reîncercare. Stă în locul paşilor de livrare cât timp încercarea e deschisă.
+function DeliveryAttemptBanner({ order, lang, pending, localReason, onRetried }) {
+  const [ultima, setUltima] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  useEffect(() => {
+    let activ = true
+    supabase.from('delivery_attempts')
+      .select('reason, created_at').eq('order_id', order.id)
+      .order('created_at', { ascending: false }).limit(1)
+      .then(({ data }) => { if (activ) setUltima((data || [])[0] || null) })
+    return () => { activ = false }
+  }, [order.id, order.delivery_attempt_open])
+
+  async function reincearca() {
+    if (busy || !window.confirm(t('deliveryAttemptRetryConfirm', lang))) return
+    setBusy(true)
+    setError('')
+    const { error: err } = await supabase.rpc('delivery_attempt_retry', { p_order_id: order.id })
+    setBusy(false)
+    if (err) { setError(err.message || t('stopFailedFailed', lang)); return }
+    onRetried()
+  }
+
+  const motiv = ultima?.reason || localReason
+  return (
+    <div className="info-card" style={{ borderColor: '#E4A296', background: '#FCEBE8' }}>
+      <div className="info-card-head" style={{ color: '#8A2A17' }}>✕ {t('deliveryAttemptTitle', lang)}</div>
+      <div className="info-card-body">
+        {motiv && <div style={{ fontSize: 14, color: '#16202E', marginBottom: 4 }}>{motiv}</div>}
+        {ultima?.created_at && <div className="info-row-time">{fmtDateTime(ultima.created_at)}</div>}
+        {pending && <div style={{ fontSize: 12.5, color: '#8A5A16', marginTop: 6 }}>{t('deliveryAttemptPending', lang)}</div>}
+        {error && <div style={{ color: '#B23A24', fontSize: 12.5, marginTop: 8 }}>{error}</div>}
+        {!pending && (
+          <button className="btn" onClick={reincearca} disabled={busy} style={{ width: '100%', marginTop: 12 }}>
+            {busy ? t('deliveryAttemptRetrying', lang) : t('deliveryAttemptRetry', lang)}
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
 function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, onStatusChange, onDeliveryComplete, profile }) {
   // Actualizare optimistă — de îndată ce un buton (Losfahren/Angekommen/
   // confirmare) reușește, marcăm local, imediat, fără să așteptăm ca
@@ -2783,6 +2926,11 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
   const deliveryNotiz = extractContact(order.notes, 'Notiz Zustellung: ')
   const [cargoOpen, setCargoOpen] = useState(false)
   const [opriseEsuata, setOprireEsuata] = useState(null)
+  // Livrarea principală raportată „nu s-a putut": foaia, şi raportul rămas pe
+  // telefon (fără semnal) — cât timp aşteaptă, butonul de reîncercare nu are
+  // ce reîncerca pe server.
+  const [livrareEsuata, setLivrareEsuata] = useState(null) // null | 'delivery' | 'return_delivery'
+  const [incercareLocala, setIncercareLocala] = useState(null) // { motiv, pending }
   const [reassigning, setReassigning] = useState(false)
   const [reassignTo, setReassignTo] = useState('')
 
@@ -3002,8 +3150,46 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
         />
       )}
 
-      {order.status === 'assigned' && !confirmedAt && confirmFormOpen && (
-        <LegWorkflow key={leg} order={order} leg={leg} legEntry={legEntry} lang={lang} startedAt={startedAt} arrivedAt={arrivedAt} onStatusChange={onLegStatusChange} isOwner={isOwner} profile={profile} onStopFailed={legEntry.stop ? () => setOprireEsuata(legEntry.stop) : undefined} onDeliveryComplete={() => onDeliveryComplete(isOwner ? (earningsAmount(order) || null) : null)} />
+      {livrareEsuata && (
+        <DeliveryFailedSheet
+          orderId={order.id}
+          etapa={livrareEsuata}
+          lang={lang}
+          onClose={() => setLivrareEsuata(null)}
+          onSaved={(motiv, inAsteptare) => {
+            // Etapa se redeschide pe server (pornit/ajuns se şterg). Le
+            // ştergem şi local, imediat, ca ecranul să nu rămână pe „angekommen".
+            const laMs = inAsteptare ? Infinity : Date.now()
+            setOptimistic((o) => ({
+              ...o,
+              [`${livrareEsuata}_started_at`]: { v: null, at: laMs },
+              [`${livrareEsuata}_arrived_at`]: { v: null, at: laMs },
+              delivery_attempt_open: { v: true, at: laMs },
+            }))
+            setIncercareLocala({ motiv, pending: inAsteptare })
+            setLivrareEsuata(null)
+            setConfirmFormOpen(false)
+          }}
+        />
+      )}
+
+      {order.status === 'assigned' && order.delivery_attempt_open && (
+        <DeliveryAttemptBanner
+          order={order}
+          lang={lang}
+          pending={!!incercareLocala?.pending}
+          localReason={incercareLocala?.motiv}
+          onRetried={() => {
+            setOptimistic((o) => ({ ...o, delivery_attempt_open: { v: false, at: Date.now() } }))
+            setIncercareLocala(null)
+            setConfirmFormOpen(true)
+            if (onStatusChange) onStatusChange()
+          }}
+        />
+      )}
+
+      {order.status === 'assigned' && !confirmedAt && confirmFormOpen && !order.delivery_attempt_open && (
+        <LegWorkflow key={leg} order={order} leg={leg} legEntry={legEntry} lang={lang} startedAt={startedAt} arrivedAt={arrivedAt} onStatusChange={onLegStatusChange} isOwner={isOwner} profile={profile} onStopFailed={legEntry.stop ? () => setOprireEsuata(legEntry.stop) : undefined} onDeliveryFailed={!legEntry.stop && (leg === 'delivery' || leg === 'return_delivery') ? () => setLivrareEsuata(leg) : undefined} onDeliveryComplete={() => onDeliveryComplete(isOwner ? (earningsAmount(order) || null) : null)} />
       )}
 
       {!(inConfirmStep && confirmFormOpen) && (
@@ -4562,7 +4748,7 @@ function AltCapat({ order, lang, spreLivrare }) {
   )
 }
 
-function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatusChange, isOwner, onDeliveryComplete, profile, onStopFailed }) {
+function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatusChange, isOwner, onDeliveryComplete, profile, onStopFailed, onDeliveryFailed }) {
   const [busy, setBusy] = useState(false)
   const [fileSummary, setFileSummary] = useState({ total: 0, allDone: false, failed: 0, pending: 0, processing: 0, photoCount: 0, documentCount: 0 })
   const [signatureBlob, setSignatureBlob] = useState(null)
@@ -5803,6 +5989,18 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
           disabled={busy}
         >
           ✕ {t('stopFailedButton', lang)}
+        </button>
+      )}
+
+      {/* Aceeaşi scăpare la livrarea principală: firmă închisă, nimeni acasă. */}
+      {!esteOprire && onDeliveryFailed && (
+        <button
+          type="button"
+          className="link-btn danger-link"
+          onClick={onDeliveryFailed}
+          disabled={busy}
+        >
+          ✕ {t('deliveryFailedButton', lang)}
         </button>
       )}
 

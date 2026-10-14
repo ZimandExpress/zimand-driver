@@ -402,6 +402,52 @@ export async function reportStopFailed({ orderId, stopId, reason }) {
   return 'synced'
 }
 
+/**
+ * Raportează livrarea ca „nu s-a putut" (firmă închisă, nimeni acasă…).
+ *
+ * Acelaşi drum ca la o oprire ratată: aşteaptă poza, iar fără semnal raportul
+ * rămâne pe telefon şi pleacă singur. `key` e cheia sub care stau pozele
+ * încercării — una nouă la fiecare încercare, ca pozele de la prima uşă
+ * închisă să nu se amestece cu cele de la a doua.
+ *
+ * @returns {'synced' | 'pending'}
+ */
+export async function reportDeliveryFailed({ orderId, etapa, key, reason }) {
+  const motiv = String(reason || '').trim()
+  if (!orderId || !key || !motiv) throw new Error('reportDeliveryFailed: date lipsă')
+  const record = {
+    id: `${orderId}:${key}:versuch`, fel: 'versuch',
+    orderId, leg: key, etapa: etapa || 'delivery', reason: motiv,
+    rpcName: 'driver_delivery_failed', payload: null, createdAt: Date.now(),
+  }
+  const totSus = await asteaptaDovezile(orderId, key, { timeoutMs: 8000, doarPoze: true })
+  if (!isOnline() || !totSus) {
+    await dbPut(STORE_CONFIRMATIONS, record)
+    emit()
+    return 'pending'
+  }
+  const { error } = await supabase.rpc('driver_delivery_failed', payloadVersuch(record, await dbGetByLeg(orderId, key)))
+  if (error) {
+    if (eroareTrecatoare(error)) {
+      await dbPut(STORE_CONFIRMATIONS, record)
+      emit()
+      return 'pending'
+    }
+    throw error
+  }
+  await markConfirmed(orderId, key, { doarPoze: true })
+  emit()
+  return 'synced'
+}
+
+function payloadVersuch(rec, fisiere) {
+  const poze = (fisiere || [])
+    .filter((f) => f.kind === 'photo' && (f.status === 'uploaded' || f.status === 'confirmed'))
+    .map((f) => f.remotePath)
+    .filter(Boolean)
+  return { p_order_id: rec.orderId, p_leg: rec.etapa || 'delivery', p_reason: rec.reason, p_photos: poze }
+}
+
 // Forma pe care o aşteaptă `driver_stop_failed`. Scoasă aparte fiindcă se
 // construieşte în două locuri: la apăsare şi la reluarea de mai târziu —
 // unde pozele pot fi mai multe decât erau atunci.
@@ -582,7 +628,9 @@ async function ruleazaReluarea() {
     // „nu s-a putut". Se reiau pe acelaşi drum, dar nu cu acelaşi payload —
     // iar o fişă veche, scrisă înainte să existe al doilea fel, n-are `fel`
     // şi e o confirmare, ca până acum.
-    const esteEsec = rec.fel === 'esec'
+    // „versuch" = o livrare raportată „nu s-a putut"; se poartă ca un „esec".
+    const esteVersuch = rec.fel === 'versuch'
+    const esteEsec = rec.fel === 'esec' || esteVersuch
     // Nu trimitem cât timp o poză sau o semnătură mai e pe drum.
     //
     // Reluarea porneşte în aceeaşi răsuflare cu urcarea (`resume` cheamă
@@ -616,7 +664,9 @@ async function ruleazaReluarea() {
     }
     // Recalculăm payloadul: între timp pot fi urcate fișiere care la
     // momentul confirmării erau încă în coadă.
-    const payload = esteEsec
+    const payload = esteVersuch
+      ? payloadVersuch(rec, await dbGetByLeg(rec.orderId, rec.leg))
+      : esteEsec
       ? payloadEsec(rec.orderId, rec.leg, rec.reason, await dbGetByLeg(rec.orderId, rec.leg))
       : await buildConfirmPayload(rec.orderId, rec.leg, rec.payload.p_signer_name, rec.extra || null)
     const { error } = await supabase.rpc(rec.rpcName, payload)

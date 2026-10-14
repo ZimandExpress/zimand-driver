@@ -2091,11 +2091,9 @@ function RideCard({ order, isOwner, lang, onClick, compact }) {
                 <Truck size={14} strokeWidth={1.8} />
                 <span className="rc-row-label">{lang === 'en' ? 'Vehicle' : 'Fahrzeug'}</span>
                 <span className="rc-row-text">{order.vehicles.map((v) => v.charAt(0).toUpperCase() + v.slice(1)).join(', ')}</span>
-                <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 6 }}>
+                <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 5, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                   <SemnDovada order={order} lang={lang} />
-                  {extractServiceBadges(order.notes).length === 1 && (
-                    <SemnServiciu b={extractServiceBadges(order.notes)[0]} lang={lang} />
-                  )}
+                  {extractServiceBadges(order.notes).map((b, i) => <SemnServiciu key={b.key || b.text || i} b={b} lang={lang} />)}
                 </span>
               </div>
             )}
@@ -2115,13 +2113,10 @@ function RideCard({ order, isOwner, lang, onClick, compact }) {
             )}
           </div>
 
-          <SemneServicii order={order} lang={lang} />
           <div className="rc-badges">
             {/* Fără rândul cu vehiculul, semnele rămân aici, ca să nu se piardă. */}
             {!(order.vehicles || []).length && <SemnDovada order={order} lang={lang} />}
-            {!(order.vehicles || []).length && extractServiceBadges(order.notes).length === 1 && (
-              <SemnServiciu b={extractServiceBadges(order.notes)[0]} lang={lang} />
-            )}
+            {!(order.vehicles || []).length && extractServiceBadges(order.notes).map((b, i) => <SemnServiciu key={b.key || b.text || i} b={b} lang={lang} />)}
             <StageBadge order={order} lang={lang} />
           </div>
 
@@ -7837,14 +7832,10 @@ function BidCard({ order, lang, courierProfileId, open, onToggle, onBidPlaced })
           {order.weight ? <span className="bc-fact"><Layers size={13} strokeWidth={1.8} /> {order.weight} kg</span> : null}
           {/* Semnătura / CMR şi semnul de serviciu, pe acelaşi rând cu restul. */}
           <SemnDovada order={order} lang={lang} />
-          {extractServiceBadges(order.notes).length === 1 && (
-            <SemnServiciu b={extractServiceBadges(order.notes)[0]} lang={lang} />
-          )}
+          {/* Şi înainte de a licita: firma trebuie să ştie în ce intră —
+              marfă ADR, nestivuibil, oră mai devreme… — toate pe acelaşi rând. */}
+          {extractServiceBadges(order.notes).map((b, i) => <SemnServiciu key={b.key || b.text || i} b={b} lang={lang} />)}
         </div>
-
-        {/* Şi înainte de a licita: firma trebuie să ştie în ce intră —
-            marfă ADR, ajutor la încărcare plătit, livrare neutră. */}
-        <SemneServicii order={order} lang={lang} />
       </div>
 
       <div className="bid-card2-body">

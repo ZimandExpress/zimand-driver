@@ -2698,7 +2698,7 @@ function StopFailedSheet({ stop, orderId, lang, onClose, onSaved }) {
             style={{ display: 'none' }}
             onChange={(e) => {
               const f = Array.from(e.target.files || [])
-              if (f.length) enqueueFiles(orderId, stop.id, f, { kind: 'photo' })
+              if (f.length) pune(lang, orderId, stop.id, f, { kind: 'photo' })
               e.target.value = ''
             }}
           />
@@ -3522,6 +3522,22 @@ function DocumentGuideIllustration() {
       <path d="M222 164 v10 h-10" fill="none" stroke="#FF7A29" strokeWidth="3.5" strokeLinecap="round" />
     </svg>
   )
+}
+
+// Punerea in coada, cu greseala la vedere.
+//
+// Cele trei locuri care adaugau fisiere porneau operatiunea si plecau mai
+// departe: fara asteptare si fara prindere a erorii. Pe un telefon plin,
+// scrierea in memoria locala esueaza, fisierul nu apare in lista, nu apare
+// niciun mesaj, iar eroarea ramane doar in consola — pe care n-o vede
+// nimeni. Soferul apasa din nou si se intampla la fel.
+//
+// Acum, daca nu se poate pastra, soferul afla pe loc.
+function pune(lang, ...argumente) {
+  return enqueueFiles(...argumente).catch((e) => {
+    console.error('fisierul nu s-a putut pastra:', e)
+    alert(t('queueSaveFailed', lang))
+  })
 }
 
 function DocumentCapture({ lang, tipuri, onPick, onClose }) {
@@ -5050,7 +5066,7 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
   function addPhotos(e) {
     const files = Array.from(e.target.files || [])
     e.target.value = ''
-    if (files.length) enqueueFiles(order.id, leg, files, { kind: 'photo' })
+    if (files.length) pune(lang, order.id, leg, files, { kind: 'photo' })
   }
 
   const [docCaptureOpen, setDocCaptureOpen] = useState(false)
@@ -5539,7 +5555,7 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
           onClose={() => setDocCaptureOpen(false)}
           onPick={(file, pickedType) => {
             setDocCaptureOpen(false)
-            enqueueFiles(order.id, leg, [file], { kind: 'document', docType: pickedType })
+            pune(lang, order.id, leg, [file], { kind: 'document', docType: pickedType })
           }}
         />
       )}

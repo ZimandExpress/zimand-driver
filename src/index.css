@@ -2556,3 +2556,95 @@ textarea.bid-input2 {
   margin-top: 14px;
   box-shadow: 0 10px 22px -8px rgba(232,99,36,.55);
 }
+
+/* ---------------------------------------------------------------------------
+   Meine Aufträge — cardul din listă.
+   O fişă de traseu, nu o grămadă de pastile: ora mare în stânga (o citeşti
+   din mers), traseul ca linie între două puncte, totul în tonurile firmei.
+   Portocaliul apare doar unde înseamnă ceva: azi.
+   --------------------------------------------------------------------------- */
+.rc {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+.rc-open { border-color: #CDD5E1; }
+.rc-failed { border-color: #E4A296; }
+
+.rc-alert {
+  display: flex; gap: 10px; align-items: flex-start; width: 100%;
+  border: none; text-align: left; cursor: pointer;
+  background: #FCEBE8; color: #8A2A17; padding: 10px 16px; font: inherit; font-size: 14px;
+}
+.rc-alert svg { flex: 0 0 auto; margin-top: 2px; }
+.rc-alert-reason { display: block; color: var(--text); font-size: 13.5px; margin-top: 1px; }
+
+.rc-main {
+  display: grid; grid-template-columns: 74px 1fr 18px; gap: 0 14px;
+  width: 100%; padding: 14px 14px 14px 16px; border: none; background: none;
+  text-align: left; font: inherit; color: inherit; cursor: pointer;
+}
+.rc-main:focus-visible { outline: 2px solid var(--orange); outline-offset: -2px; }
+
+.rc-when { display: flex; flex-direction: column; border-right: 1px solid var(--line); padding-right: 12px; }
+.rc-time {
+  font-family: 'Oswald', sans-serif; font-weight: 500; font-size: 26px; line-height: 1;
+  color: var(--navy); letter-spacing: .01em; font-variant-numeric: tabular-nums;
+}
+.rc-time.rc-today { color: var(--orange-deep); }
+.rc-until { font-size: 12px; color: var(--text-soft); margin-top: 4px; display: inline-flex; align-items: center; gap: 3px; }
+.rc-fixed { color: var(--navy); font-weight: 600; }
+.rc-day { font-size: 12.5px; color: var(--text); margin-top: 6px; font-weight: 500; white-space: nowrap; }
+
+.rc-route { position: relative; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+/* Linia traseului: din punctul de plecare până în cel de sosire, nici mai
+   sus, nici mai jos — trece şi pe lângă rândul cu opririle intermediare. */
+.rc-stop-from::after {
+  content: ''; position: absolute; left: 4px; top: 17px; bottom: -11px;
+  border-left: 1.5px dashed #C3CBD8;
+}
+.rc-via { position: relative; }
+.rc-via::before {
+  content: ''; position: absolute; left: 4px; top: -6px; bottom: -11px;
+  border-left: 1.5px dashed #C3CBD8;
+}
+.rc-stop { display: flex; align-items: flex-start; gap: 10px; position: relative; }
+.rc-dot { flex: 0 0 auto; width: 10px; height: 10px; border-radius: 50%; margin-top: 5px; background: #fff; }
+.rc-dot-from { border: 2px solid var(--navy); }
+.rc-dot-to { background: var(--navy); border: 2px solid var(--navy); }
+.rc-addr {
+  font-size: 14.5px; line-height: 1.35; color: var(--text);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.rc-via { font-size: 12px; color: var(--text-soft); padding-left: 20px; }
+.rc-tags { display: flex; gap: 6px; margin-left: 20px; }
+.rc-tag-new { color: var(--orange-deep) !important; background: #FFF1E6 !important; }
+.rc-tag { align-self: flex-start; font-size: 11.5px; font-weight: 600; color: #2A5299; background: #EAF0FB; border-radius: 6px; padding: 2px 7px; }
+
+.rc-chev { font-size: 20px; line-height: 1; color: var(--text-soft); align-self: center; text-align: center; }
+
+.rc-more { padding: 0 16px 16px; border-top: 1px solid var(--line); }
+.rc-more > :first-child { margin-top: 12px; }
+.rc-section { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+.rc-row { display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--text); min-width: 0; }
+.rc-row svg { flex: 0 0 auto; color: var(--text-soft); }
+.rc-row-label { flex: 0 0 82px; color: var(--text-soft); font-size: 13px; }
+.rc-row-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rc-row-soft { color: var(--text-soft); padding-left: 24px; font-size: 13px; }
+.rc-price { font-weight: 600; color: var(--navy); }
+.rc-mark-ok { color: #1F7A50; font-weight: 700; margin-left: auto; }
+.rc-mark-bad { color: #B23A24; font-weight: 700; margin-left: auto; }
+.rc-badges { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; align-items: center; }
+
+.rc-open-btn {
+  width: 100%; margin-top: 14px; padding: 13px; border: none; border-radius: 10px;
+  background: var(--navy); color: #fff; font: inherit; font-weight: 600; font-size: 15px; cursor: pointer;
+}
+.rc-open-btn:active { background: var(--navy-light); }
+
+@media (prefers-reduced-motion: no-preference) {
+  .rc-more { animation: rc-reveal .18s ease-out; }
+  @keyframes rc-reveal { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+}

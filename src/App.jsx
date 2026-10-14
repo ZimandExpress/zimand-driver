@@ -1967,7 +1967,7 @@ function CompletedOrdersListScreen({ profile, isOwner, lang }) {
 }
 
 function RideCard({ order, isOwner, lang, onClick, compact }) {
-  // În listă cardul stă strâns: ziua şi ora ridicării, de unde şi unde.
+  // În listă cardul stă strâns: ora şi ziua ridicării, de unde şi unde.
   // Restul — opririle, livrarea, maşina, serviciile, butonul — la o atingere.
   const [deschis, setDeschis] = useState(false)
   if (compact) {
@@ -2001,150 +2001,128 @@ function RideCard({ order, isOwner, lang, onClick, compact }) {
 
   const today = isToday(order.pickup_date)
   const tomorrow = isTomorrow(order.pickup_date)
-
-  // Livrare încercată şi nereuşită: cardul se vede din listă, roşu, cu motivul.
   const incercareEsuata = order.status === 'assigned' && order.delivery_attempt_open
 
+  // Ora mare din stânga: începutul ferestrei de ridicare (sau ora fixă).
+  const oraStart = order.pickup_fixed ? order.pickup_time : order.pickup_from
+  const oraSfarsit = order.pickup_to
+  const ziua = (() => {
+    if (!order.pickup_date) return ''
+    const d = new Date(order.pickup_date)
+    if (isNaN(d.getTime())) return fmtDate(order.pickup_date)
+    const zz = `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.`
+    return `${d.toLocaleDateString(lang === 'en' ? 'en-GB' : 'de-DE', { weekday: 'short' }).replace('.', '')} ${zz}`
+  })()
+  const opriri = tourStops(order)
+
   return (
-    <div className="ride-card2" style={incercareEsuata ? { borderColor: '#E4A296', boxShadow: '0 0 0 2px #F3C3B8' } : undefined}>
+    <div className={`rc ${deschis ? 'rc-open' : ''} ${incercareEsuata ? 'rc-failed' : ''}`}>
       {incercareEsuata && (
-        <div onClick={onClick} style={{ background: '#FCEBE8', color: '#8A2A17', borderBottom: '1px solid #E4A296', padding: '9px 16px', margin: '-14px -16px 12px', fontSize: 13.5, fontWeight: 700, cursor: 'pointer', borderRadius: '16px 16px 0 0' }}>
-          ✕ {t('deliveryAttemptTitle', lang)}
-          {order.delivery_attempt_reason && (
-            <span style={{ display: 'block', fontWeight: 500, color: '#16202E', marginTop: 2 }}>{order.delivery_attempt_reason}</span>
-          )}
-        </div>
+        <button type="button" className="rc-alert" onClick={onClick}>
+          <AlertTriangle size={15} strokeWidth={2} />
+          <span>
+            <strong>{t('deliveryAttemptTitle', lang)}</strong>
+            {order.delivery_attempt_reason && <span className="rc-alert-reason">{order.delivery_attempt_reason}</span>}
+          </span>
+        </button>
       )}
-      <div className="bid-card2-head" onClick={() => setDeschis((v) => !v)} style={{ cursor: 'pointer' }}>
-        {isRecentlyNew(order.created_at) && <span className="new-corner">{t('newBadge', lang)}</span>}
-        <div className="bid-top-row">
-          <div className="bid-top-left">
-            <span className="pill-label">{t('pickup', lang)}</span>
-            <span className="pill-date">{fmtDate(order.pickup_date)}</span>
-            {/* Ora fixă la ridicare, pe fundal plin — nu un lăcăţel pierdut
-                între două date scrise la fel. E singura oră din card care nu
-                se poate negocia: întârzii un sfert de oră şi comanda e ratată.
-                Aceeaşi pastilă ca la livrarea cu oră fixă, din acelaşi card. */}
-            {order.pickup_fixed ? (
-              <span className="fixed-time-badge" title={t('fixedPickupBadge', lang)}>
-                🔒 {order.pickup_time
-                  ? `${fmtTime(order.pickup_time)}${order.pickup_to ? `–${fmtTime(order.pickup_to)}` : ''}`
-                  : t('fixedPickupBadge', lang)}
-              </span>
-            ) : (
-              <span className="pill-time">
-                {order.pickup_from ? `${fmtTime(order.pickup_from)}${order.pickup_to ? `–${fmtTime(order.pickup_to)}` : ''}` : '—'}
-              </span>
-            )}
-            {order.is_shuttle && <span className="pill" style={{ background: '#EAF0FB', color: '#2A5299' }}>🚐 Shuttle</span>}
-          </div>
-          <div className="bid-top-right">
-            {today && <span className="pill heute">{t('todayBadge', lang)}</span>}
-            {!today && tomorrow && <span className="pill morgen">{t('tomorrowBadge', lang)}</span>}
-            <span style={{ color: 'var(--text-soft)', fontSize: 12, marginLeft: 6 }}>{deschis ? '▲' : '▼'}</span>
-          </div>
+
+      <button type="button" className="rc-main" onClick={() => setDeschis((v) => !v)} aria-expanded={deschis}>
+        <div className="rc-when">
+          <span className={`rc-time ${today ? 'rc-today' : ''}`}>{oraStart ? fmtTime(oraStart) : '—'}</span>
+          {oraSfarsit && !order.pickup_fixed && <span className="rc-until">{lang === 'en' ? 'until' : 'bis'} {fmtTime(oraSfarsit)}</span>}
+          {order.pickup_fixed && <span className="rc-until rc-fixed"><Clock size={11} strokeWidth={2.2} /> {lang === 'en' ? 'fixed' : 'fest'}</span>}
+          <span className="rc-day">{today ? t('todayBadge', lang) : tomorrow ? t('tomorrowBadge', lang) : ziua}</span>
         </div>
 
-        {/* Strâns: doar de unde şi unde. */}
-        {!deschis && (
-          <>
-            <div className="bid-stop"><span className="addr"><MapPin size={13} strokeWidth={1.8} /> {order.pickup_address}</span></div>
-            {tourStops(order).length > 0 && (
-              <div className="bid-stop">
-                <span className="addr" style={{ paddingLeft: 12, color: 'var(--text-soft)' }}>+ {tourStops(order).length} {t('stopsMoreLabel', lang)}</span>
+        <div className="rc-route">
+          <div className="rc-stop rc-stop-from">
+            <span className="rc-dot rc-dot-from" />
+            <span className="rc-addr">{order.pickup_address}</span>
+          </div>
+          {opriri.length > 0 && (
+            <div className="rc-via">{opriri.length} {t('stopsMoreLabel', lang)}</div>
+          )}
+          <div className="rc-stop">
+            <span className="rc-dot rc-dot-to" />
+            <span className="rc-addr">{order.delivery_address}</span>
+          </div>
+          {(order.is_shuttle || isRecentlyNew(order.created_at)) && (
+            <span className="rc-tags">
+              {isRecentlyNew(order.created_at) && <span className="rc-tag rc-tag-new">{t('newBadge', lang)}</span>}
+              {order.is_shuttle && <span className="rc-tag">Shuttle</span>}
+            </span>
+          )}
+        </div>
+
+        <span className="rc-chev" aria-hidden="true">{deschis ? '–' : '+'}</span>
+      </button>
+
+      {deschis && (
+        <div className="rc-more">
+          <StageProgress order={order} lang={lang} />
+
+          {opriri.length > 0 && (
+            <div className="rc-section">
+              {opriri.slice(0, 6).map((st) => (
+                <div className="rc-row" key={st.id}>
+                  {st.kind === 'delivery' ? <ArrowDownToLine size={14} strokeWidth={1.8} /> : <ArrowUpFromLine size={14} strokeWidth={1.8} />}
+                  <span className="rc-row-text">{st.address}</span>
+                  {(st.confirmed_at || st.failed_at) && (
+                    <span className={st.failed_at ? 'rc-mark-bad' : 'rc-mark-ok'}>{st.failed_at ? '✕' : '✓'}</span>
+                  )}
+                </div>
+              ))}
+              {opriri.length > 6 && <div className="rc-row rc-row-soft">+ {opriri.length - 6} {t('stopsMoreLabel', lang)}</div>}
+            </div>
+          )}
+
+          <div className="rc-section">
+            <div className="rc-row">
+              <FlagTriangleRight size={14} strokeWidth={1.8} />
+              <span className="rc-row-label">{t('delivery', lang)}</span>
+              <span className="rc-row-text">
+                {order.delivery_fixed
+                  ? <span className="fixed-time-badge">{fmtDate(order.delivery_date)}{order.delivery_time ? ` · ${fmtTime(order.delivery_time)}` : ''}</span>
+                  : <>{fmtDate(order.delivery_date)}{order.delivery_from ? `, ${fmtTime(order.delivery_from)}${order.delivery_to ? `–${fmtTime(order.delivery_to)}` : ''}` : ''}</>}
+              </span>
+            </div>
+            {(order.vehicles || []).length > 0 && (
+              <div className="rc-row">
+                <Truck size={14} strokeWidth={1.8} />
+                <span className="rc-row-label">{lang === 'en' ? 'Vehicle' : 'Fahrzeug'}</span>
+                <span className="rc-row-text">{order.vehicles.map((v) => v.charAt(0).toUpperCase() + v.slice(1)).join(', ')}</span>
               </div>
             )}
-            <div className="bid-stop" style={{ marginBottom: 0 }}><span className="addr"><FlagTriangleRight size={13} strokeWidth={1.8} /> {order.delivery_address}</span></div>
-          </>
-        )}
-
-        {deschis && (<>
-        {/* Statusul, pe rândul lui, sub dată.
-            Stătea lipit după numărul comenzii, pe acelaşi rând: pe telefon
-            „An Zustellung angekommen" nu mai încăpea şi se rupea la jumătate
-            de cuvânt. Numărul s-a mutat jos, la Fracht — acolo îl caută
-            oricum cine caută marfa. */}
-        <StageProgress order={order} lang={lang} />
-
-        <div className="bid-stop"><span className="addr"><MapPin size={13} strokeWidth={1.8} /> {order.pickup_address}</span></div>
-        {/* Cel mult trei rânduri. La douăzeci de opriri, cardul creştea la o
-            mie de pixeli — o listă în care nu mai puteai compara două comenzi,
-            iar butonul de la bază ieşea de pe ecran. Lista întreagă e pe
-            ecranul comenzii, unde îi e locul.
-            Fără opacitate pe rând: stingea şi bifa, singurul lucru pentru care
-            se citesc rândurile astea. */}
-        {tourStops(order).slice(0, 3).map((st) => (
-          <div className="bid-stop" key={st.id}>
-            <span className="addr" style={{ paddingLeft: 12, color: 'var(--text-soft)', minWidth: 0 }}>
-              {st.kind === 'delivery'
-                ? <FlagTriangleRight size={12} strokeWidth={1.8} />
-                : <MapPin size={12} strokeWidth={1.8} />}
-              {' '}
-              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{st.address}</span>
-              {(st.confirmed_at || st.failed_at) && (
-                <span style={{ marginLeft: 6, color: st.failed_at ? '#B23A24' : '#1F7A50', fontWeight: 700, flex: '0 0 auto' }}>
-                  {st.failed_at ? '✕' : '✓'}
-                </span>
-              )}
-            </span>
+            {(order.km || order.weight) && (
+              <div className="rc-row">
+                <Layers size={14} strokeWidth={1.8} />
+                <span className="rc-row-label">{lang === 'en' ? 'Load' : 'Fracht'}</span>
+                <span className="rc-row-text">{[order.km && `${order.km} km`, order.weight && `${order.weight} kg`].filter(Boolean).join(', ')}</span>
+              </div>
+            )}
+            {isOwner && effectivePrice(order) != null && (
+              <div className="rc-row">
+                <Wallet size={14} strokeWidth={1.8} />
+                <span className="rc-row-label">{lang === 'en' ? 'Price' : 'Preis'}</span>
+                <span className="rc-row-text rc-price">{effectivePrice(order)} €</span>
+              </div>
+            )}
           </div>
-        ))}
-        {tourStops(order).length > 3 && (
-          <div className="bid-stop">
-            <span className="addr" style={{ paddingLeft: 12, color: 'var(--text-soft)' }}>
-              + {tourStops(order).length - 3} {t('stopsMoreLabel', lang)}
-            </span>
-          </div>
-        )}
-        <div className="bid-stop"><span className="addr"><FlagTriangleRight size={13} strokeWidth={1.8} /> {order.delivery_address}</span></div>
 
-        <div className="bid-divider" />
-        {/* Eticheta, data şi ora pe acelaşi rând: pe două rânduri ocupau
-            înălţime fără să spună mai mult, iar lângă „Lieferung" rămânea
-            jumătate de card gol. */}
-        {/* Maşina, pe acelaşi rând cu data livrării — dedesubt ocupa un rând
-            întreg doar pentru o etichetă. */}
-        <div className="bid-zustellung-val" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
-          <span className="bid-zustellung-label" style={{ margin: 0 }}>{t('delivery', lang)}</span>
-          {order.delivery_fixed ? (
-            <span className="fixed-time-badge">🔒 {t('fixedDeliveryBadge', lang)} · {fmtDate(order.delivery_date)}{order.delivery_time ? ` · ${fmtTime(order.delivery_time)}` : ''}</span>
-          ) : (
-            <span>{fmtDate(order.delivery_date)} · {fmtTime(order.delivery_from)}{order.delivery_to ? `–${fmtTime(order.delivery_to)}` : ''}</span>
-          )}
-          <span style={{ marginLeft: 'auto' }}><VehicleChips vehicles={order.vehicles} /></span>
-        </div>
-
-        {/* Serviciile plătite şi avertismentele, sub rândul de livrare:
-            acolo se termină ce trebuie ştiut despre cursă, deci acolo se
-            citesc. Textul întreg rămâne în Fracht, neatins. */}
-        <SemneServicii order={order} lang={lang} />
-
-        <div className="bid-cargo-row" style={{ marginTop: 6 }}>
-          <div className="bid-cargo-meta">
-            {order.km && <span className="meta-item">📍 {order.km} km</span>}
-            {order.weight && <span className="meta-item">⚖ {order.weight} kg</span>}
-            {isOwner && effectivePrice(order) != null && <span className="meta-item price">{effectivePrice(order)} €</span>}
+          <SemneServicii order={order} lang={lang} />
+          <div className="rc-badges">
             <SemnDovada order={order} lang={lang} />
             {extractServiceBadges(order.notes).length === 1 && (
               <SemnServiciu b={extractServiceBadges(order.notes)[0]} lang={lang} />
             )}
-          </div>
-        </div>
-        </>)}
-      </div>
-
-      {deschis && (
-        <>
-          {/* Starea, chiar deasupra butonului care duce în comandă.
-              Aici o citeşti în clipa în care te hotărăşti dacă intri. */}
-          <div style={{ display: 'flex', justifyContent: 'center', margin: '2px 0 8px' }}>
             <StageBadge order={order} lang={lang} />
           </div>
 
-          <button className="ride-card2-action" onClick={onClick}>
-            👁 {t('viewDetails', lang)}
+          <button type="button" className="rc-open-btn" onClick={onClick}>
+            {lang === 'en' ? 'Open order' : 'Auftrag öffnen'}
           </button>
-        </>
+        </div>
       )}
     </div>
   )

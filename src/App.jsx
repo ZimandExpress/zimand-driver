@@ -1837,7 +1837,13 @@ function RidesScreen({ profile, isOwner, session, lang }) {
     })
   }
 
-  const sortedActive = sortByDate(activeOrders, 'pickup_date')
+  // Cele care urmează, sus: după ziua ŞI ora ridicării. Doar după zi, două
+  // curse din aceeaşi zi ieşeau în ordinea în care au intrat în bază.
+  const cheieRidicare = (o) => `${o.pickup_date || '9999-99-99'} ${String((o.pickup_fixed ? o.pickup_time : o.pickup_from) || o.pickup_time || '99:99').slice(0, 5)}`
+  const sortedActive = [...activeOrders].sort((a, b) => {
+    const x = cheieRidicare(a), y = cheieRidicare(b)
+    return sortAsc ? x.localeCompare(y) : y.localeCompare(x)
+  })
 
   const tabs = isOwner ? ['available', 'mine'] : ['mine']
   const currentTab = tabs.includes(activeTab) ? activeTab : 'mine'
@@ -1961,6 +1967,9 @@ function CompletedOrdersListScreen({ profile, isOwner, lang }) {
 }
 
 function RideCard({ order, isOwner, lang, onClick, compact }) {
+  // În listă cardul stă strâns: ziua şi ora ridicării, de unde şi unde.
+  // Restul — opririle, livrarea, maşina, serviciile, butonul — la o atingere.
+  const [deschis, setDeschis] = useState(false)
   if (compact) {
     const isCancelled = order.status === 'cancelled'
     return (
@@ -2006,7 +2015,7 @@ function RideCard({ order, isOwner, lang, onClick, compact }) {
           )}
         </div>
       )}
-      <div className="bid-card2-head">
+      <div className="bid-card2-head" onClick={() => setDeschis((v) => !v)} style={{ cursor: 'pointer' }}>
         {isRecentlyNew(order.created_at) && <span className="new-corner">{t('newBadge', lang)}</span>}
         <div className="bid-top-row">
           <div className="bid-top-left">
@@ -2032,9 +2041,24 @@ function RideCard({ order, isOwner, lang, onClick, compact }) {
           <div className="bid-top-right">
             {today && <span className="pill heute">{t('todayBadge', lang)}</span>}
             {!today && tomorrow && <span className="pill morgen">{t('tomorrowBadge', lang)}</span>}
+            <span style={{ color: 'var(--text-soft)', fontSize: 12, marginLeft: 6 }}>{deschis ? '▲' : '▼'}</span>
           </div>
         </div>
 
+        {/* Strâns: doar de unde şi unde. */}
+        {!deschis && (
+          <>
+            <div className="bid-stop"><span className="addr"><MapPin size={13} strokeWidth={1.8} /> {order.pickup_address}</span></div>
+            {tourStops(order).length > 0 && (
+              <div className="bid-stop">
+                <span className="addr" style={{ paddingLeft: 12, color: 'var(--text-soft)' }}>+ {tourStops(order).length} {t('stopsMoreLabel', lang)}</span>
+              </div>
+            )}
+            <div className="bid-stop" style={{ marginBottom: 0 }}><span className="addr"><FlagTriangleRight size={13} strokeWidth={1.8} /> {order.delivery_address}</span></div>
+          </>
+        )}
+
+        {deschis && (<>
         {/* Statusul, pe rândul lui, sub dată.
             Stătea lipit după numărul comenzii, pe acelaşi rând: pe telefon
             „An Zustellung angekommen" nu mai încăpea şi se rupea la jumătate
@@ -2106,18 +2130,22 @@ function RideCard({ order, isOwner, lang, onClick, compact }) {
             )}
           </div>
         </div>
+        </>)}
       </div>
 
-      {/* Starea, chiar deasupra butonului care duce în comandă.
-          Sus se pierdea între dată şi adrese; aici o citeşti în clipa în
-          care te hotărăşti dacă intri în comanda asta sau treci mai jos. */}
-      <div style={{ display: 'flex', justifyContent: 'center', margin: '2px 0 8px' }}>
-        <StageBadge order={order} lang={lang} />
-      </div>
+      {deschis && (
+        <>
+          {/* Starea, chiar deasupra butonului care duce în comandă.
+              Aici o citeşti în clipa în care te hotărăşti dacă intri. */}
+          <div style={{ display: 'flex', justifyContent: 'center', margin: '2px 0 8px' }}>
+            <StageBadge order={order} lang={lang} />
+          </div>
 
-      <button className="ride-card2-action" onClick={onClick}>
-        👁 {t('viewDetails', lang)}
-      </button>
+          <button className="ride-card2-action" onClick={onClick}>
+            👁 {t('viewDetails', lang)}
+          </button>
+        </>
+      )}
     </div>
   )
 }

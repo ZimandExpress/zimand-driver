@@ -2894,3 +2894,12 @@ body { -webkit-font-smoothing: antialiased; }
 .menu-item.mic .ic { opacity: .6; }
 .menu-group-title { padding: 14px 20px 4px; margin-top: 6px; border-top: 1px solid var(--line); font-size: 12px; font-weight: 600; color: var(--text-soft); }
 .menu-header { padding-bottom: 14px; }
+
+/* „Doch noch nicht losgefahren" — discret, sub bara de anulare. */
+.unstart-link { display: block; width: auto; margin: 0 0 10px; padding: 4px 0; background: none; border: 0; font: inherit; font-size: 13.5px; font-weight: 600; color: var(--text-soft, #5E6B7D); text-decoration: underline; cursor: pointer; }
+.unstart-box { background: #FFF6ED; border: 1px solid #FFD2AE; border-radius: 10px; padding: 11px 12px; margin-bottom: 10px; }
+.unstart-text { font-size: 13.5px; line-height: 1.45; color: #7A3E0C; margin-bottom: 9px; }
+.unstart-actions { display: flex; gap: 8px; }
+.unstart-yes, .unstart-no { width: auto; margin: 0; padding: 8px 12px; font: inherit; font-size: 13.5px; font-weight: 600; border-radius: 8px; cursor: pointer; }
+.unstart-yes { background: var(--navy, #0F2240); color: #fff; border: 0; }
+.unstart-no { background: #fff; color: var(--text, #16202E); border: 1px solid var(--line, #E1E6EE); }

@@ -346,6 +346,11 @@ const translations = {
     // --- Rückgängig ---
     undoHint: 'Versehentlich getippt?',
     undoLabel: 'Rückgängig',
+    unstartButton: 'Doch noch nicht losgefahren?',
+    unstartQuestion: 'Fahrt zurücksetzen? Der Auftrag steht wieder wie vor „Losfahren“ – Kunde und Disposition sehen nicht mehr „Unterwegs“. Tippen Sie auf „Losfahren“, wenn Sie wirklich starten.',
+    unstartYes: 'Ja, zurücksetzen',
+    unstartNo: 'Abbrechen',
+    unstartFailed: 'Zurücksetzen nicht möglich – sind Sie schon angekommen? Bitte Disposition kontaktieren.',
     undoFailed: 'Rückgängig machen nicht möglich. Bitte Disponent kontaktieren.',
     undoTooLate: 'Zeitfenster abgelaufen. Bitte Disponent kontaktieren.',
 
@@ -862,6 +867,11 @@ const translations = {
     // --- Undo ---
     undoHint: 'Tapped by mistake?',
     undoLabel: 'Undo',
+    unstartButton: 'Not leaving yet after all?',
+    unstartQuestion: 'Reset the trip? The order goes back to before “Start driving” – customer and dispatch no longer see “On the way”. Tap “Start driving” when you really leave.',
+    unstartYes: 'Yes, reset',
+    unstartNo: 'Cancel',
+    unstartFailed: 'Could not reset – have you already arrived? Please contact dispatch.',
     undoFailed: 'Could not undo. Please contact dispatch.',
     undoTooLate: 'Time window expired. Please contact dispatch.',
 

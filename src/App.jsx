@@ -4917,6 +4917,31 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
 
   const [undoError, setUndoError] = useState('')
 
+  // „Doch noch nicht losgefahren" — oricând până la sosire, nu doar în cele
+  // 30 de secunde ale butonului „Rückgängig". Cazul real: şoferul a pornit
+  // spre livrare seara, apoi a trebuit să doarmă câteva ore. Comanda rămânea
+  // „Unterwegs" toată noaptea, la client şi în panou. Acum o pune înapoi pe
+  // „Abgeholt" şi apasă „Losfahren" dimineaţa.
+  const [unstartIntrebare, setUnstartIntrebare] = useState(false)
+  const [unstartBusy, setUnstartBusy] = useState(false)
+  async function unstart() {
+    setUnstartBusy(true)
+    const field = campEtapa('started')
+    const { data, error } = esteOprire
+      ? await supabase.rpc('driver_unstart_stop', { p_stop_id: intrare.stop.id })
+      : await supabase.rpc('driver_unstart_leg', { p_order_id: order.id, p_field: field })
+    setUnstartBusy(false)
+    setUnstartIntrebare(false)
+    if (error || data !== true) {
+      if (error) console.error('unstart error:', error.message)
+      setUndoError(t('unstartFailed', lang))
+      return
+    }
+    setUndoable(null)
+    setUndoError('')
+    onStatusChange(field, null)
+  }
+
   async function callRpc(fn) {
     if (busy) return
     setBusy(true)
@@ -5524,6 +5549,25 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
     return (
       <>
         {undoBlock}
+        {!undoable && (
+          unstartIntrebare ? (
+            <div className="unstart-box">
+              <div className="unstart-text">{t('unstartQuestion', lang)}</div>
+              <div className="unstart-actions">
+                <button type="button" className="unstart-yes" disabled={unstartBusy} onClick={unstart}>
+                  {unstartBusy ? '…' : t('unstartYes', lang)}
+                </button>
+                <button type="button" className="unstart-no" disabled={unstartBusy} onClick={() => setUnstartIntrebare(false)}>
+                  {t('unstartNo', lang)}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button type="button" className="unstart-link" onClick={() => setUnstartIntrebare(true)}>
+              {t('unstartButton', lang)}
+            </button>
+          )
+        )}
         {/* Pe tot ecranul, nu o casetă pe margine: şoferul tocmai a apăsat
             „pornesc" şi se uită la telefon o clipă — în clipa aceea trebuie
             să dea peste regulă, nu s-o caute. Dispare singură. */}

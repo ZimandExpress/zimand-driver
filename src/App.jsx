@@ -2728,8 +2728,23 @@ function StopFailedSheet({ stop, orderId, lang, onClose, onSaved }) {
    nouă încercare. Pozele fiecărei încercări stau sub cheia lor, ca să nu se
    amestece cu ale livrării reuşite.
    --------------------------------------------------------------------------- */
+// Motivele des întâlnite, la o atingere. „Sonstiges" cere text scris.
+// Motivul se salvează în germană, oricare ar fi limba aplicaţiei: el ajunge
+// în panou şi în e-mailul clientului, care sunt în germană.
+const MOTIVE_LIVRARE = [
+  { id: 'closed', de: 'Firma geschlossen', key: 'deliveryReasonClosed' },
+  { id: 'address', de: 'Adresse falsch / nicht auffindbar', key: 'deliveryReasonAddress' },
+  { id: 'other', de: 'Sonstiges', key: 'deliveryReasonOther' },
+]
+
 function DeliveryFailedSheet({ orderId, etapa, lang, onClose, onSaved }) {
-  const [motiv, setMotiv] = useState('')
+  const [ales, setAles] = useState('')
+  const [nota, setNota] = useState('')
+  const optiune = MOTIVE_LIVRARE.find((m) => m.id === ales)
+  // „Sonstiges" are nevoie de text; la celelalte, nota e doar o completare.
+  const motiv = !optiune ? ''
+    : optiune.id === 'other' ? nota.trim()
+    : [optiune.de, nota.trim()].filter(Boolean).join(' — ')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [sumar, setSumar] = useState({ total: 0, allDone: false, photoCount: 0 })
@@ -2738,7 +2753,7 @@ function DeliveryFailedSheet({ orderId, etapa, lang, onClose, onSaved }) {
   const [cheie] = useState(() => `versuch-${etapa}-${Date.now()}`)
 
   async function salveaza() {
-    if (!motiv.trim()) { setError(t('stopFailedMissingReason', lang)); return }
+    if (!motiv) { setError(t(ales === 'other' ? 'deliveryReasonOtherMissing' : 'stopFailedMissingReason', lang)); return }
     if (sumar.photoCount < 1) { setError(t('deliveryFailedMissingPhoto', lang)); return }
     setBusy(true)
     setError('')
@@ -2773,13 +2788,31 @@ function DeliveryFailedSheet({ orderId, etapa, lang, onClose, onSaved }) {
         <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: '#5A6878', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 6 }}>
           {t('stopFailedReason', lang)}
         </label>
-        <textarea
-          rows={3}
-          value={motiv}
-          onChange={(e) => setMotiv(e.target.value)}
-          placeholder={t('deliveryFailedReasonPlaceholder', lang)}
-          style={{ width: '100%', padding: '11px 12px', fontSize: 16, border: '1px solid #D8DEE8', borderRadius: 8, resize: 'vertical' }}
-        />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 10 }}>
+          {MOTIVE_LIVRARE.map((m) => (
+            <button
+              key={m.id}
+              type="button"
+              onClick={() => { setAles(m.id); setError('') }}
+              style={{
+                textAlign: 'left', padding: '13px 14px', fontSize: 15, borderRadius: 10, cursor: 'pointer',
+                border: `2px solid ${ales === m.id ? '#FF7A29' : '#D8DEE8'}`,
+                background: ales === m.id ? '#FFF6ED' : '#fff', color: '#0F2240', fontWeight: ales === m.id ? 700 : 500,
+              }}
+            >
+              {ales === m.id ? '● ' : '○ '}{t(m.key, lang)}
+            </button>
+          ))}
+        </div>
+        {ales && (
+          <textarea
+            rows={ales === 'other' ? 3 : 2}
+            value={nota}
+            onChange={(e) => setNota(e.target.value)}
+            placeholder={ales === 'other' ? t('deliveryFailedReasonPlaceholder', lang) : t('deliveryReasonNoteOptional', lang)}
+            style={{ width: '100%', padding: '11px 12px', fontSize: 16, border: `1px solid ${ales === 'other' && !nota.trim() ? '#E4A296' : '#D8DEE8'}`, borderRadius: 8, resize: 'vertical' }}
+          />
+        )}
         <div style={{ marginTop: 14 }}>
           <PodFiles
             orderId={orderId}

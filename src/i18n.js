@@ -490,6 +490,11 @@ const translations = {
     deliveryAttemptRetry: '↻ Neuen Zustellversuch starten',
     deliveryAttemptRetrying: 'Wird gestartet…',
     deliveryAttemptRetryConfirm: 'Neuen Zustellversuch starten?',
+    deliveryReasonClosed: 'Firma geschlossen',
+    deliveryReasonAddress: 'Adresse falsch / nicht auffindbar',
+    deliveryReasonOther: 'Sonstiges (bitte beschreiben)',
+    deliveryReasonNoteOptional: 'Notiz (optional), z. B. Öffnungszeiten auf dem Schild',
+    deliveryReasonOtherMissing: 'Bitte kurz beschreiben, warum die Zustellung nicht möglich war.',
   },
   en: {
     appName: 'Zimand Driver',
@@ -982,6 +987,11 @@ const translations = {
     deliveryAttemptRetry: '↻ Start a new delivery attempt',
     deliveryAttemptRetrying: 'Starting…',
     deliveryAttemptRetryConfirm: 'Start a new delivery attempt?',
+    deliveryReasonClosed: 'Company closed',
+    deliveryReasonAddress: 'Wrong address / cannot be found',
+    deliveryReasonOther: 'Other (please describe)',
+    deliveryReasonNoteOptional: 'Note (optional), e.g. opening hours on the sign',
+    deliveryReasonOtherMissing: 'Please briefly describe why the delivery was not possible.',
   },
 }
 

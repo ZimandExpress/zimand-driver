@@ -1563,13 +1563,18 @@ function RidesScreen({ profile, isOwner, session, lang }) {
     // nimic, iar filtrul pe distanță nu funcționa deloc: șoferul primea sunet
     // pentru orice comandă nouă, oricât de departe. La ecranul de licitații
     // aceeași valoare se citea corect, după session.user.id.
-    supabase.from('profiles').select('preferred_radius_km, filter_min_price, filter_max_price').eq('id', session.user.id).maybeSingle()
+    const citeste = () => supabase.from('profiles').select('preferred_radius_km, filter_min_price, filter_max_price').eq('id', session.user.id).maybeSingle()
       .then(({ data }) => {
         if (!data) return
-        if (data.preferred_radius_km) setNotifyRadiusKm(data.preferred_radius_km)
-        if (data.filter_min_price != null) setNotifyMinPrice(Number(data.filter_min_price))
-        if (data.filter_max_price != null) setNotifyMaxPrice(Number(data.filter_max_price))
+        // Şi golirea contează: „Alle" după 100 km trebuie să ajungă şi aici.
+        setNotifyRadiusKm(data.preferred_radius_km || null)
+        setNotifyMinPrice(data.filter_min_price != null ? Number(data.filter_min_price) : null)
+        setNotifyMaxPrice(data.filter_max_price != null ? Number(data.filter_max_price) : null)
       })
+    citeste()
+    // Filtrele schimbate în „Verfügbar" se aplică imediat şi sunetului.
+    window.addEventListener('zd-filtre', citeste)
+    return () => window.removeEventListener('zd-filtre', citeste)
   }, [isOwner, session?.user?.id])
 
   useEffect(() => {
@@ -7426,6 +7431,14 @@ function BiddingScreen({ profile, session, lang, embedded }) {
   // trebuie să citească zilnic licitaţii de 60 €.
   const [minPrice, setMinPrice] = useState(null)
   const [maxPrice, setMaxPrice] = useState(null)
+  // De unde se măsoară raza. Codul ales aici are prioritate faţă de depozit
+  // şi sediu; gol = sediul firmei, ca până acum.
+  const [standort, setStandort] = useState({ plz: '', ort: '', sediuPlz: '', sediuOrt: '' })
+  const [plzInput, setPlzInput] = useState('')
+  const [ortInput, setOrtInput] = useState('')
+  const [standortEroare, setStandortEroare] = useState('')
+  const [standortSalvare, setStandortSalvare] = useState(false)
+  const reincarcaRef = useRef(() => {})
   const courierProfileId = session?.user?.id || null
   const driverLocation = useDriverLocation(session)
   const mapsKey = useGoogleMapsKey()
@@ -7435,29 +7448,64 @@ function BiddingScreen({ profile, session, lang, embedded }) {
   // șoferul deschide aplicația, nu se resetează la "Alle".
   useEffect(() => {
     if (!isOwner || !courierProfileId) return
-    supabase.from('profiles').select('preferred_radius_km, filter_min_price, filter_max_price').eq('id', courierProfileId).maybeSingle()
+    supabase.from('profiles').select('preferred_radius_km, filter_min_price, filter_max_price, filter_postal_code, filter_city, depot_postal_code, postal_code, city').eq('id', courierProfileId).maybeSingle()
       .then(({ data }) => {
         if (!data) return
         if (data.preferred_radius_km) setRadiusKm(data.preferred_radius_km)
         if (data.filter_min_price != null) setMinPrice(Number(data.filter_min_price))
         if (data.filter_max_price != null) setMaxPrice(Number(data.filter_max_price))
+        setStandort({
+          plz: data.filter_postal_code || '', ort: data.filter_city || '',
+          sediuPlz: data.depot_postal_code || data.postal_code || '', sediuOrt: data.depot_postal_code ? '' : (data.city || ''),
+        })
+        setPlzInput(data.filter_postal_code || '')
+        setOrtInput(data.filter_city || '')
       })
   }, [isOwner, courierProfileId])
 
+  // Anunţă restul aplicaţiei (sunetul şi numărul de pe clopoţel) că s-au
+  // schimbat filtrele — altfel ar folosi valorile de la deschidere.
+  const anuntaFiltre = () => { try { window.dispatchEvent(new CustomEvent('zd-filtre')) } catch { /* nimic */ } }
+
+  async function salveazaStandort(plz, ort) {
+    const cod = String(plz || '').replace(/\s/g, '')
+    setStandortEroare('')
+    if (cod && !/^\d{5}$/.test(cod)) { setStandortEroare(t('standortPlzInvalid', lang)); return }
+    setStandortSalvare(true)
+    if (cod) {
+      // Codul trebuie să existe în tabelul de coduri poştale, altfel raza
+      // n-ar avea de unde să măsoare şi filtrul ar tăcea fără explicaţie.
+      const { data: gasit } = await supabase.from('plz_geo').select('plz').eq('plz', cod).maybeSingle()
+      if (!gasit) { setStandortSalvare(false); setStandortEroare(t('standortPlzUnknown', lang)); return }
+    }
+    const oras = cod ? String(ort || '').trim() : ''
+    const { error } = await supabase.from('profiles')
+      .update({ filter_postal_code: cod || null, filter_city: oras || null })
+      .eq('id', courierProfileId)
+    setStandortSalvare(false)
+    if (error) { setStandortEroare(error.message); return }
+    setStandort((s) => ({ ...s, plz: cod, ort: oras }))
+    setPlzInput(cod)
+    setOrtInput(oras)
+    // Distanţele se recalculează pe server, de la noul punct.
+    reincarcaRef.current()
+    anuntaFiltre()
+  }
+
   function updateRadius(value) {
     setRadiusKm(value)
-    if (courierProfileId) supabase.from('profiles').update({ preferred_radius_km: value }).eq('id', courierProfileId).then(() => {})
+    if (courierProfileId) supabase.from('profiles').update({ preferred_radius_km: value }).eq('id', courierProfileId).then(anuntaFiltre)
   }
 
   // Aceeaşi setare e citită şi de panoul firmei: stă pe profil, nu în telefon.
   function updateMinPrice(value) {
     setMinPrice(value)
-    if (courierProfileId) supabase.from('profiles').update({ filter_min_price: value }).eq('id', courierProfileId).then(() => {})
+    if (courierProfileId) supabase.from('profiles').update({ filter_min_price: value }).eq('id', courierProfileId).then(anuntaFiltre)
   }
 
   function updateMaxPrice(value) {
     setMaxPrice(value)
-    if (courierProfileId) supabase.from('profiles').update({ filter_max_price: value }).eq('id', courierProfileId).then(() => {})
+    if (courierProfileId) supabase.from('profiles').update({ filter_max_price: value }).eq('id', courierProfileId).then(anuntaFiltre)
   }
 
   useEffect(() => {
@@ -7477,6 +7525,7 @@ function BiddingScreen({ profile, session, lang, embedded }) {
       })
 
     incarcaLicitatiile()
+    reincarcaRef.current = incarcaLicitatiile
 
     if (courierProfileId) {
       supabase
@@ -7531,16 +7580,45 @@ function BiddingScreen({ profile, session, lang, embedded }) {
   if (loading) return <PlaceholderScreen title={embedded ? '' : t('tabBidding', lang)} note={t('loadingRides', lang)} />
 
   const PRAGURI_PRET = [50, 75, 100, 150, 200, 300, 500]
+  const RAZE = [100, 200, 300, 600]
+  // O valoare salvată înainte (350 km) rămâne vizibilă în listă.
+  const razeAfisate = radiusKm != null && !RAZE.includes(radiusKm) ? [...RAZE, radiusKm].sort((a, b) => a - b) : RAZE
+  const standortModificat = plzInput.replace(/\s/g, '') !== standort.plz || ortInput.trim() !== standort.ort
+  const punctPlecare = standort.plz
+    ? [standort.plz, standort.ort].filter(Boolean).join(' ')
+    : standort.sediuPlz ? `${t('standortCompany', lang)} (${[standort.sediuPlz, standort.sediuOrt].filter(Boolean).join(' ')})` : t('standortPhone', lang)
   const radiusFilter = isOwner && (
     <>
       <div className="radius-filter-row">
+        <span className="radius-filter-label">{t('standortLabel', lang)}</span>
+        <form className="standort-row" onSubmit={(e) => { e.preventDefault(); salveazaStandort(plzInput, ortInput) }}>
+          <input className="doc-type-select standort-plz" inputMode="numeric" maxLength={5} autoComplete="postal-code"
+                 placeholder={t('standortPlzPlaceholder', lang)} value={plzInput}
+                 onChange={(e) => { setPlzInput(e.target.value.replace(/[^\d]/g, '').slice(0, 5)); setStandortEroare('') }} />
+          <input className="doc-type-select standort-ort" autoComplete="address-level2"
+                 placeholder={t('standortOrtPlaceholder', lang)} value={ortInput}
+                 onChange={(e) => setOrtInput(e.target.value)} />
+          {standortModificat && (
+            <button type="submit" className="btn standort-btn" disabled={standortSalvare}>
+              {standortSalvare ? '…' : t('standortSave', lang)}
+            </button>
+          )}
+        </form>
+        {standortEroare
+          ? <span className="standort-hint standort-err">{standortEroare}</span>
+          : <span className="standort-hint">
+              {t('standortFrom', lang)} {punctPlecare}
+              {standort.plz && (
+                <button type="button" className="standort-clear" onClick={() => salveazaStandort('', '')}>
+                  {t('standortUseCompany', lang)}
+                </button>
+              )}
+            </span>}
+
         <span className="radius-filter-label">{t('radiusFilterLabel', lang)}</span>
-        <select className="doc-type-select" value={radiusKm ?? 'all'} onChange={(e) => updateRadius(e.target.value === 'all' ? null : Number(e.target.value))}>
-          <option value="100">100 km</option>
-          <option value="200">200 km</option>
-          <option value="350">350 km</option>
-          <option value="600">600 km</option>
-          <option value="all">{t('radiusFilterAll', lang)}</option>
+        <select className="doc-type-select rf-full" value={radiusKm ?? 'all'} onChange={(e) => updateRadius(e.target.value === 'all' ? null : Number(e.target.value))}>
+          {razeAfisate.map((km) => <option key={km} value={km}>{t('radiusUpTo', lang).replace('{km}', km)}</option>)}
+          <option value="all">{t('radiusFilterAllKm', lang)}</option>
         </select>
 
         <span className="radius-filter-label">{t('priceFilterLabel', lang)}</span>
@@ -7552,6 +7630,7 @@ function BiddingScreen({ profile, session, lang, embedded }) {
           <option value="all">{t('priceFilterAnyTo', lang)}</option>
           {PRAGURI_PRET.map((v) => <option key={v} value={v}>{t('priceFilterTo', lang)} {v} €</option>)}
         </select>
+        <span className="standort-hint rf-full">{t('filterNotifyNote', lang)}</span>
       </div>
 
       {/* Câte au fost ascunse, scris pe ecran.

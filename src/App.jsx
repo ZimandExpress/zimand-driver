@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { supabase } from './supabaseClient'
 import { t, getLang, setLang, availableLangs } from './i18n'
-import { SlidersHorizontal, Building2, StickyNote, Receipt, Package, Repeat, Hourglass, Camera, Image as ImageIcon, Mail, Ruler, ChevronDown, Lock, Phone, Truck, CheckCircle2, Wallet, User, LogOut, Menu, Bell, MapPin, FlagTriangleRight, Tag, XCircle, Download, X, Navigation, Trophy, ThumbsUp, ArrowUpFromLine, ArrowDownToLine, EyeOff, Layers, AlertTriangle, Clock, FileText, Signature, BookOpen } from 'lucide-react'
+import { Pause, SlidersHorizontal, Building2, StickyNote, Receipt, Package, Repeat, Hourglass, Camera, Image as ImageIcon, Mail, Ruler, ChevronDown, Lock, Phone, Truck, CheckCircle2, Wallet, User, LogOut, Menu, Bell, MapPin, FlagTriangleRight, Tag, XCircle, Download, X, Navigation, Trophy, ThumbsUp, ArrowUpFromLine, ArrowDownToLine, EyeOff, Layers, AlertTriangle, Clock, FileText, Signature, BookOpen } from 'lucide-react'
 import './index.css'
 import PodFiles from './components/PodFiles'
 import DocumentCamera from './components/DocumentCamera'
@@ -2585,7 +2585,7 @@ function StopLegCard({ order, entry, lang, isCurrent, onOpenConfirm, onFailed })
           </span>
         )}
         {peDrum && (
-          <span className="leg-en-route-pill">{t('enRouteLabel', lang)} <span className="moving-van">🚚</span></span>
+          <EnRoutePill order={order} lang={lang} />
         )}
         {acum && !peDrum && <span className="stop-now-pill">{t('stopNowLabel', lang)}</span>}
       </div>
@@ -2800,6 +2800,135 @@ const MOTIVE_LIVRARE = [
   { id: 'other', de: 'Sonstiges', key: 'deliveryReasonOther' },
 ]
 
+// ——— Pauză pe drum ———
+//
+// Şoferul porneşte, apoi trebuie să se odihnească (sau o pauză lungă). Fără
+// asta, comanda rămânea „Unterwegs" toată noaptea. Motivul îl vede doar
+// dispeceratul; clientul vede doar că marfa e în siguranţă şi când pleacă iar.
+const MOTIVE_PAUZA = [
+  { id: 'rest', key: 'pauseReasonRest', de: 'Ruhezeit / Übernachtung', ora: '06:00' },
+  { id: 'break', key: 'pauseReasonBreak', de: 'Pause', minute: 45 },
+  { id: 'other', key: 'pauseReasonOther', de: '' },
+]
+
+// „06:00" → următoarea dată la care e 06:00 (azi dacă n-a trecut, altfel mâine).
+function urmatoareaOra(hhmm) {
+  const [h, m] = String(hhmm || '').split(':').map(Number)
+  if (Number.isNaN(h) || Number.isNaN(m)) return null
+  const d = new Date()
+  d.setSeconds(0, 0)
+  d.setHours(h, m)
+  if (d.getTime() <= Date.now() + 60000) d.setDate(d.getDate() + 1)
+  return d
+}
+const oraDin = (d) => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+function textReluare(d, lang) {
+  if (!d) return ''
+  const azi = new Date(); azi.setHours(0, 0, 0, 0)
+  const zi = new Date(d); zi.setHours(0, 0, 0, 0)
+  const dif = Math.round((zi - azi) / 86400000)
+  const cand = dif === 0 ? t('todayBadge', lang) : dif === 1 ? t('tomorrowBadge', lang)
+    : d.toLocaleDateString(lang === 'en' ? 'en-GB' : 'de-DE', { weekday: 'short', day: '2-digit', month: '2-digit' })
+  return `${cand}, ${oraDin(d)}`
+}
+
+function PauseSheet({ orderId, leg, lang, onClose, onSaved }) {
+  const [ales, setAles] = useState('')
+  const [nota, setNota] = useState('')
+  const [ora, setOra] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const optiune = MOTIVE_PAUZA.find((m) => m.id === ales)
+  const motiv = !optiune ? '' : optiune.id === 'other' ? nota.trim() : [optiune.de, nota.trim()].filter(Boolean).join(' — ')
+  const reluare = urmatoareaOra(ora)
+
+  function alege(m) {
+    setAles(m.id)
+    setError('')
+    if (m.ora) setOra(m.ora)
+    else if (m.minute) {
+      const d = new Date(Date.now() + m.minute * 60000)
+      d.setMinutes(Math.ceil(d.getMinutes() / 5) * 5)
+      setOra(oraDin(d))
+    }
+  }
+
+  async function salveaza() {
+    if (!motiv) { setError(t(ales === 'other' ? 'pauseReasonOtherMissing' : 'pauseReasonMissing', lang)); return }
+    if (!reluare) { setError(t('pauseTimeMissing', lang)); return }
+    setBusy(true)
+    setError('')
+    const { data, error: err } = await supabase.rpc('driver_pause_trip', {
+      p_order_id: orderId, p_leg: leg, p_reason: motiv, p_until: reluare.toISOString(),
+    })
+    setBusy(false)
+    if (err || data !== true) {
+      if (err) console.error('pause error:', err.message)
+      setError(err?.message && !/fetch|network/i.test(err.message) ? err.message : t('pauseFailed', lang))
+      return
+    }
+    onSaved({ at: new Date().toISOString(), until: reluare.toISOString(), reason: motiv })
+  }
+
+  const sheet = {
+    background: '#fff', borderRadius: '16px 16px 0 0',
+    padding: '20px 20px calc(20px + env(safe-area-inset-bottom))',
+    maxHeight: '92vh', overflowY: 'auto',
+  }
+
+  return (
+    <div className="sig-fullscreen" style={{ justifyContent: 'flex-end', background: 'rgba(15,34,64,.55)' }}>
+      <div style={sheet}>
+        <div style={{ fontSize: 18, fontWeight: 700, color: '#0F2240', marginBottom: 4 }}>{t('pauseTitle', lang)}</div>
+        <p style={{ fontSize: 13.5, color: '#5A6878', margin: '0 0 16px', lineHeight: 1.5 }}>{t('pauseNote', lang)}</p>
+        <div style={{ fontSize: 13, fontWeight: 600, color: '#5A6878', marginBottom: 6 }}>{t('pauseReasonLabel', lang)}</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 10 }}>
+          {MOTIVE_PAUZA.map((m) => (
+            <button
+              key={m.id}
+              type="button"
+              onClick={() => alege(m)}
+              style={{
+                textAlign: 'left', padding: '12px 14px', fontSize: 15, borderRadius: 10, cursor: 'pointer',
+                border: `2px solid ${ales === m.id ? '#FF7A29' : '#D8DEE8'}`,
+                background: ales === m.id ? '#FFF6ED' : '#fff', color: '#0F2240', fontWeight: ales === m.id ? 700 : 500,
+              }}
+            >
+              {ales === m.id ? '● ' : '○ '}{t(m.key, lang)}
+            </button>
+          ))}
+        </div>
+        {ales === 'other' && (
+          <textarea
+            rows={2}
+            value={nota}
+            onChange={(e) => setNota(e.target.value)}
+            placeholder={t('pauseOtherPlaceholder', lang)}
+            style={{ width: '100%', padding: '11px 12px', fontSize: 16, border: `1px solid ${!nota.trim() ? '#E4A296' : '#D8DEE8'}`, borderRadius: 8, resize: 'vertical', marginBottom: 10 }}
+          />
+        )}
+        <div style={{ fontSize: 13, fontWeight: 600, color: '#5A6878', margin: '6px 0 6px' }}>{t('pauseUntilLabel', lang)}</div>
+        <input
+          type="time"
+          value={ora}
+          onChange={(e) => { setOra(e.target.value); setError('') }}
+          style={{ width: 140, padding: '10px 12px', fontSize: 17, border: '1px solid #D8DEE8', borderRadius: 8 }}
+        />
+        {reluare && (
+          <div style={{ fontSize: 13.5, color: '#0F2240', marginTop: 8 }}>
+            {t('pauseResumeAt', lang)} <strong>{textReluare(reluare, lang)}</strong>
+          </div>
+        )}
+        {error && <div style={{ color: '#B23A24', fontSize: 13.5, marginTop: 12 }}>{error}</div>}
+        <div style={{ display: 'flex', gap: 10, marginTop: 18 }}>
+          <button type="button" className="pause-cancel" style={{ flex: 1 }} onClick={onClose} disabled={busy}>{t('unstartNo', lang)}</button>
+          <button type="button" className="btn" style={{ flex: 2, margin: 0 }} onClick={salveaza} disabled={busy}>{busy ? '…' : t('pauseSave', lang)}</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function DeliveryFailedSheet({ orderId, etapa, lang, onClose, onSaved }) {
   const [ales, setAles] = useState('')
   const [nota, setNota] = useState('')
@@ -2956,6 +3085,14 @@ function DeliveryAttemptBanner({ order, lang, pending, localReason, onRetried })
       </div>
     </div>
   )
+}
+
+// „Unterwegs 🚚" — sau „Pausiert" cât timp şoferul a întrerupt cursa.
+function EnRoutePill({ order, lang }) {
+  if (order?.pause_at) {
+    return <span className="leg-en-route-pill pausiert"><Pause size={13} strokeWidth={2.2} /> {t('pausedLabel', lang)}</span>
+  }
+  return <span className="leg-en-route-pill">{t('enRouteLabel', lang)} <span className="moving-van">🚚</span></span>
 }
 
 function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, onStatusChange, onDeliveryComplete, profile }) {
@@ -3311,7 +3448,7 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
             <span className="stop-now-pill">{t('stopNowLabel', lang)}</span>
           )}
           {order.pickup_started_at && !order.pickup_arrived_at && (
-            <span className="leg-en-route-pill">{t('enRouteLabel', lang)} <span className="moving-van">🚚</span></span>
+            <EnRoutePill order={order} lang={lang} />
           )}
         </div>
         <div className="info-card-body">
@@ -3377,7 +3514,7 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
             <span className="stop-now-pill">{t('stopNowLabel', lang)}</span>
           )}
           {order.delivery_started_at && !order.delivery_arrived_at && (
-            <span className="leg-en-route-pill">{t('enRouteLabel', lang)} <span className="moving-van">🚚</span></span>
+            <EnRoutePill order={order} lang={lang} />
           )}
         </div>
         <div className="info-card-body">
@@ -3417,7 +3554,7 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
               </span>
               {order.return_pickup_confirmed_at && <span className="leg-done-badge">✓ {t('pickedUpLabel', lang)}</span>}
               {order.return_pickup_started_at && !order.return_pickup_arrived_at && (
-                <span className="leg-en-route-pill">{t('enRouteLabel', lang)} <span className="moving-van">🚚</span></span>
+                <EnRoutePill order={order} lang={lang} />
               )}
             </div>
             <div className="info-card-body">
@@ -3442,7 +3579,7 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
               </span>
               {order.return_delivery_confirmed_at && <span className="leg-done-badge">✓ {t('deliveredLabel', lang)}</span>}
               {order.return_delivery_started_at && !order.return_delivery_arrived_at && (
-                <span className="leg-en-route-pill">{t('enRouteLabel', lang)} <span className="moving-van">🚚</span></span>
+                <EnRoutePill order={order} lang={lang} />
               )}
             </div>
             <div className="info-card-body">
@@ -4942,6 +5079,43 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
     onStatusChange(field, null)
   }
 
+  // Pauza: local imediat după salvare, apoi de la server.
+  // undefined = ce spune comanda; null = reluată; obiect = pauză nouă.
+  const [pauzaLocala, setPauzaLocala] = useState(undefined)
+  const [pauzaOpen, setPauzaOpen] = useState(false)
+  const [reluareBusy, setReluareBusy] = useState(false)
+  useEffect(() => { setPauzaLocala(undefined) }, [order.pause_at])
+  const pauza = pauzaLocala !== undefined ? pauzaLocala
+    : (order.pause_at ? { at: order.pause_at, until: order.pause_until, reason: order.pause_reason } : null)
+  async function reia() {
+    setReluareBusy(true)
+    const { error } = await supabase.rpc('driver_resume_trip', { p_order_id: order.id })
+    setReluareBusy(false)
+    if (error) { console.error('resume error:', error.message); setUndoError(t('pauseFailed', lang)); return }
+    setPauzaLocala(null)
+  }
+  const pauzaBlock = pauza ? (
+    <div className="pause-banner">
+      <div className="pause-banner-text">
+        <strong><Pause size={14} strokeWidth={2.2} style={{ verticalAlign: '-2px' }} /> {t('pauseActive', lang)}</strong>
+        {pauza.until && <span> · {t('pauseResumeAt', lang)} {textReluare(new Date(pauza.until), lang)}</span>}
+        {pauza.reason && <div className="pause-banner-reason">{pauza.reason}</div>}
+      </div>
+      <button type="button" className="pause-resume" disabled={reluareBusy} onClick={reia}>
+        {reluareBusy ? '…' : t('pauseResume', lang)}
+      </button>
+    </div>
+  ) : null
+  const pauzaSheet = pauzaOpen ? (
+    <PauseSheet
+      orderId={order.id}
+      leg={intrare.stop ? `stop:${intrare.stop.id}` : intrare.key}
+      lang={lang}
+      onClose={() => setPauzaOpen(false)}
+      onSaved={(p) => { setPauzaOpen(false); setPauzaLocala(p) }}
+    />
+  ) : null
+
   async function callRpc(fn) {
     if (busy) return
     setBusy(true)
@@ -5535,6 +5709,7 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
     return (
       <>
         {undoBlock}
+        {pauzaBlock}
         {/* Butonul spune încotro. La un tur cu douăzeci de opriri, „Losfahren"
             singur nu-i spune şoferului nimic: toate cardurile arată la fel,
             iar el apasă fără să ştie spre care adresă porneşte. */}
@@ -5549,6 +5724,13 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
     return (
       <>
         {undoBlock}
+        {pauzaBlock}
+        {pauzaSheet}
+        {!pauza && (
+          <button type="button" className="pause-open" onClick={() => setPauzaOpen(true)}>
+            <Pause size={15} strokeWidth={2.2} style={{ verticalAlign: '-3px' }} /> {t('pauseButton', lang)}
+          </button>
+        )}
         {!undoable && (
           unstartIntrebare ? (
             <div className="unstart-box">

@@ -1993,8 +1993,19 @@ function RideCard({ order, isOwner, lang, onClick, compact }) {
   const today = isToday(order.pickup_date)
   const tomorrow = isTomorrow(order.pickup_date)
 
+  // Livrare încercată şi nereuşită: cardul se vede din listă, roşu, cu motivul.
+  const incercareEsuata = order.status === 'assigned' && order.delivery_attempt_open
+
   return (
-    <div className="ride-card2">
+    <div className="ride-card2" style={incercareEsuata ? { borderColor: '#E4A296', boxShadow: '0 0 0 2px #F3C3B8' } : undefined}>
+      {incercareEsuata && (
+        <div onClick={onClick} style={{ background: '#FCEBE8', color: '#8A2A17', borderBottom: '1px solid #E4A296', padding: '9px 16px', margin: '-14px -16px 12px', fontSize: 13.5, fontWeight: 700, cursor: 'pointer', borderRadius: '16px 16px 0 0' }}>
+          ✕ {t('deliveryAttemptTitle', lang)}
+          {order.delivery_attempt_reason && (
+            <span style={{ display: 'block', fontWeight: 500, color: '#16202E', marginTop: 2 }}>{order.delivery_attempt_reason}</span>
+          )}
+        </div>
+      )}
       <div className="bid-card2-head">
         {isRecentlyNew(order.created_at) && <span className="new-corner">{t('newBadge', lang)}</span>}
         <div className="bid-top-row">
@@ -2067,13 +2078,16 @@ function RideCard({ order, isOwner, lang, onClick, compact }) {
         {/* Eticheta, data şi ora pe acelaşi rând: pe două rânduri ocupau
             înălţime fără să spună mai mult, iar lângă „Lieferung" rămânea
             jumătate de card gol. */}
-        <div className="bid-zustellung-val" style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+        {/* Maşina, pe acelaşi rând cu data livrării — dedesubt ocupa un rând
+            întreg doar pentru o etichetă. */}
+        <div className="bid-zustellung-val" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
           <span className="bid-zustellung-label" style={{ margin: 0 }}>{t('delivery', lang)}</span>
           {order.delivery_fixed ? (
             <span className="fixed-time-badge">🔒 {t('fixedDeliveryBadge', lang)} · {fmtDate(order.delivery_date)}{order.delivery_time ? ` · ${fmtTime(order.delivery_time)}` : ''}</span>
           ) : (
             <span>{fmtDate(order.delivery_date)} · {fmtTime(order.delivery_from)}{order.delivery_to ? `–${fmtTime(order.delivery_to)}` : ''}</span>
           )}
+          <span style={{ marginLeft: 'auto' }}><VehicleChips vehicles={order.vehicles} /></span>
         </div>
 
         {/* Serviciile plătite şi avertismentele, sub rândul de livrare:
@@ -2081,8 +2095,7 @@ function RideCard({ order, isOwner, lang, onClick, compact }) {
             citesc. Textul întreg rămâne în Fracht, neatins. */}
         <SemneServicii order={order} lang={lang} />
 
-        <div className="bid-cargo-row">
-          <VehicleChips vehicles={order.vehicles} />
+        <div className="bid-cargo-row" style={{ marginTop: 6 }}>
           <div className="bid-cargo-meta">
             {order.km && <span className="meta-item">📍 {order.km} km</span>}
             {order.weight && <span className="meta-item">⚖ {order.weight} kg</span>}

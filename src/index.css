@@ -2887,3 +2887,10 @@ body { -webkit-font-smoothing: antialiased; }
 .ort-chip { margin: 0; width: auto; padding: 4px 10px; font: inherit; font-size: 13px; color: var(--text, #16202E);
   background: var(--surface-2, #F7F9FB); border: 1px solid var(--line, #E1E6EE); border-radius: 999px; cursor: pointer; }
 .ort-chip.activ { background: var(--navy, #0F2240); border-color: var(--navy, #0F2240); color: #fff; }
+
+/* Meniul: cele patru ecrane de lucru mari, restul mai mic, pe grupe. */
+.menu-item { padding: 12px 20px; }
+.menu-item.mic { padding: 9px 20px; font-size: 14.5px; gap: 12px; }
+.menu-item.mic .ic { opacity: .6; }
+.menu-group-title { padding: 14px 20px 4px; margin-top: 6px; border-top: 1px solid var(--line); font-size: 12px; font-weight: 600; color: var(--text-soft); }
+.menu-header { padding-bottom: 14px; }

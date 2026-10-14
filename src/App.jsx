@@ -833,9 +833,12 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
               profile={profile}
               open={menuOpen}
               lang={lang}
+              active={tab === 'castiguri'}
               onClick={() => navTo('castiguri')}
             />
           )}
+
+          {/* Cele patru ecrane de lucru, mari şi la vedere. */}
           <button className={`menu-item ${tab === 'curse' ? 'active' : ''}`} onClick={() => navTo('curse')}>
             <span className="ic"><Truck size={19} strokeWidth={1.75} /></span>{t('tabRides', lang)}
           </button>
@@ -853,20 +856,32 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
               <span className="ic"><XCircle size={19} strokeWidth={1.75} /></span>{t('menuNotAccepted', lang)}
             </button>
           )}
-          {isOwner && (
-            <button className={`menu-item ${tab === 'castiguri' ? 'active' : ''}`} onClick={() => navTo('castiguri')}>
-              <span className="ic"><Wallet size={19} strokeWidth={1.75} /></span>{t('tabEarnings', lang)}
-            </button>
-          )}
-          <button className={`menu-item ${tab === 'fahrzeuge' ? 'active' : ''}`} onClick={() => navTo('fahrzeuge')}>
-            <span className="ic"><Truck size={19} strokeWidth={1.75} /></span>{t('menuVehicles', lang)}
+
+          {/* Restul, mai mic, pe grupe. „Verdienst" e cardul de sus. */}
+          <div className="menu-group-title">{t('menuGroupCompany', lang)}</div>
+          <button className={`menu-item mic ${tab === 'fahrzeuge' ? 'active' : ''}`} onClick={() => navTo('fahrzeuge')}>
+            <span className="ic"><Truck size={17} strokeWidth={1.75} /></span>{t('menuVehicles', lang)}
           </button>
-          <button className={`menu-item ${tab === 'profil' ? 'active' : ''}`} onClick={() => navTo('profil')}>
-            <span className="ic"><User size={19} strokeWidth={1.75} /></span>{t('tabProfile', lang)}
+          <button className={`menu-item mic ${tab === 'profil' ? 'active' : ''}`} onClick={() => navTo('profil')}>
+            <span className="ic"><User size={17} strokeWidth={1.75} /></span>{t('tabProfile', lang)}
           </button>
-          <button className={`menu-item ${tab === 'legenda' ? 'active' : ''}`} onClick={() => navTo('legenda')}>
-            <span className="ic"><BookOpen size={19} strokeWidth={1.75} /></span>{t('menuLegend', lang)}
+
+          <div className="menu-group-title">{t('menuGroupHelp', lang)}</div>
+          <button className={`menu-item mic ${tab === 'legenda' ? 'active' : ''}`} onClick={() => navTo('legenda')}>
+            <span className="ic"><BookOpen size={17} strokeWidth={1.75} /></span>{t('menuLegend', lang)}
           </button>
+          {/* Dispeceratul, la îndemână din orice ecran — nu doar din fişa
+              unei curse. Şoferul are întrebări şi între curse. */}
+          <a
+            className="menu-item mic"
+            href={`https://wa.me/${DISPATCH_WA}`}
+            target="_blank"
+            rel="noreferrer"
+            onClick={() => setMenuOpen(false)}
+            style={{ color: '#1B9E50', textDecoration: 'none' }}
+          >
+            <span className="ic"><WhatsAppIcon size={17} /></span>{t('menuDispatch', lang)}
+          </a>
 
           {/* Grupul de jos, lipit de baza panoului. „marginTop: auto" pus
               doar pe linia despărţitoare nu împingea nimic atunci când
@@ -874,21 +889,8 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
           <div style={{ marginTop: 'auto' }}>
           <div className="menu-divider" />
 
-          {/* Dispeceratul, la îndemână din orice ecran — nu doar din fişa
-              unei curse. Şoferul are întrebări şi între curse. */}
-          <a
-            className="menu-item"
-            href={`https://wa.me/${DISPATCH_WA}`}
-            target="_blank"
-            rel="noreferrer"
-            onClick={() => setMenuOpen(false)}
-            style={{ color: '#1B9E50', textDecoration: 'none' }}
-          >
-            <span className="ic"><WhatsAppIcon size={18} /></span>{t('menuDispatch', lang)}
-          </a>
-
-          <button className="menu-item logout" onClick={() => supabase.auth.signOut()}>
-            <span className="ic"><LogOut size={19} strokeWidth={1.75} /></span>{t('logout', lang)}
+          <button className="menu-item mic logout" onClick={() => supabase.auth.signOut()}>
+            <span className="ic"><LogOut size={17} strokeWidth={1.75} /></span>{t('logout', lang)}
           </button>
 
           {/* Din ce build vine ecranul. Discret, dar citibil la telefon: când
@@ -7150,16 +7152,28 @@ function useEarningsSummary(profile, enabled, cycle) {
   return totals
 }
 
-function EarningsMenuCard({ profile, open, lang, onClick }) {
+// Sume în format german: 971,01 € — nu 971.01 €.
+const euroDe = (n) => `${Number(n || 0).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`
+
+function EarningsMenuCard({ profile, open, lang, onClick, active }) {
   const cycle = useBillingCycle(open)
   const totals = useEarningsSummary(profile, open && !!cycle, cycle)
-  if (!totals || !cycle) return null
+  // Rândul „Verdienst" din meniu a fost înlocuit de card. Cât timp cardul
+  // nu are cifre (se încarcă, sau interogarea a căzut), rămâne rândul —
+  // ecranul de câştiguri trebuie să fie mereu la o atingere.
+  if (!totals || !cycle) {
+    return (
+      <button className={`menu-item ${active ? 'active' : ''}`} onClick={onClick}>
+        <span className="ic"><Wallet size={19} strokeWidth={1.75} /></span>{t('tabEarnings', lang)}
+      </button>
+    )
+  }
 
   return (
     <div
       onClick={onClick}
       style={{
-        margin: '0 12px 10px', padding: '14px 16px', borderRadius: 12,
+        margin: '0 12px 8px', padding: '12px 14px', borderRadius: 12,
         background: '#0F2240',
         color: '#fff', cursor: 'pointer',
       }}
@@ -7168,7 +7182,7 @@ function EarningsMenuCard({ profile, open, lang, onClick }) {
         {t(cycle === 'weekly' ? 'earningsWeekLabel' : 'earningsMonthLabel', lang)}
       </div>
       <div style={{ fontSize: 26, fontWeight: 700, lineHeight: 1.15, marginTop: 2 }}>
-        {totals.month.toFixed(2)} €
+        {euroDe(totals.month)}
       </div>
 
       <div style={{ height: 1, background: 'rgba(255,255,255,.14)', margin: '11px 0 9px' }} />
@@ -7178,7 +7192,7 @@ function EarningsMenuCard({ profile, open, lang, onClick }) {
           {t('earningsTodayLabel', lang)}
         </span>
         <span style={{ fontSize: 17, fontWeight: 700, color: totals.today > 0 ? '#FF9A55' : '#7D90AC' }}>
-          {totals.today.toFixed(2)} €
+          {euroDe(totals.today)}
         </span>
       </div>
 
@@ -7248,7 +7262,7 @@ function EarningsScreen({ profile, lang }) {
     <div className="rides-list">
       <div className="earn-hero">
         <div className="lbl">{t(cycle === 'weekly' ? 'earningsWeekLabel' : 'earningsMonthPeriodLabel', lang)}</div>
-        <div className="amt">{currentTotal.toFixed(2)} €</div>
+        <div className="amt">{euroDe(currentTotal)}</div>
         <div className="row">
           <div>{t('earningsPeriod', lang)}<b>{periodLabel(currentWeekStart, cycle, lang)}</b></div>
           <div>{t('tabRides', lang)}<b>{currentWeek.orders.length}</b></div>

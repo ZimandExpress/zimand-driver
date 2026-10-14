@@ -2047,12 +2047,11 @@ function RideCard({ order, isOwner, lang, onClick, compact }) {
             <span className="rc-dot rc-dot-to" />
             <span className="rc-addr">{order.delivery_address}</span>
           </div>
-          {(order.is_shuttle || isRecentlyNew(order.created_at)) && (
-            <span className="rc-tags">
-              {isRecentlyNew(order.created_at) && <span className="rc-tag rc-tag-new">{t('newBadge', lang)}</span>}
-              {order.is_shuttle && <span className="rc-tag">Shuttle</span>}
-            </span>
-          )}
+          <span className="rc-tags">
+            <span className="rc-num">{order.order_number || order.reference || order.id.slice(0, 8)}</span>
+            {isRecentlyNew(order.created_at) && <span className="rc-tag rc-tag-new">{t('newBadge', lang)}</span>}
+            {order.is_shuttle && <span className="rc-tag">Shuttle</span>}
+          </span>
         </div>
 
         <span className="rc-chev" aria-hidden="true">{deschis ? '–' : '+'}</span>
@@ -2092,6 +2091,12 @@ function RideCard({ order, isOwner, lang, onClick, compact }) {
                 <Truck size={14} strokeWidth={1.8} />
                 <span className="rc-row-label">{lang === 'en' ? 'Vehicle' : 'Fahrzeug'}</span>
                 <span className="rc-row-text">{order.vehicles.map((v) => v.charAt(0).toUpperCase() + v.slice(1)).join(', ')}</span>
+                <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 6 }}>
+                  <SemnDovada order={order} lang={lang} />
+                  {extractServiceBadges(order.notes).length === 1 && (
+                    <SemnServiciu b={extractServiceBadges(order.notes)[0]} lang={lang} />
+                  )}
+                </span>
               </div>
             )}
             {(order.km || order.weight) && (
@@ -2112,8 +2117,9 @@ function RideCard({ order, isOwner, lang, onClick, compact }) {
 
           <SemneServicii order={order} lang={lang} />
           <div className="rc-badges">
-            <SemnDovada order={order} lang={lang} />
-            {extractServiceBadges(order.notes).length === 1 && (
+            {/* Fără rândul cu vehiculul, semnele rămân aici, ca să nu se piardă. */}
+            {!(order.vehicles || []).length && <SemnDovada order={order} lang={lang} />}
+            {!(order.vehicles || []).length && extractServiceBadges(order.notes).length === 1 && (
               <SemnServiciu b={extractServiceBadges(order.notes)[0]} lang={lang} />
             )}
             <StageBadge order={order} lang={lang} />
@@ -7780,12 +7786,11 @@ function BidCard({ order, lang, courierProfileId, open, onToggle, onBidPlaced })
               <span className="rc-dot rc-dot-to" />
               <span className="rc-addr">{cityCountryOnly(order.delivery_address)}</span>
             </div>
-            {(order.is_shuttle || isRecentlyNew(order.created_at)) && (
-              <span className="rc-tags">
-                {isRecentlyNew(order.created_at) && <span className="rc-tag rc-tag-new">{t('newBadge', lang)}</span>}
-                {order.is_shuttle && <span className="rc-tag">Shuttle</span>}
-              </span>
-            )}
+            <span className="rc-tags">
+              <span className="rc-num">{order.order_number || order.id.slice(0, 8)}</span>
+              {isRecentlyNew(order.created_at) && <span className="rc-tag rc-tag-new">{t('newBadge', lang)}</span>}
+              {order.is_shuttle && <span className="rc-tag">Shuttle</span>}
+            </span>
           </div>
         </div>
 
@@ -7830,18 +7835,16 @@ function BidCard({ order, lang, courierProfileId, open, onToggle, onBidPlaced })
           )}
           {order.km != null && <span className="bc-fact"><Navigation size={12} strokeWidth={1.8} /> {order.km} km</span>}
           {order.weight ? <span className="bc-fact"><Layers size={13} strokeWidth={1.8} /> {order.weight} kg</span> : null}
+          {/* Semnătura / CMR şi semnul de serviciu, pe acelaşi rând cu restul. */}
+          <SemnDovada order={order} lang={lang} />
+          {extractServiceBadges(order.notes).length === 1 && (
+            <SemnServiciu b={extractServiceBadges(order.notes)[0]} lang={lang} />
+          )}
         </div>
 
         {/* Şi înainte de a licita: firma trebuie să ştie în ce intră —
             marfă ADR, ajutor la încărcare plătit, livrare neutră. */}
         <SemneServicii order={order} lang={lang} />
-        {(extractServiceBadges(order.notes).length === 1) && (
-          <div className="rc-badges">
-            <SemnServiciu b={extractServiceBadges(order.notes)[0]} lang={lang} />
-          </div>
-        )}
-        <div className="rc-badges"><SemnDovada order={order} lang={lang} /></div>
-        <div className="bid-order-mini">{t('orderRef', lang)} {order.order_number || order.id.slice(0, 8)}</div>
       </div>
 
       <div className="bid-card2-body">

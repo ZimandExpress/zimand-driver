@@ -2843,3 +2843,9 @@ body { -webkit-font-smoothing: antialiased; }
 .hist-item .p { white-space: nowrap; font-family: 'IBM Plex Sans', sans-serif; font-weight: 600; }
 .hist-item .id { font-family: 'IBM Plex Sans', sans-serif; letter-spacing: 0; }
 @media (min-width: 480px) { body { background: #E4E8EE; } }
+.rc-num { font-size: 12px; color: var(--text-soft); font-variant-numeric: tabular-nums; align-self: center; }
+.rc-tags { flex-wrap: wrap; align-items: center; }
+.bc-facts { align-items: center; }
+.bc-facts { gap: 6px 10px; font-size: 13px; }
+/* Rândul 1: livrarea. Rândul 2: maşina, km, kg şi semnele — toate pe aceeaşi linie. */
+.bc-facts > .bc-fact:first-child { flex-basis: 100%; }

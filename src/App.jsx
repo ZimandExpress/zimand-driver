@@ -5193,7 +5193,12 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
 
   // Semnătura în aplicaţie: la marfă doar pentru clienţii care au ales-o;
   // la documente, numai la ridicare (la livrare se semnează pe protocol).
-  const semnaturaCeruta = isDocumentDelivery ? !esteLivrareEtapa : cereSemnatura
+  //
+  // Excepţie: cu Botenbestätigung rezervată, expeditorul semnează deja
+  // declaraţia de predare pe hârtie (ambele pagini, obligatorii mai sus).
+  // A doua semnătură pe telefon era dublură — rămâne doar la documentele
+  // standard, cu Zustellprotokoll. Câmpul rămâne pe ecran, opţional.
+  const semnaturaCeruta = isDocumentDelivery ? (!esteLivrareEtapa && !cereBoten) : cereSemnatura
   const numeCerut = cereDocument || cereSemnatura
     || (dovadaLaAlegere && !!signatureBlob)
     || (isDocumentDelivery && (!esteLivrareEtapa || deliveryMethod === 'persoenlich'))

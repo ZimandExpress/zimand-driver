@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { supabase } from './supabaseClient'
 import { t, getLang, setLang, availableLangs } from './i18n'
-import { Truck, CheckCircle2, Wallet, User, LogOut, Menu, Bell, MapPin, FlagTriangleRight, Tag, XCircle, Download, X, Navigation, Trophy, ThumbsUp, ArrowUpFromLine, ArrowDownToLine, EyeOff, Layers, AlertTriangle, Clock, FileText, Signature, BookOpen } from 'lucide-react'
+import { Building2, StickyNote, Receipt, Package, Repeat, Hourglass, Camera, Image as ImageIcon, Mail, Ruler, ChevronDown, Lock, Phone, Truck, CheckCircle2, Wallet, User, LogOut, Menu, Bell, MapPin, FlagTriangleRight, Tag, XCircle, Download, X, Navigation, Trophy, ThumbsUp, ArrowUpFromLine, ArrowDownToLine, EyeOff, Layers, AlertTriangle, Clock, FileText, Signature, BookOpen } from 'lucide-react'
 import './index.css'
 import PodFiles from './components/PodFiles'
 import DocumentCamera from './components/DocumentCamera'
@@ -1786,7 +1786,7 @@ function RidesScreen({ profile, isOwner, session, lang }) {
       <div style={{ fontWeight: 700 }}>
         {stareCoada.blocate > 0
           ? `⚠ ${t('proofStuckTitle', lang)}`
-          : `⏳ ${t('proofPendingTitle', lang)}`}
+          : t('proofPendingTitle', lang)}
       </div>
       <div>
         {stareCoada.blocate > 0
@@ -1884,7 +1884,7 @@ function RidesScreen({ profile, isOwner, session, lang }) {
             {bannerEroare}
             <div className="rides-toolbar">
               <button className="filter-btn" disabled title={t('comingSoon', lang)}>
-                ⏷ {t('filter', lang)}
+                <ChevronDown size={14} strokeWidth={2} /> {t('filter', lang)}
               </button>
               <button className="sort-btn" onClick={() => setSortAsc((v) => !v)}>
                 {t('sortLabel', lang)}: {sortAsc ? t('sortOldest', lang) : t('sortNewest', lang)}
@@ -2438,7 +2438,7 @@ function GoogleLiveMap({ pickupCoords, deliveryCoords, stopCoords }) {
   }, [pickupCoords, deliveryCoords, stopCoords, ready])
 
   if (!mapsKey || !ready) {
-    return <div className="live-map"><div className="live-map-loading">🗺️</div></div>
+    return <div className="live-map"><div className="live-map-loading"><Navigation size={22} strokeWidth={1.5} /></div></div>
   }
 
   return <div className="live-map"><div ref={mapRef} style={{ width: '100%', height: '100%' }} /></div>
@@ -2451,10 +2451,10 @@ function ContactRow({ contact, lang }) {
   return (
     <div className="contact-row">
       <div className="contact-line">
-        <span className="contact-text">👤 {nameOnly}</span>
+        <span className="contact-text"><User size={14} strokeWidth={1.8} /> {nameOnly}</span>
         {phone && (
           <a className="contact-call" href={`tel:${phone.replace(/[\s\-()\/]/g, '')}`}>
-            📞 {t('callButton', lang)}
+            <Phone size={13} strokeWidth={2} /> {t('callButton', lang)}
           </a>
         )}
       </div>
@@ -2527,7 +2527,7 @@ function StopLegCard({ order, entry, lang, isCurrent, onOpenConfirm, onFailed })
               {f.date ? fmtDate(f.date) : ''}
               {interval ? `${f.date ? ' · ' : ''}` : ''}
               {interval && (f.timeFixed
-                ? <strong className="leg-head-fix">🔒 {interval}</strong>
+                ? <strong className="leg-head-fix"><Lock size={12} strokeWidth={2.2} /> {interval}</strong>
                 : interval)}
             </span>
           )}
@@ -2598,11 +2598,11 @@ function StopLegCard({ order, entry, lang, isCurrent, onOpenConfirm, onFailed })
             opt sute de pixeli pe care nimeni nu-i citeşte în avans. */}
         {!strinsa && (f.cargo || f.weightKg) && (
           <div className="leg-notiz">
-            📦 {[f.cargo, f.weightKg ? `${f.weightKg} kg` : null].filter(Boolean).join(' · ')}
+            <Package size={13} strokeWidth={1.8} /> {[f.cargo, f.weightKg ? `${f.weightKg} kg` : null].filter(Boolean).join(' · ')}
           </div>
         )}
-        {(acum || desfasurat) && f.reference && <div className="leg-notiz">🧾 {f.reference}</div>}
-        {(acum || desfasurat) && f.note && <div className="leg-notiz">📝 {f.note}</div>}
+        {(acum || desfasurat) && f.reference && <div className="leg-notiz"><Receipt size={13} strokeWidth={1.8} /> {f.reference}</div>}
+        {(acum || desfasurat) && f.note && <div className="leg-notiz"><StickyNote size={13} strokeWidth={1.8} /> {f.note}</div>}
         {isCurrent && !f.confirmedAt && !f.failedAt && onFailed && (
           <button
             type="button"
@@ -3151,7 +3151,7 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
               marginLeft: 'auto',
             }}
           >
-            <span style={{ fontSize: 14 }}>⏱</span>
+            <Clock size={14} strokeWidth={2} />
             <ElapsedTimer startedAt={arrivedAt} compact />
           </span>
         )}
@@ -3169,7 +3169,7 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
 
       {companyName && (
         <div className="info-card">
-          <div className="info-card-head">🏢 {companyName}</div>
+          <div className="info-card-head"><Building2 size={14} strokeWidth={1.8} /> {companyName}</div>
         </div>
       )}
 
@@ -3256,7 +3256,7 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
             {order.pickup_date && (
               <span className="leg-head-time">
                 {' · '}
-                {order.pickup_fixed ? `🔒 ${t('fixedPickupBadge', lang)} · ` : ''}
+                {order.pickup_fixed ? `${t('fixedPickupBadge', lang)} · ` : ''}
                 {fmtDate(order.pickup_date)}
                 {order.pickup_fixed ? (order.pickup_time ? ` · ${fmtTime(order.pickup_time)}${order.pickup_to ? `–${fmtTime(order.pickup_to)}` : ''}` : '') : (order.pickup_from ? ` · ${fmtTime(order.pickup_from)}${order.pickup_to ? `–${fmtTime(order.pickup_to)}` : ''}` : '')}
               </span>
@@ -3281,13 +3281,13 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
           {order.pickup_confirmed_at && <div className="info-row-time">✓ {fmtDateTime(order.pickup_confirmed_at)}</div>}
           {order.flexible_time_notes && (
             <div className="flex-time-note" style={{ marginTop: 8 }}>
-              ⏱ {formatFlexibleTimeNote(order.flexible_time_notes).main}
+              <Clock size={12} strokeWidth={2} /> {formatFlexibleTimeNote(order.flexible_time_notes).main}
             </div>
           )}
-          {pickupNotiz && <div className="leg-notiz">📝 {pickupNotiz}</div>}
+          {pickupNotiz && <div className="leg-notiz"><StickyNote size={13} strokeWidth={1.8} /> {pickupNotiz}</div>}
           {order.pickup_alt_date && (
             <div style={{ background: '#FFF6ED', border: '1px solid #FF7A29', borderRadius: 6, padding: '6px 10px', marginTop: 6, fontSize: 12.5, color: '#E8631A', fontWeight: 600 }}>
-              ⏰ {t('altTimeLabel', lang)}: {fmtDate(order.pickup_alt_date)} {order.pickup_alt_from ? `${fmtTime(order.pickup_alt_from)}${order.pickup_alt_to ? `–${fmtTime(order.pickup_alt_to)}` : ''}` : ''}
+              <Clock size={12} strokeWidth={2} /> {t('altTimeLabel', lang)}: {fmtDate(order.pickup_alt_date)} {order.pickup_alt_from ? `${fmtTime(order.pickup_alt_from)}${order.pickup_alt_to ? `–${fmtTime(order.pickup_alt_to)}` : ''}` : ''}
             </div>
           )}
         </div>
@@ -3322,7 +3322,7 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
             {order.delivery_date && (
               <span className="leg-head-time">
                 {' · '}
-                {order.delivery_fixed ? `🔒 ${t('fixedDeliveryBadge', lang)} · ` : ''}
+                {order.delivery_fixed ? `${t('fixedDeliveryBadge', lang)} · ` : ''}
                 {fmtDate(order.delivery_date)}
                 {order.delivery_fixed ? (order.delivery_time ? ` · ${fmtTime(order.delivery_time)}` : '') : (order.delivery_from ? ` · ${fmtTime(order.delivery_from)}${order.delivery_to ? `–${fmtTime(order.delivery_to)}` : ''}` : '')}
               </span>
@@ -3345,10 +3345,10 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
             <a className="maps-nav-btn" href={mapsNavUrl(order.delivery_address)} target="_blank" rel="noreferrer"><Navigation size={13} strokeWidth={2.2} /> {t('navigateButton', lang)}</a>
           </div>
           {order.delivery_confirmed_at && <div className="info-row-time">✓ {fmtDateTime(order.delivery_confirmed_at)}</div>}
-          {deliveryNotiz && <div className="leg-notiz">📝 {deliveryNotiz}</div>}
+          {deliveryNotiz && <div className="leg-notiz"><StickyNote size={13} strokeWidth={1.8} /> {deliveryNotiz}</div>}
           {order.delivery_alt_date && (
             <div style={{ background: '#FFF6ED', border: '1px solid #FF7A29', borderRadius: 6, padding: '6px 10px', marginTop: 6, fontSize: 12.5, color: '#E8631A', fontWeight: 600 }}>
-              ⏰ {t('altTimeLabel', lang)}: {fmtDate(order.delivery_alt_date)} {order.delivery_alt_from ? `${fmtTime(order.delivery_alt_from)}${order.delivery_alt_to ? `–${fmtTime(order.delivery_alt_to)}` : ''}` : ''}
+              <Clock size={12} strokeWidth={2} /> {t('altTimeLabel', lang)}: {fmtDate(order.delivery_alt_date)} {order.delivery_alt_from ? `${fmtTime(order.delivery_alt_from)}${order.delivery_alt_to ? `–${fmtTime(order.delivery_alt_to)}` : ''}` : ''}
             </div>
           )}
         </div>
@@ -3384,7 +3384,7 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
                 <a className="maps-nav-btn" href={mapsNavUrl(order.return_pickup_address)} target="_blank" rel="noreferrer"><Navigation size={13} strokeWidth={2.2} /> {t('navigateButton', lang)}</a>
               </div>
               {order.return_pickup_confirmed_at && <div className="info-row-time">✓ {fmtDateTime(order.return_pickup_confirmed_at)}</div>}
-              {order.return_cargo_desc && <div className="leg-notiz">📝 {order.return_cargo_desc}</div>}
+              {order.return_cargo_desc && <div className="leg-notiz"><StickyNote size={13} strokeWidth={1.8} /> {order.return_cargo_desc}</div>}
             </div>
           </div>
 
@@ -3420,7 +3420,7 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
         <div className="info-card-head cargo-toggle" onClick={() => setCargoOpen((v) => !v)}>
           {/* Numărul comenzii, pe linia cu pachetul: acolo îl vede şi cine
               nu deschide cardul, iar înăuntru nu se mai repetă. */}
-          <span>📦 {t('cargoLabel', lang)}
+          <span><Package size={13} strokeWidth={1.8} /> {t('cargoLabel', lang)}
             <span style={{
               marginLeft: 8, fontFamily: 'monospace', fontSize: 11.5,
               fontWeight: 600, color: 'var(--text-soft, #6B7A90)', letterSpacing: '.02em',
@@ -3432,7 +3432,7 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
         </div>
         {cargoOpen && (
           <div className="info-card-body">
-            {cargoSummary(order) && <div className="info-row"><span className="k">📦</span><span className="v">{cargoSummary(order)}</span></div>}
+            {cargoSummary(order) && <div className="info-row"><span className="k"><Package size={14} strokeWidth={1.8} /></span><span className="v">{cargoSummary(order)}</span></div>}
             {order.cargo_desc && <div className="info-row"><span className="k">{t('cargoLabel', lang)}</span><span className="v">{order.cargo_desc}</span></div>}
             {order.weight && <div className="info-row"><span className="k">{t('weightLabel', lang)}</span><span className="v">{order.weight} kg</span></div>}
             {order.dims && <div className="info-row"><span className="k">{t('dimsLabel', lang)}</span><span className="v">{order.dims}</span></div>}
@@ -3508,7 +3508,7 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
         <div className="reassign-footer">
           {!reassigning && !reassignTo ? (
             <button className="reassign-toggle" onClick={() => setReassignTo(' ')}>
-              🔄 {t('reassignLabel', lang)}
+              <Repeat size={14} strokeWidth={1.8} /> {t('reassignLabel', lang)}
             </button>
           ) : (
             <div className="reassign-open">
@@ -3539,7 +3539,7 @@ function SignatureLine({ lang, signatureBlob, onChange, obligatoriu }) {
     <>
       <button type="button" className="sig-line-toggle" onClick={() => setOpen(true)}>
         <span>
-          ✍️ {t('signatureLabel', lang)}
+          <Signature size={14} strokeWidth={1.8} /> {t('signatureLabel', lang)}
           {obligatoriu && <span style={{ color: '#B35A12', fontWeight: 800 }}> · {t('requiredWord', lang)}</span>}
         </span>
         {signatureBlob ? <span className="sig-done">✓</span> : <span className="sig-chev">›</span>}
@@ -3634,7 +3634,7 @@ function SignaturePad({ onChange }) {
         onTouchMove={move}
         onTouchEnd={end}
       />
-      {!hasDrawing && <div className="sig-pad-placeholder">{'✍'}</div>}
+      {!hasDrawing && <div className="sig-pad-placeholder"><Signature size={30} strokeWidth={1.3} /></div>}
       {hasDrawing && (
         <button type="button" className="sig-pad-clear" onClick={clear}>✕</button>
       )}
@@ -4478,7 +4478,7 @@ function TrimiteDocument({ order, lang }) {
           padding: '12px 14px', cursor: 'pointer',
         }}
       >
-        <span style={{ fontSize: 20, flexShrink: 0 }}>📄</span>
+        <FileText size={20} strokeWidth={1.6} style={{ flexShrink: 0, color: 'var(--navy)' }} />
         <span style={{ minWidth: 0 }}>
           <span style={{ display: 'block', fontSize: 15, fontWeight: 700, color: '#0F2240' }}>
             {eticheta}
@@ -4765,7 +4765,7 @@ function AltCapat({ order, lang, spreLivrare }) {
                         border: '1px solid #D8DEE8', borderRadius: 8, padding: '7px 11px',
                       }}
                     >
-                      {'📞'} {telefon}
+                      <Phone size={13} strokeWidth={2} /> {telefon}
                     </a>
                   )}
                   {c.reference && (
@@ -5214,7 +5214,7 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
           padding: '14px 15px', marginBottom: 12,
         }}>
           <div style={{ fontSize: 14.5, fontWeight: 700, color: '#B35A12', marginBottom: 4 }}>
-            ⏳ {t('waitingForDispatcher', lang)}
+            <Hourglass size={14} strokeWidth={1.8} /> {t('waitingForDispatcher', lang)}
           </div>
           <div style={{ fontSize: 13, color: '#8A5A16', lineHeight: 1.5 }}>
             {t('waitingForDispatcherNote', lang)}
@@ -5485,7 +5485,7 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
               padding: 28, textAlign: 'center', color: '#fff', cursor: 'pointer',
             }}
           >
-            <div style={{ fontSize: 46, marginBottom: 18 }}>📄</div>
+            <div style={{ marginBottom: 18, color: 'var(--navy)' }}><FileText size={44} strokeWidth={1.4} /></div>
             <div style={{ fontSize: 21, fontWeight: 800, lineHeight: 1.4, maxWidth: 420 }}>
               {t('docRuleShort', lang)}
             </div>
@@ -5537,7 +5537,7 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
             }}
           >
             <div style={{ maxWidth: 440, width: '100%' }}>
-              <div style={{ fontSize: 42, marginBottom: 10 }}>📄</div>
+              <div style={{ marginBottom: 10, color: 'var(--navy)' }}><FileText size={40} strokeWidth={1.4} /></div>
               <div style={{ fontSize: 21, fontWeight: 800, color: '#0F2240', marginBottom: 16, lineHeight: 1.3 }}>
                 {t('docRulesTitle', lang)}
               </div>
@@ -5691,7 +5691,7 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
           }}>
             {contact && (
               <div style={{ fontWeight: 700 }}>
-                {laLivrare ? '📥' : '📤'} {contact.split(' · Tel.')[0].trim()}
+                {laLivrare ? <ArrowDownToLine size={14} strokeWidth={1.8} /> : <ArrowUpFromLine size={14} strokeWidth={1.8} />} {contact.split(' · Tel.')[0].trim()}
               </div>
             )}
             {adresa && <div style={{ color: 'var(--text-soft)' }}>{adresa}</div>}
@@ -5750,10 +5750,10 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
               {t('photosLabel', lang)}
             </div>
             <button type="button" className="btn secondary" style={{ width: '100%', marginTop: 0, marginBottom: 10 }} onClick={() => { setPhotoSourceOpen(false); cameraInputRef.current?.click() }}>
-              📷 {t('takePhoto', lang)}
+              <Camera size={16} strokeWidth={1.8} /> {t('takePhoto', lang)}
             </button>
             <button type="button" className="btn secondary" style={{ width: '100%', marginTop: 0, marginBottom: 10 }} onClick={() => { setPhotoSourceOpen(false); fileInputRef.current?.click() }}>
-              🖼️ {t('chooseFromGallery', lang)}
+              <ImageIcon size={16} strokeWidth={1.8} /> {t('chooseFromGallery', lang)}
             </button>
             <button type="button" className="link-btn" onClick={() => setPhotoSourceOpen(false)}>{t('back', lang)}</button>
           </div>
@@ -5809,7 +5809,7 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
           padding: '13px 15px', marginBottom: 14,
         }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: '#2A5299', marginBottom: 4 }}>
-            📍 {t('locationNoticeTitle', lang)}
+            <MapPin size={14} strokeWidth={1.8} /> {t('locationNoticeTitle', lang)}
           </div>
           <div style={{ fontSize: 13, color: '#2A5299', lineHeight: 1.5 }}>
             {t('locationNoticeBody', lang)}
@@ -5859,7 +5859,7 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
                       border: '1px solid #BFE8CF', borderRadius: 7,
                       padding: '7px 9px', marginTop: 7, lineHeight: 1.5, fontWeight: 600,
                     }}>
-                      ✍️ {t('persoenlichCondition', lang)}
+                      <Signature size={14} strokeWidth={1.8} /> {t('persoenlichCondition', lang)}
                     </div>
                   )}
                   {m.id === 'briefkasten' && (
@@ -6145,7 +6145,7 @@ function DocumentLink({ doc, lang }) {
   if (!url) return null
   return (
     <div className="tl-sig">
-      📄 <a href={url} target="_blank" rel="noreferrer">{docTypeLabel(doc.type, lang)}{doc.name ? ` · ${doc.name}` : ''}</a>
+      <FileText size={14} strokeWidth={1.8} /> <a href={url} target="_blank" rel="noreferrer">{docTypeLabel(doc.type, lang)}{doc.name ? ` · ${doc.name}` : ''}</a>
     </div>
   )
 }
@@ -6288,7 +6288,7 @@ function CompletedOrderDetail({ order, isOwner, lang, onBack }) {
 
       {companyName && (
         <div className="info-card">
-          <div className="info-card-head">🏢 {companyName}</div>
+          <div className="info-card-head"><Building2 size={14} strokeWidth={1.8} /> {companyName}</div>
         </div>
       )}
 
@@ -6852,7 +6852,7 @@ function LegendaScreen({ lang }) {
 
       {grup(t('legendTimeGroup', lang))}
       <RandLegenda
-        semn={<span className="fixed-time-badge">🔒</span>}
+        semn={<span className="fixed-time-badge"><Lock size={11} strokeWidth={2.2} /></span>}
         titlu={t('fixedPickupBadge', lang)}
         text={t('legendFixed', lang)}
       />
@@ -6966,7 +6966,7 @@ function LegTime({ order, prefix, lang }) {
     const time = order[`${prefix}_time`]
     return (
       <div className="fixed-time-row">
-        <span className="fixed-time-badge">🔒 {t(prefix === 'pickup' ? 'fixedPickupBadge' : 'fixedDeliveryBadge', lang)}</span>
+        <span className="fixed-time-badge"><Lock size={11} strokeWidth={2.2} /> {t(prefix === 'pickup' ? 'fixedPickupBadge' : 'fixedDeliveryBadge', lang)}</span>
         <span>{fmtDate(date)}{time ? ` · ${fmtTime(time)}` : ''}</span>
       </div>
     )
@@ -7101,11 +7101,11 @@ function EarningsMenuCard({ profile, open, lang, onClick }) {
       onClick={onClick}
       style={{
         margin: '0 12px 10px', padding: '14px 16px', borderRadius: 12,
-        background: 'linear-gradient(135deg, #0F2240 0%, #1B3A63 100%)',
+        background: '#0F2240',
         color: '#fff', cursor: 'pointer',
       }}
     >
-      <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.06em', color: '#9FB3D0' }}>
+      <div style={{ fontSize: 12.5, color: '#9FB3D0' }}>
         {t(cycle === 'weekly' ? 'earningsWeekLabel' : 'earningsMonthLabel', lang)}
       </div>
       <div style={{ fontSize: 26, fontWeight: 700, lineHeight: 1.15, marginTop: 2 }}>
@@ -7115,7 +7115,7 @@ function EarningsMenuCard({ profile, open, lang, onClick }) {
       <div style={{ height: 1, background: 'rgba(255,255,255,.14)', margin: '11px 0 9px' }} />
 
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
-        <span style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.06em', color: '#9FB3D0' }}>
+        <span style={{ fontSize: 12.5, color: '#9FB3D0' }}>
           {t('earningsTodayLabel', lang)}
         </span>
         <span style={{ fontSize: 17, fontWeight: 700, color: totals.today > 0 ? '#FF9A55' : '#7D90AC' }}>
@@ -7760,89 +7760,104 @@ function BidCard({ order, lang, courierProfileId, open, onToggle, onBidPlaced })
   return (
     <div className={`bid-card2 ${open ? 'open' : ''}`}>
       <div className="bid-card2-head" onClick={onToggle}>
-        {isRecentlyNew(order.created_at) && <span className="new-corner">{t('newBadge', lang)}</span>}
-        <div className="bid-top-row">
-          <div className="bid-top-left">
-            <span className="pill-label">{t('pickup', lang)}</span>
-            <span className="pill-date">{fmtDate(order.pickup_date)}</span>
-            <span className="pill-time">{order.pickup_fixed ? (order.pickup_time ? `🔒 ${fmtTime(order.pickup_time)}${order.pickup_to ? `–${fmtTime(order.pickup_to)}` : ''}` : '🔒') : (order.pickup_from ? `${fmtTime(order.pickup_from)}${order.pickup_to ? `–${fmtTime(order.pickup_to)}` : ''}` : '—')}</span>
-            {order.is_shuttle && <span className="pill" style={{ background: '#EAF0FB', color: '#2A5299' }}>🚐 Shuttle</span>}
+        {/* Acelaşi limbaj ca lista „Meine Aufträge": ora ridicării mare în
+            stânga, traseul ca linie, faptele într-un singur rând. */}
+        <div className="bc-grid">
+          <div className="rc-when">
+            <span className={`rc-time ${today ? 'rc-today' : ''}`}>
+              {(order.pickup_fixed ? order.pickup_time : order.pickup_from) ? fmtTime(order.pickup_fixed ? order.pickup_time : order.pickup_from) : '—'}
+            </span>
+            {order.pickup_to && !order.pickup_fixed && <span className="rc-until">{lang === 'en' ? 'until' : 'bis'} {fmtTime(order.pickup_to)}</span>}
+            {order.pickup_fixed && <span className="rc-until rc-fixed"><Clock size={11} strokeWidth={2.2} /> {lang === 'en' ? 'fixed' : 'fest'}{order.pickup_to ? ` –${fmtTime(order.pickup_to)}` : ''}</span>}
+            <span className="rc-day">{today ? t('todayBadge', lang) : tomorrow ? t('tomorrowBadge', lang) : fmtDate(order.pickup_date)}</span>
           </div>
-          <div className="bid-top-right">
-            {today && <span className="pill heute">{t('todayBadge', lang)}</span>}
-            {!today && tomorrow && <span className="pill morgen">{t('tomorrowBadge', lang)}</span>}
+          <div className="rc-route">
+            <div className="rc-stop rc-stop-from">
+              <span className="rc-dot rc-dot-from" />
+              <span className="rc-addr">{cityCountryOnly(order.pickup_address)}</span>
+            </div>
+            <div className="rc-stop">
+              <span className="rc-dot rc-dot-to" />
+              <span className="rc-addr">{cityCountryOnly(order.delivery_address)}</span>
+            </div>
+            {(order.is_shuttle || isRecentlyNew(order.created_at)) && (
+              <span className="rc-tags">
+                {isRecentlyNew(order.created_at) && <span className="rc-tag rc-tag-new">{t('newBadge', lang)}</span>}
+                {order.is_shuttle && <span className="rc-tag">Shuttle</span>}
+              </span>
+            )}
           </div>
         </div>
-        <div className="bid-order-mini">{t('orderRef', lang)} {order.order_number || order.id.slice(0, 8)}</div>
-        {/* Şi înainte de a licita: firma trebuie să ştie în ce intră —
-            marfă ADR, ajutor la încărcare plătit, livrare neutră. */}
-        <SemneServicii order={order} lang={lang} />
+
         {existingBid && (
           <div className="geboten-row">
             <span className="pill geboten">✓ {t('bidPlaced', lang)}: {existingBid.price} €</span>
           </div>
         )}
-        <div className="bid-stop"><span className="addr"><MapPin size={13} strokeWidth={1.8} /> {cityCountryOnly(order.pickup_address)}</span></div>
-        <div className="bid-stop"><span className="addr"><FlagTriangleRight size={13} strokeWidth={1.8} /> {cityCountryOnly(order.delivery_address)}</span>{order.km != null && <span className="val">📍 {order.km} km</span>}</div>
 
         {/* Orele alternative, acolo unde se hotărăște prețul.
             Erau afișate doar în cursa deja atribuită — dar firma trebuie să
             le vadă ÎNAINTE de a licita: o ridicare la 15:00 în loc de 11:37
             schimbă dacă o cursă merită sau nu. */}
         {(order.pickup_alt_date || order.delivery_alt_date) && (
-          <div style={{ background: '#FFF6ED', border: '1px solid #FF7A29', borderRadius: 6,
-                        padding: '6px 10px', marginTop: 6, fontSize: 12.5, color: '#E86317', lineHeight: 1.6 }}>
+          <div className="bc-alt">
             {order.pickup_alt_date && (
               <div>
-                ⏰ {t('altPickupLabel', lang)}: {fmtDate(order.pickup_alt_date)}
+                <Clock size={12} strokeWidth={2} /> {t('altPickupLabel', lang)}: {fmtDate(order.pickup_alt_date)}
                 {order.pickup_alt_from ? ` ${fmtTime(order.pickup_alt_from)}${order.pickup_alt_to ? `–${fmtTime(order.pickup_alt_to)}` : ''}` : ''}
               </div>
             )}
             {order.delivery_alt_date && (
               <div>
-                ⏰ {t('altDeliveryLabel', lang)}: {fmtDate(order.delivery_alt_date)}
+                <Clock size={12} strokeWidth={2} /> {t('altDeliveryLabel', lang)}: {fmtDate(order.delivery_alt_date)}
                 {order.delivery_alt_from ? ` ${fmtTime(order.delivery_alt_from)}${order.delivery_alt_to ? `–${fmtTime(order.delivery_alt_to)}` : ''}` : ''}
               </div>
             )}
           </div>
         )}
 
-        <div className="bid-divider" />
-        <div className="bid-zustellung-label">{t('delivery', lang)}</div>
-        <div className="bid-zustellung-val">
-          {order.delivery_fixed ? (
-            <span className="fixed-time-badge">🔒 {t('fixedDeliveryBadge', lang)} · {fmtDate(order.delivery_date)}{order.delivery_time ? ` · ${fmtTime(order.delivery_time)}` : ''}</span>
-          ) : (
-            <>{fmtDate(order.delivery_date)} · {fmtTime(order.delivery_from)}{order.delivery_to ? `–${fmtTime(order.delivery_to)}` : ''}</>
+        <div className="bc-facts">
+          <span className="bc-fact">
+            <FlagTriangleRight size={13} strokeWidth={1.8} />
+            {order.delivery_fixed ? (
+              <span className="fixed-time-badge">{fmtDate(order.delivery_date)}{order.delivery_time ? ` · ${fmtTime(order.delivery_time)}` : ''}</span>
+            ) : (
+              <>{fmtDate(order.delivery_date)}, {fmtTime(order.delivery_from)}{order.delivery_to ? `–${fmtTime(order.delivery_to)}` : ''}</>
+            )}
+          </span>
+          {(order.vehicles || []).length > 0 && (
+            <span className="bc-fact"><Truck size={13} strokeWidth={1.8} /> {order.vehicles.map((v) => v.charAt(0).toUpperCase() + v.slice(1)).join(', ')}</span>
           )}
+          {order.km != null && <span className="bc-fact"><Navigation size={12} strokeWidth={1.8} /> {order.km} km</span>}
+          {order.weight ? <span className="bc-fact"><Layers size={13} strokeWidth={1.8} /> {order.weight} kg</span> : null}
         </div>
 
-        <div className="bid-cargo-row">
-          <VehicleChips vehicles={order.vehicles} />
-          <div className="bid-cargo-meta">
-            {order.weight && <span className="meta-item">⚖ {order.weight} kg</span>}
-            <SemnDovada order={order} lang={lang} />
-            {extractServiceBadges(order.notes).length === 1 && (
-              <SemnServiciu b={extractServiceBadges(order.notes)[0]} lang={lang} />
-            )}
+        {/* Şi înainte de a licita: firma trebuie să ştie în ce intră —
+            marfă ADR, ajutor la încărcare plătit, livrare neutră. */}
+        <SemneServicii order={order} lang={lang} />
+        {(extractServiceBadges(order.notes).length === 1) && (
+          <div className="rc-badges">
+            <SemnServiciu b={extractServiceBadges(order.notes)[0]} lang={lang} />
           </div>
-        </div>
+        )}
+        <div className="rc-badges"><SemnDovada order={order} lang={lang} /></div>
+        <div className="bid-order-mini">{t('orderRef', lang)} {order.order_number || order.id.slice(0, 8)}</div>
       </div>
 
       <div className="bid-card2-body">
         <div className="bid-body-inner">
           {cargoSummary(order) && (
             <div className="shipment-type-row">
-              📦 {cargoSummary(order)}
+              <Package size={13} strokeWidth={1.8} /> {cargoSummary(order)}
             </div>
           )}
           {order.dims && (
-            <div className="bid-extra-row">📐 {order.dims} cm</div>
+            <div className="bid-extra-row"><Ruler size={13} strokeWidth={1.8} /> {order.dims} cm</div>
           )}
           {/* Câţi kilometri sunt până la ridicare: vine din tabelul de coduri
               poştale, nu din geocodări plătite, deci se poate afişa mereu. */}
           {order.distance_km != null && (
-            <div className="bid-extra-row">📍 {t('distanceLabel', lang)}: ca. {order.distance_km} km</div>
+            <div className="bid-extra-row"><Navigation size={12} strokeWidth={1.8} /> {t('distanceLabel', lang)}: ca. {order.distance_km} km</div>
           )}
 
           {extractServiceBadges(order.notes).length > 0 && (
@@ -7870,7 +7885,7 @@ function BidCard({ order, lang, courierProfileId, open, onToggle, onBidPlaced })
 
           {order.flexible_time_notes && (
             <div className="flex-time-note">
-              ⏱ {formatFlexibleTimeNote(order.flexible_time_notes).main}
+              <Clock size={12} strokeWidth={2} /> {formatFlexibleTimeNote(order.flexible_time_notes).main}
             </div>
           )}
 
@@ -8165,12 +8180,12 @@ function ProfileScreen({ session, profile, isOwner, lang, onChangeLang, onProfil
         {isOwner ? t('typeOwnerOperator', lang) : t('typeEmployee', lang)}
       </p>
       <p style={{ fontSize: 13, color: 'var(--text-soft)', marginTop: -8 }}>
-        📧 {session.user.email}
+        <Mail size={14} strokeWidth={1.8} /> {session.user.email}
       </p>
 
       <div style={{ margin: '10px 0 14px' }}>
         <label style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-soft)', display: 'block', marginBottom: 5 }}>
-          📞 {t('phoneLabel', lang)}
+          <Phone size={14} strokeWidth={1.8} /> {t('phoneLabel', lang)}
         </label>
         <div style={{ display: 'flex', gap: 7 }}>
           <input
@@ -8227,7 +8242,7 @@ function ProfileScreen({ session, profile, isOwner, lang, onChangeLang, onProfil
 
       {vehicles.length > 0 && (
         <div className="prof-row">
-          <span>🚐 {t('vehicleLabel', lang)}</span>
+          <span><Truck size={14} strokeWidth={1.8} /> {t('vehicleLabel', lang)}</span>
           <select
             className="vehicle-select"
             value={profile?.vehicle_id || ''}

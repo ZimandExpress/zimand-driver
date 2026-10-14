@@ -2648,3 +2648,198 @@ textarea.bid-input2 {
   .rc-more { animation: rc-reveal .18s ease-out; }
   @keyframes rc-reveal { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
 }
+
+/* ===========================================================================
+   Zimand Driver — strat de design (octombrie 2026).
+   ---------------------------------------------------------------------------
+   Stă la capătul fişierului şi rafinează ce e mai sus, fără să atingă logica:
+   fundal rece şi curat în loc de crem, text în propoziţii (nu MAJUSCULE),
+   butoane liniştite, portocaliul păstrat pentru acţiunea principală şi
+   pentru „azi". Totul se poate întoarce ştergând blocul acesta.
+   =========================================================================== */
+:root {
+  --cream: #F2F4F7;          /* fundalul aplicaţiei */
+  --line: #E1E6EE;
+  --text: #16202E;
+  --text-soft: #5E6B7D;
+  --surface: #FFFFFF;
+  --surface-2: #F7F9FB;
+  --radius: 14px;
+}
+body { -webkit-font-smoothing: antialiased; }
+
+/* Butoane: propoziţie, nu strigăt. */
+.btn, .action-bar .btn {
+  font-family: 'IBM Plex Sans', sans-serif;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 16.5px;
+  font-weight: 600;
+  border-radius: 12px;
+}
+.btn.secondary { border-width: 1px; border-color: #C9D1DD; }
+.btn.danger { border-width: 1px; }
+.sticky-cta {
+  font-size: 17.5px;
+  font-weight: 600;
+  letter-spacing: 0;
+  box-shadow: 0 -1px 0 rgba(15,34,64,.08), 0 -8px 24px rgba(15,34,64,.10);
+}
+.link-btn { text-decoration: none; color: var(--navy); font-weight: 500; padding: 10px 0; }
+.link-btn:active { opacity: .7; }
+
+/* Etichete fără majuscule. */
+.info-card-head, .pod-label, .settings-subheading, .bid-zustellung-label,
+.price-box .lbl, .order-notes-label, .earn-hero .lbl, .ride-stop-label, .ride-badge, .filter-apply {
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* Bara de sus. */
+.topbar, .brand-strip { box-shadow: 0 1px 0 rgba(255,255,255,.06) inset; }
+.topbar .brand-mark, .brand-strip-name { font-size: 19px; letter-spacing: .01em; }
+
+/* Taburile principale: un comutator, nu două linkuri subliniate. */
+.rides-tabs {
+  background: #E6EAF0;
+  border: none;
+  border-radius: 12px;
+  padding: 4px;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+.rides-tab {
+  border: none;
+  border-radius: 9px;
+  padding: 9px 6px;
+  margin: 0;
+  font-size: 14.5px;
+  color: var(--text-soft);
+}
+.rides-tab.active {
+  background: var(--surface);
+  color: var(--navy);
+  box-shadow: 0 1px 2px rgba(15,34,64,.10), 0 1px 1px rgba(15,34,64,.04);
+}
+.rides-tab-count { background: rgba(15,34,64,.08); font-size: 12px; font-weight: 600; padding: 1px 7px; }
+.rides-tab.active .rides-tab-count { background: var(--orange); }
+
+/* Filtru / sortare: mici, discrete. */
+.rides-toolbar { gap: 8px; margin-bottom: 12px; }
+.filter-btn, .sort-btn {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  padding: 7px 14px;
+  font-size: 13.5px;
+  background: var(--surface);
+}
+.rides-toolbar .sort-btn { margin-left: auto; }
+
+/* Carduri de informaţii (ecranul comenzii). */
+.info-card { border-radius: var(--radius); border-color: var(--line); }
+.info-card-head {
+  background: var(--surface-2);
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--navy);
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--line);
+}
+.contact-row { background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; }
+.contact-call {
+  background: var(--surface);
+  color: var(--navy);
+  border: 1px solid #C9D1DD;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 999px;
+}
+.maps-nav-btn { border-radius: 999px; font-weight: 600; letter-spacing: 0; padding: 7px 13px 7px 11px; }
+
+.back-btn {
+  background: transparent;
+  padding: 6px 4px;
+  font-size: 15px;
+  color: var(--navy);
+}
+.back-btn:active { opacity: .6; }
+
+/* Pastile: mai mici, fără Oswald îngroşat. */
+.pill {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  padding: 3px 10px;
+}
+.pill.heute { background: #FFF1E6; color: var(--orange-deep); }
+.pill.morgen { background: #E8EDF5; color: var(--navy); }
+.new-corner {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 11px;
+  letter-spacing: 0;
+  padding: 3px 10px;
+  box-shadow: none;
+}
+
+/* Cardurile de licitaţie, în acelaşi ton cu lista. */
+.bid-card2 { border-radius: var(--radius); }
+.bid-zustellung-label { font-size: 13px; color: var(--text-soft); font-weight: 500; }
+.bid-order-id { font-family: 'IBM Plex Sans', sans-serif; letter-spacing: 0; }
+
+.empty-note { color: var(--text-soft); }
+
+/* Licitaţie: capul cardului, aliniat cu „Meine Aufträge". */
+.bc-grid { display: grid; grid-template-columns: 74px 1fr; gap: 0 14px; }
+.bc-facts { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); font-size: 13.5px; color: var(--text); }
+.bc-fact { display: inline-flex; align-items: center; gap: 5px; }
+.bc-fact svg { color: var(--text-soft); flex: 0 0 auto; }
+.bc-alt { margin-top: 10px; background: #FFF6ED; border: 1px solid #FFD2AE; border-radius: 10px; padding: 7px 10px; font-size: 12.5px; color: #B4501A; line-height: 1.6; }
+.bc-alt svg { vertical-align: -2px; }
+.bid-order-mini { font-family: 'IBM Plex Sans', sans-serif; letter-spacing: 0; font-size: 12px; color: var(--text-soft); margin-top: 10px; }
+.geboten-row { margin-top: 10px; }
+
+/* Filtrele de licitaţie pe două coloane, nu trei casete înalte una sub alta. */
+.radius-filter-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 8px; align-items: end; margin-bottom: 12px; }
+.radius-filter-row .radius-filter-label { grid-column: 1 / -1; font-size: 12.5px; font-weight: 600; color: var(--text-soft); margin: 4px 0 0; }
+.radius-filter-row .radius-filter-label:first-child + select { grid-column: 1 / -1; }
+.radius-filter-row select.doc-type-select { padding: 9px 12px; font-size: 15px; border-radius: 10px; margin: 0; }
+
+/* Ecranul comenzii. */
+.leg-head-left { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 6px; min-width: 0; }
+.leg-head-time { margin-left: 0; font-size: 13.5px; }
+.leg-head-line { padding: 12px 14px; }
+.leg-head-line.en-route { background: #EEF7F2; }
+.leg-done-badge, .leg-en-route-pill { font-weight: 600; }
+.address-text { font-family: 'IBM Plex Sans', sans-serif; font-size: 16px; font-weight: 600; color: var(--text); }
+.contact-text, .contact-phone-line { display: inline-flex; align-items: center; gap: 6px; }
+.contact-text svg { color: var(--text-soft); }
+.leg-notiz { background: var(--surface-2); border: 1px solid var(--line); display: flex; gap: 8px; align-items: flex-start; }
+.leg-notiz svg { flex: 0 0 auto; margin-top: 3px; color: var(--text-soft); }
+.info-note { border: 1px solid #F1DFC2; }
+.live-map { border-radius: var(--radius); }
+.live-map-loading { color: #9AA6B8; }
+.leg-workflow { border-radius: var(--radius); }
+.leg-title, .section-heading, .settings-subheading, .screen-title, .summary-box .route {
+  font-family: 'IBM Plex Sans', sans-serif;
+  letter-spacing: 0;
+}
+.leg-title { font-size: 16px; font-weight: 600; }
+.section-heading { font-size: 16px; }
+.screen-title { font-size: 22px; font-weight: 600; }
+.timer { font-family: 'Oswald', sans-serif; font-weight: 500; font-variant-numeric: tabular-nums; }
+.photo-slot { background: var(--surface-2); border-color: #C9D1DD; }
+.tl-step::before { background: #1F7A50; box-shadow: 0 0 0 1px #1F7A50; }
+.info-card-head svg, .info-row svg { vertical-align: -2px; }
+.pod-label { font-family: 'IBM Plex Sans', sans-serif; font-size: 13.5px; font-weight: 600; color: var(--text-soft); letter-spacing: 0; }
+.doc-add-btn { font-size: 15.5px; font-weight: 600; border-radius: 12px; }
+.ride-detail-header .timer, .ride-detail-header [class*="timer"] { font-family: 'Oswald', sans-serif; }
+
+/* Câştiguri. */
+.earn-hero { background-image: none; background: var(--navy); }
+.earn-hero .lbl, .earn-hero .amt, .earn-hero .row b { font-family: 'IBM Plex Sans', sans-serif; letter-spacing: 0; }
+.earn-hero .amt { font-family: 'Oswald', sans-serif; font-weight: 500; font-variant-numeric: tabular-nums; }
+.hist-item .p { white-space: nowrap; font-family: 'IBM Plex Sans', sans-serif; font-weight: 600; }
+.hist-item .id { font-family: 'IBM Plex Sans', sans-serif; letter-spacing: 0; }
+@media (min-width: 480px) { body { background: #E4E8EE; } }

@@ -2883,3 +2883,7 @@ body { -webkit-font-smoothing: antialiased; }
 .filtru-camp { display: flex; flex-direction: column; gap: 3px; margin: 0; }
 .filtru-camp > span { font-size: 12px; font-weight: 600; color: var(--text-soft, #5E6B7D); }
 .filtru-panou .standort-hint { font-size: 12px; line-height: 1.4; color: var(--text-soft, #5E6B7D); }
+.ort-alegere { display: flex; flex-wrap: wrap; gap: 6px; }
+.ort-chip { margin: 0; width: auto; padding: 4px 10px; font: inherit; font-size: 13px; color: var(--text, #16202E);
+  background: var(--surface-2, #F7F9FB); border: 1px solid var(--line, #E1E6EE); border-radius: 999px; cursor: pointer; }
+.ort-chip.activ { background: var(--navy, #0F2240); border-color: var(--navy, #0F2240); color: #fff; }

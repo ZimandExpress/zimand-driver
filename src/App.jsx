@@ -7421,6 +7421,20 @@ function useDriverLocation(session) {
   return position
 }
 
+// Oraşele pentru fiecare cod poştal german — fişier static, gratuit
+// (date publice GeoNames, CC BY 4.0), încărcat abia când firma deschide
+// filtrul. Nu trece prin Google şi nu e în precache: cine nu umblă la
+// filtru nu-l descarcă niciodată.
+let orasePlzPromise = null
+function incarcaOrasePlz() {
+  if (!orasePlzPromise) {
+    orasePlzPromise = fetch('/plz-orte.json')
+      .then((r) => (r.ok ? r.json() : {}))
+      .catch(() => { orasePlzPromise = null; return {} })
+  }
+  return orasePlzPromise
+}
+
 function BiddingScreen({ profile, session, lang, embedded }) {
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
@@ -7440,6 +7454,7 @@ function BiddingScreen({ profile, session, lang, embedded }) {
   const [standortSalvare, setStandortSalvare] = useState(false)
   const reincarcaRef = useRef(() => {})
   const [filtruDeschis, setFiltruDeschis] = useState(false)
+  const [orasePlz, setOrasePlz] = useState(null)
   const [sursaBaza, setSursaBaza] = useState(null) // 'filtru' | 'depot' | 'plz' | 'telefon' | 'none' | null (necunoscut)
   const courierProfileId = session?.user?.id || null
   const citesteSursa = () => supabase.rpc('courier_base_coords').then(({ data, error }) => {
@@ -7473,6 +7488,28 @@ function BiddingScreen({ profile, session, lang, embedded }) {
       })
     citesteSursa()
   }, [isOwner, courierProfileId])
+
+  useEffect(() => {
+    if (!filtruDeschis || orasePlz) return
+    let activ = true
+    incarcaOrasePlz().then((m) => { if (activ) setOrasePlz(m) })
+    return () => { activ = false }
+  }, [filtruDeschis, orasePlz])
+
+  // Oraşele codului scris acum. Unul singur se completează automat; la mai
+  // multe (un cod poate acoperi câteva comune) firma alege cu o atingere.
+  const oraseCod = plzInput.length === 5 && orasePlz ? String(orasePlz[plzInput] || '').split('|').filter(Boolean) : []
+  const plzNecunoscut = plzInput.length === 5 && orasePlz && Object.keys(orasePlz).length > 0 && !orasePlz[plzInput]
+  useEffect(() => {
+    if (plzInput.length !== 5 || !orasePlz) return
+    const lista = String(orasePlz[plzInput] || '').split('|').filter(Boolean)
+    if (!lista.length) return
+    setOrtInput((cur) => {
+      const c = cur.trim().toLowerCase()
+      if (c && lista.some((o) => o.toLowerCase() === c)) return cur
+      return lista.length === 1 ? lista[0] : ''
+    })
+  }, [plzInput, orasePlz])
 
   // Anunţă restul aplicaţiei (sunetul şi numărul de pe clopoţel) că s-au
   // schimbat filtrele — altfel ar folosi valorile de la deschidere.
@@ -7633,6 +7670,14 @@ function BiddingScreen({ profile, session, lang, embedded }) {
             </button>
           )}
         </form>
+        {oraseCod.length > 1 && (
+          <div className="ort-alegere">
+            {oraseCod.map((o) => (
+              <button type="button" key={o} className={`ort-chip${ortInput === o ? ' activ' : ''}`} onClick={() => setOrtInput(o)}>{o}</button>
+            ))}
+          </div>
+        )}
+        {plzNecunoscut && !standortEroare && <div className="standort-hint standort-err">{t('standortPlzUnknown', lang)}</div>}
         {standortEroare
           ? <div className="standort-hint standort-err">{standortEroare}</div>
           : <div className="standort-hint">

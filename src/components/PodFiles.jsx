@@ -232,7 +232,20 @@ export default function PodFiles({ orderId, leg, lang, maxPhotos = 6, minPhotos 
             <div
               className="cmr-chip"
               key={f.id}
-              onClick={() => (f.status === 'failed' ? retryFile(f.id) : removeFile(f.id))}
+              onClick={() => {
+                // O atingere stergea documentul, pe loc si fara intrebare.
+                //
+                // Aceeasi greseala a fost reparata la poze: acolo o atingere
+                // deschide poza mare, iar stersul e un buton inauntru. La
+                // etichetele documentelor a ramas. Un sofer care voia doar sa
+                // vada ce-a scanat ramanea fara CMR sau fara protocol — iar
+                // poza facuta cu camera din aplicatie nu ajunge in galerie,
+                // deci nu exista nicaieri altundeva.
+                //
+                // Pana la o previzualizare ca la poze, macar intreaba.
+                if (f.status === 'failed') { retryFile(f.id); return }
+                if (window.confirm(t('docDeleteAsk', lang))) removeFile(f.id)
+              }}
             >
               {f.docType === 'cmr' ? t('docTypeCmr', lang)
                 : f.docType === 'zustellprotokoll' ? t('docTypeProtocol', lang)

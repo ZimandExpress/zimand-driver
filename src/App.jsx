@@ -1252,11 +1252,17 @@ function comandaInLucru(order) {
 }
 function statusScurt(order) {
   if (!comandaInLucru(order)) return null
-  if (order.pause_at) return { key: 'pausedLabel', ton: 'pauza' }
+  if (order.pause_at) return { key: 'pausedLabel', ton: 'pauza', familie: 'pauza' }
   const st = operationalStage(order)
   const key = STATUS_SCURT[st.key]
   if (!key) return null
-  return { key, ton: st.moving ? 'drum' : 'loc' }
+  // Fiecare etapă cu culoarea ei, ca să se deosebească dintr-o privire:
+  // ridicarea albastru, livrarea verde, turul/returul mov, pauza galben.
+  // Pe drum eticheta e plină; ajuns la adresă (sau ridicat) e deschisă.
+  const familie = /Return|Stop/.test(st.key) ? 'tur'
+    : /Pickup$|PickupDone$/.test(st.key) && !/ToDelivery|AtDelivery/.test(st.key) ? (st.key === 'stagePickupDone' ? 'ridicat' : 'ridicare')
+    : 'livrare'
+  return { key, ton: st.moving ? 'drum' : 'loc', familie }
 }
 
 function StageProgress({ order, lang }) {
@@ -2112,7 +2118,7 @@ function RideCard({ order, isOwner, lang, onClick, compact }) {
   const stScurt = statusScurt(order)
 
   return (
-    <div className={`rc ${deschis ? 'rc-open' : ''} ${incercareEsuata ? 'rc-failed' : ''} ${stScurt ? 'rc-activ' : ''}`}>
+    <div className={`rc ${deschis ? 'rc-open' : ''} ${incercareEsuata ? 'rc-failed' : ''} ${stScurt ? `rc-activ rc-activ-${stScurt.familie}` : ''}`}>
       {incercareEsuata && (
         <button type="button" className="rc-alert" onClick={onClick}>
           <AlertTriangle size={15} strokeWidth={2} />
@@ -2129,7 +2135,7 @@ function RideCard({ order, isOwner, lang, onClick, compact }) {
           {oraSfarsit && !order.pickup_fixed && <span className="rc-until">{lang === 'en' ? 'until' : 'bis'} {fmtTime(oraSfarsit)}</span>}
           {order.pickup_fixed && <span className="rc-until rc-fixed"><Clock size={11} strokeWidth={2.2} /> {lang === 'en' ? 'fixed' : 'fest'}</span>}
           <span className="rc-day">{today ? t('todayBadge', lang) : tomorrow ? t('tomorrowBadge', lang) : ziua}</span>
-          {stScurt && <span className={`rc-status rc-status-${stScurt.ton}`}>{t(stScurt.key, lang)}</span>}
+          {stScurt && <span className={`rc-status rc-status-${stScurt.ton} rc-f-${stScurt.familie}`}>{t(stScurt.key, lang)}</span>}
         </div>
 
         <div className="rc-route">

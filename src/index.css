@@ -2930,3 +2930,15 @@ body { -webkit-font-smoothing: antialiased; }
 .ghid-video iframe, .ghid-video video { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: #000; }
 .ghid-video-gol { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; background: #EEF1F6; color: #8A96A8; font-size: 13px; font-weight: 600; border: 1px dashed #C9D2DE; }
 .ghid-video-btn { display: inline-flex; align-items: center; gap: 6px; width: auto; margin: 0 0 8px; padding: 7px 12px; background: #FFF6ED; border: 1px solid #FFD2AE; border-radius: 8px; font: inherit; font-size: 13.5px; font-weight: 600; color: #C2551A; cursor: pointer; }
+
+/* Câştigurile în meniu: un rând discret, sumele ascunse până la atingere. */
+.earn-mini { display: flex; align-items: center; gap: 12px; margin: 0 12px 8px; padding: 10px 8px 10px 14px; background: var(--surface-2, #F7F9FB); border: 1px solid var(--line, #E1E6EE); border-radius: 12px; cursor: pointer; }
+.earn-mini.active { border-color: #FFC9A3; background: #FFF6ED; }
+.earn-mini-ic { display: flex; color: var(--navy, #0F2240); opacity: .7; }
+.earn-mini-text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.earn-mini-main { font-size: 14.5px; color: var(--text, #16202E); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.earn-mini-main strong { font-variant-numeric: tabular-nums; }
+.earn-mini-sub { font-size: 12px; color: var(--text-soft, #5E6B7D); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.earn-mini-eye { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; margin: 0; padding: 0; background: none; border: 0; border-radius: 10px; color: var(--text-soft, #5E6B7D); cursor: pointer; }
+.earn-mini-eye:active { background: rgba(15,34,64,.06); }
+.earn-mini-sum { font-size: 17px; font-weight: 700; color: var(--navy, #0F2240); font-variant-numeric: tabular-nums; line-height: 1.25; }

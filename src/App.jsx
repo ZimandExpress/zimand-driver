@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { supabase } from './supabaseClient'
 import { t, getLang, setLang, availableLangs } from './i18n'
-import { Play, ClipboardList, Pause, SlidersHorizontal, Building2, StickyNote, Receipt, Package, Repeat, Hourglass, Camera, Image as ImageIcon, Mail, Ruler, ChevronDown, Lock, Phone, Truck, CheckCircle2, Wallet, User, LogOut, Menu, Bell, MapPin, FlagTriangleRight, Tag, XCircle, Download, X, Navigation, Trophy, ThumbsUp, ArrowUpFromLine, ArrowDownToLine, EyeOff, Layers, AlertTriangle, Clock, FileText, Signature, BookOpen } from 'lucide-react'
+import { Eye, Play, ClipboardList, Pause, SlidersHorizontal, Building2, StickyNote, Receipt, Package, Repeat, Hourglass, Camera, Image as ImageIcon, Mail, Ruler, ChevronDown, Lock, Phone, Truck, CheckCircle2, Wallet, User, LogOut, Menu, Bell, MapPin, FlagTriangleRight, Tag, XCircle, Download, X, Navigation, Trophy, ThumbsUp, ArrowUpFromLine, ArrowDownToLine, EyeOff, Layers, AlertTriangle, Clock, FileText, Signature, BookOpen } from 'lucide-react'
 import './index.css'
 import PodFiles from './components/PodFiles'
 import DocumentCamera from './components/DocumentCamera'
@@ -7571,6 +7571,11 @@ const euroDe = (n) => `${Number(n || 0).toLocaleString('de-DE', { minimumFractio
 function EarningsMenuCard({ profile, open, lang, onClick, active }) {
   const cycle = useBillingCycle(open)
   const totals = useEarningsSummary(profile, open && !!cycle, cycle)
+  // Sumele sunt ascunse până la o atingere pe ochi — cine se uită peste
+  // umărul şoferului nu vede cât a câştigat. La fiecare deschidere a
+  // meniului se ascund din nou.
+  const [vizibil, setVizibil] = useState(false)
+  useEffect(() => { if (!open) setVizibil(false) }, [open])
   // Rândul „Verdienst" din meniu a fost înlocuit de card. Cât timp cardul
   // nu are cifre (se încarcă, sau interogarea a căzut), rămâne rândul —
   // ecranul de câştiguri trebuie să fie mereu la o atingere.
@@ -7581,37 +7586,24 @@ function EarningsMenuCard({ profile, open, lang, onClick, active }) {
       </button>
     )
   }
+  const suma = (n) => (vizibil ? euroDe(n) : '•••• €')
 
   return (
-    <div
-      onClick={onClick}
-      style={{
-        margin: '0 12px 8px', padding: '12px 14px', borderRadius: 12,
-        background: '#0F2240',
-        color: '#fff', cursor: 'pointer',
-      }}
-    >
-      <div style={{ fontSize: 12.5, color: '#9FB3D0' }}>
-        {t(cycle === 'weekly' ? 'earningsWeekLabel' : 'earningsMonthLabel', lang)}
-      </div>
-      <div style={{ fontSize: 26, fontWeight: 700, lineHeight: 1.15, marginTop: 2 }}>
-        {euroDe(totals.month)}
-      </div>
-
-      <div style={{ height: 1, background: 'rgba(255,255,255,.14)', margin: '11px 0 9px' }} />
-
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
-        <span style={{ fontSize: 12.5, color: '#9FB3D0' }}>
-          {t('earningsTodayLabel', lang)}
-        </span>
-        <span style={{ fontSize: 17, fontWeight: 700, color: totals.today > 0 ? '#FF9A55' : '#7D90AC' }}>
-          {euroDe(totals.today)}
-        </span>
-      </div>
-
-      <div style={{ fontSize: 11, color: '#7D90AC', marginTop: 6 }}>
-        {t('earningsRidesCount', lang).replace('{m}', totals.monthCount).replace('{d}', totals.todayCount)}
-      </div>
+    <div className={`earn-mini${active ? ' active' : ''}`} onClick={onClick} role="button" tabIndex={0}>
+      <span className="earn-mini-ic"><Wallet size={18} strokeWidth={1.75} /></span>
+      <span className="earn-mini-text">
+        <span className="earn-mini-sub">{t(cycle === 'weekly' ? 'earningsWeekLabel' : 'earningsMonthLabel', lang)}</span>
+        <strong className="earn-mini-sum">{suma(totals.month)}</strong>
+        <span className="earn-mini-sub">{t('earningsTodayLabel', lang)} {suma(totals.today)}</span>
+      </span>
+      <button
+        type="button"
+        className="earn-mini-eye"
+        aria-label={vizibil ? t('earningsHide', lang) : t('earningsShow', lang)}
+        onClick={(e) => { e.stopPropagation(); setVizibil((v) => !v) }}
+      >
+        {vizibil ? <EyeOff size={18} strokeWidth={1.8} /> : <Eye size={18} strokeWidth={1.8} />}
+      </button>
     </div>
   )
 }

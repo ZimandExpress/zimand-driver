@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { supabase } from './supabaseClient'
 import { t, getLang, setLang, availableLangs } from './i18n'
-import { ClipboardList, Pause, SlidersHorizontal, Building2, StickyNote, Receipt, Package, Repeat, Hourglass, Camera, Image as ImageIcon, Mail, Ruler, ChevronDown, Lock, Phone, Truck, CheckCircle2, Wallet, User, LogOut, Menu, Bell, MapPin, FlagTriangleRight, Tag, XCircle, Download, X, Navigation, Trophy, ThumbsUp, ArrowUpFromLine, ArrowDownToLine, EyeOff, Layers, AlertTriangle, Clock, FileText, Signature, BookOpen } from 'lucide-react'
+import { Play, ClipboardList, Pause, SlidersHorizontal, Building2, StickyNote, Receipt, Package, Repeat, Hourglass, Camera, Image as ImageIcon, Mail, Ruler, ChevronDown, Lock, Phone, Truck, CheckCircle2, Wallet, User, LogOut, Menu, Bell, MapPin, FlagTriangleRight, Tag, XCircle, Download, X, Navigation, Trophy, ThumbsUp, ArrowUpFromLine, ArrowDownToLine, EyeOff, Layers, AlertTriangle, Clock, FileText, Signature, BookOpen } from 'lucide-react'
 import './index.css'
 import PodFiles from './components/PodFiles'
 import DocumentCamera from './components/DocumentCamera'
@@ -7134,10 +7134,45 @@ const esteAscuns = (g, faza) => {
   try { return Number(localStorage.getItem(cheieAscuns(g.key, faza))) >= Number(g.version || 1) } catch { return false }
 }
 
+// Video-ul unei instrucţiuni: YouTube (link obişnuit sau „nelistat") sau un
+// fişier urcat de dispecerat. Fără video: un ecran gol cu „Video folgt",
+// ca locul să existe deja şi şoferul să ştie că vine.
+function idYoutube(url) {
+  const m = String(url || '').match(/(?:youtu\.be\/|youtube(?:-nocookie)?\.com\/(?:watch\?(?:.*&)?v=|shorts\/|embed\/))([A-Za-z0-9_-]{6,})/)
+  return m ? m[1] : null
+}
+function VideoGhid({ url, lang, gol = true }) {
+  if (!url) {
+    if (!gol) return null
+    return (
+      <div className="ghid-video ghid-video-gol">
+        <Play size={26} strokeWidth={1.8} />
+        <span>{t('guideVideoSoon', lang)}</span>
+      </div>
+    )
+  }
+  const yt = idYoutube(url)
+  return (
+    <div className="ghid-video">
+      {yt ? (
+        <iframe
+          src={`https://www.youtube-nocookie.com/embed/${yt}?rel=0&playsinline=1`}
+          title="Video"
+          allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+          allowFullScreen
+        />
+      ) : (
+        <video src={url} controls playsInline preload="metadata" />
+      )}
+    </div>
+  )
+}
+
 // Fişa automată, la „Losfahren" sau „Angekommen": doar ghidurile care se
 // potrivesc comenzii şi care n-au fost ascunse la versiunea curentă.
 function GhidSheet({ ghiduri, faza, lang, onClose }) {
   const [ascunde, setAscunde] = useState(false)
+  const [video, setVideo] = useState(null)
   const inchide = () => {
     if (ascunde) {
       ghiduri.forEach((g) => { try { localStorage.setItem(cheieAscuns(g.key, faza), String(g.version || 1)) } catch { /* nimic */ } })
@@ -7153,6 +7188,9 @@ function GhidSheet({ ghiduri, faza, lang, onClose }) {
         {ghiduri.map((g) => (
           <div key={g.key} className="ghid-bloc">
             <div className="ghid-titlu">{titluGhid(g, lang)}</div>
+            {g.video_url && (video === g.key
+              ? <VideoGhid url={g.video_url} lang={lang} />
+              : <button type="button" className="ghid-video-btn" onClick={() => setVideo(g.key)}><Play size={15} strokeWidth={2.2} /> {t('guideWatchVideo', lang)}</button>)}
             <ol className="ghid-pasi">
               {pasiGhid(g, faza, lang).map((p, i) => <li key={i}>{p}</li>)}
             </ol>
@@ -7186,11 +7224,13 @@ function AnleitungenScreen({ lang }) {
         return (
           <div key={g.key} className="ghid-card">
             <button type="button" className="ghid-card-head" onClick={() => setDeschis(e ? null : g.key)} aria-expanded={e}>
-              <span>{titluGhid(g, lang)}</span>
+              <span style={{ flex: 1 }}>{titluGhid(g, lang)}</span>
+              {g.video_url && <Play size={15} strokeWidth={2.2} style={{ color: '#C2551A' }} />}
               <ChevronDown size={18} strokeWidth={2} style={{ transform: e ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }} />
             </button>
             {e && (
               <div className="ghid-card-body">
+                <VideoGhid url={g.video_url} lang={lang} />
                 {faze.map((f) => {
                   const pasi = pasiGhid(g, f, lang)
                   if (!pasi.length) return null

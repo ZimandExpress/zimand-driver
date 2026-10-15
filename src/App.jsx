@@ -1230,6 +1230,35 @@ function StageBadge({ order, lang, style }) {
   )
 }
 
+// Statusul scurt din coloana stângă a cardului din listă. Apare doar când
+// şoferul a apăsat deja ceva pe comandă (a pornit, a ajuns, a ridicat, a pus
+// pauză); o comandă neîncepută rămâne curată, fără nicio etichetă.
+// Textele sunt variantele scurte ale etapelor din detaliu, ca să încapă în
+// coloana de 74 px fără să împingă cardul.
+const STATUS_SCURT = {
+  stageToPickup: 'stShortToPickup', stageAtPickup: 'stShortAtPickup', stagePickupDone: 'stShortPickedUp',
+  stageToDelivery: 'stShortToDelivery', stageAtDelivery: 'stShortAtDelivery',
+  stageReturnReady: 'stShortReturnReady', stageReturnToPickup: 'stShortReturnToPickup', stageReturnAtPickup: 'stShortReturnAtPickup',
+  stageReturnPickupDone: 'stShortReturnPickedUp', stageReturnToDelivery: 'stShortReturnToDelivery', stageReturnAtDelivery: 'stShortReturnAtDelivery',
+  stageStopReady: 'stShortStopReady', stageToStop: 'stShortToStop', stageAtStop: 'stShortAtStop',
+}
+function comandaInLucru(order) {
+  if (!order || order.status !== 'assigned') return false
+  if (order.pause_at) return true
+  return tourLegSequence(order).some((e) => {
+    const f = legFacts(order, e)
+    return !!(f.startedAt || f.arrivedAt || f.confirmedAt || f.failedAt)
+  })
+}
+function statusScurt(order) {
+  if (!comandaInLucru(order)) return null
+  if (order.pause_at) return { key: 'pausedLabel', ton: 'pauza' }
+  const st = operationalStage(order)
+  const key = STATUS_SCURT[st.key]
+  if (!key) return null
+  return { key, ton: st.moving ? 'drum' : 'loc' }
+}
+
 function StageProgress({ order, lang }) {
   const p = stageProgress(order)
   if (!p || p.done === 0) return null
@@ -1902,7 +1931,11 @@ function RidesScreen({ profile, isOwner, session, lang }) {
   // Cele care urmează, sus: după ziua ŞI ora ridicării. Doar după zi, două
   // curse din aceeaşi zi ieşeau în ordinea în care au intrat în bază.
   const cheieRidicare = (o) => `${o.pickup_date || '9999-99-99'} ${String((o.pickup_fixed ? o.pickup_time : o.pickup_from) || o.pickup_time || '99:99').slice(0, 5)}`
+  // Cea la care şoferul lucrează acum (pornit, ajuns, ridicat, pe drum,
+  // pauză) stă mereu prima; restul urmează după ziua şi ora ridicării.
   const sortedActive = [...activeOrders].sort((a, b) => {
+    const la = comandaInLucru(a) ? 0 : 1, lb = comandaInLucru(b) ? 0 : 1
+    if (la !== lb) return la - lb
     const x = cheieRidicare(a), y = cheieRidicare(b)
     return sortAsc ? x.localeCompare(y) : y.localeCompare(x)
   })
@@ -2076,9 +2109,10 @@ function RideCard({ order, isOwner, lang, onClick, compact }) {
     return `${d.toLocaleDateString(lang === 'en' ? 'en-GB' : 'de-DE', { weekday: 'short' }).replace('.', '')} ${zz}`
   })()
   const opriri = tourStops(order)
+  const stScurt = statusScurt(order)
 
   return (
-    <div className={`rc ${deschis ? 'rc-open' : ''} ${incercareEsuata ? 'rc-failed' : ''}`}>
+    <div className={`rc ${deschis ? 'rc-open' : ''} ${incercareEsuata ? 'rc-failed' : ''} ${stScurt ? 'rc-activ' : ''}`}>
       {incercareEsuata && (
         <button type="button" className="rc-alert" onClick={onClick}>
           <AlertTriangle size={15} strokeWidth={2} />
@@ -2095,6 +2129,7 @@ function RideCard({ order, isOwner, lang, onClick, compact }) {
           {oraSfarsit && !order.pickup_fixed && <span className="rc-until">{lang === 'en' ? 'until' : 'bis'} {fmtTime(oraSfarsit)}</span>}
           {order.pickup_fixed && <span className="rc-until rc-fixed"><Clock size={11} strokeWidth={2.2} /> {lang === 'en' ? 'fixed' : 'fest'}</span>}
           <span className="rc-day">{today ? t('todayBadge', lang) : tomorrow ? t('tomorrowBadge', lang) : ziua}</span>
+          {stScurt && <span className={`rc-status rc-status-${stScurt.ton}`}>{t(stScurt.key, lang)}</span>}
         </div>
 
         <div className="rc-route">

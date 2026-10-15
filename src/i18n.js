@@ -347,6 +347,11 @@ const translations = {
     // --- Operative Auftragsphasen ---
     stepLabel: 'Schritt',
     stageAssigned: 'Auftrag erhalten',
+    stShortToPickup: 'Zur Abholung', stShortAtPickup: 'An Abholung', stShortPickedUp: 'Abgeholt',
+    stShortToDelivery: 'Zur Zustellung', stShortAtDelivery: 'An Zustellung',
+    stShortReturnReady: 'Rückfahrt', stShortReturnToPickup: 'Rückfahrt: zur Abholung', stShortReturnAtPickup: 'Rückfahrt: an Abholung',
+    stShortReturnPickedUp: 'Rückfahrt: abgeholt', stShortReturnToDelivery: 'Rückfahrt: zur Zustellung', stShortReturnAtDelivery: 'Rückfahrt: an Zustellung',
+    stShortStopReady: 'Nächster Stopp', stShortToStop: 'Zum Stopp', stShortAtStop: 'Am Stopp',
     stageToPickup: 'Unterwegs zur Abholung',
     stageAtPickup: 'An Abholung angekommen',
     stepOpenLabel: 'Weiter zum Nachweis',
@@ -903,6 +908,11 @@ const translations = {
     // --- Operational order stages ---
     stepLabel: 'Step',
     stageAssigned: 'Order received',
+    stShortToPickup: 'To pickup', stShortAtPickup: 'At pickup', stShortPickedUp: 'Picked up',
+    stShortToDelivery: 'To delivery', stShortAtDelivery: 'At delivery',
+    stShortReturnReady: 'Return', stShortReturnToPickup: 'Return: to pickup', stShortReturnAtPickup: 'Return: at pickup',
+    stShortReturnPickedUp: 'Return: picked up', stShortReturnToDelivery: 'Return: to delivery', stShortReturnAtDelivery: 'Return: at delivery',
+    stShortStopReady: 'Next stop', stShortToStop: 'To stop', stShortAtStop: 'At stop',
     stageToPickup: 'On the way to pickup',
     stageAtPickup: 'Arrived at pickup',
     stepOpenLabel: 'Continue to proof',

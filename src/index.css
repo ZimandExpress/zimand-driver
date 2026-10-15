@@ -2597,6 +2597,21 @@ textarea.bid-input2 {
 .rc-until { font-size: 12px; color: var(--text-soft); margin-top: 4px; display: inline-flex; align-items: center; gap: 3px; }
 .rc-fixed { color: var(--navy); font-weight: 600; }
 .rc-day { font-size: 12.5px; color: var(--text); margin-top: 6px; font-weight: 500; white-space: nowrap; }
+/* Statusul comenzii la care se lucrează: sub zi, în coloana orei. */
+.rc-status {
+  align-self: flex-start; max-width: calc(100% + 10px); margin: 7px -10px 0 -2px; padding: 3px 5px; border-radius: 6px;
+  font-size: 10.5px; font-weight: 700; line-height: 1.25; letter-spacing: -.005em;
+  background: #FFF1E6; color: var(--orange-deep);
+}
+.rc-status-drum::before {
+  content: ''; display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+  background: currentColor; margin-right: 4px; vertical-align: 1px; animation: rc-puls 1.6s ease-in-out infinite;
+}
+.rc-status-loc { background: #E8F1FB; color: var(--navy); }
+.rc-status-pauza { background: #EEF0F3; color: #5A6878; }
+@keyframes rc-puls { 50% { opacity: .3; } }
+@media (prefers-reduced-motion: reduce) { .rc-status-drum::before { animation: none; } }
+.rc.rc-activ { box-shadow: inset 3px 0 0 var(--orange); }
 
 .rc-route { position: relative; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
 /* Linia traseului: din punctul de plecare până în cel de sosire, nici mai

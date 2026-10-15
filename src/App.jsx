@@ -532,6 +532,14 @@ function AgbGateDriver({ session, setari, lang, onAccepted }) {
   )
 }
 
+// „Andrei Zimbrean" → „AZ"; o adresă de e-mail → primele două litere.
+function initialeMeniu(nume) {
+  const curat = String(nume || '').split('@')[0].replace(/[^\p{L}\s.-]/gu, ' ').trim()
+  const parti = curat.split(/[\s.-]+/).filter(Boolean)
+  if (!parti.length) return 'Z'
+  return ((parti[0][0] || '') + (parti.length > 1 ? parti[parti.length - 1][0] : (parti[0][1] || ''))).toUpperCase()
+}
+
 function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) {
   const [tab, setTab] = useState('curse')
   const [menuOpen, setMenuOpen] = useState(false)
@@ -825,8 +833,15 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
            mai sus decât ecranul. */
       <div className={`menu-overlay ${menuOpen ? 'show' : ''}`} onClick={(e) => { if (e.target === e.currentTarget) setMenuOpen(false) }}>
         <div className="menu-drawer">
+          {/* Antetul spune cine e conectat, nu doar numele aplicaţiei — pe un
+              telefon folosit de mai mulţi şoferi, asta se verifică întâi. */}
           <div className="menu-header">
-            <span className="live-dot" /><span className="menu-header-name">Zimand Express</span>
+            <span className="menu-avatar">{initialeMeniu(profile?.name || session?.user?.email)}</span>
+            <span className="menu-who">
+              <span className="menu-who-name">{profile?.name || 'Zimand Express'}</span>
+              <span className="menu-who-sub"><span className="live-dot" /> {isOwner ? t('menuAccountCompany', lang) : t('menuAccountDriver', lang)}</span>
+            </span>
+            <button type="button" className="menu-close" aria-label="Schließen" onClick={() => setMenuOpen(false)}><X size={20} strokeWidth={2} /></button>
           </div>
 
           {isOwner && (

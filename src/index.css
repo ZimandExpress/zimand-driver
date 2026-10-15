@@ -2942,3 +2942,23 @@ body { -webkit-font-smoothing: antialiased; }
 .earn-mini-eye { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; margin: 0; padding: 0; background: none; border: 0; border-radius: 10px; color: var(--text-soft, #5E6B7D); cursor: pointer; }
 .earn-mini-eye:active { background: rgba(15,34,64,.06); }
 .earn-mini-sum { font-size: 17px; font-weight: 700; color: var(--navy, #0F2240); font-variant-numeric: tabular-nums; line-height: 1.25; }
+
+/* ——— Meniul, rafinat ———
+   Lăţime puţin mai mare, antet cu cine e conectat, rânduri cu evidenţiere
+   rotunjită în loc de bara de pe margine, grupul de jos mai aerisit. */
+.menu-drawer { width: 296px; max-width: 86vw; padding: 14px 0 12px; }
+.menu-header { display: flex; align-items: center; gap: 12px; padding: 4px 14px 14px 18px; margin-bottom: 10px; border-bottom: 1px solid var(--line); }
+.menu-avatar { flex: 0 0 40px; width: 40px; height: 40px; border-radius: 50%; background: var(--navy, #0F2240); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 14.5px; font-weight: 700; letter-spacing: .02em; }
+.menu-who { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.menu-who-name { font-size: 15px; font-weight: 700; color: var(--navy, #0F2240); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.menu-who-sub { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text-soft); }
+.menu-who-sub .live-dot { width: 7px; height: 7px; margin: 0; }
+.menu-close { flex: 0 0 auto; width: 36px; height: 36px; margin: 0; padding: 0; display: flex; align-items: center; justify-content: center; background: none; border: 0; border-radius: 10px; color: var(--text-soft); cursor: pointer; }
+.menu-close:active { background: rgba(15,34,64,.06); }
+.menu-item { margin: 1px 10px; padding: 11px 12px; border-radius: 10px; font-size: 15.5px; border-right: 0; gap: 14px; }
+.menu-item.active { background: #FFF1E6; border-right: 0; color: var(--navy, #0F2240); font-weight: 600; }
+.menu-item.active .ic { color: #E8631A; opacity: 1; }
+.menu-item.mic { margin: 0 10px; padding: 9px 12px; font-size: 14.5px; }
+.menu-group-title { margin: 8px 0 2px; padding: 14px 22px 6px; }
+.earn-mini { margin: 0 10px 10px; }
+.menu-item.logout { color: #B03A3A; }

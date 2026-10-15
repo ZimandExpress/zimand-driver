@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { supabase } from './supabaseClient'
 import { t, getLang, setLang, availableLangs } from './i18n'
-import { Pause, SlidersHorizontal, Building2, StickyNote, Receipt, Package, Repeat, Hourglass, Camera, Image as ImageIcon, Mail, Ruler, ChevronDown, Lock, Phone, Truck, CheckCircle2, Wallet, User, LogOut, Menu, Bell, MapPin, FlagTriangleRight, Tag, XCircle, Download, X, Navigation, Trophy, ThumbsUp, ArrowUpFromLine, ArrowDownToLine, EyeOff, Layers, AlertTriangle, Clock, FileText, Signature, BookOpen } from 'lucide-react'
+import { ClipboardList, Pause, SlidersHorizontal, Building2, StickyNote, Receipt, Package, Repeat, Hourglass, Camera, Image as ImageIcon, Mail, Ruler, ChevronDown, Lock, Phone, Truck, CheckCircle2, Wallet, User, LogOut, Menu, Bell, MapPin, FlagTriangleRight, Tag, XCircle, Download, X, Navigation, Trophy, ThumbsUp, ArrowUpFromLine, ArrowDownToLine, EyeOff, Layers, AlertTriangle, Clock, FileText, Signature, BookOpen } from 'lucide-react'
 import './index.css'
 import PodFiles from './components/PodFiles'
 import DocumentCamera from './components/DocumentCamera'
@@ -805,6 +805,7 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
         {tab === 'castiguri' && isOwner && <EarningsScreen profile={profile} lang={lang} />}
         {tab === 'fahrzeuge' && <VehiclesScreen session={session} isOwner={isOwner} lang={lang} />}
         {tab === 'legenda' && <LegendaScreen lang={lang} />}
+        {tab === 'anleitungen' && <AnleitungenScreen lang={lang} />}
         {tab === 'profil' && (
           <ProfileScreen
             session={session}
@@ -864,6 +865,9 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
               sus rămân numai cele patru ecrane de lucru. */}
           <div style={{ marginTop: 'auto' }}>
           <div className="menu-group-title">{t('menuGroupAccountHelp', lang)}</div>
+          <button className={`menu-item mic ${tab === 'anleitungen' ? 'active' : ''}`} onClick={() => navTo('anleitungen')}>
+            <span className="ic"><ClipboardList size={17} strokeWidth={1.75} /></span>{t('menuGuides', lang)}
+          </button>
           <button className={`menu-item mic ${tab === 'fahrzeuge' ? 'active' : ''}`} onClick={() => navTo('fahrzeuge')}>
             <span className="ic"><Truck size={17} strokeWidth={1.75} /></span>{t('menuVehicles', lang)}
           </button>
@@ -5079,6 +5083,10 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
     onStatusChange(field, null)
   }
 
+  // Instrucţiunile pentru comanda asta, la plecare şi la sosire.
+  const ghiduriToate = useDriverGuides()
+  const [ghidFaza, setGhidFaza] = useState(null) // 'start' | 'pickup' | 'delivery' | null
+
   // Pauza: local imediat după salvare, apoi de la server.
   // undefined = ce spune comanda; null = reluată; obiect = pauză nouă.
   const [pauzaLocala, setPauzaLocala] = useState(undefined)
@@ -5138,6 +5146,7 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
       const field = campEtapa(pas)
       onStatusChange(field)
       setUndoable({ field, at: Date.now() })
+      setGhidFaza(pas === 'started' ? 'start' : (esteLivrareEtapa ? 'delivery' : 'pickup'))
     }
   }
 
@@ -5705,10 +5714,24 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
   // derula sau apăsa butoane), chiar și după revenirea la comandă.
   useEffect(() => {}, [arrivedAt])
 
+  // Calculat aici, după ce sunt cunoscute tipul dovezii (CMR / semnătură),
+  // nu sus: acelea se declară mai jos în componentă.
+  const ghidChei = () => order.is_document_delivery
+    ? ['doc_standard', 'zustellprotokoll', ...(order.boten_confirmation ? ['boten'] : [])]
+    : ['ware', ...(cereDocument ? ['cmr'] : cereSemnatura ? ['signatur'] : [])]
+  const ghiduriFaza = ghidFaza
+    ? ghidChei().map((k) => ghiduriToate.find((g) => g.key === k))
+        .filter((g) => g && pasiGhid(g, ghidFaza, lang).length && !esteAscuns(g, ghidFaza))
+    : []
+  const ghidSheet = ghidFaza && ghiduriFaza.length ? (
+    <GhidSheet ghiduri={ghiduriFaza} faza={ghidFaza} lang={lang} onClose={() => setGhidFaza(null)} />
+  ) : null
+
   if (!startedAt) {
     return (
       <>
         {undoBlock}
+        {ghidSheet}
         {pauzaBlock}
         {/* Butonul spune încotro. La un tur cu douăzeci de opriri, „Losfahren"
             singur nu-i spune şoferului nimic: toate cardurile arată la fel,
@@ -5724,6 +5747,7 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
     return (
       <>
         {undoBlock}
+        {ghidSheet}
         {pauzaBlock}
         {pauzaSheet}
         {!pauza && (
@@ -5891,6 +5915,7 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
   return (
     <div className="leg-workflow">
       {undoBlock}
+      {ghidSheet}
       {waitingBlock}
 
       {/* Declaraţia de predare, anunţată din capul etapei.
@@ -7067,6 +7092,121 @@ function RandLegenda({ semn, titlu, text }) {
         <div style={{ fontSize: 14, fontWeight: 700, color: '#0F2240', lineHeight: 1.35 }}>{titlu}</div>
         <div style={{ fontSize: 12.5, color: '#6B7A90', lineHeight: 1.55, marginTop: 2 }}>{text}</div>
       </div>
+    </div>
+  )
+}
+
+// ——— Anleitungen (instrucţiuni pentru şofer) ———
+//
+// Textul stă în baza de date (driver_guides), ca dispeceratul să-l poată
+// schimba şi să-i pună linkuri fără o versiune nouă a aplicaţiei. Telefonul
+// păstrează ultima copie, ca fişele să apară şi fără semnal.
+const CHEIE_GHIDURI = 'zd-guides'
+function citesteGhiduriSalvate() {
+  try { return JSON.parse(localStorage.getItem(CHEIE_GHIDURI) || 'null') } catch { return null }
+}
+let ghiduriPromise = null
+function useDriverGuides() {
+  const [ghiduri, setGhiduri] = useState(() => citesteGhiduriSalvate() || [])
+  useEffect(() => {
+    let activ = true
+    if (!ghiduriPromise) {
+      ghiduriPromise = supabase.from('driver_guides').select('*').eq('active', true).order('sort')
+        .then(({ data, error }) => {
+          if (error || !data) { ghiduriPromise = null; return null }
+          try { localStorage.setItem(CHEIE_GHIDURI, JSON.stringify(data)) } catch { /* fără spaţiu */ }
+          return data
+        })
+    }
+    ghiduriPromise.then((d) => { if (activ && d) setGhiduri(d) })
+    return () => { activ = false }
+  }, [])
+  return ghiduri
+}
+const pasiGhid = (g, faza, lang) => {
+  const en = lang === 'en'
+  const lista = (en ? g?.[`${faza}_en`] : null)
+  return (lista && lista.length ? lista : g?.[`${faza}_de`]) || []
+}
+const titluGhid = (g, lang) => (lang === 'en' && g?.title_en) || g?.title_de || ''
+const cheieAscuns = (key, faza) => `zd-ghid-ascuns:${key}:${faza}`
+const esteAscuns = (g, faza) => {
+  try { return Number(localStorage.getItem(cheieAscuns(g.key, faza))) >= Number(g.version || 1) } catch { return false }
+}
+
+// Fişa automată, la „Losfahren" sau „Angekommen": doar ghidurile care se
+// potrivesc comenzii şi care n-au fost ascunse la versiunea curentă.
+function GhidSheet({ ghiduri, faza, lang, onClose }) {
+  const [ascunde, setAscunde] = useState(false)
+  const inchide = () => {
+    if (ascunde) {
+      ghiduri.forEach((g) => { try { localStorage.setItem(cheieAscuns(g.key, faza), String(g.version || 1)) } catch { /* nimic */ } })
+    }
+    onClose()
+  }
+  const titluFaza = t(faza === 'start' ? 'guidePhaseStart' : faza === 'pickup' ? 'guidePhasePickup' : 'guidePhaseDelivery', lang)
+  return (
+    <div className="sig-fullscreen" style={{ justifyContent: 'flex-end', background: 'rgba(15,34,64,.55)', zIndex: 9990 }}>
+      <div style={{ background: '#fff', borderRadius: '16px 16px 0 0', padding: '20px 20px calc(20px + env(safe-area-inset-bottom))', maxHeight: '88vh', overflowY: 'auto' }}>
+        <div style={{ fontSize: 12.5, fontWeight: 600, color: '#5A6878', marginBottom: 2 }}>{titluFaza}</div>
+        <div style={{ fontSize: 18, fontWeight: 700, color: '#0F2240', marginBottom: 12 }}>{t('guideSheetTitle', lang)}</div>
+        {ghiduri.map((g) => (
+          <div key={g.key} className="ghid-bloc">
+            <div className="ghid-titlu">{titluGhid(g, lang)}</div>
+            <ol className="ghid-pasi">
+              {pasiGhid(g, faza, lang).map((p, i) => <li key={i}>{p}</li>)}
+            </ol>
+            {g.url && (
+              <a className="ghid-link" href={g.url} target="_blank" rel="noreferrer">{t('guideOpen', lang)} ↗</a>
+            )}
+          </div>
+        ))}
+        <label className="ghid-ascunde">
+          <input type="checkbox" checked={ascunde} onChange={(e) => setAscunde(e.target.checked)} />
+          {t('guideDontShow', lang)}
+        </label>
+        <button type="button" className="btn" style={{ width: '100%', margin: '12px 0 0' }} onClick={inchide}>{t('guideUnderstood', lang)}</button>
+      </div>
+    </div>
+  )
+}
+
+// Ecranul din meniu: toate instrucţiunile, cu toate fazele, oricând.
+function AnleitungenScreen({ lang }) {
+  const ghiduri = useDriverGuides()
+  const [deschis, setDeschis] = useState(null)
+  const faze = ['start', 'pickup', 'delivery']
+  return (
+    <div style={{ padding: '4px 2px 28px' }}>
+      <h2 className="screen-title">{t('menuGuides', lang)}</h2>
+      <p style={{ fontSize: 13.5, color: 'var(--text-soft)', margin: '0 0 14px', lineHeight: 1.5 }}>{t('guidesIntro', lang)}</p>
+      {ghiduri.length === 0 && <div className="empty-note">{t('guidesEmpty', lang)}</div>}
+      {ghiduri.map((g) => {
+        const e = deschis === g.key
+        return (
+          <div key={g.key} className="ghid-card">
+            <button type="button" className="ghid-card-head" onClick={() => setDeschis(e ? null : g.key)} aria-expanded={e}>
+              <span>{titluGhid(g, lang)}</span>
+              <ChevronDown size={18} strokeWidth={2} style={{ transform: e ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }} />
+            </button>
+            {e && (
+              <div className="ghid-card-body">
+                {faze.map((f) => {
+                  const pasi = pasiGhid(g, f, lang)
+                  if (!pasi.length) return null
+                  return (
+                    <div key={f} style={{ marginBottom: 10 }}>
+                      <div className="ghid-faza">{t(f === 'start' ? 'guidePhaseStart' : f === 'pickup' ? 'guidePhasePickup' : 'guidePhaseDelivery', lang)}</div>
+                      <ol className="ghid-pasi">{pasi.map((p, i) => <li key={i}>{p}</li>)}</ol>
+                    </div>
+                  )
+                })}
+                {g.url && <a className="ghid-link" href={g.url} target="_blank" rel="noreferrer">{t('guideOpen', lang)} ↗</a>}
+              </div>
+            )}
+          </div>
+        )
+      })}
     </div>
   )
 }

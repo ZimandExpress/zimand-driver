@@ -857,8 +857,13 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
             </button>
           )}
 
-          {/* Restul, mai mic, pe grupe. „Verdienst" e cardul de sus. */}
-          <div className="menu-group-title">{t('menuGroupCompany', lang)}</div>
+          {/* Grupul de jos, lipit de baza panoului. „marginTop: auto" pus
+              doar pe linia despărţitoare nu împingea nimic atunci când
+              panoul se poate derula — trebuie pe întreg grupul. */}
+          {/* Grupul de jos: contul şi ajutorul, lipite de baza panoului —
+              sus rămân numai cele patru ecrane de lucru. */}
+          <div style={{ marginTop: 'auto' }}>
+          <div className="menu-group-title">{t('menuGroupAccountHelp', lang)}</div>
           <button className={`menu-item mic ${tab === 'fahrzeuge' ? 'active' : ''}`} onClick={() => navTo('fahrzeuge')}>
             <span className="ic"><Truck size={17} strokeWidth={1.75} /></span>{t('menuVehicles', lang)}
           </button>
@@ -866,7 +871,6 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
             <span className="ic"><User size={17} strokeWidth={1.75} /></span>{t('tabProfile', lang)}
           </button>
 
-          <div className="menu-group-title">{t('menuGroupHelp', lang)}</div>
           <button className={`menu-item mic ${tab === 'legenda' ? 'active' : ''}`} onClick={() => navTo('legenda')}>
             <span className="ic"><BookOpen size={17} strokeWidth={1.75} /></span>{t('menuLegend', lang)}
           </button>
@@ -883,10 +887,6 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
             <span className="ic"><WhatsAppIcon size={17} /></span>{t('menuDispatch', lang)}
           </a>
 
-          {/* Grupul de jos, lipit de baza panoului. „marginTop: auto" pus
-              doar pe linia despărţitoare nu împingea nimic atunci când
-              panoul se poate derula — trebuie pe întreg grupul. */}
-          <div style={{ marginTop: 'auto' }}>
           <div className="menu-divider" />
 
           <button className="menu-item mic logout" onClick={() => supabase.auth.signOut()}>

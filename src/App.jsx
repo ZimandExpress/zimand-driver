@@ -5354,7 +5354,15 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
   // soferul n-o poate implini in curte, pe ploaie, nu produce sase poze: il
   // opreste din confirmat. Trei e pragul sub care dovada nu mai spune nimic;
   // restul raman scrise ca indrumare, cu numele lor, deasupra casutelor.
-  const MINIM_POZE_LIVRARE = 3
+  // Cate poze sunt obligatorii la livrarea de documente.
+  //
+  // Nu mai e un singur numar pentru toate. La predarea in mana exista un om
+  // care confirma primirea, deci o poza ajunge. La cutia postala nu exista
+  // nimeni: singura dovada ca plicul a ajuns unde trebuie sunt fotografiile
+  // — cladirea, numele de pe cutie, plicul pe jumatate introdus, plicul
+  // inauntru. De-aia acolo se cer patru, si se recomanda sase.
+  const MINIM_POZE_PERSONAL = 1
+  const MINIM_POZE_CUTIE = 4
   const POZE_RECOMANDATE = 6
   const [notitaPlecare, setNotitaPlecare] = useState(false)
   const [regulileDeschise, setRegulileDeschise] = useState(false)
@@ -5400,7 +5408,9 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
   // condiţii asemănătoare dar nu identice — iar când nu se potriveau,
   // șoferul rămânea cu un buton stins și o listă care nu-i cerea nimic.
   const minimPoze = isDocumentDelivery
-    ? (esteLivrareEtapa ? MINIM_POZE_LIVRARE : 1)
+    ? (esteLivrareEtapa
+        ? (deliveryMethod === 'briefkasten' ? MINIM_POZE_CUTIE : MINIM_POZE_PERSONAL)
+        : 1)
     : (esteLivrareEtapa ? 2 : 1)
 
   // La ridicarea unei curse de documente pleacă două formulare: protocolul
@@ -6107,13 +6117,95 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
       <AltCapat order={order} lang={lang} spreLivrare={!esteLivrareEtapa} />
 
 
+      {/* Dokumentenzustellung: cum a fost predat documentul.
+          Protocolul pe hârtie rămâne dovada oficială — șoferul îl are tipărit
+          și îl completează cu pixul. Dar modul de livrare trebuie să existe și
+          ca informație în sistem, altfel se vede doar deschizând PDF-ul scanat.
+
+          Diferența practică: la Briefkasten nu există cui să semneze, deci nu
+          mai cerem semnătură și nume. Dovada sunt fotografiile. */}
+      {isDocumentDeliveryLeg && (
+        <>
+          <div className="pod-label">{t('deliveryMethodLabel', lang)}</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
+            {[
+              { id: 'briefkasten', key: 'deliveryMethodBriefkasten', note: 'deliveryMethodBriefkastenNote' },
+              { id: 'persoenlich', key: 'deliveryMethodPersoenlich', note: 'deliveryMethodPersoenlichNote' },
+            ].map((m) => {
+              const active = deliveryMethod === m.id
+              return (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => setDeliveryMethod(m.id)}
+                  style={{
+                    width: '100%', textAlign: 'left', cursor: 'pointer',
+                    background: active ? '#FFF6ED' : '#fff',
+                    border: `2px solid ${active ? '#FF7A29' : '#D8DEE8'}`,
+                    borderRadius: 10, padding: '13px 15px',
+                  }}
+                >
+                  <div style={{ fontSize: 15, fontWeight: 700, color: active ? '#B35A12' : '#0F2240' }}>
+                    {active ? '● ' : '○ '}{t(m.key, lang)}
+                  </div>
+                  <div style={{ fontSize: 12, color: '#6B7A90', marginTop: 3, lineHeight: 1.45 }}>
+                    {t(m.note, lang)}
+                  </div>
+                  {/* Condiţia care face predarea în cutie admisibilă, scrisă
+                      chiar pe opţiune — nu într-un document de la instructaj. */}
+                  {m.id === 'persoenlich' && (
+                    <div style={{
+                      fontSize: 12, color: '#1B6E43', background: '#F3FBF6',
+                      border: '1px solid #BFE8CF', borderRadius: 7,
+                      padding: '7px 9px', marginTop: 7, lineHeight: 1.5, fontWeight: 600,
+                    }}>
+                      <Signature size={14} strokeWidth={1.8} /> {t('persoenlichCondition', lang)}
+                    </div>
+                  )}
+                  {m.id === 'briefkasten' && (
+                    <div style={{
+                      fontSize: 12, color: '#B35A12', background: '#FFF6ED',
+                      border: '1px solid #FFD2AE', borderRadius: 7,
+                      padding: '7px 9px', marginTop: 7, lineHeight: 1.5, fontWeight: 600,
+                    }}>
+                      ⚠ {t('briefkastenCondition', lang)}
+                    </div>
+                  )}
+                </button>
+              )
+            })}
+            <button
+              type="button"
+              onClick={() => setIncidentBlocking(true)}
+              disabled={!!blockingIncident}
+              style={{
+                width: '100%', textAlign: 'left',
+                cursor: blockingIncident ? 'not-allowed' : 'pointer',
+                opacity: blockingIncident ? 0.5 : 1,
+                background: '#fff', border: '1px solid #E4A296', borderRadius: 10,
+                padding: '13px 15px', fontSize: 14.5, fontWeight: 600, color: '#B23A24',
+              }}
+            >
+              ⚠ {t('deliveryMethodImpossible', lang)}
+              <div style={{ fontSize: 12, color: '#6B7A90', marginTop: 3, fontWeight: 400, lineHeight: 1.45 }}>
+                {t('deliveryMethodImpossibleNote', lang)}
+              </div>
+            </button>
+          </div>
+        </>
+      )}
+
       {/* Cate sunt cerute si cate ajuta. Scris langa casute, nu doar in
           butonul stins de jos. */}
       {esteEtapaLivrareDoc && (
         <div style={{ fontSize: 12.5, color: '#6B7A90', lineHeight: 1.5, margin: '0 0 8px' }}>
-          {t('photosMinRecommended', lang)
-            .replace('{min}', String(MINIM_POZE_LIVRARE))
-            .replace('{rec}', String(POZE_RECOMANDATE))}
+          {deliveryMethod === 'briefkasten'
+            ? t('photosMinRecommended', lang)
+                .replace('{min}', String(minimPoze))
+                .replace('{rec}', String(POZE_RECOMANDATE))
+            : deliveryMethod === 'persoenlich'
+              ? t('photosMinOnly', lang).replace('{min}', String(minimPoze))
+              : t('photosAfterMethod', lang)}
         </div>
       )}
 
@@ -6208,84 +6300,6 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
         </div>
       )}
 
-      {/* Dokumentenzustellung: cum a fost predat documentul.
-          Protocolul pe hârtie rămâne dovada oficială — șoferul îl are tipărit
-          și îl completează cu pixul. Dar modul de livrare trebuie să existe și
-          ca informație în sistem, altfel se vede doar deschizând PDF-ul scanat.
-
-          Diferența practică: la Briefkasten nu există cui să semneze, deci nu
-          mai cerem semnătură și nume. Dovada sunt fotografiile. */}
-      {isDocumentDeliveryLeg && (
-        <>
-          <div className="pod-label">{t('deliveryMethodLabel', lang)}</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
-            {[
-              { id: 'briefkasten', key: 'deliveryMethodBriefkasten', note: 'deliveryMethodBriefkastenNote' },
-              { id: 'persoenlich', key: 'deliveryMethodPersoenlich', note: 'deliveryMethodPersoenlichNote' },
-            ].map((m) => {
-              const active = deliveryMethod === m.id
-              return (
-                <button
-                  key={m.id}
-                  type="button"
-                  onClick={() => setDeliveryMethod(m.id)}
-                  style={{
-                    width: '100%', textAlign: 'left', cursor: 'pointer',
-                    background: active ? '#FFF6ED' : '#fff',
-                    border: `2px solid ${active ? '#FF7A29' : '#D8DEE8'}`,
-                    borderRadius: 10, padding: '13px 15px',
-                  }}
-                >
-                  <div style={{ fontSize: 15, fontWeight: 700, color: active ? '#B35A12' : '#0F2240' }}>
-                    {active ? '● ' : '○ '}{t(m.key, lang)}
-                  </div>
-                  <div style={{ fontSize: 12, color: '#6B7A90', marginTop: 3, lineHeight: 1.45 }}>
-                    {t(m.note, lang)}
-                  </div>
-                  {/* Condiţia care face predarea în cutie admisibilă, scrisă
-                      chiar pe opţiune — nu într-un document de la instructaj. */}
-                  {m.id === 'persoenlich' && (
-                    <div style={{
-                      fontSize: 12, color: '#1B6E43', background: '#F3FBF6',
-                      border: '1px solid #BFE8CF', borderRadius: 7,
-                      padding: '7px 9px', marginTop: 7, lineHeight: 1.5, fontWeight: 600,
-                    }}>
-                      <Signature size={14} strokeWidth={1.8} /> {t('persoenlichCondition', lang)}
-                    </div>
-                  )}
-                  {m.id === 'briefkasten' && (
-                    <div style={{
-                      fontSize: 12, color: '#B35A12', background: '#FFF6ED',
-                      border: '1px solid #FFD2AE', borderRadius: 7,
-                      padding: '7px 9px', marginTop: 7, lineHeight: 1.5, fontWeight: 600,
-                    }}>
-                      ⚠ {t('briefkastenCondition', lang)}
-                    </div>
-                  )}
-                </button>
-              )
-            })}
-            <button
-              type="button"
-              onClick={() => setIncidentBlocking(true)}
-              disabled={!!blockingIncident}
-              style={{
-                width: '100%', textAlign: 'left',
-                cursor: blockingIncident ? 'not-allowed' : 'pointer',
-                opacity: blockingIncident ? 0.5 : 1,
-                background: '#fff', border: '1px solid #E4A296', borderRadius: 10,
-                padding: '13px 15px', fontSize: 14.5, fontWeight: 600, color: '#B23A24',
-              }}
-            >
-              ⚠ {t('deliveryMethodImpossible', lang)}
-              <div style={{ fontSize: 12, color: '#6B7A90', marginTop: 3, fontWeight: 400, lineHeight: 1.45 }}>
-                {t('deliveryMethodImpossibleNote', lang)}
-              </div>
-            </button>
-          </div>
-        </>
-      )}
-
       {/* La Briefkasten nu are cine semna — nu cerem nume și semnătură. */}
       {!(isDocumentDeliveryLeg && deliveryMethod === 'briefkasten') && (
       <>
@@ -6344,6 +6358,9 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
 
       {(() => {
         const lipsa = []
+        // Intai felul livrarii, pe urma pozele: de el depinde cate sunt
+        // cerute, deci lista trebuie sa ceara in aceeasi ordine ca ecranul.
+        if (isDocumentDeliveryLeg && !deliveryMethod) lipsa.push(t('missingMethod', lang))
         if (fileSummary.photoCount < minimPoze) {
           lipsa.push(minimPoze > 1
             ? t('missingPhotosMin', lang)
@@ -6359,7 +6376,6 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
             lang,
           ))
         }
-        if (isDocumentDeliveryLeg && !deliveryMethod) lipsa.push(t('missingMethod', lang))
         if (numeCerut && !signerName.trim()) {
           lipsa.push(t(esteLivrareEtapa ? 'missingSigner' : 'missingSignerPickup', lang))
         }

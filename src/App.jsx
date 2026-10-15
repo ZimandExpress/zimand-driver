@@ -1250,6 +1250,31 @@ function comandaInLucru(order) {
     return !!(f.startedAt || f.arrivedAt || f.confirmedAt || f.failedAt)
   })
 }
+// Etapa la care se lucrează ACUM: şoferul e pe drum spre ea sau a ajuns şi
+// n-a confirmat încă. Doar astea urcă primele în listă; o comandă ridicată
+// azi cu livrarea mâine îşi aşteaptă rândul după ora livrării.
+function etapaInDesfasurare(order) {
+  if (!order || order.status !== 'assigned' || order.pause_at) return false
+  const f = legFacts(order, currentLegEntry(order))
+  return !!(f && f.startedAt && !f.confirmedAt && !f.failedAt)
+}
+// Ora şi ziua care contează pe card: ale etapei curente. Înainte de ridicare
+// e fereastra de ridicare; după ridicare, cea de livrare (sau a opririi
+// următoare la tur). Fără dată pe etapa curentă rămânem la ridicare.
+function ferestraCurenta(order) {
+  const ridicare = {
+    date: order.pickup_date, from: order.pickup_fixed ? order.pickup_time : order.pickup_from,
+    to: order.pickup_fixed ? null : order.pickup_to, fixed: !!order.pickup_fixed, etapa: 'pickup',
+  }
+  if (order.status !== 'assigned') return ridicare
+  const f = legFacts(order, currentLegEntry(order))
+  if (!f || f.key === 'pickup' || !f.date) return ridicare
+  return {
+    date: f.date, from: f.timeFixed ? f.timeAt : f.timeFrom,
+    to: f.timeFixed ? null : f.timeTo, fixed: !!f.timeFixed, etapa: f.kind === 'pickup' ? 'pickup' : 'delivery',
+  }
+}
+
 function statusScurt(order) {
   if (!comandaInLucru(order)) return null
   if (order.pause_at) return { key: 'pausedLabel', ton: 'pauza', familie: 'pauza' }
@@ -1936,11 +1961,16 @@ function RidesScreen({ profile, isOwner, session, lang }) {
 
   // Cele care urmează, sus: după ziua ŞI ora ridicării. Doar după zi, două
   // curse din aceeaşi zi ieşeau în ordinea în care au intrat în bază.
-  const cheieRidicare = (o) => `${o.pickup_date || '9999-99-99'} ${String((o.pickup_fixed ? o.pickup_time : o.pickup_from) || o.pickup_time || '99:99').slice(0, 5)}`
-  // Cea la care şoferul lucrează acum (pornit, ajuns, ridicat, pe drum,
-  // pauză) stă mereu prima; restul urmează după ziua şi ora ridicării.
+  // Cheia de sortare e ora etapei curente: înainte de ridicare ora ridicării,
+  // după ridicare ora livrării — o marfă ridicată azi şi livrată mâine stă
+  // printre cursele de mâine, nu în capul listei.
+  const cheieRidicare = (o) => {
+    const w = ferestraCurenta(o)
+    return `${w.date || '9999-99-99'} ${String(w.from || '99:99').slice(0, 5)}`
+  }
+  // Doar comanda la care şoferul e pe drum sau a ajuns la adresă stă prima.
   const sortedActive = [...activeOrders].sort((a, b) => {
-    const la = comandaInLucru(a) ? 0 : 1, lb = comandaInLucru(b) ? 0 : 1
+    const la = etapaInDesfasurare(a) ? 0 : 1, lb = etapaInDesfasurare(b) ? 0 : 1
     if (la !== lb) return la - lb
     const x = cheieRidicare(a), y = cheieRidicare(b)
     return sortAsc ? x.localeCompare(y) : y.localeCompare(x)
@@ -2100,17 +2130,20 @@ function RideCard({ order, isOwner, lang, onClick, compact }) {
     )
   }
 
-  const today = isToday(order.pickup_date)
-  const tomorrow = isTomorrow(order.pickup_date)
+  // Ora mare din stânga: fereastra etapei curente — a ridicării până la
+  // ridicare, apoi a livrării (după ce marfa e încărcată, ora de ridicare
+  // nu-i mai spune nimic şoferului).
+  const fereastra = ferestraCurenta(order)
+  const today = isToday(fereastra.date)
+  const tomorrow = isTomorrow(fereastra.date)
   const incercareEsuata = order.status === 'assigned' && order.delivery_attempt_open
 
-  // Ora mare din stânga: începutul ferestrei de ridicare (sau ora fixă).
-  const oraStart = order.pickup_fixed ? order.pickup_time : order.pickup_from
-  const oraSfarsit = order.pickup_to
+  const oraStart = fereastra.from
+  const oraSfarsit = fereastra.to
   const ziua = (() => {
-    if (!order.pickup_date) return ''
-    const d = new Date(order.pickup_date)
-    if (isNaN(d.getTime())) return fmtDate(order.pickup_date)
+    if (!fereastra.date) return ''
+    const d = new Date(fereastra.date)
+    if (isNaN(d.getTime())) return fmtDate(fereastra.date)
     const zz = `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.`
     return `${d.toLocaleDateString(lang === 'en' ? 'en-GB' : 'de-DE', { weekday: 'short' }).replace('.', '')} ${zz}`
   })()
@@ -2132,8 +2165,8 @@ function RideCard({ order, isOwner, lang, onClick, compact }) {
       <button type="button" className="rc-main" onClick={() => setDeschis((v) => !v)} aria-expanded={deschis}>
         <div className="rc-when">
           <span className={`rc-time ${today ? 'rc-today' : ''}`}>{oraStart ? fmtTime(oraStart) : '—'}</span>
-          {oraSfarsit && !order.pickup_fixed && <span className="rc-until">{lang === 'en' ? 'until' : 'bis'} {fmtTime(oraSfarsit)}</span>}
-          {order.pickup_fixed && <span className="rc-until rc-fixed"><Clock size={11} strokeWidth={2.2} /> {lang === 'en' ? 'fixed' : 'fest'}</span>}
+          {oraSfarsit && !fereastra.fixed && <span className="rc-until">{lang === 'en' ? 'until' : 'bis'} {fmtTime(oraSfarsit)}</span>}
+          {fereastra.fixed && <span className="rc-until rc-fixed"><Clock size={11} strokeWidth={2.2} /> {lang === 'en' ? 'fixed' : 'fest'}</span>}
           <span className="rc-day">{today ? t('todayBadge', lang) : tomorrow ? t('tomorrowBadge', lang) : ziua}</span>
           {stScurt && <span className={`rc-status rc-status-${stScurt.ton} rc-f-${stScurt.familie}`}>{t(stScurt.key, lang)}</span>}
         </div>

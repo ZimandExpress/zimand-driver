@@ -762,7 +762,7 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
               fontSize: 15.5, fontWeight: 800, lineHeight: 1.4,
               color: stareLocatie === 'denied' || stareLocatie === 'unsupported' ? '#B23A24' : '#B35A12',
             }}>
-              \ud83d\udccd {t(stareLocatie === 'denied' || stareLocatie === 'unsupported' ? 'locBlockedTitle' : 'locUnavailableTitle', lang)}
+              <MapPin size={15} style={{ verticalAlign: -2, marginRight: 5 }} />{t(stareLocatie === 'denied' || stareLocatie === 'unsupported' ? 'locBlockedTitle' : 'locUnavailableTitle', lang)}
             </div>
             <div style={{
               fontSize: 13.5, marginTop: 5, lineHeight: 1.55,
@@ -3742,7 +3742,7 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
               fontSize: 14.5, fontWeight: 800, lineHeight: 1.35,
               color: cmr ? '#B35A12' : '#1B6E43',
             }}>
-              {cmr ? '\ud83d\udcc4 ' : '\u270d\ufe0f '}
+              {cmr ? <FileText size={15} style={{ verticalAlign: -2, marginRight: 5 }} /> : <Signature size={15} style={{ verticalAlign: -2, marginRight: 5 }} />}
               {t(cmr ? 'requireCmrTitle' : 'requireSignatureTitle', lang)}
             </div>
             <div style={{
@@ -6026,7 +6026,7 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
           borderRadius: 10, padding: '11px 13px', marginBottom: 12,
         }}>
           <div style={{ fontSize: 14.5, fontWeight: 800, lineHeight: 1.35, color: '#B35A12' }}>
-            \ud83d\udcdd {t('botenRequiredTitle', lang)}
+            <ClipboardList size={15} style={{ verticalAlign: -2, marginRight: 5 }} />{t('botenRequiredTitle', lang)}
           </div>
           <div style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 3, color: '#8A5A16' }}>
             {t('botenRequiredNote', lang)}
@@ -6046,7 +6046,7 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
             fontSize: 14.5, fontWeight: 800, lineHeight: 1.35,
             color: cereDocument ? '#B35A12' : '#1B6E43',
           }}>
-            {cereDocument ? '\ud83d\udcc4 ' : '\u270d\ufe0f '}
+            {cereDocument ? <FileText size={15} style={{ verticalAlign: -2, marginRight: 5 }} /> : <Signature size={15} style={{ verticalAlign: -2, marginRight: 5 }} />}
             {t(cereDocument ? 'requireCmrTitle' : 'requireSignatureTitle', lang)}
           </div>
           <div style={{

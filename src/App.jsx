@@ -5152,6 +5152,74 @@ function ZustellartInfo({ order, lang, compact }) {
   )
 }
 
+// ——— Informarea la ridicarea cu Botenbestätigung ———
+//
+// Apare o dată, imediat după „Angekommen" la o ridicare cu declaraţia
+// cumpărată, ÎNAINTE de pagina de ridicare. Scurtă: ce trebuie făcut cu
+// formularul şi unde se urcă. Şoferul poate alege limba (limbile din Europa),
+// ca să înţeleagă sigur; butoanele aplicaţiei rămân în germană / engleză,
+// de aceea numele secţiunii „Dokument hinzufügen" rămâne în germană în text.
+// Cerut de Andrei pe 17.10.2026.
+const BOTEN_INFO_LIMBI = [
+  ['de', 'Deutsch', 'Abholung mit Botenbestätigung', ['Der Auftraggeber hat für diese Abholung die Botenbestätigung gebucht.', 'Füllen Sie das Formular gemeinsam mit dem Absender aus und prüfen Sie die Angaben. Beide unterschreiben.', 'Danach das unterschriebene Formular unter „Dokument hinzufügen“ hochladen (mind. 1 Foto). Ohne das Formular lässt sich die Abholung nicht abschließen.'], 'Verstanden'],
+  ['en', 'English', 'Pickup with courier confirmation', ['For this pickup the client has booked the courier confirmation (Botenbestätigung).', 'Fill in the form together with the sender and check the details. Both of you sign.', 'Then upload the signed form under “Dokument hinzufügen” (at least 1 photo). Without the form the pickup cannot be completed.'], 'Understood'],
+  ['ro', 'Română', 'Ridicare cu Botenbestätigung', ['Pentru această ridicare, clientul a comandat confirmarea de predare (Botenbestätigung).', 'Completați formularul împreună cu expeditorul și verificați datele. Semnați amândoi.', 'Apoi încărcați formularul semnat la „Dokument hinzufügen” (minimum 1 fotografie). Fără formular, ridicarea nu poate fi finalizată.'], 'Am înțeles'],
+  ['pl', 'Polski', 'Odbiór z potwierdzeniem kuriera', ['Do tego odbioru zleceniodawca zamówił potwierdzenie kuriera (Botenbestätigung).', 'Wypełnij formularz razem z nadawcą i sprawdź dane. Podpisujecie oboje.', 'Następnie prześlij podpisany formularz w sekcji „Dokument hinzufügen” (co najmniej 1 zdjęcie). Bez formularza odbioru nie można zakończyć.'], 'Rozumiem'],
+  ['bg', 'Български', 'Вземане с потвърждение на куриера', ['За това вземане възложителят е поръчал потвърждение на куриера (Botenbestätigung).', 'Попълнете формуляра заедно с подателя и проверете данните. И двамата подписвате.', 'След това качете подписания формуляр в „Dokument hinzufügen“ (поне 1 снимка). Без формуляра вземането не може да бъде завършено.'], 'Разбрах'],
+  ['hu', 'Magyar', 'Átvétel futár-igazolással', ['Ehhez az átvételhez a megrendelő futár-igazolást (Botenbestätigung) rendelt.', 'Töltse ki az űrlapot a feladóval együtt, és ellenőrizze az adatokat. Mindketten aláírják.', 'Ezután töltse fel az aláírt űrlapot a „Dokument hinzufügen” részben (legalább 1 fotó). Az űrlap nélkül az átvétel nem zárható le.'], 'Értettem'],
+  ['cs', 'Čeština', 'Vyzvednutí s potvrzením kurýra', ['K tomuto vyzvednutí si zadavatel objednal potvrzení kurýra (Botenbestätigung).', 'Vyplňte formulář společně s odesílatelem a zkontrolujte údaje. Podepíšete oba.', 'Poté nahrajte podepsaný formulář v části „Dokument hinzufügen“ (alespoň 1 fotografie). Bez formuláře nelze vyzvednutí dokončit.'], 'Rozumím'],
+  ['sk', 'Slovenčina', 'Vyzdvihnutie s potvrdením kuriéra', ['K tomuto vyzdvihnutiu si objednávateľ objednal potvrdenie kuriéra (Botenbestätigung).', 'Vyplňte formulár spolu s odosielateľom a skontrolujte údaje. Podpíšete obaja.', 'Potom nahrajte podpísaný formulár v časti „Dokument hinzufügen“ (aspoň 1 fotografia). Bez formulára nie je možné vyzdvihnutie dokončiť.'], 'Rozumiem'],
+  ['hr', 'Hrvatski', 'Preuzimanje s potvrdom kurira', ['Za ovo preuzimanje naručitelj je naručio potvrdu kurira (Botenbestätigung).', 'Ispunite obrazac zajedno s pošiljateljem i provjerite podatke. Potpisujete oboje.', 'Zatim učitajte potpisani obrazac pod „Dokument hinzufügen” (najmanje 1 fotografija). Bez obrasca preuzimanje se ne može završiti.'], 'Razumijem'],
+  ['sr', 'Srpski', 'Preuzimanje sa potvrdom kurira', ['Za ovo preuzimanje naručilac je naručio potvrdu kurira (Botenbestätigung).', 'Popunite obrazac zajedno sa pošiljaocem i proverite podatke. Potpisujete oboje.', 'Zatim otpremite potpisani obrazac pod „Dokument hinzufügen“ (najmanje 1 fotografija). Bez obrasca preuzimanje ne može da se završi.'], 'Razumem'],
+  ['sl', 'Slovenščina', 'Prevzem s potrdilom kurirja', ['Za ta prevzem je naročnik naročil potrdilo kurirja (Botenbestätigung).', 'Obrazec izpolnite skupaj s pošiljateljem in preverite podatke. Podpišeta oba.', 'Nato podpisani obrazec naložite pod „Dokument hinzufügen“ (vsaj 1 fotografija). Brez obrazca prevzema ni mogoče zaključiti.'], 'Razumem'],
+  ['sq', 'Shqip', 'Marrje me konfirmim të korrierit', ['Për këtë marrje, porositësi ka rezervuar konfirmimin e korrierit (Botenbestätigung).', 'Plotësoni formularin së bashku me dërguesin dhe kontrolloni të dhënat. Nënshkruani të dy.', 'Pastaj ngarkoni formularin e nënshkruar te „Dokument hinzufügen” (të paktën 1 foto). Pa formularin, marrja nuk mund të përfundojë.'], 'E kuptova'],
+  ['uk', 'Українська', 'Забір із підтвердженням кур’єра', ['Для цього забору замовник замовив підтвердження кур’єра (Botenbestätigung).', 'Заповніть форму разом з відправником і перевірте дані. Підписуєте обидва.', 'Потім завантажте підписану форму в розділі «Dokument hinzufügen» (щонайменше 1 фото). Без форми забір не можна завершити.'], 'Зрозуміло'],
+  ['ru', 'Русский', 'Забор с подтверждением курьера', ['Для этого забора заказчик заказал подтверждение курьера (Botenbestätigung).', 'Заполните форму вместе с отправителем и проверьте данные. Подписываете оба.', 'Затем загрузите подписанную форму в разделе «Dokument hinzufügen» (минимум 1 фото). Без формы забор нельзя завершить.'], 'Понятно'],
+  ['tr', 'Türkçe', 'Kurye onaylı teslim alma', ['Bu teslim alma için müşteri kurye onayını (Botenbestätigung) sipariş etti.', 'Formu gönderici ile birlikte doldurun ve bilgileri kontrol edin. İkiniz de imzalayın.', 'Ardından imzalı formu „Dokument hinzufügen” bölümüne yükleyin (en az 1 fotoğraf). Form olmadan teslim alma tamamlanamaz.'], 'Anladım'],
+  ['it', 'Italiano', 'Ritiro con conferma del corriere', ['Per questo ritiro il committente ha prenotato la conferma del corriere (Botenbestätigung).', 'Compilate il modulo insieme al mittente e verificate i dati. Firmate entrambi.', 'Poi caricate il modulo firmato in „Dokument hinzufügen” (almeno 1 foto). Senza il modulo il ritiro non può essere completato.'], 'Ho capito'],
+  ['es', 'Español', 'Recogida con confirmación del mensajero', ['Para esta recogida, el cliente ha contratado la confirmación del mensajero (Botenbestätigung).', 'Rellene el formulario junto con el remitente y compruebe los datos. Firman ambos.', 'Después suba el formulario firmado en «Dokument hinzufügen» (mínimo 1 foto). Sin el formulario no se puede completar la recogida.'], 'Entendido'],
+  ['fr', 'Français', 'Enlèvement avec confirmation du coursier', ['Pour cet enlèvement, le donneur d’ordre a réservé la confirmation du coursier (Botenbestätigung).', 'Remplissez le formulaire avec l’expéditeur et vérifiez les informations. Vous signez tous les deux.', 'Ensuite, téléchargez le formulaire signé dans « Dokument hinzufügen » (au moins 1 photo). Sans le formulaire, l’enlèvement ne peut pas être finalisé.'], 'Compris'],
+  ['pt', 'Português', 'Recolha com confirmação do estafeta', ['Para esta recolha, o cliente reservou a confirmação do estafeta (Botenbestätigung).', 'Preencha o formulário juntamente com o remetente e verifique os dados. Ambos assinam.', 'Depois carregue o formulário assinado em «Dokument hinzufügen» (pelo menos 1 foto). Sem o formulário, a recolha não pode ser concluída.'], 'Entendi'],
+  ['nl', 'Nederlands', 'Ophalen met koeriersbevestiging', ['Voor deze ophaling heeft de opdrachtgever de koeriersbevestiging (Botenbestätigung) geboekt.', 'Vul het formulier samen met de afzender in en controleer de gegevens. U tekent allebei.', 'Upload daarna het ondertekende formulier onder „Dokument hinzufügen” (minimaal 1 foto). Zonder het formulier kan de ophaling niet worden afgerond.'], 'Begrepen'],
+  ['el', 'Ελληνικά', 'Παραλαβή με επιβεβαίωση κούριερ', ['Για αυτή την παραλαβή ο πελάτης έχει κλείσει την επιβεβαίωση κούριερ (Botenbestätigung).', 'Συμπληρώστε το έντυπο μαζί με τον αποστολέα και ελέγξτε τα στοιχεία. Υπογράφετε και οι δύο.', 'Στη συνέχεια ανεβάστε το υπογεγραμμένο έντυπο στο «Dokument hinzufügen» (τουλάχιστον 1 φωτογραφία). Χωρίς το έντυπο η παραλαβή δεν μπορεί να ολοκληρωθεί.'], 'Κατάλαβα'],
+  ['lt', 'Lietuvių', 'Paėmimas su kurjerio patvirtinimu', ['Šiam paėmimui užsakovas užsakė kurjerio patvirtinimą (Botenbestätigung).', 'Užpildykite formą kartu su siuntėju ir patikrinkite duomenis. Pasirašote abu.', 'Tada įkelkite pasirašytą formą skiltyje „Dokument hinzufügen“ (bent 1 nuotrauka). Be formos paėmimo užbaigti negalima.'], 'Supratau'],
+  ['lv', 'Latviešu', 'Saņemšana ar kurjera apstiprinājumu', ['Šai saņemšanai pasūtītājs ir pasūtījis kurjera apstiprinājumu (Botenbestätigung).', 'Aizpildiet veidlapu kopā ar sūtītāju un pārbaudiet datus. Parakstāties abi.', 'Pēc tam augšupielādējiet parakstīto veidlapu sadaļā „Dokument hinzufügen” (vismaz 1 fotoattēls). Bez veidlapas saņemšanu nevar pabeigt.'], 'Sapratu'],
+]
+
+function BotenInfoSheet({ lang, onClose }) {
+  const [limba, setLimba] = useState(() => {
+    try { return localStorage.getItem('zd-boten-info-limba') || lang || 'de' } catch { return lang || 'de' }
+  })
+  const rand = BOTEN_INFO_LIMBI.find((x) => x[0] === limba) || BOTEN_INFO_LIMBI[0]
+  const [, , titlu, pasi, buton] = rand
+  const alege = (v) => {
+    setLimba(v)
+    try { localStorage.setItem('zd-boten-info-limba', v) } catch { /* nimic */ }
+  }
+  return (
+    <div className="sig-fullscreen" style={{ justifyContent: 'flex-end', background: 'rgba(15,34,64,.55)', zIndex: 9991 }}>
+      <div style={{ background: '#fff', borderRadius: '16px 16px 0 0', padding: '20px 20px calc(20px + env(safe-area-inset-bottom))', maxHeight: '88vh', overflowY: 'auto' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 10 }}>
+          <div style={{ fontSize: 18, fontWeight: 800, color: '#B35A12', lineHeight: 1.3 }}>
+            <ClipboardList size={18} style={{ verticalAlign: -3, marginRight: 6 }} />{titlu}
+          </div>
+        </div>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#5A6878', marginBottom: 12 }}>
+          🌐
+          <select value={rand[0]} onChange={(e) => alege(e.target.value)}
+            style={{ flex: 1, padding: '9px 10px', borderRadius: 8, border: '1px solid #C9D1DD', fontSize: 15, background: '#fff', color: '#0F2240' }}>
+            {BOTEN_INFO_LIMBI.map(([cod, nume]) => <option key={cod} value={cod}>{nume}</option>)}
+          </select>
+        </label>
+        <ol style={{ margin: 0, paddingLeft: 20, fontSize: 15.5, lineHeight: 1.55, color: '#0F2240' }}>
+          {pasi.map((p, i) => <li key={i} style={{ marginBottom: 8 }}>{p}</li>)}
+        </ol>
+        <button type="button" className="btn" style={{ width: '100%', margin: '14px 0 0' }} onClick={onClose}>{buton}</button>
+      </div>
+    </div>
+  )
+}
+
 function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatusChange, isOwner, onDeliveryComplete, profile, onStopFailed, onDeliveryFailed }) {
   const [busy, setBusy] = useState(false)
   const [fileSummary, setFileSummary] = useState({ total: 0, allDone: false, failed: 0, pending: 0, processing: 0, photoCount: 0, documentCount: 0 })
@@ -5421,6 +5489,15 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
   // distanţă. Poziţia se măsoară şi se salvează în continuare.
   const distanta = useDistantaFataDe(tintaEtapei, isDocumentDelivery && !order.proximity_check_off)
   const [avertismentDistanta, setAvertismentDistanta] = useState(null)
+  // Informarea despre Botenbestätigung: văzută o dată pe etapă (ţinută pe telefon).
+  const cheieBotenInfo = `zd-boten-info:${order.id}:${leg}`
+  const [botenInfoVazut, setBotenInfoVazut] = useState(() => {
+    try { return localStorage.getItem(cheieBotenInfo) === '1' } catch { return false }
+  })
+  const inchideBotenInfo = () => {
+    try { localStorage.setItem(cheieBotenInfo, '1') } catch { /* nimic */ }
+    setBotenInfoVazut(true)
+  }
   // Întrebarea de la ridicarea documentelor: „Ai Zustellprotokoll-ul la tine?"
   // null = închisă, 'ask' = întrebarea, 'lipsa' = cere-l de la expeditor.
   const [zpIntrebare, setZpIntrebare] = useState(null)
@@ -5916,7 +5993,8 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
   // Calculat aici, după ce sunt cunoscute tipul dovezii (CMR / semnătură),
   // nu sus: acelea se declară mai jos în componentă.
   const ghidChei = () => order.is_document_delivery
-    ? ['doc_standard', 'zustellprotokoll', ...(order.boten_confirmation ? ['boten'] : [])]
+    // La ridicare, Botenbestätigung are informarea ei proprie (BotenInfoSheet).
+    ? ['doc_standard', 'zustellprotokoll', ...(order.boten_confirmation && ghidFaza !== 'pickup' ? ['boten'] : [])]
     : ['ware', ...(cereDocument ? ['cmr'] : cereSemnatura ? ['signatur'] : [])]
   const ghiduriFaza = ghidFaza
     ? ghidChei().map((k) => ghiduriToate.find((g) => g.key === k))
@@ -6114,25 +6192,12 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
   return (
     <div className="leg-workflow">
       {undoBlock}
-      {ghidSheet}
+      {/* La ridicarea cu Botenbestätigung, întâi informarea (cu alegerea
+          limbii), apoi — după „Verstanden" — restul. Caseta portocalie
+          „Botenbestätigung erforderlich" din capul paginii a fost scoasă:
+          informarea o înlocuieşte. */}
+      {cereBoten && !botenInfoVazut ? <BotenInfoSheet lang={lang} onClose={inchideBotenInfo} /> : ghidSheet}
       {waitingBlock}
-
-      {/* Declaraţia de predare, anunţată din capul etapei.
-          E plătită de client, deci nu e o formalitate pe care şoferul o poate
-          sări: fără ea, serviciul s-a vândut şi nu s-a livrat. */}
-      {cereBoten && (
-        <div style={{
-          background: '#FFF6ED', border: '1px solid #FFD2AE',
-          borderRadius: 10, padding: '11px 13px', marginBottom: 12,
-        }}>
-          <div style={{ fontSize: 14.5, fontWeight: 800, lineHeight: 1.35, color: '#B35A12' }}>
-            <ClipboardList size={15} style={{ verticalAlign: -2, marginRight: 5 }} />{t('botenRequiredTitle', lang)}
-          </div>
-          <div style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 3, color: '#8A5A16' }}>
-            {t('botenRequiredNote', lang)}
-          </div>
-        </div>
-      )}
 
       {/* Ce se cere aici, scris înainte ca șoferul să înceapă — nu descoperit
           la final, când butonul de confirmare rămâne stins și nu se știe de ce. */}

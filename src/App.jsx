@@ -5491,10 +5491,15 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
   const distanta = useDistantaFataDe(tintaEtapei, isDocumentDelivery && !order.proximity_check_off)
   const [avertismentDistanta, setAvertismentDistanta] = useState(null)
   // Informarea despre Botenbestätigung: văzută o dată pe etapă (ţinută pe telefon).
-  const cheieBotenInfo = `zd-boten-info-v2:${order.id}:${leg}`
+  // O dată la fiecare sosire (cheia conţine ora sosirii): dacă sosirea e
+  // anulată şi bifată din nou, informarea apare iar.
+  const cheieBotenInfo = `zd-boten-info-v3:${order.id}:${leg}:${arrivedAt || ''}`
   const [botenInfoVazut, setBotenInfoVazut] = useState(() => {
     try { return localStorage.getItem(cheieBotenInfo) === '1' } catch { return false }
   })
+  useEffect(() => {
+    try { setBotenInfoVazut(localStorage.getItem(cheieBotenInfo) === '1') } catch { setBotenInfoVazut(false) }
+  }, [cheieBotenInfo])
   const inchideBotenInfo = () => {
     try { localStorage.setItem(cheieBotenInfo, '1') } catch { /* nimic */ }
     setBotenInfoVazut(true)

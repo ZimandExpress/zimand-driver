@@ -3773,6 +3773,7 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
           </div>
         </div>
       )}
+      {order.is_document_delivery && <ZustellartInfo order={order} lang={lang} />}
 
       {/* Hârtiile către client, sub Fracht: acolo stă marfa, deci acolo se
           caută și actele ei. */}
@@ -5074,13 +5075,66 @@ function AltCapat({ order, lang, spreLivrare }) {
   )
 }
 
+// Zustellart aleasă de client la Dokumentenzustellung (1 / 2 / 3) şi datele
+// documentului, aşa cum le-a scris el în formular. Arătate oriunde şoferul
+// citeşte despre cursă, ca să ştie dinainte dacă are voie la cutia poştală.
+function ZustellartInfo({ order, lang, compact }) {
+  const z = Number(order?.zustellart) || 0
+  const tipuri = Array.isArray(order?.document_types) ? order.document_types.filter(Boolean) : []
+  const detalii = [
+    order?.doc_betreff ? `„${order.doc_betreff}“` : '',
+    order?.doc_datum ? `${t('docDetailsDate', lang)} ${String(order.doc_datum).split('-').reverse().join('.')}` : '',
+    order?.doc_seiten ? `${order.doc_seiten} ${t('docDetailsPages', lang)}` : '',
+    order?.doc_umschlaege ? `${order.doc_umschlaege} ${t('docDetailsEnvelopes', lang)}` : '',
+  ].filter(Boolean)
+  if (!z && !tipuri.length && !detalii.length) return null
+  const rosu = z === 3
+  return (
+    <div style={{
+      background: rosu ? '#FDF1EF' : '#F3F6FB', border: `1px solid ${rosu ? '#E4A296' : '#C9D5E8'}`,
+      borderRadius: 10, padding: compact ? '9px 11px' : '11px 13px', margin: '10px 0',
+    }}>
+      {z > 0 && (
+        <>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.4, textTransform: 'uppercase', color: '#6B7A90' }}>
+            {t('zustellartTitle', lang)}
+          </div>
+          <div style={{ fontSize: 14.5, fontWeight: 800, color: rosu ? '#B23A24' : '#0F2240', marginTop: 2 }}>
+            {t(`zustellart${z}`, lang)}
+          </div>
+          {!compact && (
+            <div style={{ fontSize: 12.5, color: '#4A5563', lineHeight: 1.5, marginTop: 3 }}>{t(`zustellart${z}Note`, lang)}</div>
+          )}
+        </>
+      )}
+      {(tipuri.length > 0 || detalii.length > 0) && (
+        <div style={{ fontSize: 12.5, color: '#4A5563', lineHeight: 1.5, marginTop: z ? 7 : 0 }}>
+          <b>{t('docDetailsTitle', lang)}:</b> {[tipuri.join(', '), ...detalii].filter(Boolean).join(' · ')}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatusChange, isOwner, onDeliveryComplete, profile, onStopFailed, onDeliveryFailed }) {
   const [busy, setBusy] = useState(false)
   const [fileSummary, setFileSummary] = useState({ total: 0, allDone: false, failed: 0, pending: 0, processing: 0, photoCount: 0, documentCount: 0 })
   const [signatureBlob, setSignatureBlob] = useState(null)
   const [signerName, setSignerName] = useState('')
   // Doar la Dokumentenzustellung: cum a fost predat documentul.
-  const [deliveryMethod, setDeliveryMethod] = useState(order.delivery_method || null)
+  // Zustellart aleasă de client: la 3 („ausschließlich persönlich") cutia
+  // poştală nu există deloc pe ecran; la 2 predarea personală stă prima.
+  const zustellartClient = Number(order.zustellart) || 0
+  const [deliveryMethod, setDeliveryMethod] = useState(
+    zustellartClient === 3 && order.delivery_method === 'briefkasten' ? null : (order.delivery_method || null))
+  const variantePredare = (() => {
+    const cutie = { id: 'briefkasten', key: 'deliveryMethodBriefkasten', note: 'deliveryMethodBriefkastenNote' }
+    const personal = { id: 'persoenlich', key: 'deliveryMethodPersoenlich', note: 'deliveryMethodPersoenlichNote' }
+    if (zustellartClient === 3) return [personal]
+    if (zustellartClient === 2) return [personal, cutie]
+    return [cutie, personal]
+  })()
+  const metodaInterzisa = zustellartClient === 3 && deliveryMethod === 'briefkasten'
   const fileInputRef = useRef(null)
   const cameraInputRef = useRef(null)
   const [photoSourceOpen, setPhotoSourceOpen] = useState(false)
@@ -5431,7 +5485,7 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
   const docCerute = isDocumentDelivery
     ? (esteLivrareEtapa
         ? ['zustellprotokoll']
-        : (cereBoten ? ['zustellprotokoll', 'botenbestaetigung', 'botenbestaetigung'] : ['zustellprotokoll']))
+        : (cereBoten ? ['zustellprotokoll', 'botenbestaetigung'] : ['zustellprotokoll']))
     : (cereDocument ? ['cmr'] : [])
   // Tipurile vin din coada de încărcare. Pe o versiune mai veche a
   // componentei de fișiere lista nu există — atunci numărăm doar câte
@@ -5474,8 +5528,8 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
     }
     const randuri = []
     if (cereBoten) {
-      randuri.push({ ...dupaId('botenbestaetigung'), cheie: 'bote1', labelKey: 'docTypeBote1', gata: bifat('botenbestaetigung', 1) })
-      randuri.push({ ...dupaId('botenbestaetigung'), cheie: 'bote2', labelKey: 'docTypeBote2', gata: bifat('botenbestaetigung', 2) })
+      // Din 17.10.2026 declaraţia are O pagină: un rând, cel puţin o poză.
+      randuri.push({ ...dupaId('botenbestaetigung'), cheie: 'bote1', labelKey: 'docTypeBote', gata: bifat('botenbestaetigung', 1) })
     }
     randuri.push({ ...dupaId('zustellprotokoll'), gata: bifat('zustellprotokoll') })
     randuri.push({ ...dupaId('other'), gata: false })
@@ -6126,12 +6180,10 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
           mai cerem semnătură și nume. Dovada sunt fotografiile. */}
       {isDocumentDeliveryLeg && (
         <>
+          <ZustellartInfo order={order} lang={lang} />
           <div className="pod-label">{t('deliveryMethodLabel', lang)}</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
-            {[
-              { id: 'briefkasten', key: 'deliveryMethodBriefkasten', note: 'deliveryMethodBriefkastenNote' },
-              { id: 'persoenlich', key: 'deliveryMethodPersoenlich', note: 'deliveryMethodPersoenlichNote' },
-            ].map((m) => {
+            {variantePredare.map((m) => {
               const active = deliveryMethod === m.id
               return (
                 <button
@@ -6168,7 +6220,7 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
                       border: '1px solid #FFD2AE', borderRadius: 7,
                       padding: '7px 9px', marginTop: 7, lineHeight: 1.5, fontWeight: 600,
                     }}>
-                      ⚠ {t('briefkastenCondition', lang)}
+                      ⚠ {zustellartClient === 2 ? `${t('briefkastenNachVersuch', lang)} ` : ''}{t('briefkastenCondition', lang)}
                     </div>
                   )}
                 </button>
@@ -6360,7 +6412,7 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
         const lipsa = []
         // Intai felul livrarii, pe urma pozele: de el depinde cate sunt
         // cerute, deci lista trebuie sa ceara in aceeasi ordine ca ecranul.
-        if (isDocumentDeliveryLeg && !deliveryMethod) lipsa.push(t('missingMethod', lang))
+        if (isDocumentDeliveryLeg && (!deliveryMethod || metodaInterzisa)) lipsa.push(t('missingMethod', lang))
         if (fileSummary.photoCount < minimPoze) {
           lipsa.push(minimPoze > 1
             ? t('missingPhotosMin', lang)
@@ -6423,7 +6475,7 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
           || (dovadaLaAlegere && !signatureBlob && !fileSummary.documentCount)
           || fileSummary.photoCount < minimPoze
           || docLipsa.length > 0
-          || (isDocumentDeliveryLeg && !deliveryMethod)
+          || (isDocumentDeliveryLeg && (!deliveryMethod || metodaInterzisa))
           || (numeCerut && !signerName.trim())
           || (semnaturaCeruta && !signatureBlob)}
         style={{ marginTop: 14 }}
@@ -8608,6 +8660,7 @@ function BidCard({ order, lang, courierProfileId, open, onToggle, onBidPlaced })
               </div>
             </div>
           )}
+          {order.is_document_delivery && <ZustellartInfo order={order} lang={lang} compact />}
 
           {order.flexible_time_notes && (
             <div className="flex-time-note">

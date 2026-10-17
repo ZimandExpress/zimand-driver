@@ -3262,6 +3262,15 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
   const [companyDrivers, setCompanyDrivers] = useState([])
   const pickupContact = extractContact(order.notes, 'Kontakt Abholung: ')
   const deliveryContact = extractContact(order.notes, 'Kontakt Zustellung: ')
+  // La întoarcere: contactele date separat de client, altfel cele de la dus —
+  // ridicarea de întoarcere e la destinatar, livrarea de întoarcere la expeditor.
+  const returPickupContact = extractContact(order.notes, 'Kontakt Rückfahrt Abholung: ') || deliveryContact
+  const returDeliveryContact = extractContact(order.notes, 'Kontakt Rückfahrt Zustellung: ') || pickupContact
+  // Când ridicarea de întoarcere e la aceeaşi adresă cu livrarea (cazul
+  // obişnuit), nu mai desenăm un card separat: adresa ar apărea de două ori.
+  // Ridicarea de întoarcere apare ca pasul următor, în cardul livrării.
+  const normAdr = (a) => String(a || '').toLowerCase().replace(/[\s,.]+/g, ' ').trim()
+  const returLaLivrare = !!order.is_round_trip && normAdr(order.return_pickup_address) === normAdr(order.delivery_address)
   const pickupNotiz = extractContact(order.notes, 'Notiz Abholung: ')
   const deliveryNotiz = extractContact(order.notes, 'Notiz Zustellung: ')
   const [cargoOpen, setCargoOpen] = useState(false)
@@ -3631,6 +3640,20 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
           </div>
           {order.delivery_confirmed_at && <div className="info-row-time">✓ {fmtDateTime(order.delivery_confirmed_at)}</div>}
           {deliveryNotiz && <div className="leg-notiz"><StickyNote size={13} strokeWidth={1.8} /> {deliveryNotiz}</div>}
+          {returLaLivrare && (
+            <div
+              className="retur-aici"
+              {...(leg === 'return_pickup' && arrivedAt && !confirmedAt ? { onClick: () => setConfirmFormOpen(true), style: { cursor: 'pointer' } } : {})}
+            >
+              <div className="retur-aici-head">
+                <span>🔁🅐 {t('returnPickupHere', lang)}</span>
+                {order.return_pickup_confirmed_at && <span className="leg-done-badge">✓ {t('pickedUpLabel', lang)}</span>}
+              </div>
+              {returPickupContact !== deliveryContact && <ContactRow contact={returPickupContact} lang={lang} />}
+              {order.return_pickup_confirmed_at && <div className="info-row-time">✓ {fmtDateTime(order.return_pickup_confirmed_at)}</div>}
+              {order.return_cargo_desc && <div className="leg-notiz"><StickyNote size={13} strokeWidth={1.8} /> {order.return_cargo_desc}</div>}
+            </div>
+          )}
           {order.delivery_alt_date && (
             <div style={{ background: '#FFF6ED', border: '1px solid #FF7A29', borderRadius: 6, padding: '6px 10px', marginTop: 6, fontSize: 12.5, color: '#E8631A', fontWeight: 600 }}>
               <Clock size={12} strokeWidth={2} /> {t('altTimeLabel', lang)}: {fmtDate(order.delivery_alt_date)} {order.delivery_alt_from ? `${fmtTime(order.delivery_alt_from)}${order.delivery_alt_to ? `–${fmtTime(order.delivery_alt_to)}` : ''}` : ''}
@@ -3641,6 +3664,7 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
 
       {order.is_round_trip && (
         <>
+          {!returLaLivrare && (
           <div className="info-card">
             <div
               className={`info-card-head leg-head-line ${order.return_pickup_started_at && !order.return_pickup_arrived_at ? 'en-route' : ''}`}
@@ -3663,7 +3687,8 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
             </div>
             <div className="info-card-body">
               {insemnEtapa('return_pickup')}
-              <SemneEtapa order={order} etapa="pickup" lang={lang} />
+              <SemneEtapa order={order} etapa="pickup" lang={lang} retur />
+              <ContactRow contact={returPickupContact} lang={lang} />
               <div className="info-row address-row">
                 <span className="address-text">{order.return_pickup_address}</span>
                 <a className="maps-nav-btn" href={mapsNavUrl(order.return_pickup_address)} target="_blank" rel="noreferrer"><Navigation size={13} strokeWidth={2.2} /> {t('navigateButton', lang)}</a>
@@ -3672,6 +3697,7 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
               {order.return_cargo_desc && <div className="leg-notiz"><StickyNote size={13} strokeWidth={1.8} /> {order.return_cargo_desc}</div>}
             </div>
           </div>
+          )}
 
           <div className="info-card">
             <div
@@ -3688,7 +3714,8 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
             </div>
             <div className="info-card-body">
               {insemnEtapa('return_delivery')}
-              <SemneEtapa order={order} etapa="delivery" lang={lang} />
+              <SemneEtapa order={order} etapa="delivery" lang={lang} retur />
+              <ContactRow contact={returDeliveryContact} lang={lang} />
               <div className="info-row address-row">
                 <span className="address-text">{order.return_delivery_address}</span>
                 <a className="maps-nav-btn" href={mapsNavUrl(order.return_delivery_address)} target="_blank" rel="noreferrer"><Navigation size={13} strokeWidth={2.2} /> {t('navigateButton', lang)}</a>
@@ -7197,8 +7224,11 @@ const SERVICE_BADGE_PREFIXES = [
 // Cerinţele care ţin de UN capăt al cursei, scrise întreg pe cardul lui.
 // În listă sunt semne, ca să încapă; aici, pe ecranul comenzii, e loc de
 // cuvinte — iar cuvintele sunt cele care se citesc înainte de a opri maşina.
-function SemneEtapa({ order, etapa, lang }) {
-  const semne = extractServiceBadges(order.notes).filter((b) => b.etapa === etapa)
+function SemneEtapa({ order, etapa, lang, retur }) {
+  // La întoarcere nu există livrare neutră: plicul se duce înapoi la
+  // expeditor, care ştie de unde vine (cerut de Andrei pe 17.10.2026).
+  const semne = extractServiceBadges(order.notes)
+    .filter((b) => b.etapa === etapa && !(retur && b.key === 'neutralDeliveryBadge'))
   if (!semne.length) return null
   return (
     <div className="service-badges" style={{ margin: '2px 0 8px' }}>

@@ -2632,6 +2632,10 @@ textarea.bid-input2 {
   content: ''; position: absolute; left: 4px; top: 17px; bottom: -11px;
   border-left: 1.5px dashed #C3CBD8;
 }
+/* Dus-întors: ridicarea de întoarcere ca pas următor, în cardul livrării. */
+.retur-aici { margin-top: 10px; padding: 10px 12px; border-radius: 10px; background: #F6F1FB; border: 1px solid #DCC9EE; }
+.retur-aici-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 14px; font-weight: 700; color: #6B2F9C; margin-bottom: 4px; }
+.retur-aici .contact-row { margin: 6px 0 0; }
 /* Dus-întors: linia continuă de la livrare până la întoarcere. */
 .rc-stop-mid::after {
   content: ''; position: absolute; left: 4px; top: 17px; bottom: -11px;

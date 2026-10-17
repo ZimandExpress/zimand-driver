@@ -5392,7 +5392,10 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
       p_lng: tintaGeocodata[1],
     }).then(({ error }) => { if (error) console.error('coords save:', error.message) })
   }, [isDocumentDelivery, coordSalvate, tintaGeocodata && tintaGeocodata[0], tintaGeocodata && tintaGeocodata[1]])
-  const distanta = useDistantaFataDe(tintaEtapei, isDocumentDelivery)
+  // `proximity_check_off`: numai dispeceratul îl poate pune (o regulă din
+  // bază o păzeşte) — pentru comenzile de test, ca să se poată bifa de la
+  // distanţă. Poziţia se măsoară şi se salvează în continuare.
+  const distanta = useDistantaFataDe(tintaEtapei, isDocumentDelivery && !order.proximity_check_off)
   const [avertismentDistanta, setAvertismentDistanta] = useState(null)
   // Întrebarea de la ridicarea documentelor: „Ai Zustellprotokoll-ul la tine?"
   // null = închisă, 'ask' = întrebarea, 'lipsa' = cere-l de la expeditor.

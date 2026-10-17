@@ -5251,7 +5251,15 @@ function TransportSheet({ lang, onClose }) {
   )
 }
 
-function ReguliZustellung({ lang, zustellart, onAck }) {
+const ZUSTELLART_ALES = {"de": {"ales": "Vom Auftraggeber gewählt", "nimic": "Keine Auswahl – es gilt Standard"}, "en": {"ales": "Chosen by the client", "nimic": "No choice – Standard applies"}, "ro": {"ales": "Ales de client", "nimic": "Nicio alegere – se aplică Standard"}, "pl": {"ales": "Wybór zleceniodawcy", "nimic": "Brak wyboru – obowiązuje Standard"}, "bg": {"ales": "Избор на възложителя", "nimic": "Няма избор – важи Standard"}, "hu": {"ales": "A megrendelő választása", "nimic": "Nincs választás – Standard érvényes"}, "cs": {"ales": "Zvoleno zadavatelem", "nimic": "Bez volby – platí Standard"}, "sk": {"ales": "Zvolené objednávateľom", "nimic": "Bez voľby – platí Standard"}, "hr": {"ales": "Odabrao naručitelj", "nimic": "Nema odabira – vrijedi Standard"}, "sr": {"ales": "Izabrao naručilac", "nimic": "Nema izbora – važi Standard"}, "sl": {"ales": "Izbral naročnik", "nimic": "Brez izbire – velja Standard"}, "sq": {"ales": "Zgjedhur nga porositësi", "nimic": "Pa zgjedhje – vlen Standard"}, "uk": {"ales": "Обрано замовником", "nimic": "Без вибору – діє Standard"}, "ru": {"ales": "Выбрано заказчиком", "nimic": "Без выбора – действует Standard"}, "tr": {"ales": "Müşterinin seçimi", "nimic": "Seçim yok – Standard geçerli"}, "it": {"ales": "Scelto dal committente", "nimic": "Nessuna scelta – vale Standard"}, "es": {"ales": "Elegido por el cliente", "nimic": "Sin elección – rige Standard"}, "fr": {"ales": "Choisi par le donneur d’ordre", "nimic": "Aucun choix – Standard s’applique"}, "pt": {"ales": "Escolhido pelo cliente", "nimic": "Sem escolha – aplica-se Standard"}, "nl": {"ales": "Gekozen door de opdrachtgever", "nimic": "Geen keuze – Standard geldt"}, "el": {"ales": "Επιλογή του πελάτη", "nimic": "Χωρίς επιλογή – ισχύει Standard"}, "lt": {"ales": "Pasirinko užsakovas", "nimic": "Nepasirinkta – taikoma Standard"}, "lv": {"ales": "Izvēlējies pasūtītājs", "nimic": "Nav izvēles – spēkā Standard"}}
+// Numele oficiale ale variantelor (ca în formularul clientului), în germană.
+const ZUSTELLART_NUME = {
+  1: 'Standard – Briefkasteneinwurf mit alternativem persönlichem Zustellversuch',
+  2: 'Persönliche Übergabe bevorzugt',
+  3: 'Ausschließlich persönliche Übergabe',
+}
+
+function ReguliZustellung({ lang, zustellart, ales, onAck }) {
   const [limba, setLimba] = useState(() => citesteLimba(lang))
   const tr = REGULI_LIMBI[limba] || REGULI_LIMBI.de
   const reguli = zustellart === 3 ? [tr.r1doar, tr.r3]
@@ -5262,6 +5270,18 @@ function ReguliZustellung({ lang, zustellart, onAck }) {
       <div style={{ marginBottom: 10, color: 'var(--navy)' }}><FileText size={40} strokeWidth={1.4} /></div>
       <div style={{ fontSize: 21, fontWeight: 800, color: '#0F2240', marginBottom: 12, lineHeight: 1.3 }}>{tr.titlu}</div>
       <SelectorLimba value={limba} onChange={setLimba} />
+      {/* Varianta aleasă de client, scrisă explicit — curierul vede pe ce se
+          bazează regulile de mai jos. Fără alegere (comenzi vechi sau făcute
+          de dispecerat): se spune clar că se aplică Standard. */}
+      {(() => {
+        const a = ZUSTELLART_ALES[limba] || ZUSTELLART_ALES.de
+        return (
+          <div style={{ background: zustellart === 3 ? '#FDF1EF' : '#F3F6FB', border: `1px solid ${zustellart === 3 ? '#E4A296' : '#C9D5E8'}`, borderRadius: 10, padding: '9px 12px', marginBottom: 14 }}>
+            <div style={{ fontSize: 11.5, fontWeight: 700, color: '#6B7A90', textTransform: 'uppercase', letterSpacing: 0.3 }}>{ales ? a.ales : a.nimic}</div>
+            <div style={{ fontSize: 15, fontWeight: 800, color: zustellart === 3 ? '#B23A24' : '#0F2240', marginTop: 2 }}>{ZUSTELLART_NUME[zustellart]}</div>
+          </div>
+        )
+      })()}
       <ol style={{ paddingLeft: 22, margin: 0, fontSize: 15, lineHeight: 1.7, color: '#0F2240' }}>
         {reguli.map((r, i) => <li key={i} style={{ marginBottom: 13 }}>{r}</li>)}
       </ol>
@@ -6230,7 +6250,8 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
           >
             {/* În limba aleasă de şofer şi după Zustellart-ul comenzii:
                 1 = cutia poştală întâi, 2 = întâi personal, 3 = doar personal. */}
-            <ReguliZustellung lang={lang} zustellart={Number(order.zustellart) || 1}
+            <ReguliZustellung lang={lang} zustellart={[1, 2, 3].includes(Number(order.zustellart)) ? Number(order.zustellart) : 1}
+              ales={[1, 2, 3].includes(Number(order.zustellart))}
               onAck={() => { setRegulileDeschise(false); callRpc(arriveFn) }} />
           </div>
         )}

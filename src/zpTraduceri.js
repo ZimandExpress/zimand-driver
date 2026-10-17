@@ -231,3 +231,122 @@ export const ZP_LIMBI = {
   "back": "Atpakaļ"
  }
 }
+
+// Nota pe tot ecranul de la „Losfahren" la documente (17.10.2026).
+export const PLECARE_LIMBI = {
+ "de": {
+  "standard": "Dokumentenzustellung: Briefkasten nur bei deutlich sichtbarem Namen. Keine Übergabe an andere Personen.",
+  "personal": "Dokumentenzustellung: nur persönliche Übergabe an den Empfänger – kein Briefkasten. Keine Übergabe an andere Personen.",
+  "autoClose": "Schließt sich automatisch …"
+ },
+ "en": {
+  "standard": "Document delivery: letterbox only with a clearly visible name. No handover to other people.",
+  "personal": "Document delivery: personal handover to the recipient only – no letterbox. No handover to other people.",
+  "autoClose": "Closes automatically …"
+ },
+ "ro": {
+  "standard": "Livrare de documente: în cutia poștală doar dacă numele se vede clar. Nu se predă altor persoane.",
+  "personal": "Livrare de documente: doar predare personală destinatarului – fără cutie poștală. Nu se predă altor persoane.",
+  "autoClose": "Se închide automat …"
+ },
+ "pl": {
+  "standard": "Doręczenie dokumentów: do skrzynki tylko przy wyraźnie widocznym nazwisku. Nie przekazuj innym osobom.",
+  "personal": "Doręczenie dokumentów: tylko osobiście odbiorcy – bez skrzynki. Nie przekazuj innym osobom.",
+  "autoClose": "Zamknie się automatycznie …"
+ },
+ "bg": {
+  "standard": "Доставка на документи: в пощенската кутия само при ясно видимо име. Не се предава на други хора.",
+  "personal": "Доставка на документи: само лично на получателя – без пощенска кутия. Не се предава на други хора.",
+  "autoClose": "Затваря се автоматично …"
+ },
+ "hu": {
+  "standard": "Dokumentumkézbesítés: postaládába csak jól látható névnél. Más személynek nem adható át.",
+  "personal": "Dokumentumkézbesítés: csak személyesen a címzettnek – postaláda nélkül. Más személynek nem adható át.",
+  "autoClose": "Automatikusan bezárul …"
+ },
+ "cs": {
+  "standard": "Doručení dokumentů: do schránky jen při jasně viditelném jménu. Nepředávat jiným osobám.",
+  "personal": "Doručení dokumentů: jen osobně příjemci – bez schránky. Nepředávat jiným osobám.",
+  "autoClose": "Zavře se automaticky …"
+ },
+ "sk": {
+  "standard": "Doručenie dokumentov: do schránky len pri jasne viditeľnom mene. Neodovzdávať iným osobám.",
+  "personal": "Doručenie dokumentov: len osobne príjemcovi – bez schránky. Neodovzdávať iným osobám.",
+  "autoClose": "Zatvorí sa automaticky …"
+ },
+ "hr": {
+  "standard": "Dostava dokumenata: u sandučić samo uz jasno vidljivo ime. Ne predavati drugim osobama.",
+  "personal": "Dostava dokumenata: samo osobno primatelju – bez sandučića. Ne predavati drugim osobama.",
+  "autoClose": "Zatvara se automatski …"
+ },
+ "sr": {
+  "standard": "Dostava dokumenata: u sanduče samo uz jasno vidljivo ime. Ne predavati drugim osobama.",
+  "personal": "Dostava dokumenata: samo lično primaocu – bez sandučeta. Ne predavati drugim osobama.",
+  "autoClose": "Zatvara se automatski …"
+ },
+ "sl": {
+  "standard": "Dostava dokumentov: v nabiralnik le ob jasno vidnem imenu. Ne izročati drugim osebam.",
+  "personal": "Dostava dokumentov: le osebno prejemniku – brez nabiralnika. Ne izročati drugim osebam.",
+  "autoClose": "Zapre se samodejno …"
+ },
+ "sq": {
+  "standard": "Dorëzim dokumentesh: në kutinë postare vetëm me emër qartë të dukshëm. Mos ua dorëzoni personave të tjerë.",
+  "personal": "Dorëzim dokumentesh: vetëm personalisht marrësit – pa kuti postare. Mos ua dorëzoni personave të tjerë.",
+  "autoClose": "Mbyllet automatikisht …"
+ },
+ "uk": {
+  "standard": "Доставка документів: у скриньку лише за чітко видимого імені. Не передавати іншим особам.",
+  "personal": "Доставка документів: лише особисто одержувачу – без скриньки. Не передавати іншим особам.",
+  "autoClose": "Закриється автоматично …"
+ },
+ "ru": {
+  "standard": "Доставка документов: в ящик только при чётко видимом имени. Не передавать другим лицам.",
+  "personal": "Доставка документов: только лично получателю – без ящика. Не передавать другим лицам.",
+  "autoClose": "Закроется автоматически …"
+ },
+ "tr": {
+  "standard": "Belge teslimatı: posta kutusuna yalnızca ad açıkça görünüyorsa. Başka kişilere verilmez.",
+  "personal": "Belge teslimatı: yalnızca alıcıya şahsen – posta kutusu yok. Başka kişilere verilmez.",
+  "autoClose": "Otomatik olarak kapanır …"
+ },
+ "it": {
+  "standard": "Consegna di documenti: nella cassetta solo con nome ben visibile. Nessuna consegna ad altre persone.",
+  "personal": "Consegna di documenti: solo di persona al destinatario – niente cassetta. Nessuna consegna ad altre persone.",
+  "autoClose": "Si chiude automaticamente …"
+ },
+ "es": {
+  "standard": "Entrega de documentos: en el buzón solo con el nombre bien visible. No se entrega a otras personas.",
+  "personal": "Entrega de documentos: solo en persona al destinatario – sin buzón. No se entrega a otras personas.",
+  "autoClose": "Se cierra automáticamente …"
+ },
+ "fr": {
+  "standard": "Livraison de documents : boîte aux lettres uniquement si le nom est bien visible. Pas de remise à d’autres personnes.",
+  "personal": "Livraison de documents : uniquement en main propre au destinataire – pas de boîte aux lettres. Pas de remise à d’autres personnes.",
+  "autoClose": "Se ferme automatiquement …"
+ },
+ "pt": {
+  "standard": "Entrega de documentos: na caixa do correio só com o nome bem visível. Não entregar a outras pessoas.",
+  "personal": "Entrega de documentos: só em mão ao destinatário – sem caixa do correio. Não entregar a outras pessoas.",
+  "autoClose": "Fecha automaticamente …"
+ },
+ "nl": {
+  "standard": "Documentbezorging: brievenbus alleen bij duidelijk zichtbare naam. Niet aan anderen afgeven.",
+  "personal": "Documentbezorging: alleen persoonlijk aan de ontvanger – geen brievenbus. Niet aan anderen afgeven.",
+  "autoClose": "Sluit automatisch …"
+ },
+ "el": {
+  "standard": "Παράδοση εγγράφων: στο γραμματοκιβώτιο μόνο με καθαρά ορατό όνομα. Όχι παράδοση σε άλλα πρόσωπα.",
+  "personal": "Παράδοση εγγράφων: μόνο προσωπικά στον παραλήπτη – χωρίς γραμματοκιβώτιο. Όχι παράδοση σε άλλα πρόσωπα.",
+  "autoClose": "Κλείνει αυτόματα …"
+ },
+ "lt": {
+  "standard": "Dokumentų pristatymas: į dėžutę tik kai vardas aiškiai matomas. Neperduoti kitiems asmenims.",
+  "personal": "Dokumentų pristatymas: tik asmeniškai gavėjui – be pašto dėžutės. Neperduoti kitiems asmenims.",
+  "autoClose": "Užsidarys automatiškai …"
+ },
+ "lv": {
+  "standard": "Dokumentu piegāde: pastkastītē tikai ar skaidri redzamu vārdu. Nenodot citām personām.",
+  "personal": "Dokumentu piegāde: tikai personīgi saņēmējam – bez pastkastītes. Nenodot citām personām.",
+  "autoClose": "Aizvērsies automātiski …"
+ }
+}

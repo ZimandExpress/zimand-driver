@@ -4,7 +4,7 @@ import { supabase } from './supabaseClient'
 import { t, getLang, setLang, availableLangs } from './i18n'
 import { Eye, Play, ClipboardList, Pause, SlidersHorizontal, Building2, StickyNote, Receipt, Package, Repeat, Hourglass, Camera, Image as ImageIcon, Mail, Ruler, ChevronDown, Lock, Phone, Truck, CheckCircle2, Wallet, User, LogOut, Menu, Bell, MapPin, FlagTriangleRight, Tag, XCircle, Download, X, Navigation, Trophy, ThumbsUp, ArrowUpFromLine, ArrowDownToLine, EyeOff, Layers, AlertTriangle, Clock, FileText, Signature, BookOpen } from 'lucide-react'
 import { GHID_TRADUCERI, GHID_UI } from './ghidTraduceri.js'
-import { ZP_LIMBI } from './zpTraduceri.js'
+import { ZP_LIMBI, PLECARE_LIMBI } from './zpTraduceri.js'
 import './index.css'
 import PodFiles from './components/PodFiles'
 import DocumentCamera from './components/DocumentCamera'
@@ -6116,12 +6116,21 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
             }}
           >
             <div style={{ marginBottom: 18, color: 'var(--navy)' }}><FileText size={44} strokeWidth={1.4} /></div>
-            <div style={{ fontSize: 21, fontWeight: 800, lineHeight: 1.4, maxWidth: 420 }}>
-              {t('docRuleShort', lang)}
-            </div>
-            <div style={{ fontSize: 13, opacity: 0.85, marginTop: 22 }}>
-              {t('docRuleAutoClose', lang)}
-            </div>
+            {/* În limba aleasă de şofer în celelalte ferestre; la „Ausschließlich
+                persönliche Übergabe" regula spune că nu există cutie poştală. */}
+            {(() => {
+              const tr = PLECARE_LIMBI[citesteLimba(lang)] || PLECARE_LIMBI[lang] || PLECARE_LIMBI.de
+              return (
+                <>
+                  <div style={{ fontSize: 21, fontWeight: 800, lineHeight: 1.4, maxWidth: 420 }}>
+                    {Number(order.zustellart) === 3 ? tr.personal : tr.standard}
+                  </div>
+                  <div style={{ fontSize: 13, opacity: 0.85, marginTop: 22 }}>
+                    {tr.autoClose}
+                  </div>
+                </>
+              )
+            })()}
           </div>
         )}
         {etaBlock}

@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { supabase } from './supabaseClient'
 import { t, getLang, setLang, availableLangs } from './i18n'
 import { Eye, Play, ClipboardList, Pause, SlidersHorizontal, Building2, StickyNote, Receipt, Package, Repeat, Hourglass, Camera, Image as ImageIcon, Mail, Ruler, ChevronDown, Lock, Phone, Truck, CheckCircle2, Wallet, User, LogOut, Menu, Bell, MapPin, FlagTriangleRight, Tag, XCircle, Download, X, Navigation, Trophy, ThumbsUp, ArrowUpFromLine, ArrowDownToLine, EyeOff, Layers, AlertTriangle, Clock, FileText, Signature, BookOpen } from 'lucide-react'
+import { GHID_TRADUCERI, GHID_UI } from './ghidTraduceri.js'
 import './index.css'
 import PodFiles from './components/PodFiles'
 import DocumentCamera from './components/DocumentCamera'
@@ -5161,29 +5162,29 @@ function ZustellartInfo({ order, lang, compact }) {
 // de aceea numele secţiunii „Dokument hinzufügen" rămâne în germană în text.
 // Cerut de Andrei pe 17.10.2026.
 const BOTEN_INFO_LIMBI = [
-  ['de', 'Deutsch', 'Abholung mit Botenbestätigung', ['Der Auftraggeber hat für diese Abholung die Botenbestätigung gebucht.', 'Füllen Sie das Formular gemeinsam mit dem Absender aus und prüfen Sie die Angaben. Beide unterschreiben.', 'Das unterschriebene Formular unter „Dokument hinzufügen“ hochladen. Ohne das Formular lässt sich die Abholung nicht abschließen.', 'Getrennt davon, bei den Fotos: 2 Fotos vom verschlossenen Umschlag – Foto 1 Vorderseite, Foto 2 Rückseite.'], 'Verstanden'],
-  ['en', 'English', 'Pickup with courier confirmation', ['For this pickup the client has booked the courier confirmation (Botenbestätigung).', 'Fill in the form together with the sender and check the details. Both of you sign.', 'Upload the signed form under “Dokument hinzufügen”. Without the form the pickup cannot be completed.', 'Separately, in the photos: 2 photos of the sealed envelope – photo 1 front, photo 2 back.'], 'Understood'],
-  ['ro', 'Română', 'Ridicare cu Botenbestätigung', ['Pentru această ridicare, clientul a comandat confirmarea de predare (Botenbestätigung).', 'Completați formularul împreună cu expeditorul și verificați datele. Semnați amândoi.', 'Încărcați formularul semnat la „Dokument hinzufügen”. Fără formular, ridicarea nu poate fi finalizată.', 'Separat, la fotografii: 2 fotografii cu plicul închis – fotografia 1 fața, fotografia 2 spatele.'], 'Am înțeles'],
-  ['pl', 'Polski', 'Odbiór z potwierdzeniem kuriera', ['Do tego odbioru zleceniodawca zamówił potwierdzenie kuriera (Botenbestätigung).', 'Wypełnij formularz razem z nadawcą i sprawdź dane. Podpisujecie oboje.', 'Prześlij podpisany formularz w sekcji „Dokument hinzufügen”. Bez formularza odbioru nie można zakończyć.', 'Osobno, w zdjęciach: 2 zdjęcia zamkniętej koperty – zdjęcie 1 przód, zdjęcie 2 tył.'], 'Rozumiem'],
-  ['bg', 'Български', 'Вземане с потвърждение на куриера', ['За това вземане възложителят е поръчал потвърждение на куриера (Botenbestätigung).', 'Попълнете формуляра заедно с подателя и проверете данните. И двамата подписвате.', 'Качете подписания формуляр в „Dokument hinzufügen“. Без формуляра вземането не може да бъде завършено.', 'Отделно, при снимките: 2 снимки на затворения плик – снимка 1 отпред, снимка 2 отзад.'], 'Разбрах'],
-  ['hu', 'Magyar', 'Átvétel futár-igazolással', ['Ehhez az átvételhez a megrendelő futár-igazolást (Botenbestätigung) rendelt.', 'Töltse ki az űrlapot a feladóval együtt, és ellenőrizze az adatokat. Mindketten aláírják.', 'Töltse fel az aláírt űrlapot a „Dokument hinzufügen” részben. Az űrlap nélkül az átvétel nem zárható le.', 'Ettől külön, a fotóknál: 2 fotó a lezárt borítékról – 1. fotó elöl, 2. fotó hátul.'], 'Értettem'],
-  ['cs', 'Čeština', 'Vyzvednutí s potvrzením kurýra', ['K tomuto vyzvednutí si zadavatel objednal potvrzení kurýra (Botenbestätigung).', 'Vyplňte formulář společně s odesílatelem a zkontrolujte údaje. Podepíšete oba.', 'Podepsaný formulář nahrajte v části „Dokument hinzufügen“. Bez formuláře nelze vyzvednutí dokončit.', 'Zvlášť, u fotografií: 2 fotografie zalepené obálky – foto 1 přední strana, foto 2 zadní strana.'], 'Rozumím'],
-  ['sk', 'Slovenčina', 'Vyzdvihnutie s potvrdením kuriéra', ['K tomuto vyzdvihnutiu si objednávateľ objednal potvrdenie kuriéra (Botenbestätigung).', 'Vyplňte formulár spolu s odosielateľom a skontrolujte údaje. Podpíšete obaja.', 'Podpísaný formulár nahrajte v časti „Dokument hinzufügen“. Bez formulára nie je možné vyzdvihnutie dokončiť.', 'Zvlášť, pri fotografiách: 2 fotografie zalepenej obálky – foto 1 predná strana, foto 2 zadná strana.'], 'Rozumiem'],
-  ['hr', 'Hrvatski', 'Preuzimanje s potvrdom kurira', ['Za ovo preuzimanje naručitelj je naručio potvrdu kurira (Botenbestätigung).', 'Ispunite obrazac zajedno s pošiljateljem i provjerite podatke. Potpisujete oboje.', 'Potpisani obrazac učitajte pod „Dokument hinzufügen”. Bez obrasca preuzimanje se ne može završiti.', 'Odvojeno, kod fotografija: 2 fotografije zatvorene omotnice – fotografija 1 prednja strana, fotografija 2 stražnja strana.'], 'Razumijem'],
-  ['sr', 'Srpski', 'Preuzimanje sa potvrdom kurira', ['Za ovo preuzimanje naručilac je naručio potvrdu kurira (Botenbestätigung).', 'Popunite obrazac zajedno sa pošiljaocem i proverite podatke. Potpisujete oboje.', 'Potpisani obrazac otpremite pod „Dokument hinzufügen“. Bez obrasca preuzimanje ne može da se završi.', 'Odvojeno, kod fotografija: 2 fotografije zatvorene koverte – fotografija 1 prednja strana, fotografija 2 zadnja strana.'], 'Razumem'],
-  ['sl', 'Slovenščina', 'Prevzem s potrdilom kurirja', ['Za ta prevzem je naročnik naročil potrdilo kurirja (Botenbestätigung).', 'Obrazec izpolnite skupaj s pošiljateljem in preverite podatke. Podpišeta oba.', 'Podpisani obrazec naložite pod „Dokument hinzufügen“. Brez obrazca prevzema ni mogoče zaključiti.', 'Ločeno, pri fotografijah: 2 fotografiji zaprte kuverte – fotografija 1 sprednja stran, fotografija 2 zadnja stran.'], 'Razumem'],
-  ['sq', 'Shqip', 'Marrje me konfirmim të korrierit', ['Për këtë marrje, porositësi ka rezervuar konfirmimin e korrierit (Botenbestätigung).', 'Plotësoni formularin së bashku me dërguesin dhe kontrolloni të dhënat. Nënshkruani të dy.', 'Ngarkoni formularin e nënshkruar te „Dokument hinzufügen”. Pa formularin, marrja nuk mund të përfundojë.', 'Veçmas, te fotot: 2 foto të zarfit të mbyllur – foto 1 përpara, foto 2 prapa.'], 'E kuptova'],
-  ['uk', 'Українська', 'Забір із підтвердженням кур’єра', ['Для цього забору замовник замовив підтвердження кур’єра (Botenbestätigung).', 'Заповніть форму разом з відправником і перевірте дані. Підписуєте обидва.', 'Завантажте підписану форму в розділі «Dokument hinzufügen». Без форми забір не можна завершити.', 'Окремо, у фото: 2 фото заклеєного конверта – фото 1 спереду, фото 2 ззаду.'], 'Зрозуміло'],
-  ['ru', 'Русский', 'Забор с подтверждением курьера', ['Для этого забора заказчик заказал подтверждение курьера (Botenbestätigung).', 'Заполните форму вместе с отправителем и проверьте данные. Подписываете оба.', 'Загрузите подписанную форму в разделе «Dokument hinzufügen». Без формы забор нельзя завершить.', 'Отдельно, в фотографиях: 2 фото заклеенного конверта – фото 1 спереди, фото 2 сзади.'], 'Понятно'],
-  ['tr', 'Türkçe', 'Kurye onaylı teslim alma', ['Bu teslim alma için müşteri kurye onayını (Botenbestätigung) sipariş etti.', 'Formu gönderici ile birlikte doldurun ve bilgileri kontrol edin. İkiniz de imzalayın.', 'İmzalı formu „Dokument hinzufügen” bölümüne yükleyin. Form olmadan teslim alma tamamlanamaz.', 'Ayrıca, fotoğraflarda: kapalı zarfın 2 fotoğrafı – fotoğraf 1 ön yüz, fotoğraf 2 arka yüz.'], 'Anladım'],
-  ['it', 'Italiano', 'Ritiro con conferma del corriere', ['Per questo ritiro il committente ha prenotato la conferma del corriere (Botenbestätigung).', 'Compilate il modulo insieme al mittente e verificate i dati. Firmate entrambi.', 'Caricate il modulo firmato in „Dokument hinzufügen”. Senza il modulo il ritiro non può essere completato.', 'A parte, nelle foto: 2 foto della busta chiusa – foto 1 fronte, foto 2 retro.'], 'Ho capito'],
-  ['es', 'Español', 'Recogida con confirmación del mensajero', ['Para esta recogida, el cliente ha contratado la confirmación del mensajero (Botenbestätigung).', 'Rellene el formulario junto con el remitente y compruebe los datos. Firman ambos.', 'Suba el formulario firmado en «Dokument hinzufügen». Sin el formulario no se puede completar la recogida.', 'Aparte, en las fotos: 2 fotos del sobre cerrado – foto 1 parte delantera, foto 2 parte trasera.'], 'Entendido'],
-  ['fr', 'Français', 'Enlèvement avec confirmation du coursier', ['Pour cet enlèvement, le donneur d’ordre a réservé la confirmation du coursier (Botenbestätigung).', 'Remplissez le formulaire avec l’expéditeur et vérifiez les informations. Vous signez tous les deux.', 'Téléchargez le formulaire signé dans « Dokument hinzufügen ». Sans le formulaire, l’enlèvement ne peut pas être finalisé.', 'Séparément, dans les photos : 2 photos de l’enveloppe fermée – photo 1 recto, photo 2 verso.'], 'Compris'],
-  ['pt', 'Português', 'Recolha com confirmação do estafeta', ['Para esta recolha, o cliente reservou a confirmação do estafeta (Botenbestätigung).', 'Preencha o formulário juntamente com o remetente e verifique os dados. Ambos assinam.', 'Carregue o formulário assinado em «Dokument hinzufügen». Sem o formulário, a recolha não pode ser concluída.', 'À parte, nas fotos: 2 fotos do envelope fechado – foto 1 frente, foto 2 verso.'], 'Entendi'],
-  ['nl', 'Nederlands', 'Ophalen met koeriersbevestiging', ['Voor deze ophaling heeft de opdrachtgever de koeriersbevestiging (Botenbestätigung) geboekt.', 'Vul het formulier samen met de afzender in en controleer de gegevens. U tekent allebei.', 'Upload het ondertekende formulier onder „Dokument hinzufügen”. Zonder het formulier kan de ophaling niet worden afgerond.', 'Apart daarvan, bij de foto’s: 2 foto’s van de gesloten envelop – foto 1 voorkant, foto 2 achterkant.'], 'Begrepen'],
-  ['el', 'Ελληνικά', 'Παραλαβή με επιβεβαίωση κούριερ', ['Για αυτή την παραλαβή ο πελάτης έχει κλείσει την επιβεβαίωση κούριερ (Botenbestätigung).', 'Συμπληρώστε το έντυπο μαζί με τον αποστολέα και ελέγξτε τα στοιχεία. Υπογράφετε και οι δύο.', 'Ανεβάστε το υπογεγραμμένο έντυπο στο «Dokument hinzufügen». Χωρίς το έντυπο η παραλαβή δεν μπορεί να ολοκληρωθεί.', 'Ξεχωριστά, στις φωτογραφίες: 2 φωτογραφίες του κλειστού φακέλου – φωτογραφία 1 μπροστά, φωτογραφία 2 πίσω.'], 'Κατάλαβα'],
-  ['lt', 'Lietuvių', 'Paėmimas su kurjerio patvirtinimu', ['Šiam paėmimui užsakovas užsakė kurjerio patvirtinimą (Botenbestätigung).', 'Užpildykite formą kartu su siuntėju ir patikrinkite duomenis. Pasirašote abu.', 'Pasirašytą formą įkelkite skiltyje „Dokument hinzufügen“. Be formos paėmimo užbaigti negalima.', 'Atskirai, nuotraukose: 2 užklijuoto voko nuotraukos – 1 nuotrauka priekis, 2 nuotrauka galas.'], 'Supratau'],
-  ['lv', 'Latviešu', 'Saņemšana ar kurjera apstiprinājumu', ['Šai saņemšanai pasūtītājs ir pasūtījis kurjera apstiprinājumu (Botenbestätigung).', 'Aizpildiet veidlapu kopā ar sūtītāju un pārbaudiet datus. Parakstāties abi.', 'Augšupielādējiet parakstīto veidlapu sadaļā „Dokument hinzufügen”. Bez veidlapas saņemšanu nevar pabeigt.', 'Atsevišķi, pie fotoattēliem: 2 fotoattēli ar aizlīmētu aploksni – 1. foto priekšpuse, 2. foto aizmugure.'], 'Sapratu'],
+  ['de', 'Deutsch', 'Abholung mit Übergabe- und Botenbestätigung', ['Der Auftraggeber hat für diese Abholung die Übergabe- und Botenbestätigung gebucht.', 'Füllen Sie das Formular gemeinsam mit dem Absender aus und prüfen Sie die Angaben. Beide unterschreiben.', 'Das unterschriebene Formular unter „Dokument hinzufügen“ hochladen. Ohne das Formular lässt sich die Abholung nicht abschließen.', 'Getrennt davon, bei den Fotos: 2 Fotos vom verschlossenen Umschlag – Foto 1 Vorderseite, Foto 2 Rückseite.'], 'Verstanden'],
+  ['en', 'English', 'Pickup with Übergabe- und Botenbestätigung', ['For this pickup the client has booked the Übergabe- und Botenbestätigung.', 'Fill in the form together with the sender and check the details. Both of you sign.', 'Upload the signed form under “Dokument hinzufügen”. Without the form the pickup cannot be completed.', 'Separately, in the photos: 2 photos of the sealed envelope – photo 1 front, photo 2 back.'], 'Understood'],
+  ['ro', 'Română', 'Ridicare cu Übergabe- und Botenbestätigung', ['Pentru această ridicare, clientul a comandat Übergabe- und Botenbestätigung.', 'Completați formularul împreună cu expeditorul și verificați datele. Semnați amândoi.', 'Încărcați formularul semnat la „Dokument hinzufügen”. Fără formular, ridicarea nu poate fi finalizată.', 'Separat, la fotografii: 2 fotografii cu plicul închis – fotografia 1 fața, fotografia 2 spatele.'], 'Am înțeles'],
+  ['pl', 'Polski', 'Odbiór z Übergabe- und Botenbestätigung', ['Do tego odbioru zleceniodawca zamówił Übergabe- und Botenbestätigung.', 'Wypełnij formularz razem z nadawcą i sprawdź dane. Podpisujecie oboje.', 'Prześlij podpisany formularz w sekcji „Dokument hinzufügen”. Bez formularza odbioru nie można zakończyć.', 'Osobno, w zdjęciach: 2 zdjęcia zamkniętej koperty – zdjęcie 1 przód, zdjęcie 2 tył.'], 'Rozumiem'],
+  ['bg', 'Български', 'Вземане с Übergabe- und Botenbestätigung', ['За това вземане възложителят е поръчал Übergabe- und Botenbestätigung.', 'Попълнете формуляра заедно с подателя и проверете данните. И двамата подписвате.', 'Качете подписания формуляр в „Dokument hinzufügen“. Без формуляра вземането не може да бъде завършено.', 'Отделно, при снимките: 2 снимки на затворения плик – снимка 1 отпред, снимка 2 отзад.'], 'Разбрах'],
+  ['hu', 'Magyar', 'Átvétel – Übergabe- und Botenbestätigung', ['Ehhez az átvételhez a megrendelő Übergabe- und Botenbestätigung szolgáltatást rendelt.', 'Töltse ki az űrlapot a feladóval együtt, és ellenőrizze az adatokat. Mindketten aláírják.', 'Töltse fel az aláírt űrlapot a „Dokument hinzufügen” részben. Az űrlap nélkül az átvétel nem zárható le.', 'Ettől külön, a fotóknál: 2 fotó a lezárt borítékról – 1. fotó elöl, 2. fotó hátul.'], 'Értettem'],
+  ['cs', 'Čeština', 'Vyzvednutí – Übergabe- und Botenbestätigung', ['K tomuto vyzvednutí si zadavatel objednal Übergabe- und Botenbestätigung.', 'Vyplňte formulář společně s odesílatelem a zkontrolujte údaje. Podepíšete oba.', 'Podepsaný formulář nahrajte v části „Dokument hinzufügen“. Bez formuláře nelze vyzvednutí dokončit.', 'Zvlášť, u fotografií: 2 fotografie zalepené obálky – foto 1 přední strana, foto 2 zadní strana.'], 'Rozumím'],
+  ['sk', 'Slovenčina', 'Vyzdvihnutie – Übergabe- und Botenbestätigung', ['K tomuto vyzdvihnutiu si objednávateľ objednal Übergabe- und Botenbestätigung.', 'Vyplňte formulár spolu s odosielateľom a skontrolujte údaje. Podpíšete obaja.', 'Podpísaný formulár nahrajte v časti „Dokument hinzufügen“. Bez formulára nie je možné vyzdvihnutie dokončiť.', 'Zvlášť, pri fotografiách: 2 fotografie zalepenej obálky – foto 1 predná strana, foto 2 zadná strana.'], 'Rozumiem'],
+  ['hr', 'Hrvatski', 'Preuzimanje – Übergabe- und Botenbestätigung', ['Za ovo preuzimanje naručitelj je naručio Übergabe- und Botenbestätigung.', 'Ispunite obrazac zajedno s pošiljateljem i provjerite podatke. Potpisujete oboje.', 'Potpisani obrazac učitajte pod „Dokument hinzufügen”. Bez obrasca preuzimanje se ne može završiti.', 'Odvojeno, kod fotografija: 2 fotografije zatvorene omotnice – fotografija 1 prednja strana, fotografija 2 stražnja strana.'], 'Razumijem'],
+  ['sr', 'Srpski', 'Preuzimanje – Übergabe- und Botenbestätigung', ['Za ovo preuzimanje naručilac je naručio Übergabe- und Botenbestätigung.', 'Popunite obrazac zajedno sa pošiljaocem i proverite podatke. Potpisujete oboje.', 'Potpisani obrazac otpremite pod „Dokument hinzufügen“. Bez obrasca preuzimanje ne može da se završi.', 'Odvojeno, kod fotografija: 2 fotografije zatvorene koverte – fotografija 1 prednja strana, fotografija 2 zadnja strana.'], 'Razumem'],
+  ['sl', 'Slovenščina', 'Prevzem – Übergabe- und Botenbestätigung', ['Za ta prevzem je naročnik naročil Übergabe- und Botenbestätigung.', 'Obrazec izpolnite skupaj s pošiljateljem in preverite podatke. Podpišeta oba.', 'Podpisani obrazec naložite pod „Dokument hinzufügen“. Brez obrazca prevzema ni mogoče zaključiti.', 'Ločeno, pri fotografijah: 2 fotografiji zaprte kuverte – fotografija 1 sprednja stran, fotografija 2 zadnja stran.'], 'Razumem'],
+  ['sq', 'Shqip', 'Marrje – Übergabe- und Botenbestätigung', ['Për këtë marrje, porositësi ka rezervuar Übergabe- und Botenbestätigung.', 'Plotësoni formularin së bashku me dërguesin dhe kontrolloni të dhënat. Nënshkruani të dy.', 'Ngarkoni formularin e nënshkruar te „Dokument hinzufügen”. Pa formularin, marrja nuk mund të përfundojë.', 'Veçmas, te fotot: 2 foto të zarfit të mbyllur – foto 1 përpara, foto 2 prapa.'], 'E kuptova'],
+  ['uk', 'Українська', 'Забір – Übergabe- und Botenbestätigung', ['Для цього забору замовник замовив Übergabe- und Botenbestätigung.', 'Заповніть форму разом з відправником і перевірте дані. Підписуєте обидва.', 'Завантажте підписану форму в розділі «Dokument hinzufügen». Без форми забір не можна завершити.', 'Окремо, у фото: 2 фото заклеєного конверта – фото 1 спереду, фото 2 ззаду.'], 'Зрозуміло'],
+  ['ru', 'Русский', 'Забор – Übergabe- und Botenbestätigung', ['Для этого забора заказчик заказал Übergabe- und Botenbestätigung.', 'Заполните форму вместе с отправителем и проверьте данные. Подписываете оба.', 'Загрузите подписанную форму в разделе «Dokument hinzufügen». Без формы забор нельзя завершить.', 'Отдельно, в фотографиях: 2 фото заклеенного конверта – фото 1 спереди, фото 2 сзади.'], 'Понятно'],
+  ['tr', 'Türkçe', 'Teslim alma – Übergabe- und Botenbestätigung', ['Bu teslim alma için müşteri Übergabe- und Botenbestätigung hizmetini sipariş etti.', 'Formu gönderici ile birlikte doldurun ve bilgileri kontrol edin. İkiniz de imzalayın.', 'İmzalı formu „Dokument hinzufügen” bölümüne yükleyin. Form olmadan teslim alma tamamlanamaz.', 'Ayrıca, fotoğraflarda: kapalı zarfın 2 fotoğrafı – fotoğraf 1 ön yüz, fotoğraf 2 arka yüz.'], 'Anladım'],
+  ['it', 'Italiano', 'Ritiro – Übergabe- und Botenbestätigung', ['Per questo ritiro il committente ha prenotato la Übergabe- und Botenbestätigung.', 'Compilate il modulo insieme al mittente e verificate i dati. Firmate entrambi.', 'Caricate il modulo firmato in „Dokument hinzufügen”. Senza il modulo il ritiro non può essere completato.', 'A parte, nelle foto: 2 foto della busta chiusa – foto 1 fronte, foto 2 retro.'], 'Ho capito'],
+  ['es', 'Español', 'Recogida – Übergabe- und Botenbestätigung', ['Para esta recogida, el cliente ha contratado la Übergabe- und Botenbestätigung.', 'Rellene el formulario junto con el remitente y compruebe los datos. Firman ambos.', 'Suba el formulario firmado en «Dokument hinzufügen». Sin el formulario no se puede completar la recogida.', 'Aparte, en las fotos: 2 fotos del sobre cerrado – foto 1 parte delantera, foto 2 parte trasera.'], 'Entendido'],
+  ['fr', 'Français', 'Enlèvement – Übergabe- und Botenbestätigung', ['Pour cet enlèvement, le donneur d’ordre a réservé la Übergabe- und Botenbestätigung.', 'Remplissez le formulaire avec l’expéditeur et vérifiez les informations. Vous signez tous les deux.', 'Téléchargez le formulaire signé dans « Dokument hinzufügen ». Sans le formulaire, l’enlèvement ne peut pas être finalisé.', 'Séparément, dans les photos : 2 photos de l’enveloppe fermée – photo 1 recto, photo 2 verso.'], 'Compris'],
+  ['pt', 'Português', 'Recolha – Übergabe- und Botenbestätigung', ['Para esta recolha, o cliente reservou a Übergabe- und Botenbestätigung.', 'Preencha o formulário juntamente com o remetente e verifique os dados. Ambos assinam.', 'Carregue o formulário assinado em «Dokument hinzufügen». Sem o formulário, a recolha não pode ser concluída.', 'À parte, nas fotos: 2 fotos do envelope fechado – foto 1 frente, foto 2 verso.'], 'Entendi'],
+  ['nl', 'Nederlands', 'Ophalen – Übergabe- und Botenbestätigung', ['Voor deze ophaling heeft de opdrachtgever de Übergabe- und Botenbestätigung geboekt.', 'Vul het formulier samen met de afzender in en controleer de gegevens. U tekent allebei.', 'Upload het ondertekende formulier onder „Dokument hinzufügen”. Zonder het formulier kan de ophaling niet worden afgerond.', 'Apart daarvan, bij de foto’s: 2 foto’s van de gesloten envelop – foto 1 voorkant, foto 2 achterkant.'], 'Begrepen'],
+  ['el', 'Ελληνικά', 'Παραλαβή – Übergabe- und Botenbestätigung', ['Για αυτή την παραλαβή ο πελάτης έχει κλείσει την Übergabe- und Botenbestätigung.', 'Συμπληρώστε το έντυπο μαζί με τον αποστολέα και ελέγξτε τα στοιχεία. Υπογράφετε και οι δύο.', 'Ανεβάστε το υπογεγραμμένο έντυπο στο «Dokument hinzufügen». Χωρίς το έντυπο η παραλαβή δεν μπορεί να ολοκληρωθεί.', 'Ξεχωριστά, στις φωτογραφίες: 2 φωτογραφίες του κλειστού φακέλου – φωτογραφία 1 μπροστά, φωτογραφία 2 πίσω.'], 'Κατάλαβα'],
+  ['lt', 'Lietuvių', 'Paėmimas – Übergabe- und Botenbestätigung', ['Šiam paėmimui užsakovas užsakė Übergabe- und Botenbestätigung.', 'Užpildykite formą kartu su siuntėju ir patikrinkite duomenis. Pasirašote abu.', 'Pasirašytą formą įkelkite skiltyje „Dokument hinzufügen“. Be formos paėmimo užbaigti negalima.', 'Atskirai, nuotraukose: 2 užklijuoto voko nuotraukos – 1 nuotrauka priekis, 2 nuotrauka galas.'], 'Supratau'],
+  ['lv', 'Latviešu', 'Saņemšana – Übergabe- und Botenbestätigung', ['Šai saņemšanai pasūtītājs ir pasūtījis Übergabe- und Botenbestätigung.', 'Aizpildiet veidlapu kopā ar sūtītāju un pārbaudiet datus. Parakstāties abi.', 'Augšupielādējiet parakstīto veidlapu sadaļā „Dokument hinzufügen”. Bez veidlapas saņemšanu nevar pabeigt.', 'Atsevišķi, pie fotoattēliem: 2 fotoattēli ar aizlīmētu aploksni – 1. foto priekšpuse, 2. foto aizmugure.'], 'Sapratu'],
 ]
 
 function BotenInfoSheet({ lang, onClose }) {
@@ -6196,7 +6197,7 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
           limbii), apoi — după „Verstanden" — restul. Caseta portocalie
           „Botenbestätigung erforderlich" din capul paginii a fost scoasă:
           informarea o înlocuieşte. */}
-      {cereBoten && !botenInfoVazut ? <BotenInfoSheet lang={lang} onClose={inchideBotenInfo} /> : ghidSheet}
+      {ghidSheet || (cereBoten && !botenInfoVazut ? <BotenInfoSheet lang={lang} onClose={inchideBotenInfo} /> : null)}
       {waitingBlock}
 
       {/* Ce se cere aici, scris înainte ca șoferul să înceapă — nu descoperit
@@ -7498,29 +7499,64 @@ function VideoGhid({ url, lang, gol = true }) {
 
 // Fişa automată, la „Losfahren" sau „Angekommen": doar ghidurile care se
 // potrivesc comenzii şi care n-au fost ascunse la versiunea curentă.
+// Textul unei instrucţiuni în limba aleasă de şofer. DE/EN vin din bază;
+// celelalte din GHID_TRADUCERI, numai dacă traducerea e pentru versiunea
+// actuală a textului. Altfel: germana (null = „nu e tradus").
+function ghidInLimba(g, faza, limba) {
+  if (limba === 'de' || limba === 'en') return { titlu: titluGhid(g, limba), pasi: pasiGhid(g, faza, limba), tradus: true }
+  const tr = GHID_TRADUCERI[g.key]
+  const l = tr && Number(tr.version) === Number(g.version || 1) ? tr.langs?.[limba] : null
+  if (!l) return { titlu: titluGhid(g, 'de'), pasi: pasiGhid(g, faza, 'de'), tradus: false }
+  return { titlu: l.title || titluGhid(g, 'de'), pasi: l[faza] || [], tradus: true }
+}
+
 function GhidSheet({ ghiduri, faza, lang, onClose }) {
   const [ascunde, setAscunde] = useState(false)
   const [video, setVideo] = useState(null)
+  // Aceeaşi limbă ca la informarea Botenbestätigung — aleasă o dată, ţinută pe telefon.
+  const [limba, setLimba] = useState(() => {
+    try { return localStorage.getItem('zd-boten-info-limba') || lang || 'de' } catch { return lang || 'de' }
+  })
+  const alegeLimba = (v) => {
+    setLimba(v)
+    try { localStorage.setItem('zd-boten-info-limba', v) } catch { /* nimic */ }
+  }
+  const ui = (cheie, cheieT) => (GHID_UI[limba] && GHID_UI[limba][cheie]) || t(cheieT, limba === 'en' ? 'en' : (limba === 'de' ? 'de' : lang))
   const inchide = () => {
     if (ascunde) {
       ghiduri.forEach((g) => { try { localStorage.setItem(cheieAscuns(g.key, faza), String(g.version || 1)) } catch { /* nimic */ } })
     }
     onClose()
   }
-  const titluFaza = t(faza === 'start' ? 'guidePhaseStart' : faza === 'pickup' ? 'guidePhasePickup' : 'guidePhaseDelivery', lang)
+  const titluFaza = ui(faza === 'start' ? 'phaseStart' : faza === 'pickup' ? 'phasePickup' : 'phaseDelivery',
+    faza === 'start' ? 'guidePhaseStart' : faza === 'pickup' ? 'guidePhasePickup' : 'guidePhaseDelivery')
+  const texte = ghiduri.map((g) => ({ g, ...ghidInLimba(g, faza, limba) })).filter((x) => x.pasi.length)
+  const netradus = texte.some((x) => !x.tradus)
   return (
     <div className="sig-fullscreen" style={{ justifyContent: 'flex-end', background: 'rgba(15,34,64,.55)', zIndex: 9990 }}>
       <div style={{ background: '#fff', borderRadius: '16px 16px 0 0', padding: '20px 20px calc(20px + env(safe-area-inset-bottom))', maxHeight: '88vh', overflowY: 'auto' }}>
         <div style={{ fontSize: 12.5, fontWeight: 600, color: '#5A6878', marginBottom: 2 }}>{titluFaza}</div>
-        <div style={{ fontSize: 18, fontWeight: 700, color: '#0F2240', marginBottom: 12 }}>{t('guideSheetTitle', lang)}</div>
-        {ghiduri.map((g) => (
+        <div style={{ fontSize: 18, fontWeight: 700, color: '#0F2240', marginBottom: 10 }}>{ui('sheetTitle', 'guideSheetTitle')}</div>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#5A6878', marginBottom: 12 }}>
+          🌐
+          <select value={limba} onChange={(e) => alegeLimba(e.target.value)}
+            style={{ flex: 1, padding: '9px 10px', borderRadius: 8, border: '1px solid #C9D1DD', fontSize: 15, background: '#fff', color: '#0F2240' }}>
+            {BOTEN_INFO_LIMBI.map(([cod, nume]) => <option key={cod} value={cod}>{nume}</option>)}
+          </select>
+        </label>
+        {netradus && (
+          <div style={{ fontSize: 12.5, color: '#8A5A16', background: '#FFF6ED', borderRadius: 8, padding: '7px 10px', marginBottom: 10 }}>
+            {ui('noTranslation', 'guideSheetTitle')}
+          </div>
+        )}
+        {texte.map(({ g, titlu, pasi }) => (
           <div key={g.key} className="ghid-bloc">
-            <div className="ghid-titlu">{titluGhid(g, lang)}</div>
+            <div className="ghid-titlu">{titlu}</div>
             {g.video_url && (video === g.key
               ? <VideoGhid url={g.video_url} lang={lang} />
               : <button type="button" className="ghid-video-btn" onClick={() => setVideo(g.key)}><Play size={15} strokeWidth={2.2} /> {t('guideWatchVideo', lang)}</button>)}
             <ol className="ghid-pasi">
-              {pasiGhid(g, faza, lang).map((p, i) => <li key={i}>{p}</li>)}
+              {pasi.map((p, i) => <li key={i}>{p}</li>)}
             </ol>
             {g.url && (
               <a className="ghid-link" href={g.url} target="_blank" rel="noreferrer">{t('guideOpen', lang)} ↗</a>
@@ -7529,9 +7565,9 @@ function GhidSheet({ ghiduri, faza, lang, onClose }) {
         ))}
         <label className="ghid-ascunde">
           <input type="checkbox" checked={ascunde} onChange={(e) => setAscunde(e.target.checked)} />
-          {t('guideDontShow', lang)}
+          {ui('dontShow', 'guideDontShow')}
         </label>
-        <button type="button" className="btn" style={{ width: '100%', margin: '12px 0 0' }} onClick={inchide}>{t('guideUnderstood', lang)}</button>
+        <button type="button" className="btn" style={{ width: '100%', margin: '12px 0 0' }} onClick={inchide}>{ui('understood', 'guideUnderstood')}</button>
       </div>
     </div>
   )

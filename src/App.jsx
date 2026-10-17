@@ -4,6 +4,7 @@ import { supabase } from './supabaseClient'
 import { t, getLang, setLang, availableLangs } from './i18n'
 import { Eye, Play, ClipboardList, Pause, SlidersHorizontal, Building2, StickyNote, Receipt, Package, Repeat, Hourglass, Camera, Image as ImageIcon, Mail, Ruler, ChevronDown, Lock, Phone, Truck, CheckCircle2, Wallet, User, LogOut, Menu, Bell, MapPin, FlagTriangleRight, Tag, XCircle, Download, X, Navigation, Trophy, ThumbsUp, ArrowUpFromLine, ArrowDownToLine, EyeOff, Layers, AlertTriangle, Clock, FileText, Signature, BookOpen } from 'lucide-react'
 import { GHID_TRADUCERI, GHID_UI } from './ghidTraduceri.js'
+import { ZP_LIMBI } from './zpTraduceri.js'
 import './index.css'
 import PodFiles from './components/PodFiles'
 import DocumentCamera from './components/DocumentCamera'
@@ -5210,6 +5211,25 @@ const BOTEN_INFO_LIMBI = [
   ['lv', 'Latviešu', 'Saņemšana – Übergabe- und Botenbestätigung', ['Šai saņemšanai pasūtītājs ir pasūtījis Übergabe- und Botenbestätigung.', 'Aizpildiet veidlapu kopā ar sūtītāju un pārbaudiet datus. Parakstāties abi.', 'Augšupielādējiet parakstīto veidlapu sadaļā „Dokument hinzufügen”. Bez veidlapas saņemšanu nevar pabeigt. Oriģināls paliek pie sūtītāja.', 'Atsevišķi, pie fotoattēliem: 2 fotoattēli ar aizlīmētu aploksni – 1. foto priekšpuse, 2. foto aizmugure.'], 'Sapratu'],
 ]
 
+// Lista de limbi, aceeaşi în toate ferestrele; limba aleasă e ţinută pe telefon.
+function citesteLimba(lang) {
+  try { return localStorage.getItem('zd-boten-info-limba') || lang || 'de' } catch { return lang || 'de' }
+}
+function SelectorLimba({ value, onChange }) {
+  return (
+    <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#5A6878', marginBottom: 12 }}>
+      🌐
+      <select value={value} onChange={(e) => {
+        onChange(e.target.value)
+        try { localStorage.setItem('zd-boten-info-limba', e.target.value) } catch { /* nimic */ }
+      }}
+        style={{ flex: 1, padding: '9px 10px', borderRadius: 8, border: '1px solid #C9D1DD', fontSize: 15, background: '#fff', color: '#0F2240' }}>
+        {BOTEN_INFO_LIMBI.map(([cod, nume]) => <option key={cod} value={cod}>{nume}</option>)}
+      </select>
+    </label>
+  )
+}
+
 function BotenInfoSheet({ lang, onClose }) {
   const [limba, setLimba] = useState(() => {
     try { return localStorage.getItem('zd-boten-info-limba') || lang || 'de' } catch { return lang || 'de' }
@@ -5530,6 +5550,9 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
   // Întrebarea de la ridicarea documentelor: „Ai Zustellprotokoll-ul la tine?"
   // null = închisă, 'ask' = întrebarea, 'lipsa' = cere-l de la expeditor.
   const [zpIntrebare, setZpIntrebare] = useState(null)
+  const [zpLimba, setZpLimba] = useState(() => citesteLimba(lang))
+  const zpT = (k) => (ZP_LIMBI[zpLimba] || ZP_LIMBI.de)[k]
+  useEffect(() => { if (zpIntrebare) setZpLimba(citesteLimba(lang)) }, [zpIntrebare]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Trimiterea documentului către client, direct de la faţa locului.
   //
@@ -6650,28 +6673,30 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
           display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 18,
         }}>
           <div style={{ background: '#fff', borderRadius: 14, padding: '20px 18px', width: '100%', maxWidth: 380, boxShadow: '0 12px 40px rgba(0,0,0,.25)' }}>
+            {/* Limba aleasă de şofer — aceeaşi listă ca la celelalte ferestre. */}
+            <SelectorLimba value={zpLimba} onChange={setZpLimba} />
             {zpIntrebare === 'ask' ? (
               <>
-                <div style={{ fontSize: 18, fontWeight: 800, color: '#0F2240', lineHeight: 1.3 }}>{t('zpAskTitle', lang)}</div>
-                <div style={{ fontSize: 14, color: '#B23A24', fontWeight: 600, marginTop: 8, lineHeight: 1.45 }}>{t('zpAskText', lang)}</div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: '#0F2240', lineHeight: 1.3 }}>{zpT('askTitle')}</div>
+                <div style={{ fontSize: 14, color: '#B23A24', fontWeight: 600, marginTop: 8, lineHeight: 1.45 }}>{zpT('askText')}</div>
                 <button type="button" className="btn" style={{ marginTop: 16 }}
                   onClick={() => { setZpIntrebare(null); confirmLeg() }}>
-                  {t('zpYes', lang)}
+                  {zpT('yes')}
                 </button>
                 <button type="button" className="btn btn-secondary" style={{ marginTop: 8, background: '#fff', color: '#B23A24', border: '2px solid #E4A296' }}
                   onClick={() => setZpIntrebare('lipsa')}>
-                  {t('zpNo', lang)}
+                  {zpT('no')}
                 </button>
               </>
             ) : (
               <>
-                <div style={{ fontSize: 18, fontWeight: 800, color: '#B23A24', lineHeight: 1.3 }}>⚠ {t('zpMissingTitle', lang)}</div>
-                <div style={{ fontSize: 14, color: '#0F2240', marginTop: 8, lineHeight: 1.5 }}>{t('zpMissingText', lang)}</div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: '#B23A24', lineHeight: 1.3 }}>⚠ {zpT('missTitle')}</div>
+                <div style={{ fontSize: 14, color: '#0F2240', marginTop: 8, lineHeight: 1.5 }}>{zpT('missText')}</div>
                 <button type="button" className="btn" style={{ marginTop: 16 }} onClick={() => setZpIntrebare('ask')}>
-                  {t('zpGotIt', lang)}
+                  {zpT('gotIt')}
                 </button>
                 <button type="button" className="link-btn" style={{ marginTop: 10, width: '100%' }} onClick={() => setZpIntrebare(null)}>
-                  {t('zpBack', lang)}
+                  {zpT('back')}
                 </button>
               </>
             )}

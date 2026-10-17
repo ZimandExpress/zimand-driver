@@ -46,6 +46,108 @@ export function chenarGhid(w, h) {
   return { x: (w - W) / 2, y: (h - H) / 2, w: W, h: H }
 }
 
+
+// --- căutarea foii în fotografie (OpenCV, încărcat la cerere) -------------
+//
+// OpenCV stă în proiect (public/vendor/opencv.js), nu pe alt server: la
+// documente confidenţiale, codul care rulează pe telefon e cel livrat de noi.
+// Atenţie: promisiunea NU se rezolvă cu `cv` — obiectul OpenCV are o metodă
+// `then`, iar o promisiune rezolvată cu el aşteaptă la nesfârşit. Rezolvăm
+// cu `true` şi luăm apoi `window.cv`.
+let cvPromise = null
+export function incarcaOpenCv() {
+  if (window.cv?.Mat) return Promise.resolve(true)
+  if (cvPromise) return cvPromise
+  cvPromise = new Promise((resolve, reject) => {
+    const sc = document.createElement('script')
+    sc.src = '/vendor/opencv.js'
+    sc.async = true
+    sc.onerror = () => { cvPromise = null; reject(new Error('opencv')) }
+    sc.onload = () => {
+      const t0 = Date.now()
+      const asteapta = () => {
+        if (window.cv?.Mat) resolve(true)
+        else if (Date.now() - t0 > 20000) { cvPromise = null; reject(new Error('opencv_timeout')) }
+        else setTimeout(asteapta, 100)
+      }
+      asteapta()
+    }
+    document.head.appendChild(sc)
+  })
+  return cvPromise
+}
+
+// Unde se află, în fotografia adevărată, imaginea pe care şoferul a văzut-o
+// pe ecran? Fotografia cuprinde de obicei mai mult decât filmul (alt unghi),
+// deci chenarul nu se poate muta proporţional — ieşea toată podeaua.
+// Căutăm cadrul video în fotografie (aceeaşi scenă, la altă scară) şi
+// întoarcem transformarea. null dacă potrivirea nu e sigură.
+function canvasDin(sursa, w, h, rot) {
+  const c = document.createElement('canvas')
+  if (rot) { c.width = h; c.height = w } else { c.width = w; c.height = h }
+  const g = c.getContext('2d', { willReadFrequently: true })
+  if (rot === 90) { g.translate(h, 0); g.rotate(Math.PI / 2) }
+  if (rot === -90) { g.translate(0, w); g.rotate(-Math.PI / 2) }
+  g.drawImage(sursa, 0, 0, w, h)
+  return c
+}
+
+export async function potrivesteFotografia(foto, cadru) {
+  try { await incarcaOpenCv() } catch { return null }
+  const cv = window.cv
+  const vW = cadru.width, vH = cadru.height
+  const portretV = vH >= vW
+  const rotiri = ((foto.height >= foto.width) === portretV) ? [0] : [90, -90]
+  const P = 480
+  let best = null
+  for (const rot of rotiri) {
+    const fW = rot ? foto.height : foto.width
+    const fH = rot ? foto.width : foto.height
+    const sP = P / fW
+    const mica = canvasDin(foto, Math.round(foto.width * sP), Math.round(foto.height * sP), rot)
+    const de = []
+    try {
+      const imgF = cv.imread(mica); de.push(imgF)
+      const grF = new cv.Mat(); de.push(grF)
+      cv.cvtColor(imgF, grF, cv.COLOR_RGBA2GRAY)
+      // Două treceri: grosier (pas 0,025), apoi fin (0,005) în jurul celei mai bune scări.
+      const scari = []
+      for (let f = 0.5; f <= 1.0001; f += 0.025) scari.push(f)
+      const incearca = (lista) => { for (const f of lista) {
+        const tw = Math.round(P * f)
+        const th = Math.round(tw * vH / vW)
+        if (th > mica.height || tw < 40) continue
+        const tpl = document.createElement('canvas')
+        tpl.width = tw; tpl.height = th
+        tpl.getContext('2d', { willReadFrequently: true }).drawImage(cadru, 0, 0, tw, th)
+        const imgT = cv.imread(tpl)
+        const grT = new cv.Mat()
+        cv.cvtColor(imgT, grT, cv.COLOR_RGBA2GRAY)
+        const res = new cv.Mat()
+        cv.matchTemplate(grF, grT, res, cv.TM_CCOEFF_NORMED)
+        const mm = cv.minMaxLoc(res)
+        if (!best || mm.maxVal > best.scor) {
+          best = { scor: mm.maxVal, rot, x: mm.maxLoc.x / sP, y: mm.maxLoc.y / sP, scara: (tw / sP) / vW, fW, fH }
+        }
+        imgT.delete(); grT.delete(); res.delete()
+      } }
+      incearca(scari)
+      if (best && best.rot === rot) {
+        const f0 = (best.scara * vW) * sP / P
+        const fine = []
+        for (let f = f0 - 0.03; f <= f0 + 0.03; f += 0.005) if (f > 0.3 && f <= 1.0001) fine.push(f)
+        incearca(fine)
+      }
+    } catch {
+      /* încercăm mai departe */
+    } finally {
+      de.forEach((m) => { try { m.delete() } catch { /* nimic */ } })
+    }
+  }
+  if (!best || best.scor < 0.55) return null
+  return best
+}
+
 export default function DocumentCamera({ lang, titlu, onCapture, onCancel, onSystemCamera }) {
   const videoRef = useRef(null)
   const canvasRef = useRef(null)
@@ -66,6 +168,10 @@ export default function DocumentCamera({ lang, titlu, onCapture, onCancel, onSys
   // dreptunghi, iar verdictul vine din altul. De aceea nu scriem procente
   // fixe: le calculăm din imagine, cu aceeaşi funcţie.
   const [dim, setDim] = useState(null)
+
+  // OpenCV se încarcă din clipa în care se deschide camera, ca la apăsare
+  // să fie gata (fişierul e mare, ~9 MB, dar rămâne apoi în cache).
+  useEffect(() => { incarcaOpenCv().catch(() => {}) }, [])
 
   // --- camera -------------------------------------------------------------
   useEffect(() => {
@@ -157,11 +263,15 @@ export default function DocumentCamera({ lang, titlu, onCapture, onCancel, onSys
   // --- poza ---------------------------------------------------------------
   //
   // Scrisul ieşea neclar (17.10.2026): poza se lua dintr-un cadru VIDEO —
-  // rezoluţie mică, comprimat ca film, fără focalizarea unei fotografii.
-  // Acum, unde browserul ştie (Android/Chrome), cerem camerei o fotografie
-  // adevărată, la rezoluţia senzorului, ca la pozele obişnuite. Chenarul şi
-  // îndrumarea rămân doar pentru încadrare. Unde nu se poate (iPhone),
-  // rămâne cadrul video, cerut acum la rezoluţie mai mare.
+  // rezoluţie mică, comprimat ca film. Prima încercare a cerut o fotografie
+  // adevărată (ImageCapture), dar fotografia are alt unghi de cuprindere decât
+  // filmul de pe ecran: chenarul nu se mai potrivea şi ieşea podeaua întreagă.
+  //
+  // Acum: fotografia adevărată, iar chenarul de pe ecran e căutat în ea
+  // (potrivirea filmului în fotografie), deci se decupează exact ce a văzut
+  // şoferul în chenar, dar la rezoluţia fotografiei. Dacă potrivirea nu e
+  // sigură, se ia ca înainte chenarul din cadrul video (cerut acum la
+  // rezoluţie mai mare). Şoferul vede rezultatul şi poate reface poza.
   async function pozaIntreaga() {
     const track = streamRef.current?.getVideoTracks?.()[0]
     if (!track || typeof window.ImageCapture !== 'function') return null
@@ -169,11 +279,26 @@ export default function DocumentCamera({ lang, titlu, onCapture, onCancel, onSys
       const ic = new window.ImageCapture(track)
       const blob = await ic.takePhoto()
       if (!blob) return null
-      const bmp = await createImageBitmap(blob)
-      return bmp
+      return await createImageBitmap(blob, { imageOrientation: 'from-image' }).catch(() => createImageBitmap(blob))
     } catch {
       return null
     }
+  }
+
+  function decupajChenarVideo(v) {
+    const ch = chenarGhid(v.videoWidth, v.videoHeight)
+    const m = Math.round(Math.min(ch.w, ch.h) * 0.03)
+    const sx = Math.max(0, Math.round(ch.x - m))
+    const sy = Math.max(0, Math.round(ch.y - m))
+    const sw = Math.min(v.videoWidth - sx, Math.round(ch.w + 2 * m))
+    const sh = Math.min(v.videoHeight - sy, Math.round(ch.h + 2 * m))
+    const out = document.createElement('canvas')
+    out.width = sw
+    out.height = sh
+    const g = out.getContext('2d')
+    g.imageSmoothingQuality = 'high'
+    g.drawImage(v, sx, sy, sw, sh, 0, 0, sw, sh)
+    return out
   }
 
   async function fotografiaza() {
@@ -181,32 +306,40 @@ export default function DocumentCamera({ lang, titlu, onCapture, onCancel, onSys
     if (!v || !v.videoWidth || lucreaza) return
     setLucreaza(true)
     try {
+      // Cadrul video exact din clipa apăsării — e ce a văzut şoferul.
+      const cadru = document.createElement('canvas')
+      cadru.width = v.videoWidth
+      cadru.height = v.videoHeight
+      cadru.getContext('2d').drawImage(v, 0, 0)
+      const rezerva = decupajChenarVideo(v)
+      let out = null
       const foto = await pozaIntreaga()
-      // Sursa: fotografia întreagă dacă a ieşit, altfel cadrul video.
-      const sursa = foto || v
-      const W = foto ? foto.width : v.videoWidth
-      const H = foto ? foto.height : v.videoHeight
-      // Chenarul de pe ecran, mutat pe sursă. Dacă fotografia are alte
-      // proporţii decât filmul, îl recalculăm pe ea (tot A4, centrat).
-      const acelasiFormat = Math.abs(W / H - v.videoWidth / v.videoHeight) < 0.03
-      const chV = chenarGhid(v.videoWidth, v.videoHeight)
-      const ch = acelasiFormat
-        ? { x: chV.x / v.videoWidth * W, y: chV.y / v.videoHeight * H, w: chV.w / v.videoWidth * W, h: chV.h / v.videoHeight * H }
-        : chenarGhid(W, H)
-      // Decupăm exact chenarul, cu o margine de 3% în jur: pe hârtie,
-      // marginea albă face parte din document şi ajută la citit.
-      const m = Math.round(Math.min(ch.w, ch.h) * 0.03)
-      const sx = Math.max(0, Math.round(ch.x - m))
-      const sy = Math.max(0, Math.round(ch.y - m))
-      const sw = Math.min(W - sx, Math.round(ch.w + 2 * m))
-      const sh = Math.min(H - sy, Math.round(ch.h + 2 * m))
-      const out = document.createElement('canvas')
-      out.width = sw
-      out.height = sh
-      const g = out.getContext('2d')
-      g.imageSmoothingQuality = 'high'
-      g.drawImage(sursa, sx, sy, sw, sh, 0, 0, sw, sh)
-      if (foto && foto.close) foto.close()
+      if (foto) {
+        const m = await potrivesteFotografia(foto, cadru)
+        if (m) {
+          // Chenarul de pe ecran, mutat în fotografie (cu marginea de 3%).
+          const ch = chenarGhid(v.videoWidth, v.videoHeight)
+          const marg = Math.min(ch.w, ch.h) * 0.03
+          const x0 = m.x + (ch.x - marg) * m.scara
+          const y0 = m.y + (ch.y - marg) * m.scara
+          const w0 = (ch.w + 2 * marg) * m.scara
+          const h0 = (ch.h + 2 * marg) * m.scara
+          const sx = Math.max(0, Math.round(x0)), sy = Math.max(0, Math.round(y0))
+          const sw = Math.min(m.fW - sx, Math.round(w0)), sh = Math.min(m.fH - sy, Math.round(h0))
+          if (sw > rezerva.width && sh > rezerva.height) {
+            const intreaga = canvasDin(foto, foto.width, foto.height, m.rot)
+            out = document.createElement('canvas')
+            out.width = sw
+            out.height = sh
+            const g = out.getContext('2d')
+            g.imageSmoothingQuality = 'high'
+            g.drawImage(intreaga, sx, sy, sw, sh, 0, 0, sw, sh)
+          }
+        }
+        if (foto.close) foto.close()
+      }
+      // Fără fotografie (iPhone) sau potrivire nesigură: exact chenarul din film.
+      out = out || rezerva
       const blob = await new Promise((res) => out.toBlob(res, 'image/jpeg', 0.92))
       if (!blob) { setLucreaza(false); return }
       const file = new File([blob], `dokument-${Date.now()}.jpg`, { type: 'image/jpeg' })

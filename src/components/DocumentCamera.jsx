@@ -76,8 +76,10 @@ export default function DocumentCamera({ lang, titlu, onCapture, onCancel, onSys
         const stream = await navigator.mediaDevices.getUserMedia({
           video: {
             facingMode: { ideal: 'environment' },
-            width: { ideal: 1440 },
-            height: { ideal: 1920 },
+            // Cât mai mare: dacă telefonul nu ştie să facă o fotografie
+            // adevărată (vezi `pozaIntreaga`), poza vine din cadrul video.
+            width: { ideal: 2160 },
+            height: { ideal: 2880 },
             aspectRatio: { ideal: 0.75 },
           },
           audio: false,
@@ -153,23 +155,58 @@ export default function DocumentCamera({ lang, titlu, onCapture, onCancel, onSys
   }, [eroare, dim])
 
   // --- poza ---------------------------------------------------------------
+  //
+  // Scrisul ieşea neclar (17.10.2026): poza se lua dintr-un cadru VIDEO —
+  // rezoluţie mică, comprimat ca film, fără focalizarea unei fotografii.
+  // Acum, unde browserul ştie (Android/Chrome), cerem camerei o fotografie
+  // adevărată, la rezoluţia senzorului, ca la pozele obişnuite. Chenarul şi
+  // îndrumarea rămân doar pentru încadrare. Unde nu se poate (iPhone),
+  // rămâne cadrul video, cerut acum la rezoluţie mai mare.
+  async function pozaIntreaga() {
+    const track = streamRef.current?.getVideoTracks?.()[0]
+    if (!track || typeof window.ImageCapture !== 'function') return null
+    try {
+      const ic = new window.ImageCapture(track)
+      const blob = await ic.takePhoto()
+      if (!blob) return null
+      const bmp = await createImageBitmap(blob)
+      return bmp
+    } catch {
+      return null
+    }
+  }
+
   async function fotografiaza() {
     const v = videoRef.current
     if (!v || !v.videoWidth || lucreaza) return
     setLucreaza(true)
     try {
+      const foto = await pozaIntreaga()
+      // Sursa: fotografia întreagă dacă a ieşit, altfel cadrul video.
+      const sursa = foto || v
+      const W = foto ? foto.width : v.videoWidth
+      const H = foto ? foto.height : v.videoHeight
+      // Chenarul de pe ecran, mutat pe sursă. Dacă fotografia are alte
+      // proporţii decât filmul, îl recalculăm pe ea (tot A4, centrat).
+      const acelasiFormat = Math.abs(W / H - v.videoWidth / v.videoHeight) < 0.03
+      const chV = chenarGhid(v.videoWidth, v.videoHeight)
+      const ch = acelasiFormat
+        ? { x: chV.x / v.videoWidth * W, y: chV.y / v.videoHeight * H, w: chV.w / v.videoWidth * W, h: chV.h / v.videoHeight * H }
+        : chenarGhid(W, H)
       // Decupăm exact chenarul, cu o margine de 3% în jur: pe hârtie,
       // marginea albă face parte din document şi ajută la citit.
-      const ch = chenarGhid(v.videoWidth, v.videoHeight)
       const m = Math.round(Math.min(ch.w, ch.h) * 0.03)
       const sx = Math.max(0, Math.round(ch.x - m))
       const sy = Math.max(0, Math.round(ch.y - m))
-      const sw = Math.min(v.videoWidth - sx, Math.round(ch.w + 2 * m))
-      const sh = Math.min(v.videoHeight - sy, Math.round(ch.h + 2 * m))
+      const sw = Math.min(W - sx, Math.round(ch.w + 2 * m))
+      const sh = Math.min(H - sy, Math.round(ch.h + 2 * m))
       const out = document.createElement('canvas')
       out.width = sw
       out.height = sh
-      out.getContext('2d').drawImage(v, sx, sy, sw, sh, 0, 0, sw, sh)
+      const g = out.getContext('2d')
+      g.imageSmoothingQuality = 'high'
+      g.drawImage(sursa, sx, sy, sw, sh, 0, 0, sw, sh)
+      if (foto && foto.close) foto.close()
       const blob = await new Promise((res) => out.toBlob(res, 'image/jpeg', 0.92))
       if (!blob) { setLucreaza(false); return }
       const file = new File([blob], `dokument-${Date.now()}.jpg`, { type: 'image/jpeg' })

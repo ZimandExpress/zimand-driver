@@ -9,7 +9,9 @@
 // fiindcă acolo lizibilitatea textului e obligatorie.
 
 export const PHOTO_PRESET = { maxEdge: 1600, quality: 0.8, mime: 'image/jpeg' }
-export const DOCUMENT_PRESET = { maxEdge: 2200, quality: 0.9, mime: 'image/jpeg' }
+// Documente: 3000 px pe latura mare (~250 dpi pe A4) — scrisul de mână şi
+// rândurile mici rămân citibile. Ridicat de la 2200 pe 17.10.2026.
+export const DOCUMENT_PRESET = { maxEdge: 3000, quality: 0.92, mime: 'image/jpeg' }
 export const THUMB_EDGE = 360
 
 // Limite de siguranță — peste acestea refuzăm fișierul cu un mesaj clar,

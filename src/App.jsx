@@ -3462,7 +3462,11 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
 
       {/* Bara de progres a urcat pe rândul cu „Zurück" (vezi mai sus). */}
 
-      <GoogleLiveMap pickupCoords={pickupCoords} deliveryCoords={deliveryCoords} stopCoords={puncteOpriri} />
+      {/* Harta nu mai apare cât şoferul e la adresă (a bifat „Angekommen" şi
+          n-a confirmat încă): urmează încărcarea sau predarea, nu drumul. */}
+      {!(arrivedAt && !confirmedAt) && (
+        <GoogleLiveMap pickupCoords={pickupCoords} deliveryCoords={deliveryCoords} stopCoords={puncteOpriri} />
+      )}
 
       {companyName && (
         <div className="info-card">
@@ -5499,10 +5503,12 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
   // butonul de confirmare. Până acum cele două erau scrise separat, cu
   // condiţii asemănătoare dar nu identice — iar când nu se potriveau,
   // șoferul rămânea cu un buton stins și o listă care nu-i cerea nimic.
+  // La ridicarea de documente: plicul închis, faţă şi spate — două poze
+  // (cerut de Andrei pe 17.10.2026).
   const minimPoze = isDocumentDelivery
     ? (esteLivrareEtapa
         ? (deliveryMethod === 'briefkasten' ? MINIM_POZE_CUTIE : MINIM_POZE_PERSONAL)
-        : 1)
+        : 2)
     : (esteLivrareEtapa ? 2 : 1)
 
   // La ridicarea unei curse de documente pleacă două formulare: protocolul
@@ -6289,6 +6295,11 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
 
       {/* Cate sunt cerute si cate ajuta. Scris langa casute, nu doar in
           butonul stins de jos. */}
+      {isDocumentDelivery && !esteLivrareEtapa && (
+        <div style={{ fontSize: 12.5, color: '#6B7A90', lineHeight: 1.5, margin: '0 0 8px' }}>
+          {t('photosDocPickup', lang)}
+        </div>
+      )}
       {esteEtapaLivrareDoc && (
         <div style={{ fontSize: 12.5, color: '#6B7A90', lineHeight: 1.5, margin: '0 0 8px' }}>
           {deliveryMethod === 'briefkasten'
@@ -6314,7 +6325,9 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
             ? (deliveryMethod === 'briefkasten'
                 ? [t('hintGebaeude', lang), t('hintUmschlagName', lang), t('hintHalbEingeworfen', lang), t('hintEingeworfen', lang), t('hintUmgebung', lang), t('hintProtokoll', lang)]
                 : (deliveryMethod === 'persoenlich' ? [t('hintGebaeude', lang)] : []))
-            : (esteLivrareNormala ? [t('hintWare1', lang), t('hintWare2', lang)] : [])
+            : isDocumentDelivery && !esteLivrareEtapa
+              ? [t('hintUmschlagVorne', lang), t('hintUmschlagHinten', lang)]
+              : (esteLivrareNormala ? [t('hintWare1', lang), t('hintWare2', lang)] : [])
         }
       />
 

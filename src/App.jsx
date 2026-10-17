@@ -5928,7 +5928,7 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
             <Pause size={15} strokeWidth={2.2} style={{ verticalAlign: '-3px' }} /> {t('pauseButton', lang)}
           </button>
         )}
-        {!undoable && (
+        {ARATA_NOCH_NICHT_LOSGEFAHREN && !undoable && (
           unstartIntrebare ? (
             <div className="unstart-box">
               <div className="unstart-text">{t('unstartQuestion', lang)}</div>
@@ -7324,6 +7324,9 @@ function RandLegenda({ semn, titlu, text }) {
 // Disposition pe WhatsApp.
 const ARATA_PROBLEM_MELDEN = false
 const ARATA_FAHRT_UNTERBRECHEN = false
+// „Doch noch nicht losgefahren?" — ascuns tot din 17.10.2026: anularea
+// pornirii rămâne posibilă în primele secunde după „Losfahren".
+const ARATA_NOCH_NICHT_LOSGEFAHREN = false
 
 const CHEIE_GHIDURI = 'zd-guides'
 function citesteGhiduriSalvate() {

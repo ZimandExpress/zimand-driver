@@ -2179,10 +2179,22 @@ function RideCard({ order, isOwner, lang, onClick, compact }) {
           {opriri.length > 0 && (
             <div className="rc-via">{opriri.length} {t('stopsMoreLabel', lang)}</div>
           )}
-          <div className="rc-stop">
+          {/* La dus-întors linia punctată continuă sub livrare până la a
+              treia oprire: întoarcerea la adresa de ridicare. Şoferul vede
+              din listă că cursa nu se termină la livrare. */}
+          <div className={`rc-stop ${order.is_round_trip ? 'rc-stop-mid' : ''}`}>
             <span className="rc-dot rc-dot-to" />
             <span className="rc-addr">{order.delivery_address}</span>
           </div>
+          {order.is_round_trip && (
+            <div className="rc-stop">
+              <span className="rc-dot rc-dot-ret" />
+              <span className="rc-addr">
+                <span className="rc-ret-label">{t('returnLabel', lang)}</span>{' '}
+                {order.return_delivery_address || order.pickup_address}
+              </span>
+            </div>
+          )}
           <span className="rc-tags">
             <span className="rc-num">{order.order_number || order.reference || order.id.slice(0, 8)}</span>
             {isRecentlyNew(order.created_at) && <span className="rc-tag rc-tag-new">{t('newBadge', lang)}</span>}
@@ -8606,10 +8618,19 @@ function BidCard({ order, lang, courierProfileId, open, onToggle, onBidPlaced })
               <span className="rc-dot rc-dot-from" />
               <span className="rc-addr">{cityCountryOnly(order.pickup_address)}</span>
             </div>
-            <div className="rc-stop">
+            <div className={`rc-stop ${order.is_round_trip ? 'rc-stop-mid' : ''}`}>
               <span className="rc-dot rc-dot-to" />
               <span className="rc-addr">{cityCountryOnly(order.delivery_address)}</span>
             </div>
+            {order.is_round_trip && (
+              <div className="rc-stop">
+                <span className="rc-dot rc-dot-ret" />
+                <span className="rc-addr">
+                  <span className="rc-ret-label">{t('returnLabel', lang)}</span>{' '}
+                  {cityCountryOnly(order.return_delivery_address || order.pickup_address)}
+                </span>
+              </div>
+            )}
             <span className="rc-tags">
               <span className="rc-num">{order.order_number || order.id.slice(0, 8)}</span>
               {isRecentlyNew(order.created_at) && <span className="rc-tag rc-tag-new">{t('newBadge', lang)}</span>}

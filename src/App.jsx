@@ -5086,19 +5086,15 @@ function AltCapat({ order, lang, spreLivrare }) {
   )
 }
 
-// Zustellart aleasă de client la Dokumentenzustellung (1 / 2 / 3) şi datele
-// documentului, aşa cum le-a scris el în formular. Arătate oriunde şoferul
-// citeşte despre cursă, ca să ştie dinainte dacă are voie la cutia poştală.
+// Zustellart aleasă de client la Dokumentenzustellung (1 / 2 / 3), arătată
+// oriunde şoferul citeşte despre cursă, ca să ştie dinainte dacă are voie la
+// cutia poştală. Datele documentului (fel, Betreff, dată, pagini) NU se mai
+// arată în aplicaţie (cerut de Andrei pe 17.10.2026): sunt pe Botenbestätigung,
+// iar conţinutul unei trimiteri confidenţiale nu are ce căuta pe telefonul
+// curierului. Rămân în comandă, pentru dispecerat şi formulare.
 function ZustellartInfo({ order, lang, compact }) {
   const z = Number(order?.zustellart) || 0
-  const tipuri = Array.isArray(order?.document_types) ? order.document_types.filter(Boolean) : []
-  const detalii = [
-    order?.doc_betreff ? `„${order.doc_betreff}“` : '',
-    order?.doc_datum ? `${t('docDetailsDate', lang)} ${String(order.doc_datum).split('-').reverse().join('.')}` : '',
-    order?.doc_seiten ? `${order.doc_seiten} ${t('docDetailsPages', lang)}` : '',
-    order?.doc_umschlaege ? `${order.doc_umschlaege} ${t('docDetailsEnvelopes', lang)}` : '',
-  ].filter(Boolean)
-  if (!z && !tipuri.length && !detalii.length) return null
+  if (!z) return null
   const rosu = z === 3
   return (
     <div style={{
@@ -5117,11 +5113,6 @@ function ZustellartInfo({ order, lang, compact }) {
             <div style={{ fontSize: 12.5, color: '#4A5563', lineHeight: 1.5, marginTop: 3 }}>{t(`zustellart${z}Note`, lang)}</div>
           )}
         </>
-      )}
-      {(tipuri.length > 0 || detalii.length > 0) && (
-        <div style={{ fontSize: 12.5, color: '#4A5563', lineHeight: 1.5, marginTop: z ? 7 : 0 }}>
-          <b>{t('docDetailsTitle', lang)}:</b> {[tipuri.join(', '), ...detalii].filter(Boolean).join(' · ')}
-        </div>
       )}
     </div>
   )

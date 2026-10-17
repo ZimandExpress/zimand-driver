@@ -4,7 +4,7 @@ import { supabase } from './supabaseClient'
 import { t, getLang, setLang, availableLangs } from './i18n'
 import { Eye, Play, ClipboardList, Pause, SlidersHorizontal, Building2, StickyNote, Receipt, Package, Repeat, Hourglass, Camera, Image as ImageIcon, Mail, Ruler, ChevronDown, Lock, Phone, Truck, CheckCircle2, Wallet, User, LogOut, Menu, Bell, MapPin, FlagTriangleRight, Tag, XCircle, Download, X, Navigation, Trophy, ThumbsUp, ArrowUpFromLine, ArrowDownToLine, EyeOff, Layers, AlertTriangle, Clock, FileText, Signature, BookOpen } from 'lucide-react'
 import { GHID_TRADUCERI, GHID_UI } from './ghidTraduceri.js'
-import { ZP_LIMBI, PLECARE_LIMBI } from './zpTraduceri.js'
+import { ZP_LIMBI, PLECARE_LIMBI, TRANSPORT_LIMBI } from './zpTraduceri.js'
 import './index.css'
 import PodFiles from './components/PodFiles'
 import DocumentCamera from './components/DocumentCamera'
@@ -5230,6 +5230,27 @@ function SelectorLimba({ value, onChange }) {
   )
 }
 
+// Fereastra de la „Losfahren" spre livrare, la documente: plicul e acum la
+// şofer — cum îl transportă. Înlocuieşte, pe drumul spre livrare, textele
+// „Vor der Abfahrt", care vorbeau încă de ridicare (17.10.2026).
+function TransportSheet({ lang, onClose }) {
+  const [limba, setLimba] = useState(() => citesteLimba(lang))
+  const tr = TRANSPORT_LIMBI[limba] || TRANSPORT_LIMBI.de
+  return (
+    <div className="sig-fullscreen" style={{ justifyContent: 'flex-end', background: 'rgba(15,34,64,.55)', zIndex: 9990 }}>
+      <div style={{ background: '#fff', borderRadius: '16px 16px 0 0', padding: '20px 20px calc(20px + env(safe-area-inset-bottom))', maxHeight: '88vh', overflowY: 'auto' }}>
+        <div style={{ fontSize: 12.5, fontWeight: 600, color: '#5A6878', marginBottom: 2 }}>{tr.faza}</div>
+        <div style={{ fontSize: 18, fontWeight: 800, color: '#0F2240', marginBottom: 10 }}>{tr.titlu}</div>
+        <SelectorLimba value={limba} onChange={setLimba} />
+        <ol style={{ margin: 0, paddingLeft: 20, fontSize: 15.5, lineHeight: 1.55, color: '#0F2240' }}>
+          {tr.pasi.map((p, i) => <li key={i} style={{ marginBottom: 8 }}>{p}</li>)}
+        </ol>
+        <button type="button" className="btn" style={{ width: '100%', margin: '14px 0 0' }} onClick={onClose}>{tr.buton}</button>
+      </div>
+    </div>
+  )
+}
+
 function BotenInfoSheet({ lang, onClose }) {
   const [limba, setLimba] = useState(() => {
     try { return localStorage.getItem('zd-boten-info-limba') || lang || 'de' } catch { return lang || 'de' }
@@ -5437,7 +5458,12 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
       const field = campEtapa(pas)
       onStatusChange(field)
       setUndoable({ field, at: Date.now() })
-      setGhidFaza(pas === 'started' ? 'start' : (esteLivrareEtapa ? 'delivery' : 'pickup'))
+      // Pornirea spre LIVRARE nu mai arată „Vor der Abfahrt" (vorbea de
+      // ridicare): la documente apare fereastra despre transportul plicului,
+      // la marfă nimic — instrucţiunile de livrare vin la „Angekommen".
+      setGhidFaza(pas === 'started'
+        ? (esteLivrareEtapa ? (isDocumentDelivery ? 'transport' : null) : 'start')
+        : (esteLivrareEtapa ? 'delivery' : 'pickup'))
     }
   }
 
@@ -6052,7 +6078,9 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
     ? ghidChei().map((k) => ghiduriToate.find((g) => g.key === k))
         .filter((g) => g && pasiGhid(g, ghidFaza, lang).length && !esteAscuns(g, ghidFaza))
     : []
-  const ghidSheet = ghidFaza && ghiduriFaza.length ? (
+  const ghidSheet = ghidFaza === 'transport' ? (
+    <TransportSheet lang={lang} onClose={() => setGhidFaza(null)} />
+  ) : ghidFaza && ghiduriFaza.length ? (
     <GhidSheet ghiduri={ghiduriFaza} faza={ghidFaza} lang={lang} onClose={() => setGhidFaza(null)} />
   ) : null
 

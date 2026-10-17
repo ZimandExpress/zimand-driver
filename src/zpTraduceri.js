@@ -350,3 +350,283 @@ export const PLECARE_LIMBI = {
   "autoClose": "Aizvērsies automātiski …"
  }
 }
+
+// Fereastra de la „Losfahren" spre livrare, la documente: cum se transportă plicul (17.10.2026).
+export const TRANSPORT_LIMBI = {
+ "de": {
+  "faza": "Auf dem Weg zur Zustellung",
+  "titlu": "Umschlag sicher transportieren",
+  "pasi": [
+   "Umschlag und Zustellprotokoll bis zur Zustellung bei sich behalten – nie unbeaufsichtigt im Fahrzeug lassen.",
+   "Nicht sichtbar ablegen: nicht auf Armaturenbrett oder Sitz, die Empfängerangaben nie offen sichtbar.",
+   "Trocken und sauber aufbewahren: nicht neben Getränken, Essen oder Werkzeug, nicht dort, wo er knicken, nass oder schmutzig werden kann.",
+   "Umschlag nicht öffnen und niemandem weitergeben.",
+   "Bei jedem Problem unterwegs: in der App „Dispo Zimand · Problem melden“ (WhatsApp) nutzen."
+  ],
+  "buton": "Verstanden"
+ },
+ "en": {
+  "faza": "On the way to delivery",
+  "titlu": "Transport the envelope safely",
+  "pasi": [
+   "Keep the envelope and the Zustellprotokoll with you until delivery – never leave them unattended in the vehicle.",
+   "Do not leave it visible: not on the dashboard or a seat, the recipient details never openly visible.",
+   "Keep it dry and clean: not next to drinks, food or tools, not where it can bend, get wet or dirty.",
+   "Do not open the envelope and do not hand it to anyone.",
+   "For any problem on the way: use „Dispo Zimand · Problem melden“ (WhatsApp) in the app."
+  ],
+  "buton": "Understood"
+ },
+ "ro": {
+  "faza": "Pe drum spre livrare",
+  "titlu": "Transportați plicul în siguranță",
+  "pasi": [
+   "Țineți plicul și Zustellprotokoll la dumneavoastră până la livrare – nu le lăsați niciodată nesupravegheate în vehicul.",
+   "Nu îl lăsați la vedere: nu pe bord sau pe scaun, datele destinatarului niciodată vizibile.",
+   "Păstrați-l uscat și curat: nu lângă băuturi, mâncare sau unelte, nu acolo unde se poate îndoi, uda sau murdări.",
+   "Nu deschideți plicul și nu îl dați nimănui.",
+   "La orice problemă pe drum: folosiți în aplicație „Dispo Zimand · Problem melden“ (WhatsApp)."
+  ],
+  "buton": "Am înțeles"
+ },
+ "pl": {
+  "faza": "W drodze do doręczenia",
+  "titlu": "Bezpieczny transport koperty",
+  "pasi": [
+   "Trzymaj kopertę i Zustellprotokoll przy sobie aż do doręczenia – nigdy nie zostawiaj ich bez nadzoru w pojeździe.",
+   "Nie kładź na widoku: ani na desce rozdzielczej, ani na siedzeniu, dane odbiorcy nigdy nie mogą być widoczne.",
+   "Przechowuj w suchym i czystym miejscu: nie obok napojów, jedzenia czy narzędzi, nie tam, gdzie może się zgiąć, zamoknąć lub zabrudzić.",
+   "Nie otwieraj koperty i nikomu jej nie przekazuj.",
+   "Przy każdym problemie w drodze: użyj w aplikacji „Dispo Zimand · Problem melden“ (WhatsApp)."
+  ],
+  "buton": "Rozumiem"
+ },
+ "bg": {
+  "faza": "На път към доставката",
+  "titlu": "Транспортирайте плика безопасно",
+  "pasi": [
+   "Пазете плика и Zustellprotokoll у себе си до доставката – никога не ги оставяйте без надзор в превозното средство.",
+   "Не го оставяйте на видно място: не на таблото или седалката, данните на получателя никога да не се виждат.",
+   "Пазете го сух и чист: не до напитки, храна или инструменти, не там, където може да се огъне, намокри или изцапа.",
+   "Не отваряйте плика и не го давайте на никого.",
+   "При всеки проблем по пътя: използвайте в приложението „Dispo Zimand · Problem melden“ (WhatsApp)."
+  ],
+  "buton": "Разбрах"
+ },
+ "hu": {
+  "faza": "Úton a kézbesítéshez",
+  "titlu": "Biztonságos borítékszállítás",
+  "pasi": [
+   "A borítékot és a Zustellprotokollt a kézbesítésig tartsa magánál – soha ne hagyja őrizetlenül a járműben.",
+   "Ne hagyja szem előtt: ne a műszerfalon vagy az ülésen, a címzett adatai soha ne látszódjanak.",
+   "Tartsa szárazon és tisztán: ne italok, étel vagy szerszámok mellett, ne ott, ahol meggyűrődhet, vizes vagy piszkos lehet.",
+   "Ne nyissa ki a borítékot, és senkinek ne adja át.",
+   "Bármilyen probléma esetén útközben: használja az alkalmazásban a „Dispo Zimand · Problem melden“ funkciót (WhatsApp)."
+  ],
+  "buton": "Értettem"
+ },
+ "cs": {
+  "faza": "Na cestě k doručení",
+  "titlu": "Bezpečná přeprava obálky",
+  "pasi": [
+   "Obálku a Zustellprotokoll mějte až do doručení u sebe – nikdy je nenechávejte bez dozoru ve vozidle.",
+   "Neodkládejte na viditelné místo: ne na palubní desku ani sedadlo, údaje příjemce nikdy viditelně.",
+   "Uchovávejte v suchu a čistotě: ne vedle nápojů, jídla nebo nářadí, ne tam, kde se může ohnout, namočit nebo ušpinit.",
+   "Obálku neotvírejte a nikomu ji nepředávejte.",
+   "Při jakémkoli problému na cestě: použijte v aplikaci „Dispo Zimand · Problem melden“ (WhatsApp)."
+  ],
+  "buton": "Rozumím"
+ },
+ "sk": {
+  "faza": "Na ceste k doručeniu",
+  "titlu": "Bezpečná preprava obálky",
+  "pasi": [
+   "Obálku a Zustellprotokoll majte až do doručenia pri sebe – nikdy ich nenechávajte bez dozoru vo vozidle.",
+   "Neodkladajte na viditeľné miesto: nie na palubnú dosku ani sedadlo, údaje príjemcu nikdy viditeľne.",
+   "Uchovávajte v suchu a čistote: nie vedľa nápojov, jedla alebo náradia, nie tam, kde sa môže ohnúť, namočiť alebo zašpiniť.",
+   "Obálku neotvárajte a nikomu ju neodovzdávajte.",
+   "Pri akomkoľvek probléme na ceste: použite v aplikácii „Dispo Zimand · Problem melden“ (WhatsApp)."
+  ],
+  "buton": "Rozumiem"
+ },
+ "hr": {
+  "faza": "Na putu do dostave",
+  "titlu": "Sigurno prevezite omotnicu",
+  "pasi": [
+   "Omotnicu i Zustellprotokoll držite kod sebe do dostave – nikada ih ne ostavljajte bez nadzora u vozilu.",
+   "Ne ostavljajte na vidljivom mjestu: ni na ploči ni na sjedalu, podaci primatelja nikada vidljivi.",
+   "Čuvajte na suhom i čistom: ne pored pića, hrane ili alata, ne tamo gdje se može saviti, smočiti ili zaprljati.",
+   "Ne otvarajte omotnicu i nikome je ne predajte.",
+   "Kod svakog problema na putu: u aplikaciji koristite „Dispo Zimand · Problem melden“ (WhatsApp)."
+  ],
+  "buton": "Razumijem"
+ },
+ "sr": {
+  "faza": "Na putu do dostave",
+  "titlu": "Bezbedno prevezite kovertu",
+  "pasi": [
+   "Kovertu i Zustellprotokoll držite kod sebe do dostave – nikada ih ne ostavljajte bez nadzora u vozilu.",
+   "Ne ostavljajte na vidljivom mestu: ni na instrument tabli ni na sedištu, podaci primaoca nikada vidljivi.",
+   "Čuvajte na suvom i čistom: ne pored pića, hrane ili alata, ne tamo gde može da se savije, pokvasi ili isprlja.",
+   "Ne otvarajte kovertu i nikome je ne predajte.",
+   "Kod svakog problema na putu: u aplikaciji koristite „Dispo Zimand · Problem melden“ (WhatsApp)."
+  ],
+  "buton": "Razumem"
+ },
+ "sl": {
+  "faza": "Na poti do dostave",
+  "titlu": "Varno prevažajte kuverto",
+  "pasi": [
+   "Kuverto in Zustellprotokoll imejte do dostave pri sebi – nikoli ju ne puščajte brez nadzora v vozilu.",
+   "Ne odlagajte na vidno mesto: ne na armaturno ploščo ali sedež, podatki prejemnika nikoli vidni.",
+   "Hranite na suhem in čistem: ne poleg pijač, hrane ali orodja, ne tam, kjer se lahko upogne, zmoči ali umaže.",
+   "Kuverte ne odpirajte in je nikomur ne izročite.",
+   "Pri vsaki težavi na poti: v aplikaciji uporabite „Dispo Zimand · Problem melden“ (WhatsApp)."
+  ],
+  "buton": "Razumem"
+ },
+ "sq": {
+  "faza": "Rrugës për dorëzim",
+  "titlu": "Transportoni zarfin me siguri",
+  "pasi": [
+   "Mbajeni zarfin dhe Zustellprotokoll me vete deri në dorëzim – mos i lini kurrë pa mbikëqyrje në mjet.",
+   "Mos e lini në sy: as në panel, as në ndenjëse, të dhënat e marrësit kurrë të dukshme.",
+   "Mbajeni të thatë e të pastër: jo pranë pijeve, ushqimit ose veglave, jo aty ku mund të paloset, laget ose ndotet.",
+   "Mos e hapni zarfin dhe mos ia jepni askujt.",
+   "Për çdo problem gjatë rrugës: përdorni në aplikacion „Dispo Zimand · Problem melden“ (WhatsApp)."
+  ],
+  "buton": "E kuptova"
+ },
+ "uk": {
+  "faza": "Дорогою до доставки",
+  "titlu": "Безпечно перевозьте конверт",
+  "pasi": [
+   "Тримайте конверт і Zustellprotokoll при собі до доставки – ніколи не залишайте їх без нагляду в автомобілі.",
+   "Не кладіть на видноті: не на панель чи сидіння, дані одержувача ніколи не мають бути видимими.",
+   "Зберігайте сухим і чистим: не поруч із напоями, їжею чи інструментами, не там, де він може зігнутися, намокнути чи забруднитися.",
+   "Не відкривайте конверт і нікому його не передавайте.",
+   "За будь-якої проблеми в дорозі: користуйтеся в додатку „Dispo Zimand · Problem melden“ (WhatsApp)."
+  ],
+  "buton": "Зрозуміло"
+ },
+ "ru": {
+  "faza": "В пути к доставке",
+  "titlu": "Безопасно перевозите конверт",
+  "pasi": [
+   "Держите конверт и Zustellprotokoll при себе до доставки – никогда не оставляйте их без присмотра в автомобиле.",
+   "Не кладите на виду: не на панель или сиденье, данные получателя никогда не должны быть видны.",
+   "Храните сухим и чистым: не рядом с напитками, едой или инструментами, не там, где он может согнуться, намокнуть или испачкаться.",
+   "Не вскрывайте конверт и никому его не передавайте.",
+   "При любой проблеме в пути: используйте в приложении „Dispo Zimand · Problem melden“ (WhatsApp)."
+  ],
+  "buton": "Понятно"
+ },
+ "tr": {
+  "faza": "Teslimata giderken",
+  "titlu": "Zarfı güvenle taşıyın",
+  "pasi": [
+   "Zarfı ve Zustellprotokoll’ü teslimata kadar yanınızda tutun – araçta asla gözetimsiz bırakmayın.",
+   "Görünür yere koymayın: ne gösterge paneline ne koltuğa, alıcı bilgileri asla açıkta görünmesin.",
+   "Kuru ve temiz tutun: içecek, yiyecek veya aletlerin yanına değil, bükülebileceği, ıslanabileceği veya kirlenebileceği yerlere koymayın.",
+   "Zarfı açmayın ve kimseye vermeyin.",
+   "Yolda herhangi bir sorunda: uygulamada „Dispo Zimand · Problem melden“ (WhatsApp) kullanın."
+  ],
+  "buton": "Anladım"
+ },
+ "it": {
+  "faza": "Verso la consegna",
+  "titlu": "Trasportare la busta in sicurezza",
+  "pasi": [
+   "Tenete con voi la busta e lo Zustellprotokoll fino alla consegna – mai incustoditi nel veicolo.",
+   "Non lasciatela in vista: né sul cruscotto né sul sedile, i dati del destinatario mai visibili.",
+   "Conservatela asciutta e pulita: non vicino a bevande, cibo o attrezzi, non dove possa piegarsi, bagnarsi o sporcarsi.",
+   "Non aprite la busta e non consegnatela a nessuno.",
+   "Per qualsiasi problema durante il tragitto: usate nell’app „Dispo Zimand · Problem melden“ (WhatsApp)."
+  ],
+  "buton": "Ho capito"
+ },
+ "es": {
+  "faza": "De camino a la entrega",
+  "titlu": "Transporte el sobre con seguridad",
+  "pasi": [
+   "Lleve consigo el sobre y el Zustellprotokoll hasta la entrega – nunca los deje sin vigilancia en el vehículo.",
+   "No lo deje a la vista: ni en el salpicadero ni en el asiento, los datos del destinatario nunca visibles.",
+   "Guárdelo seco y limpio: no junto a bebidas, comida o herramientas, no donde pueda doblarse, mojarse o ensuciarse.",
+   "No abra el sobre ni se lo entregue a nadie.",
+   "Ante cualquier problema en el camino: use en la app „Dispo Zimand · Problem melden“ (WhatsApp)."
+  ],
+  "buton": "Entendido"
+ },
+ "fr": {
+  "faza": "En route vers la livraison",
+  "titlu": "Transporter l’enveloppe en sécurité",
+  "pasi": [
+   "Gardez l’enveloppe et le Zustellprotokoll sur vous jusqu’à la livraison – ne les laissez jamais sans surveillance dans le véhicule.",
+   "Ne la laissez pas en vue : ni sur le tableau de bord ni sur un siège, les coordonnées du destinataire jamais visibles.",
+   "Gardez-la au sec et propre : pas à côté de boissons, de nourriture ou d’outils, pas là où elle peut se plier, se mouiller ou se salir.",
+   "N’ouvrez pas l’enveloppe et ne la remettez à personne.",
+   "Pour tout problème en route : utilisez dans l’appli „Dispo Zimand · Problem melden“ (WhatsApp)."
+  ],
+  "buton": "Compris"
+ },
+ "pt": {
+  "faza": "A caminho da entrega",
+  "titlu": "Transporte o envelope em segurança",
+  "pasi": [
+   "Mantenha o envelope e o Zustellprotokoll consigo até à entrega – nunca os deixe sem vigilância no veículo.",
+   "Não o deixe à vista: nem no tablier nem no banco, os dados do destinatário nunca visíveis.",
+   "Guarde-o seco e limpo: não junto a bebidas, comida ou ferramentas, não onde possa dobrar, molhar ou sujar.",
+   "Não abra o envelope nem o entregue a ninguém.",
+   "Em qualquer problema pelo caminho: use na app „Dispo Zimand · Problem melden“ (WhatsApp)."
+  ],
+  "buton": "Entendi"
+ },
+ "nl": {
+  "faza": "Onderweg naar de bezorging",
+  "titlu": "Envelop veilig vervoeren",
+  "pasi": [
+   "Houd de envelop en het Zustellprotokoll tot de bezorging bij u – laat ze nooit onbeheerd in het voertuig.",
+   "Niet zichtbaar neerleggen: niet op het dashboard of een stoel, de gegevens van de ontvanger nooit zichtbaar.",
+   "Droog en schoon bewaren: niet naast drinken, eten of gereedschap, niet waar hij kan knikken, nat of vuil kan worden.",
+   "Open de envelop niet en geef hem aan niemand.",
+   "Bij elk probleem onderweg: gebruik in de app „Dispo Zimand · Problem melden“ (WhatsApp)."
+  ],
+  "buton": "Begrepen"
+ },
+ "el": {
+  "faza": "Καθ’ οδόν προς την παράδοση",
+  "titlu": "Μεταφέρετε τον φάκελο με ασφάλεια",
+  "pasi": [
+   "Κρατήστε τον φάκελο και το Zustellprotokoll μαζί σας μέχρι την παράδοση – ποτέ χωρίς επίβλεψη στο όχημα.",
+   "Μην τον αφήνετε σε κοινή θέα: ούτε στο ταμπλό ούτε στο κάθισμα, τα στοιχεία του παραλήπτη ποτέ ορατά.",
+   "Κρατήστε τον στεγνό και καθαρό: όχι δίπλα σε ποτά, φαγητό ή εργαλεία, όχι εκεί όπου μπορεί να τσακιστεί, να βραχεί ή να λερωθεί.",
+   "Μην ανοίγετε τον φάκελο και μην τον δίνετε σε κανέναν.",
+   "Για οποιοδήποτε πρόβλημα καθ’ οδόν: χρησιμοποιήστε στην εφαρμογή „Dispo Zimand · Problem melden“ (WhatsApp)."
+  ],
+  "buton": "Κατάλαβα"
+ },
+ "lt": {
+  "faza": "Pakeliui į pristatymą",
+  "titlu": "Saugiai gabenkite voką",
+  "pasi": [
+   "Voką ir Zustellprotokoll laikykite prie savęs iki pristatymo – niekada nepalikite be priežiūros transporto priemonėje.",
+   "Nedėkite matomoje vietoje: nei ant prietaisų skydelio, nei ant sėdynės, gavėjo duomenys niekada neturi matytis.",
+   "Laikykite sausai ir švariai: ne šalia gėrimų, maisto ar įrankių, ne ten, kur gali sulinkti, sušlapti ar susitepti.",
+   "Neatidarykite voko ir niekam jo neperduokite.",
+   "Kilus bet kokiai problemai kelyje: programėlėje naudokite „Dispo Zimand · Problem melden“ (WhatsApp)."
+  ],
+  "buton": "Supratau"
+ },
+ "lv": {
+  "faza": "Ceļā uz piegādi",
+  "titlu": "Droši pārvadājiet aploksni",
+  "pasi": [
+   "Aploksni un Zustellprotokoll turiet pie sevis līdz piegādei – nekad neatstājiet bez uzraudzības transportlīdzeklī.",
+   "Nenovietojiet redzamā vietā: ne uz paneļa, ne uz sēdekļa, saņēmēja dati nekad nedrīkst būt redzami.",
+   "Glabājiet sausu un tīru: ne blakus dzērieniem, ēdienam vai instrumentiem, ne tur, kur tā var salocīties, samirkt vai nosmērēties.",
+   "Neatveriet aploksni un nevienam to nenododiet.",
+   "Jebkuras problēmas gadījumā ceļā: lietotnē izmantojiet „Dispo Zimand · Problem melden“ (WhatsApp)."
+  ],
+  "buton": "Sapratu"
+ }
+}

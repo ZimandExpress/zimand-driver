@@ -1290,11 +1290,13 @@ function statusScurt(order) {
   return { key, ton: st.moving ? 'drum' : 'loc', familie }
 }
 
-function StageProgress({ order, lang }) {
+function StageProgress({ order, lang, inline }) {
   const p = stageProgress(order)
   if (!p || p.done === 0) return null
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '8px 0 2px' }}>
+    <div style={inline
+      ? { display: 'flex', alignItems: 'center', gap: 8, flex: '1 1 120px', minWidth: 0, margin: 0 }
+      : { display: 'flex', alignItems: 'center', gap: 8, margin: '8px 0 2px' }}>
       <div style={{ flex: 1, height: 4, borderRadius: 4, background: '#E7EAF0', overflow: 'hidden' }}>
         <div style={{ width: `${(p.done / p.total) * 100}%`, height: '100%', background: '#FF7A29', transition: 'width .3s' }} />
       </div>
@@ -3423,6 +3425,9 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
           „a ajuns" pe cardul etapei la care stă curierul. */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
         <button className="back-btn" style={{ margin: 0, alignSelf: 'center' }} onClick={handleBack}>← {t('back', lang)}</button>
+        {/* Progresul („Stopp 1/4") pe acelaşi rând cu „Zurück" — nu mai ocupă
+            un rând separat deasupra hărţii. */}
+        <StageProgress order={order} lang={lang} inline />
         {/* Wartezeit, calculată din ora sosirii — nu dintr-un cronometru ţinut
             în memorie: dacă șoferul reîncarcă aplicaţia, timpul rămâne corect.
             Stătea în pasul cu pozele, deci dispărea de sub ochi exact când
@@ -3443,13 +3448,7 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
         )}
       </div>
 
-      {/* Bara de progres rămâne lipită sus la tururi. Goală n-o mai desenăm:
-          altfel rămânea o dungă fără nimic în ea. */}
-      {(stageProgress(order)?.done || 0) > 0 && (
-        <div className={`ride-head-group ${secventaOpriri.length > 0 ? 'ride-sticky-head' : ''}`}>
-          <StageProgress order={order} lang={lang} />
-        </div>
-      )}
+      {/* Bara de progres a urcat pe rândul cu „Zurück" (vezi mai sus). */}
 
       <GoogleLiveMap pickupCoords={pickupCoords} deliveryCoords={deliveryCoords} stopCoords={puncteOpriri} />
 

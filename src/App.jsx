@@ -7,6 +7,7 @@ import { GHID_TRADUCERI, GHID_UI } from './ghidTraduceri.js'
 import './index.css'
 import PodFiles from './components/PodFiles'
 import DocumentCamera from './components/DocumentCamera'
+import DocumentCrop from './components/DocumentCrop'
 import {
   startQueue, enqueueFiles, enqueueSignature, confirmLeg as queueConfirmLeg,
   isOnline as reteaDisponibila, reportStopFailed, reportDeliveryFailed,
@@ -4115,6 +4116,8 @@ function DocumentCapture({ lang, tipuri, onPick, onClose }) {
   // hârtiile obligatorii; la „Sonstiges" rămâne camera telefonului, fiindcă
   // acolo şoferul fotografiază lucruri pe care nu le alegem noi.
   const [cameraCadru, setCameraCadru] = useState(false)
+  // Poza făcută cu camera telefonului, în aşteptarea decupajului (DocumentCrop).
+  const [crop, setCrop] = useState(null)
 
   const chosen = lista.find((d) => (d.cheie || d.id) === type)
 
@@ -4140,7 +4143,12 @@ function DocumentCapture({ lang, tipuri, onPick, onClose }) {
     e.target.value = ''
     if (!file || !type) return
     if (!String(file.type || '').startsWith('image/')) { onPick(file, chosen.id); return }
+    // Întâi decupajul (cele patru colţuri), apoi verificarea obişnuită.
+    setCrop(file)
+  }
 
+  async function dupaDecupaj(file) {
+    setCrop(null)
     setReview({ file, url: URL.createObjectURL(file), checking: true, result: null })
     const result = await analyzeDocumentPhoto(file)
     setReview((r) => (r && r.file === file ? { ...r, checking: false, result } : r))
@@ -4174,6 +4182,19 @@ function DocumentCapture({ lang, tipuri, onPick, onClose }) {
 
   return (
     <div className="sig-fullscreen" style={{ justifyContent: 'flex-end', background: 'rgba(15,34,64,.55)' }}>
+      {/* Câmpurile ascunse stau MEREU pe pagină, nu doar pe ecranul de
+          alegere: „Neu aufnehmen" le apasă şi din verificare sau decupaj. */}
+      <input ref={cameraRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={handleFile} />
+      <input ref={galleryRef} type="file" accept="image/*,application/pdf" style={{ display: 'none' }} onChange={handleFile} />
+      {crop && chosen && (
+        <DocumentCrop
+          file={crop}
+          lang={lang}
+          titlu={t(chosen.labelKey, lang)}
+          onDone={dupaDecupaj}
+          onRetake={() => { setCrop(null); cameraRef.current?.click() }}
+        />
+      )}
       <div style={sheet}>
         {review ? (
           <>
@@ -4288,18 +4309,22 @@ function DocumentCapture({ lang, tipuri, onPick, onClose }) {
                 către poză: declanşatorul nu se aprinde până nu e încadrat,
                 drept şi clar. Camera telefonului rămâne ca ieșire, dar numai
                 dacă browserul nu dă camera (o rezolvă componenta singură). */}
+            {/* Camera telefonului — cele mai clare poze; apoi decupajul cu
+                patru colţuri (DocumentCrop). Camera cu chenar (DocumentCamera)
+                rămâne în cod, dar nu se mai deschide de aici (17.10.2026):
+                cadrul video dădea scris neclar. */}
             {type !== 'other' ? (
               <>
                 <button
                   type="button"
                   className="btn"
                   style={{ width: '100%', marginTop: 0 }}
-                  onClick={() => setCameraCadru(true)}
+                  onClick={() => cameraRef.current?.click()}
                 >
-                  {t('frameOpen', lang)}
+                  {t('docOpenCamera', lang)}
                 </button>
                 <div style={{ fontSize: 11.5, color: '#6B7A90', textAlign: 'center', marginTop: 6, lineHeight: 1.5 }}>
-                  {t('frameOpenNote', lang)}
+                  {t('cropOpenNote', lang)}
                 </div>
               </>
             ) : (
@@ -4314,8 +4339,6 @@ function DocumentCapture({ lang, tipuri, onPick, onClose }) {
               {t('back', lang)}
             </button>
 
-            <input ref={cameraRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={handleFile} />
-            <input ref={galleryRef} type="file" accept="image/*,application/pdf" style={{ display: 'none' }} onChange={handleFile} />
           </>
         )}
       </div>

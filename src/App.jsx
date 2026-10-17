@@ -5678,7 +5678,7 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
 
   const incidentBlock = (
     <>
-      <button
+      {ARATA_PROBLEM_MELDEN && <button
         type="button"
         onClick={() => setIncidentOpen(true)}
         style={{
@@ -5688,7 +5688,7 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
         }}
       >
         ⚠ {t('incidentButton', lang)}
-      </button>
+      </button>}
       {incidentSaved && (
         <div style={{ background: '#EAF5EF', border: '1px solid #A8D5BE', borderRadius: 10, padding: '10px 12px', fontSize: 13, color: '#1F7A50', marginBottom: 10 }}>
           ✓ {t('incidentSaved', lang)}
@@ -5923,7 +5923,7 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
         {ghidSheet}
         {pauzaBlock}
         {pauzaSheet}
-        {!pauza && (
+        {ARATA_FAHRT_UNTERBRECHEN && !pauza && (
           <button type="button" className="pause-open" onClick={() => setPauzaOpen(true)}>
             <Pause size={15} strokeWidth={2.2} style={{ verticalAlign: '-3px' }} /> {t('pauseButton', lang)}
           </button>
@@ -7318,6 +7318,13 @@ function RandLegenda({ semn, titlu, text }) {
 // Textul stă în baza de date (driver_guides), ca dispeceratul să-l poată
 // schimba şi să-i pună linkuri fără o versiune nouă a aplicaţiei. Telefonul
 // păstrează ultima copie, ca fişele să apară şi fără semnal.
+// Butoanele „Problem melden" şi „Fahrt unterbrechen" sunt ascunse deocamdată
+// (cerut de Andrei pe 17.10.2026). Funcţiile rămân în cod — pentru a le
+// readuce, ajunge să puneţi `true` aici. Problemele se raportează acum la
+// Disposition pe WhatsApp.
+const ARATA_PROBLEM_MELDEN = false
+const ARATA_FAHRT_UNTERBRECHEN = false
+
 const CHEIE_GHIDURI = 'zd-guides'
 function citesteGhiduriSalvate() {
   try { return JSON.parse(localStorage.getItem(CHEIE_GHIDURI) || 'null') } catch { return null }

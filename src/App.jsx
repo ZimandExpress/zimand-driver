@@ -5382,6 +5382,9 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
   }, [isDocumentDelivery, coordSalvate, tintaGeocodata && tintaGeocodata[0], tintaGeocodata && tintaGeocodata[1]])
   const distanta = useDistantaFataDe(tintaEtapei, isDocumentDelivery)
   const [avertismentDistanta, setAvertismentDistanta] = useState(null)
+  // Întrebarea de la ridicarea documentelor: „Ai Zustellprotokoll-ul la tine?"
+  // null = închisă, 'ask' = întrebarea, 'lipsa' = cere-l de la expeditor.
+  const [zpIntrebare, setZpIntrebare] = useState(null)
 
   // Trimiterea documentului către client, direct de la faţa locului.
   //
@@ -5485,7 +5488,9 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
   const docCerute = isDocumentDelivery
     ? (esteLivrareEtapa
         ? ['zustellprotokoll']
-        : (cereBoten ? ['zustellprotokoll', 'botenbestaetigung'] : ['zustellprotokoll']))
+        // La ridicare Zustellprotokoll-ul NU se mai urcă (e încă necompletat).
+        // În locul lui, la confirmare, şoferul răspunde dacă îl are la el.
+        : (cereBoten ? ['botenbestaetigung'] : []))
     : (cereDocument ? ['cmr'] : [])
   // Tipurile vin din coada de încărcare. Pe o versiune mai veche a
   // componentei de fișiere lista nu există — atunci numărăm doar câte
@@ -5531,7 +5536,7 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
       // Din 17.10.2026 declaraţia are O pagină: un rând, cel puţin o poză.
       randuri.push({ ...dupaId('botenbestaetigung'), cheie: 'bote1', labelKey: 'docTypeBote', gata: bifat('botenbestaetigung', 1) })
     }
-    randuri.push({ ...dupaId('zustellprotokoll'), gata: bifat('zustellprotokoll') })
+    if (esteLivrareEtapa) randuri.push({ ...dupaId('zustellprotokoll'), gata: bifat('zustellprotokoll') })
     randuri.push({ ...dupaId('other'), gata: false })
     return randuri
   })()
@@ -6456,6 +6461,11 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
             setAvertismentDistanta(distanta.metri)
             return
           }
+          // Ridicare de documente: întâi întrebarea despre Zustellprotokoll.
+          if (isDocumentDelivery && !esteLivrareEtapa) {
+            setZpIntrebare('ask')
+            return
+          }
           confirmLeg()
         }}
         // Fără internet, dovezile rămân în coadă şi `allDone` nu devine
@@ -6486,6 +6496,41 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
             ? t('waitingForUploads', lang)
             : esteLivrareEtapa ? t('confirmDelivery', lang) : t('confirmPickup', lang)}
       </button>
+
+      {zpIntrebare && (
+        <div role="dialog" aria-modal="true" style={{
+          position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(8,20,40,.55)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 18,
+        }}>
+          <div style={{ background: '#fff', borderRadius: 14, padding: '20px 18px', width: '100%', maxWidth: 380, boxShadow: '0 12px 40px rgba(0,0,0,.25)' }}>
+            {zpIntrebare === 'ask' ? (
+              <>
+                <div style={{ fontSize: 18, fontWeight: 800, color: '#0F2240', lineHeight: 1.3 }}>{t('zpAskTitle', lang)}</div>
+                <div style={{ fontSize: 14, color: '#B23A24', fontWeight: 600, marginTop: 8, lineHeight: 1.45 }}>{t('zpAskText', lang)}</div>
+                <button type="button" className="btn" style={{ marginTop: 16 }}
+                  onClick={() => { setZpIntrebare(null); confirmLeg() }}>
+                  {t('zpYes', lang)}
+                </button>
+                <button type="button" className="btn btn-secondary" style={{ marginTop: 8, background: '#fff', color: '#B23A24', border: '2px solid #E4A296' }}
+                  onClick={() => setZpIntrebare('lipsa')}>
+                  {t('zpNo', lang)}
+                </button>
+              </>
+            ) : (
+              <>
+                <div style={{ fontSize: 18, fontWeight: 800, color: '#B23A24', lineHeight: 1.3 }}>⚠ {t('zpMissingTitle', lang)}</div>
+                <div style={{ fontSize: 14, color: '#0F2240', marginTop: 8, lineHeight: 1.5 }}>{t('zpMissingText', lang)}</div>
+                <button type="button" className="btn" style={{ marginTop: 16 }} onClick={() => setZpIntrebare('ask')}>
+                  {t('zpGotIt', lang)}
+                </button>
+                <button type="button" className="link-btn" style={{ marginTop: 10, width: '100%' }} onClick={() => setZpIntrebare(null)}>
+                  {t('zpBack', lang)}
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Scăparea, exact unde e nevoie de ea.
           Înainte butonul exista doar pe cardul opririi — iar cardurile se

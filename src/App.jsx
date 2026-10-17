@@ -6366,11 +6366,6 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
 
       {/* Cate sunt cerute si cate ajuta. Scris langa casute, nu doar in
           butonul stins de jos. */}
-      {isDocumentDelivery && !esteLivrareEtapa && (
-        <div style={{ fontSize: 12.5, color: '#6B7A90', lineHeight: 1.5, margin: '0 0 8px' }}>
-          {t('photosDocPickup', lang)}
-        </div>
-      )}
       {esteEtapaLivrareDoc && (
         <div style={{ fontSize: 12.5, color: '#6B7A90', lineHeight: 1.5, margin: '0 0 8px' }}>
           {deliveryMethod === 'briefkasten'
@@ -6388,7 +6383,8 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
         leg={leg}
         lang={lang}
         onAddPhoto={() => setPhotoSourceOpen(true)}
-        maxPhotos={esteEtapaLivrareDoc && deliveryMethod === 'briefkasten' ? 8 : 6}
+        // La ridicarea de documente: 4 locuri (2 cerute — plicul faţă/spate — şi 2 de rezervă).
+        maxPhotos={esteEtapaLivrareDoc && deliveryMethod === 'briefkasten' ? 8 : (isDocumentDelivery && !esteLivrareEtapa ? 4 : 6)}
         minPhotos={minimPoze}
         onSummary={setFileSummary}
         photoHints={

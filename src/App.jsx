@@ -2603,13 +2603,16 @@ function ContactRow({ contact, lang }) {
     <div className="contact-row">
       <div className="contact-line">
         <span className="contact-text"><User size={14} strokeWidth={1.8} /> {nameOnly}</span>
-        {phone && (
+      </div>
+      {/* „Anrufen" pe acelaşi rând cu numărul: se vede ce se sună. */}
+      {phone && (
+        <div className="contact-line contact-phone-row">
+          <span className="contact-phone-line">{phone}</span>
           <a className="contact-call" href={`tel:${phone.replace(/[\s\-()\/]/g, '')}`}>
             <Phone size={13} strokeWidth={2} /> {t('callButton', lang)}
           </a>
-        )}
-      </div>
-      {phone && <div className="contact-phone-line">{phone}</div>}
+        </div>
+      )}
     </div>
   )
 }

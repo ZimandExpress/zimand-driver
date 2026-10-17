@@ -2852,6 +2852,8 @@ body { -webkit-font-smoothing: antialiased; }
 .leg-done-badge, .leg-en-route-pill { font-weight: 600; }
 .address-text { font-family: 'IBM Plex Sans', sans-serif; font-size: 16px; font-weight: 600; color: var(--text); }
 .contact-text, .contact-phone-line { display: inline-flex; align-items: center; gap: 6px; }
+.contact-phone-row { margin-top: 6px; }
+.contact-phone-row .contact-phone-line { margin-top: 0; }
 .contact-text svg { color: var(--text-soft); }
 .leg-notiz { background: var(--surface-2); border: 1px solid var(--line); display: flex; gap: 8px; align-items: flex-start; }
 .leg-notiz svg { flex: 0 0 auto; margin-top: 3px; color: var(--text-soft); }

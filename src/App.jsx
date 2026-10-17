@@ -6458,7 +6458,9 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
           Fără explicație, mulți confirmă din mașină sau după ce au plecat —
           iar atunci dovada arată o poziție greșită, exact în cazul în care
           ea este singura dovadă existentă. */}
-      {isDocumentDelivery && (
+      {/* La ridicare nota e scurtă şi stă SUB butonul de confirmare (vezi mai
+          jos); aici rămâne doar la livrare, unde contează la cutia poştală. */}
+      {isDocumentDelivery && esteLivrareEtapa && (
         <div style={{
           background: '#EAF0FB', border: '2px solid #2A5299', borderRadius: 10,
           padding: '13px 15px', marginBottom: 14,
@@ -6472,8 +6474,10 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
         </div>
       )}
 
-      {/* La Briefkasten nu are cine semna — nu cerem nume și semnătură. */}
-      {!(isDocumentDeliveryLeg && deliveryMethod === 'briefkasten') && (
+      {/* La Briefkasten nu are cine semna — nu cerem nume și semnătură.
+          Cu Übergabe- und Botenbestätigung, la ridicare numele şi semnătura
+          stau pe formular — câmpurile nici nu mai apar (17.10.2026). */}
+      {!(isDocumentDeliveryLeg && deliveryMethod === 'briefkasten') && !cereBoten && (
       <>
       <div className="pod-label">{t(esteLivrareEtapa ? 'signerNameLabelDelivery' : 'signerNameLabelPickup', lang)}</div>
       <input
@@ -6611,6 +6615,11 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
             ? t('waitingForUploads', lang)
             : esteLivrareEtapa ? t('confirmDelivery', lang) : t('confirmPickup', lang)}
       </button>
+      {isDocumentDelivery && !esteLivrareEtapa && (
+        <div style={{ fontSize: 13, color: '#2A5299', lineHeight: 1.45, marginTop: 8, textAlign: 'center' }}>
+          <MapPin size={13} strokeWidth={1.8} style={{ verticalAlign: -2 }} /> {t('locationNoticePickup', lang)}
+        </div>
+      )}
 
       {zpIntrebare && (
         <div role="dialog" aria-modal="true" style={{

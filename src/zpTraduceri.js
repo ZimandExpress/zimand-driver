@@ -630,3 +630,237 @@ export const TRANSPORT_LIMBI = {
   "buton": "Sapratu"
  }
 }
+
+// Fereastra „Vor der Zustellung – bitte kurz lesen" la sosirea la livrare, după Zustellart (17.10.2026).
+export const REGULI_LIMBI = {
+ "de": {
+  "titlu": "Vor der Zustellung – bitte kurz lesen",
+  "r1std": "Standardweg ist der Briefkasten – aber nur, wenn der Name am Briefkasten mit dem Namen auf dem Umschlag übereinstimmt. Namensschild und eingeworfenen Umschlag deutlich fotografieren.",
+  "r2std": "Stimmt der Name nicht oder fehlt das Namensschild: persönliche Übergabe an den Empfänger versuchen.",
+  "r1pref": "Zuerst die persönliche Übergabe an den Empfänger versuchen. Nur wenn sie nicht gelingt: Briefkasten – und nur, wenn der Name am Briefkasten mit dem Umschlag übereinstimmt. Namensschild und Umschlag fotografieren.",
+  "r1doar": "Nur persönliche Übergabe an den Empfänger – kein Briefkasten. Ist der Empfänger nicht da: nicht einwerfen, sondern die Disposition informieren.",
+  "r3": "Der Umschlag darf NIEMANDEM sonst übergeben werden – auch nicht Familienangehörigen, Nachbarn oder Kollegen.",
+  "contact": "Bei Problemen sofort in der App „Dispo Zimand · Problem melden“ (WhatsApp) nutzen.",
+  "buton": "Verstanden"
+ },
+ "en": {
+  "titlu": "Before delivery – please read",
+  "r1std": "The standard route is the letterbox – but only if the name on it matches the name on the envelope. Photograph the name plate and the inserted envelope clearly.",
+  "r2std": "If the name does not match or there is no name plate: try personal handover to the recipient.",
+  "r1pref": "First try personal handover to the recipient. Only if that fails: letterbox – and only if the name on it matches the envelope. Photograph the name plate and the envelope.",
+  "r1doar": "Personal handover to the recipient only – no letterbox. If the recipient is not there: do not use the letterbox, inform dispatch instead.",
+  "r3": "The envelope must NOT be handed to anyone else – not to family members, neighbours or colleagues.",
+  "contact": "If anything goes wrong, use „Dispo Zimand · Problem melden“ (WhatsApp) in the app straight away.",
+  "buton": "Understood"
+ },
+ "ro": {
+  "titlu": "Înainte de livrare – citiți pe scurt",
+  "r1std": "Calea standard este cutia poștală – dar numai dacă numele de pe cutie se potrivește cu cel de pe plic. Fotografiați clar plăcuța cu numele și plicul introdus.",
+  "r2std": "Dacă numele nu se potrivește sau lipsește plăcuța: încercați predarea personală către destinatar.",
+  "r1pref": "Încercați întâi predarea personală către destinatar. Doar dacă nu reușește: cutia poștală – și numai dacă numele de pe cutie se potrivește cu plicul. Fotografiați plăcuța și plicul.",
+  "r1doar": "Doar predare personală către destinatar – fără cutie poștală. Dacă destinatarul nu este acolo: nu lăsați plicul în cutie, ci informați dispeceratul.",
+  "r3": "Plicul NU are voie să fie predat altcuiva – nici membrilor familiei, nici vecinilor sau colegilor.",
+  "contact": "La orice problemă, folosiți imediat în aplicație „Dispo Zimand · Problem melden“ (WhatsApp).",
+  "buton": "Am înțeles"
+ },
+ "pl": {
+  "titlu": "Przed doręczeniem – przeczytaj",
+  "r1std": "Standardem jest skrzynka – ale tylko wtedy, gdy nazwisko na skrzynce zgadza się z nazwiskiem na kopercie. Wyraźnie sfotografuj tabliczkę i wrzuconą kopertę.",
+  "r2std": "Jeśli nazwisko się nie zgadza lub brak tabliczki: spróbuj przekazać osobiście odbiorcy.",
+  "r1pref": "Najpierw spróbuj przekazać osobiście odbiorcy. Tylko gdy się nie uda: skrzynka – i tylko gdy nazwisko na niej zgadza się z kopertą. Sfotografuj tabliczkę i kopertę.",
+  "r1doar": "Tylko przekazanie osobiste odbiorcy – bez skrzynki. Jeśli odbiorcy nie ma: nie wrzucaj, poinformuj dyspozycję.",
+  "r3": "Koperty NIE wolno przekazać nikomu innemu – ani członkom rodziny, ani sąsiadom, ani współpracownikom.",
+  "contact": "W razie problemu od razu użyj w aplikacji „Dispo Zimand · Problem melden“ (WhatsApp).",
+  "buton": "Rozumiem"
+ },
+ "bg": {
+  "titlu": "Преди доставката – прочетете",
+  "r1std": "Стандартно е пощенската кутия – но само ако името на кутията съвпада с името на плика. Снимайте ясно табелката и пуснатия плик.",
+  "r2std": "Ако името не съвпада или няма табелка: опитайте лично предаване на получателя.",
+  "r1pref": "Първо опитайте лично предаване на получателя. Само ако не стане: пощенската кутия – и само ако името на нея съвпада с плика. Снимайте табелката и плика.",
+  "r1doar": "Само лично предаване на получателя – без пощенска кутия. Ако получателят го няма: не пускайте в кутията, а уведомете диспечера.",
+  "r3": "Пликът НЕ може да се предава на друг – нито на членове на семейството, нито на съседи или колеги.",
+  "contact": "При проблем веднага използвайте в приложението „Dispo Zimand · Problem melden“ (WhatsApp).",
+  "buton": "Разбрах"
+ },
+ "hu": {
+  "titlu": "Kézbesítés előtt – kérjük, olvassa el",
+  "r1std": "Az alapeset a postaláda – de csak akkor, ha a postaládán lévő név megegyezik a borítékon lévővel. Fényképezze le jól a névtáblát és a bedobott borítékot.",
+  "r2std": "Ha a név nem egyezik, vagy nincs névtábla: próbálja meg személyesen átadni a címzettnek.",
+  "r1pref": "Először próbálja meg személyesen átadni a címzettnek. Csak ha ez nem sikerül: postaláda – és csak ha a név egyezik a borítékkal. Fényképezze le a névtáblát és a borítékot.",
+  "r1doar": "Csak személyes átadás a címzettnek – postaláda nélkül. Ha a címzett nincs ott: ne dobja be, értesítse a diszpécsert.",
+  "r3": "A borítékot SENKI másnak nem szabad átadni – sem családtagnak, sem szomszédnak, sem kollégának.",
+  "contact": "Probléma esetén azonnal használja az alkalmazásban a „Dispo Zimand · Problem melden“ funkciót (WhatsApp).",
+  "buton": "Értettem"
+ },
+ "cs": {
+  "titlu": "Před doručením – přečtěte si",
+  "r1std": "Standardně do schránky – ale jen pokud jméno na schránce odpovídá jménu na obálce. Jmenovku a vhozenou obálku zřetelně vyfoťte.",
+  "r2std": "Pokud jméno nesouhlasí nebo chybí jmenovka: zkuste osobní předání příjemci.",
+  "r1pref": "Nejprve zkuste osobní předání příjemci. Jen když se nepodaří: schránka – a jen pokud jméno odpovídá obálce. Vyfoťte jmenovku a obálku.",
+  "r1doar": "Jen osobní předání příjemci – žádná schránka. Pokud příjemce není doma: nevhazujte, informujte dispečink.",
+  "r3": "Obálku NESMÍTE předat nikomu jinému – ani rodinným příslušníkům, sousedům či kolegům.",
+  "contact": "Při problému hned použijte v aplikaci „Dispo Zimand · Problem melden“ (WhatsApp).",
+  "buton": "Rozumím"
+ },
+ "sk": {
+  "titlu": "Pred doručením – prečítajte si",
+  "r1std": "Štandardne do schránky – ale len ak meno na schránke zodpovedá menu na obálke. Menovku a vhodenú obálku zreteľne odfoťte.",
+  "r2std": "Ak meno nesedí alebo chýba menovka: skúste osobné odovzdanie príjemcovi.",
+  "r1pref": "Najprv skúste osobné odovzdanie príjemcovi. Len keď sa nepodarí: schránka – a len ak meno zodpovedá obálke. Odfoťte menovku a obálku.",
+  "r1doar": "Len osobné odovzdanie príjemcovi – žiadna schránka. Ak príjemca nie je doma: nevhadzujte, informujte dispečing.",
+  "r3": "Obálku NESMIETE odovzdať nikomu inému – ani rodinným príslušníkom, susedom či kolegom.",
+  "contact": "Pri probléme hneď použite v aplikácii „Dispo Zimand · Problem melden“ (WhatsApp).",
+  "buton": "Rozumiem"
+ },
+ "hr": {
+  "titlu": "Prije dostave – pročitajte",
+  "r1std": "Standardno u sandučić – ali samo ako ime na sandučiću odgovara imenu na omotnici. Jasno fotografirajte pločicu s imenom i ubačenu omotnicu.",
+  "r2std": "Ako ime ne odgovara ili nema pločice: pokušajte osobnu predaju primatelju.",
+  "r1pref": "Najprije pokušajte osobnu predaju primatelju. Samo ako ne uspije: sandučić – i samo ako ime odgovara omotnici. Fotografirajte pločicu i omotnicu.",
+  "r1doar": "Samo osobna predaja primatelju – bez sandučića. Ako primatelja nema: ne ubacujte, obavijestite dispečersku službu.",
+  "r3": "Omotnica se NE smije predati nikome drugome – ni članovima obitelji, susjedima ni kolegama.",
+  "contact": "Kod problema odmah u aplikaciji koristite „Dispo Zimand · Problem melden“ (WhatsApp).",
+  "buton": "Razumijem"
+ },
+ "sr": {
+  "titlu": "Pre dostave – pročitajte",
+  "r1std": "Standardno u sanduče – ali samo ako ime na sandučetu odgovara imenu na koverti. Jasno fotografišite pločicu sa imenom i ubačenu kovertu.",
+  "r2std": "Ako ime ne odgovara ili nema pločice: pokušajte ličnu predaju primaocu.",
+  "r1pref": "Najpre pokušajte ličnu predaju primaocu. Samo ako ne uspe: sanduče – i samo ako ime odgovara koverti. Fotografišite pločicu i kovertu.",
+  "r1doar": "Samo lična predaja primaocu – bez sandučeta. Ako primaoca nema: ne ubacujte, obavestite dispečera.",
+  "r3": "Koverta se NE sme predati nikom drugom – ni članovima porodice, komšijama ni kolegama.",
+  "contact": "Kod problema odmah u aplikaciji koristite „Dispo Zimand · Problem melden“ (WhatsApp).",
+  "buton": "Razumem"
+ },
+ "sl": {
+  "titlu": "Pred dostavo – preberite",
+  "r1std": "Običajno v nabiralnik – a le, če se ime na nabiralniku ujema z imenom na kuverti. Jasno fotografirajte tablico z imenom in vstavljeno kuverto.",
+  "r2std": "Če se ime ne ujema ali tablice ni: poskusite z osebno izročitvijo prejemniku.",
+  "r1pref": "Najprej poskusite z osebno izročitvijo prejemniku. Le če ne uspe: nabiralnik – in le, če se ime ujema s kuverto. Fotografirajte tablico in kuverto.",
+  "r1doar": "Le osebna izročitev prejemniku – brez nabiralnika. Če prejemnika ni: ne vstavljajte, obvestite dispečerja.",
+  "r3": "Kuverte NE smete izročiti nikomur drugemu – ne družinskim članom, sosedom ali sodelavcem.",
+  "contact": "Ob težavi takoj v aplikaciji uporabite „Dispo Zimand · Problem melden“ (WhatsApp).",
+  "buton": "Razumem"
+ },
+ "sq": {
+  "titlu": "Para dorëzimit – lexoni shkurt",
+  "r1std": "Rruga standarde është kutia postare – por vetëm nëse emri në kuti përputhet me emrin në zarf. Fotografoni qartë tabelën me emrin dhe zarfin e futur.",
+  "r2std": "Nëse emri nuk përputhet ose mungon tabela: provoni dorëzimin personal te marrësi.",
+  "r1pref": "Fillimisht provoni dorëzimin personal te marrësi. Vetëm nëse nuk ia del: kutia postare – dhe vetëm nëse emri përputhet me zarfin. Fotografoni tabelën dhe zarfin.",
+  "r1doar": "Vetëm dorëzim personal te marrësi – pa kuti postare. Nëse marrësi nuk është aty: mos e futni, njoftoni dispeçerinë.",
+  "r3": "Zarfi NUK lejohet t’i jepet askujt tjetër – as familjarëve, fqinjëve apo kolegëve.",
+  "contact": "Për çdo problem përdorni menjëherë në aplikacion „Dispo Zimand · Problem melden“ (WhatsApp).",
+  "buton": "E kuptova"
+ },
+ "uk": {
+  "titlu": "Перед доставкою – прочитайте",
+  "r1std": "Стандартно – у поштову скриньку, але лише якщо ім’я на скриньці збігається з ім’ям на конверті. Чітко сфотографуйте табличку та вкинутий конверт.",
+  "r2std": "Якщо ім’я не збігається або таблички немає: спробуйте особисту передачу одержувачу.",
+  "r1pref": "Спершу спробуйте особисту передачу одержувачу. Лише якщо не вдасться: скринька – і лише якщо ім’я збігається з конвертом. Сфотографуйте табличку й конверт.",
+  "r1doar": "Лише особиста передача одержувачу – без скриньки. Якщо одержувача немає: не вкидайте, повідомте диспетчерську.",
+  "r3": "Конверт НЕ можна передавати нікому іншому – ні членам сім’ї, ні сусідам, ні колегам.",
+  "contact": "У разі проблеми одразу користуйтеся в додатку „Dispo Zimand · Problem melden“ (WhatsApp).",
+  "buton": "Зрозуміло"
+ },
+ "ru": {
+  "titlu": "Перед доставкой – прочитайте",
+  "r1std": "Стандартно – в почтовый ящик, но только если имя на ящике совпадает с именем на конверте. Чётко сфотографируйте табличку и вброшенный конверт.",
+  "r2std": "Если имя не совпадает или таблички нет: попробуйте передать лично получателю.",
+  "r1pref": "Сначала попробуйте передать лично получателю. Только если не получится: ящик – и только если имя совпадает с конвертом. Сфотографируйте табличку и конверт.",
+  "r1doar": "Только личная передача получателю – без ящика. Если получателя нет: не бросайте, сообщите диспетчеру.",
+  "r3": "Конверт НЕЛЬЗЯ передавать никому другому – ни членам семьи, ни соседям, ни коллегам.",
+  "contact": "При проблеме сразу используйте в приложении „Dispo Zimand · Problem melden“ (WhatsApp).",
+  "buton": "Понятно"
+ },
+ "tr": {
+  "titlu": "Teslimattan önce – kısaca okuyun",
+  "r1std": "Standart yol posta kutusudur – ama yalnızca kutudaki ad zarftaki adla eşleşiyorsa. İsim levhasını ve atılan zarfı net fotoğraflayın.",
+  "r2std": "Ad eşleşmiyorsa veya levha yoksa: alıcıya şahsen teslim etmeyi deneyin.",
+  "r1pref": "Önce alıcıya şahsen teslim etmeyi deneyin. Yalnızca başarısız olursa: posta kutusu – ve yalnızca ad zarfla eşleşiyorsa. Levhayı ve zarfı fotoğraflayın.",
+  "r1doar": "Yalnızca alıcıya şahsen teslim – posta kutusu yok. Alıcı yoksa: kutuya atmayın, operasyon birimine haber verin.",
+  "r3": "Zarf BAŞKA KİMSEYE verilemez – ne aile üyelerine, ne komşulara, ne iş arkadaşlarına.",
+  "contact": "Sorun olursa hemen uygulamada „Dispo Zimand · Problem melden“ (WhatsApp) kullanın.",
+  "buton": "Anladım"
+ },
+ "it": {
+  "titlu": "Prima della consegna – leggere",
+  "r1std": "La via standard è la cassetta – ma solo se il nome sulla cassetta corrisponde a quello sulla busta. Fotografate chiaramente la targhetta e la busta imbucata.",
+  "r2std": "Se il nome non corrisponde o manca la targhetta: tentate la consegna di persona al destinatario.",
+  "r1pref": "Tentate prima la consegna di persona al destinatario. Solo se non riesce: cassetta – e solo se il nome corrisponde alla busta. Fotografate targhetta e busta.",
+  "r1doar": "Solo consegna di persona al destinatario – niente cassetta. Se il destinatario non c’è: non imbucate, informate la centrale.",
+  "r3": "La busta NON può essere consegnata a nessun altro – né a familiari, né a vicini, né a colleghi.",
+  "contact": "In caso di problemi usate subito nell’app „Dispo Zimand · Problem melden“ (WhatsApp).",
+  "buton": "Ho capito"
+ },
+ "es": {
+  "titlu": "Antes de la entrega – lea brevemente",
+  "r1std": "Lo estándar es el buzón – pero solo si el nombre del buzón coincide con el del sobre. Fotografíe con claridad la placa y el sobre introducido.",
+  "r2std": "Si el nombre no coincide o no hay placa: intente la entrega en persona al destinatario.",
+  "r1pref": "Intente primero la entrega en persona al destinatario. Solo si no es posible: buzón – y solo si el nombre coincide con el sobre. Fotografíe la placa y el sobre.",
+  "r1doar": "Solo entrega en persona al destinatario – sin buzón. Si el destinatario no está: no lo deje en el buzón, avise a la central.",
+  "r3": "El sobre NO puede entregarse a nadie más – ni a familiares, ni a vecinos, ni a compañeros.",
+  "contact": "Ante cualquier problema use enseguida en la app „Dispo Zimand · Problem melden“ (WhatsApp).",
+  "buton": "Entendido"
+ },
+ "fr": {
+  "titlu": "Avant la livraison – à lire",
+  "r1std": "La voie standard est la boîte aux lettres – mais seulement si le nom sur la boîte correspond à celui de l’enveloppe. Photographiez nettement la plaque et l’enveloppe déposée.",
+  "r2std": "Si le nom ne correspond pas ou s’il n’y a pas de plaque : essayez la remise en main propre au destinataire.",
+  "r1pref": "Essayez d’abord la remise en main propre au destinataire. Seulement en cas d’échec : boîte aux lettres – et seulement si le nom correspond à l’enveloppe. Photographiez la plaque et l’enveloppe.",
+  "r1doar": "Uniquement remise en main propre au destinataire – pas de boîte aux lettres. Si le destinataire est absent : ne déposez pas, informez la régulation.",
+  "r3": "L’enveloppe NE doit être remise à personne d’autre – ni à la famille, ni aux voisins, ni aux collègues.",
+  "contact": "En cas de problème, utilisez tout de suite dans l’appli „Dispo Zimand · Problem melden“ (WhatsApp).",
+  "buton": "Compris"
+ },
+ "pt": {
+  "titlu": "Antes da entrega – leia",
+  "r1std": "O padrão é a caixa do correio – mas só se o nome na caixa coincidir com o do envelope. Fotografe nitidamente a placa e o envelope introduzido.",
+  "r2std": "Se o nome não coincidir ou não houver placa: tente a entrega em mão ao destinatário.",
+  "r1pref": "Tente primeiro a entrega em mão ao destinatário. Só se não conseguir: caixa do correio – e só se o nome coincidir com o envelope. Fotografe a placa e o envelope.",
+  "r1doar": "Apenas entrega em mão ao destinatário – sem caixa do correio. Se o destinatário não estiver: não deixe na caixa, informe a central.",
+  "r3": "O envelope NÃO pode ser entregue a mais ninguém – nem a familiares, vizinhos ou colegas.",
+  "contact": "Em caso de problema use logo na app „Dispo Zimand · Problem melden“ (WhatsApp).",
+  "buton": "Entendi"
+ },
+ "nl": {
+  "titlu": "Voor de bezorging – even lezen",
+  "r1std": "Standaard is de brievenbus – maar alleen als de naam op de brievenbus overeenkomt met de naam op de envelop. Fotografeer naambordje en ingeworpen envelop duidelijk.",
+  "r2std": "Klopt de naam niet of is er geen naambordje: probeer persoonlijke overhandiging aan de ontvanger.",
+  "r1pref": "Probeer eerst persoonlijke overhandiging aan de ontvanger. Alleen als dat niet lukt: brievenbus – en alleen als de naam overeenkomt met de envelop. Fotografeer naambordje en envelop.",
+  "r1doar": "Alleen persoonlijke overhandiging aan de ontvanger – geen brievenbus. Is de ontvanger er niet: niet inwerpen, maar de planning informeren.",
+  "r3": "De envelop mag aan NIEMAND anders worden gegeven – niet aan familieleden, buren of collega’s.",
+  "contact": "Bij problemen meteen in de app „Dispo Zimand · Problem melden“ (WhatsApp) gebruiken.",
+  "buton": "Begrepen"
+ },
+ "el": {
+  "titlu": "Πριν την παράδοση – διαβάστε",
+  "r1std": "Ο συνήθης τρόπος είναι το γραμματοκιβώτιο – μόνο όμως αν το όνομα σε αυτό ταιριάζει με το όνομα στον φάκελο. Φωτογραφίστε καθαρά την ταμπέλα και τον φάκελο.",
+  "r2std": "Αν το όνομα δεν ταιριάζει ή δεν υπάρχει ταμπέλα: δοκιμάστε προσωπική παράδοση στον παραλήπτη.",
+  "r1pref": "Δοκιμάστε πρώτα προσωπική παράδοση στον παραλήπτη. Μόνο αν δεν γίνει: γραμματοκιβώτιο – και μόνο αν το όνομα ταιριάζει με τον φάκελο. Φωτογραφίστε ταμπέλα και φάκελο.",
+  "r1doar": "Μόνο προσωπική παράδοση στον παραλήπτη – χωρίς γραμματοκιβώτιο. Αν ο παραλήπτης λείπει: μην τον ρίξετε, ενημερώστε το κέντρο.",
+  "r3": "Ο φάκελος ΔΕΝ επιτρέπεται να δοθεί σε κανέναν άλλον – ούτε σε μέλη οικογένειας, γείτονες ή συναδέλφους.",
+  "contact": "Σε πρόβλημα χρησιμοποιήστε αμέσως στην εφαρμογή „Dispo Zimand · Problem melden“ (WhatsApp).",
+  "buton": "Κατάλαβα"
+ },
+ "lt": {
+  "titlu": "Prieš pristatymą – perskaitykite",
+  "r1std": "Įprastai – į pašto dėžutę, bet tik jei vardas ant dėžutės sutampa su vardu ant voko. Aiškiai nufotografuokite lentelę ir įmestą voką.",
+  "r2std": "Jei vardas nesutampa arba nėra lentelės: bandykite perduoti asmeniškai gavėjui.",
+  "r1pref": "Pirmiausia bandykite perduoti asmeniškai gavėjui. Tik jei nepavyksta: pašto dėžutė – ir tik jei vardas sutampa su voku. Nufotografuokite lentelę ir voką.",
+  "r1doar": "Tik asmeninis perdavimas gavėjui – be pašto dėžutės. Jei gavėjo nėra: nemeskite, informuokite dispečerinę.",
+  "r3": "Voko NEGALIMA perduoti niekam kitam – nei šeimos nariams, nei kaimynams, nei kolegoms.",
+  "contact": "Kilus problemai iškart programėlėje naudokite „Dispo Zimand · Problem melden“ (WhatsApp).",
+  "buton": "Supratau"
+ },
+ "lv": {
+  "titlu": "Pirms piegādes – izlasiet",
+  "r1std": "Parasti – pastkastītē, bet tikai tad, ja vārds uz kastītes sakrīt ar vārdu uz aploksnes. Skaidri nofotografējiet plāksnīti un iemesto aploksni.",
+  "r2std": "Ja vārds nesakrīt vai nav plāksnītes: mēģiniet nodot personīgi saņēmējam.",
+  "r1pref": "Vispirms mēģiniet nodot personīgi saņēmējam. Tikai ja neizdodas: pastkastīte – un tikai tad, ja vārds sakrīt ar aploksni. Nofotografējiet plāksnīti un aploksni.",
+  "r1doar": "Tikai personīga nodošana saņēmējam – bez pastkastītes. Ja saņēmēja nav: nemetiet, informējiet dispečerus.",
+  "r3": "Aploksni NEDRĪKST nodot nevienam citam – ne ģimenes locekļiem, ne kaimiņiem, ne kolēģiem.",
+  "contact": "Problēmas gadījumā uzreiz lietotnē izmantojiet „Dispo Zimand · Problem melden“ (WhatsApp).",
+  "buton": "Sapratu"
+ }
+}

@@ -4,7 +4,7 @@ import { supabase } from './supabaseClient'
 import { t, getLang, setLang, availableLangs } from './i18n'
 import { Eye, Play, ClipboardList, Pause, SlidersHorizontal, Building2, StickyNote, Receipt, Package, Repeat, Hourglass, Camera, Image as ImageIcon, Mail, Ruler, ChevronDown, Lock, Phone, Truck, CheckCircle2, Wallet, User, LogOut, Menu, Bell, MapPin, FlagTriangleRight, Tag, XCircle, Download, X, Navigation, Trophy, ThumbsUp, ArrowUpFromLine, ArrowDownToLine, EyeOff, Layers, AlertTriangle, Clock, FileText, Signature, BookOpen } from 'lucide-react'
 import { GHID_TRADUCERI, GHID_UI } from './ghidTraduceri.js'
-import { ZP_LIMBI, PLECARE_LIMBI, TRANSPORT_LIMBI } from './zpTraduceri.js'
+import { ZP_LIMBI, PLECARE_LIMBI, TRANSPORT_LIMBI, REGULI_LIMBI } from './zpTraduceri.js'
 import './index.css'
 import PodFiles from './components/PodFiles'
 import DocumentCamera from './components/DocumentCamera'
@@ -5251,6 +5251,31 @@ function TransportSheet({ lang, onClose }) {
   )
 }
 
+function ReguliZustellung({ lang, zustellart, onAck }) {
+  const [limba, setLimba] = useState(() => citesteLimba(lang))
+  const tr = REGULI_LIMBI[limba] || REGULI_LIMBI.de
+  const reguli = zustellart === 3 ? [tr.r1doar, tr.r3]
+    : zustellart === 2 ? [tr.r1pref, tr.r3]
+      : [tr.r1std, tr.r2std, tr.r3]
+  return (
+    <div style={{ maxWidth: 440, width: '100%' }}>
+      <div style={{ marginBottom: 10, color: 'var(--navy)' }}><FileText size={40} strokeWidth={1.4} /></div>
+      <div style={{ fontSize: 21, fontWeight: 800, color: '#0F2240', marginBottom: 12, lineHeight: 1.3 }}>{tr.titlu}</div>
+      <SelectorLimba value={limba} onChange={setLimba} />
+      <ol style={{ paddingLeft: 22, margin: 0, fontSize: 15, lineHeight: 1.7, color: '#0F2240' }}>
+        {reguli.map((r, i) => <li key={i} style={{ marginBottom: 13 }}>{r}</li>)}
+      </ol>
+      <div style={{
+        background: '#F3FBF6', border: '1px solid #BFE8CF', borderRadius: 9,
+        padding: '10px 12px', fontSize: 13, color: '#1B6E43', lineHeight: 1.55, margin: '14px 0 16px',
+      }}>
+        {tr.contact}
+      </div>
+      <button className="btn" style={{ width: '100%' }} onClick={onAck}>{tr.buton}</button>
+    </div>
+  )
+}
+
 function BotenInfoSheet({ lang, onClose }) {
   const [limba, setLimba] = useState(() => {
     try { return localStorage.getItem('zd-boten-info-limba') || lang || 'de' } catch { return lang || 'de' }
@@ -6203,30 +6228,10 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
               paddingLeft: 20, paddingRight: 20,
             }}
           >
-            <div style={{ maxWidth: 440, width: '100%' }}>
-              <div style={{ marginBottom: 10, color: 'var(--navy)' }}><FileText size={40} strokeWidth={1.4} /></div>
-              <div style={{ fontSize: 21, fontWeight: 800, color: '#0F2240', marginBottom: 16, lineHeight: 1.3 }}>
-                {t('docRulesTitle', lang)}
-              </div>
-              <ol style={{ paddingLeft: 22, margin: 0, fontSize: 15, lineHeight: 1.7, color: '#0F2240' }}>
-                <li style={{ marginBottom: 13 }}>{t('docRule1', lang)}</li>
-                <li style={{ marginBottom: 13 }}>{t('docRule2', lang)}</li>
-                <li style={{ marginBottom: 13 }}>{t('docRule3', lang)}</li>
-              </ol>
-              <div style={{
-                background: '#F3FBF6', border: '1px solid #BFE8CF', borderRadius: 9,
-                padding: '10px 12px', fontSize: 13, color: '#1B6E43', lineHeight: 1.55, margin: '14px 0 16px',
-              }}>
-                {t('docRuleContact', lang)}
-              </div>
-              <button
-                className="btn"
-                style={{ width: '100%' }}
-                onClick={() => { setRegulileDeschise(false); callRpc(arriveFn) }}
-              >
-                {t('docRulesAck', lang)}
-              </button>
-            </div>
+            {/* În limba aleasă de şofer şi după Zustellart-ul comenzii:
+                1 = cutia poştală întâi, 2 = întâi personal, 3 = doar personal. */}
+            <ReguliZustellung lang={lang} zustellart={Number(order.zustellart) || 1}
+              onAck={() => { setRegulileDeschise(false); callRpc(arriveFn) }} />
           </div>
         )}
         {/* Starea măsurătorii, scrisă. Un blocaj mut nu se poate verifica:

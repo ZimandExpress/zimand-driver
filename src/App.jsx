@@ -4,7 +4,7 @@ import { supabase } from './supabaseClient'
 import { t, getLang, setLang, availableLangs } from './i18n'
 import { Eye, Play, ClipboardList, Pause, SlidersHorizontal, Building2, StickyNote, Receipt, Package, Repeat, Hourglass, Camera, Image as ImageIcon, Mail, Ruler, ChevronDown, Lock, Phone, Truck, CheckCircle2, Wallet, User, LogOut, Menu, Bell, MapPin, FlagTriangleRight, Tag, XCircle, Download, X, Navigation, Trophy, ThumbsUp, ArrowUpFromLine, ArrowDownToLine, EyeOff, Layers, AlertTriangle, Clock, FileText, Signature, BookOpen } from 'lucide-react'
 import { GHID_TRADUCERI, GHID_UI } from './ghidTraduceri.js'
-import { ZP_LIMBI, PLECARE_LIMBI, TRANSPORT_LIMBI, REGULI_LIMBI } from './zpTraduceri.js'
+import { ZP_LIMBI, PLECARE_LIMBI, TRANSPORT_LIMBI, REGULI_LIMBI, RETUR_LIMBI } from './zpTraduceri.js'
 import './index.css'
 import PodFiles from './components/PodFiles'
 import DocumentCamera from './components/DocumentCamera'
@@ -5260,6 +5260,44 @@ function SelectorLimba({ value, onChange }) {
 // Fereastra de la „Losfahren" spre livrare, la documente: plicul e acum la
 // şofer — cum îl transportă. Înlocuieşte, pe drumul spre livrare, textele
 // „Vor der Abfahrt", care vorbeau încă de ridicare (17.10.2026).
+// Fereastra returului (18.10.2026): la ridicarea retur, ce se ia înapoi — scris
+// de client în comandă — şi cu cine; la plecarea spre livrarea retur, cum se
+// transportă. Aceeaşi limbă ca la celelalte ferestre.
+function ReturSheet({ order, lang, transport, onClose }) {
+  const [limba, setLimba] = useState(() => citesteLimba(lang))
+  const tr = RETUR_LIMBI[limba] || RETUR_LIMBI.de
+  const ce = String(order.return_cargo_desc || '').trim()
+  const contact = transport
+    ? (extractContact(order.notes, 'Kontakt Rückfahrt Zustellung: ') || extractContact(order.notes, 'Kontakt Abholung: '))
+    : (extractContact(order.notes, 'Kontakt Rückfahrt Abholung: ') || extractContact(order.notes, 'Kontakt Zustellung: '))
+  const adresa = transport ? order.return_delivery_address : order.return_pickup_address
+  return (
+    <div className="sig-fullscreen" style={{ justifyContent: 'flex-end', background: 'rgba(15,34,64,.55)', zIndex: 9990 }}>
+      <div style={{ background: '#fff', borderRadius: '16px 16px 0 0', padding: '20px 20px calc(20px + env(safe-area-inset-bottom))', maxHeight: '88vh', overflowY: 'auto' }}>
+        <div style={{ fontSize: 12.5, fontWeight: 600, color: '#5A6878', marginBottom: 2 }}>🔁 {transport ? tr.fazaT : tr.fazaP}</div>
+        <div style={{ fontSize: 18, fontWeight: 800, color: '#0F2240', marginBottom: 10 }}>{transport ? tr.titluT : tr.titluP}</div>
+        <SelectorLimba value={limba} onChange={setLimba} />
+        <div style={{ background: '#F4F7FC', border: '2px solid #0F2240', borderRadius: 10, padding: '11px 13px', marginBottom: 12 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: '#5A6878', textTransform: 'uppercase', letterSpacing: '.03em' }}>{transport ? tr.duci : tr.ce}</div>
+          {ce
+            ? <div style={{ fontSize: 16, fontWeight: 800, color: '#0F2240', marginTop: 3, lineHeight: 1.4, whiteSpace: 'pre-wrap' }}>{ce}</div>
+            : <div style={{ fontSize: 14, fontWeight: 600, color: '#B23A24', marginTop: 3, lineHeight: 1.45 }}>{tr.nimic}</div>}
+        </div>
+        {(contact || adresa) && (
+          <div style={{ fontSize: 13.5, color: '#33415A', lineHeight: 1.5, marginBottom: 12 }}>
+            {contact && <div><strong>{tr.contact}:</strong> {contact}</div>}
+            {adresa && <div style={{ color: '#5A6878' }}>{adresa}</div>}
+          </div>
+        )}
+        <ol style={{ margin: 0, paddingLeft: 20, fontSize: 15, lineHeight: 1.55, color: '#0F2240' }}>
+          {(transport ? tr.pasiT : tr.pasiP).map((p, i) => <li key={i} style={{ marginBottom: 8 }}>{p}</li>)}
+        </ol>
+        <button type="button" className="btn" style={{ width: '100%', margin: '14px 0 0' }} onClick={onClose}>{tr.buton}</button>
+      </div>
+    </div>
+  )
+}
+
 function TransportSheet({ lang, onClose }) {
   const [limba, setLimba] = useState(() => citesteLimba(lang))
   const tr = TRANSPORT_LIMBI[limba] || TRANSPORT_LIMBI.de
@@ -5536,9 +5574,13 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
       // Pornirea spre LIVRARE nu mai arată „Vor der Abfahrt" (vorbea de
       // ridicare): la documente apare fereastra despre transportul plicului,
       // la marfă nimic — instrucţiunile de livrare vin la „Angekommen".
-      setGhidFaza(pas === 'started'
-        ? (esteLivrareEtapa ? (isDocumentDelivery ? 'transport' : null) : 'start')
-        : (esteLivrareEtapa ? 'delivery' : 'pickup'))
+      // Retur: fereastra lui proprie — la sosirea pentru ridicare ce se ia
+      // înapoi, la plecarea spre livrare nota de transport.
+      setGhidFaza(esteRetur
+        ? (pas === 'started' ? (esteLivrareEtapa ? 'retur_transport' : null) : (esteLivrareEtapa ? null : 'retur_pickup'))
+        : pas === 'started'
+          ? (esteLivrareEtapa ? (isDocumentDelivery ? 'transport' : null) : 'start')
+          : (esteLivrareEtapa ? 'delivery' : 'pickup'))
     }
   }
 
@@ -5587,7 +5629,13 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
   }, [order.id])
 
   // Dokumentenzustellung, doar pe etapa de livrare — la ridicare nu are sens.
-  const isDocumentDelivery = !!order.is_document_delivery
+  //
+  // Returul unei curse de documente NU e o livrare de documente: acolo se ia
+  // înapoi ce a scris clientul (chei, originalul semnat, un plic). Fără
+  // Zustellprotokoll, fără Botenbestätigung, fără variantele de livrare —
+  // fotografii ca la o marfă obişnuită (cerut de Andrei pe 18.10.2026).
+  const esteRetur = leg === 'return_pickup' || leg === 'return_delivery'
+  const isDocumentDelivery = !!order.is_document_delivery && !esteRetur
   const isDocumentDeliveryLeg = isDocumentDelivery && esteLivrareEtapa
 
   // Verificarea distanţei merge pe AMBELE etape ale unei livrări de
@@ -6145,7 +6193,7 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
 
   // Calculat aici, după ce sunt cunoscute tipul dovezii (CMR / semnătură),
   // nu sus: acelea se declară mai jos în componentă.
-  const ghidChei = () => order.is_document_delivery
+  const ghidChei = () => isDocumentDelivery
     // Übergabe- und Botenbestätigung: numai la plecarea spre ridicare (şi
     // numai dacă e comandată). La ridicare are fereastra ei (BotenInfoSheet),
     // iar „originalul rămâne la expeditor" apare la încărcarea ei. La livrare
@@ -6156,7 +6204,9 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
     ? ghidChei().map((k) => ghiduriToate.find((g) => g.key === k))
         .filter((g) => g && pasiGhid(g, ghidFaza, lang).length && !esteAscuns(g, ghidFaza))
     : []
-  const ghidSheet = ghidFaza === 'transport' ? (
+  const ghidSheet = (ghidFaza === 'retur_pickup' || ghidFaza === 'retur_transport') ? (
+    <ReturSheet order={order} lang={lang} transport={ghidFaza === 'retur_transport'} onClose={() => setGhidFaza(null)} />
+  ) : ghidFaza === 'transport' ? (
     <TransportSheet lang={lang} onClose={() => setGhidFaza(null)} />
   ) : ghidFaza && ghiduriFaza.length ? (
     <GhidSheet ghiduri={ghiduriFaza} faza={ghidFaza} lang={lang} onClose={() => setGhidFaza(null)} />

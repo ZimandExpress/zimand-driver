@@ -5306,24 +5306,23 @@ function ZustellartChip({ order, lang }) {
         type="button"
         onClick={() => setDeschis((v) => !v)}
         style={{
-          flex: '1 1 170px', minWidth: 0, textAlign: 'left', cursor: 'pointer',
+          display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', alignSelf: 'center',
           background: rosu ? '#FDF1EF' : '#F3F6FB', border: `1px solid ${rosu ? '#E4A296' : '#C9D5E8'}`,
-          borderRadius: 10, padding: '5px 10px', lineHeight: 1.25,
+          color: rosu ? '#B23A24' : '#0F2240', borderRadius: 10, padding: '7px 11px',
+          fontSize: 13.5, fontWeight: 700, whiteSpace: 'nowrap',
         }}
       >
-        <span style={{ display: 'block', fontSize: 10, fontWeight: 700, letterSpacing: 0.4, textTransform: 'uppercase', color: '#6B7A90' }}>
-          {t('zustellartTitle', lang)}
-        </span>
-        <span style={{ display: 'block', fontSize: 13, fontWeight: 800, color: rosu ? '#B23A24' : '#0F2240' }}>
-          {t(`zustellart${z}`, lang)}
-        </span>
+        <Mail size={15} strokeWidth={2} /> {t('zustellartChip', lang)}
+        <ChevronDown size={14} strokeWidth={2} style={{ transform: deschis ? 'rotate(180deg)' : undefined }} />
       </button>
       {deschis && (
         <div onClick={() => setDeschis(false)} style={{
-          flex: '1 1 100%', fontSize: 12.5, color: '#4A5563', lineHeight: 1.5,
-          background: rosu ? '#FDF1EF' : '#F3F6FB', borderRadius: 8, padding: '7px 10px',
+          flex: '1 1 100%', lineHeight: 1.5, cursor: 'pointer',
+          background: rosu ? '#FDF1EF' : '#F3F6FB', border: `1px solid ${rosu ? '#E4A296' : '#C9D5E8'}`, borderRadius: 10, padding: '9px 12px',
         }}>
-          {t(`zustellart${z}Note`, lang)}
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.4, textTransform: 'uppercase', color: '#6B7A90' }}>{t('zustellartTitle', lang)}</div>
+          <div style={{ fontSize: 14.5, fontWeight: 800, color: rosu ? '#B23A24' : '#0F2240', marginTop: 2 }}>{t(`zustellart${z}`, lang)}</div>
+          <div style={{ fontSize: 12.5, color: '#4A5563', marginTop: 3 }}>{t(`zustellart${z}Note`, lang)}</div>
         </div>
       )}
     </>

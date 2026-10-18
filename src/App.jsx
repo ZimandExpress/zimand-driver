@@ -6504,7 +6504,9 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
             })}
             {/* „Zustellung nicht möglich" stă o singură dată: jos, sub butonul
                 de confirmare. Aici rămâne doar unde jos nu există. */}
-            {!onDeliveryFailed && (
+            {/* La Dokumentenzustellung „nicht möglich" îl hotărăşte doar
+                dispeceratul (18.10.2026) — rândul nu mai apare deloc. */}
+            {false && (
               <button
                 type="button"
                 onClick={() => setIncidentBlocking(true)}
@@ -6814,8 +6816,10 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
         </button>
       )}
 
-      {/* Aceeaşi scăpare la livrarea principală: firmă închisă, nimeni acasă. */}
-      {!esteOprire && onDeliveryFailed && (
+      {/* Aceeaşi scăpare la livrarea principală: firmă închisă, nimeni acasă.
+          La Dokumentenzustellung nu: acolo decide doar dispeceratul
+          (cerut de Andrei pe 18.10.2026). */}
+      {!esteOprire && onDeliveryFailed && !isDocumentDelivery && (
         <button
           type="button"
           className="link-btn danger-link"

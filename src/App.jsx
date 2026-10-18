@@ -5124,7 +5124,7 @@ function capeteCursa(order, spreLivrare) {
   return lista.filter((x) => x.address || x.contact)
 }
 
-function AltCapat({ order, lang, spreLivrare }) {
+function AltCapat({ order, lang, spreLivrare, inCard }) {
   const [deschis, setDeschis] = useState(false)
   const lista = capeteCursa(order, spreLivrare)
   if (!lista.length) return null
@@ -5141,7 +5141,7 @@ function AltCapat({ order, lang, spreLivrare }) {
         onClick={() => setDeschis(true)}
         style={{
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-          width: '100%', margin: '0 0 12px', padding: '10px 12px',
+          width: '100%', margin: inCard ? '8px 0 0' : '0 0 12px', padding: inCard ? '8px 10px' : '10px 12px',
           background: 'transparent', border: '1px dashed var(--border, #C8D2E0)',
           borderRadius: 9, color: 'var(--text-soft, #6B7A90)',
           fontSize: 13.5, fontWeight: 600, cursor: 'pointer',
@@ -6542,7 +6542,7 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
         // Expeditorul, citit o singură dată: și pe linia "Abgeholt bei", și
         // la butonul de mai jos.
         const contactRidicare = extractContact(order.notes, 'Kontakt Abholung: ')
-        if (!contact && !adresa) return null
+        if (!contact && !adresa) return !isDocumentDeliveryLeg ? <AltCapat order={order} lang={lang} spreLivrare={!esteLivrareEtapa} /> : null
         return (
           <div style={{
             background: 'var(--surface-soft, #F4F6F9)', border: '1px solid var(--border, #E2E7EE)',
@@ -6554,6 +6554,9 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
               </div>
             )}
             {adresa && <div style={{ color: 'var(--text-soft)' }}>{adresa}</div>}
+            {/* „Von wem wurde abgeholt?" chiar sub nume şi adresă, în acelaşi
+                card (18.10.2026). */}
+            {!isDocumentDeliveryLeg && <AltCapat order={order} lang={lang} spreLivrare={!esteLivrareEtapa} inCard />}
             {/* Adresa singură nu-i spunea nimic destinatarului care întreabă
                 "de la cine vine?". Numele și firma expeditorului stau în
                 `notes`, lângă adresă. Se arată și la opriri: tocmai la livrarea
@@ -6592,8 +6595,8 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
 
       {/* La ridicare arată unde merge marfa; la livrare, de la cine a fost
           luată. Deasupra pozelor, în pasul în care șoferul se uită oricum. */}
-      {/* La livrarea de documente nu mai apare (cerut de Andrei pe 18.10.2026). */}
-      {!isDocumentDeliveryLeg && <AltCapat order={order} lang={lang} spreLivrare={!esteLivrareEtapa} />}
+      {/* „Von wem wurde abgeholt?" stă acum în cardul de sus, sub adresă.
+          La livrarea de documente nu apare (cerut de Andrei pe 18.10.2026). */}
 
 
       {/* Dokumentenzustellung: cum a fost predat documentul.

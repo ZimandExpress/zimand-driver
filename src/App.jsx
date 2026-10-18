@@ -7670,31 +7670,32 @@ function SemneEtapa({ order, etapa, lang, retur, doarOk }) {
 // la rampă — că are nevoie de CMR tipărit. Pe listă e o silabă: „CMR" când e
 // hârtie, un condei când e semnătură pe ecran. Mai mult n-ar încăpea lângă
 // kilometri şi greutate, şi nici n-ar fi nevoie.
-function SemnDovada({ order, lang }) {
+function SemnDovada({ order, lang, faraInfo }) {
   const mod = order.is_document_delivery ? 'protokoll' : (order.doc_mode || 'ask')
   if (mod !== 'cmr' && mod !== 'signature') return null
   const cmr = mod === 'cmr'
-  const Pictograma = cmr ? FileText : Signature
+  // Atingerea explică ce a ales clientul (18.10.2026) — acelaşi bilet ca la
+  // celelalte semne.
   return (
-    <span
-      title={t(cmr ? 'requireCmrTitle' : 'requireSignatureTitle', lang)}
-      style={{
-        display: 'inline-flex', alignItems: 'center', gap: 4,
-        height: 22, padding: '0 8px', borderRadius: 7,
-        fontSize: 11.5, fontWeight: 700, letterSpacing: '.02em',
-        background: cmr ? '#FFF3DC' : '#EDEFF3',
-        color: cmr ? '#8A5A16' : '#28344A',
+    <SemnServiciu
+      lang={lang}
+      faraInfo={faraInfo}
+      b={{
+        Icon: cmr ? FileText : Signature,
+        eticheta: cmr ? 'CMR' : null,
+        text: t(cmr ? 'requireCmrTitle' : 'requireSignatureTitle', lang),
+        explicatie: t(cmr ? 'proofCmrInfo' : 'proofSignatureInfo', lang),
+        bg: cmr ? '#FFF3DC' : '#EDEFF3',
+        fg: cmr ? '#8A5A16' : '#28344A',
       }}
-    >
-      <Pictograma size={13} strokeWidth={2} />
-      {cmr ? 'CMR' : null}
-    </span>
+    />
   )
 }
 
 // Ce înseamnă fiecare semn, la atingere (18.10.2026): aceleaşi texte ca în
 // legendă, ca şoferul să nu mai caute legenda pentru un singur semn.
 function explicatieSemn(b, lang) {
+  if (b.explicatie) return b.explicatie
   if (b.key === 'loadHelpBadge') return t('legendLoadHelp', lang)
   if (b.key === 'unloadHelpBadge') return t('legendUnloadHelp', lang)
   if (b.key === 'neutralDeliveryBadge') return t('legendNeutral', lang)
@@ -7733,8 +7734,8 @@ function SemnServiciu({ b, lang, faraInfo }) {
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
         gap: b.eticheta ? 4 : 0,
         minWidth: 26, height: 22, padding: b.eticheta ? '0 8px' : '0 6px', borderRadius: 7,
-        background: b.warn ? '#FCEBE8' : b.ok ? '#E7F4EE' : '#EDEFF3',
-        color: b.warn ? '#B23A24' : b.ok ? '#1F7A50' : '#28344A',
+        background: b.bg || (b.warn ? '#FCEBE8' : b.ok ? '#E7F4EE' : '#EDEFF3'),
+        color: b.fg || (b.warn ? '#B23A24' : b.ok ? '#1F7A50' : '#28344A'),
       }}
     >
       {Pictograma ? <Pictograma size={14} strokeWidth={2} /> : null}
@@ -7759,7 +7760,7 @@ function SemnServiciu({ b, lang, faraInfo }) {
         >
           <span style={{
             flex: '0 0 auto', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 28, height: 28, borderRadius: 8,
-            background: b.warn ? '#FCEBE8' : b.ok ? '#E7F4EE' : '#EDEFF3', color: b.warn ? '#B23A24' : b.ok ? '#1F7A50' : '#28344A',
+            background: b.bg || (b.warn ? '#FCEBE8' : b.ok ? '#E7F4EE' : '#EDEFF3'), color: b.fg || (b.warn ? '#B23A24' : b.ok ? '#1F7A50' : '#28344A'),
           }}>
             {Pictograma ? <Pictograma size={15} strokeWidth={2} /> : null}
           </span>
@@ -7787,7 +7788,8 @@ function hintSemneAscuns() {
 }
 function HintSemne({ order, lang }) {
   const [ascuns, setAscuns] = useState(hintSemneAscuns)
-  if (ascuns || !extractServiceBadges(order.notes).some((b) => explicatieSemn(b, lang))) return null
+  const areDovada = !order.is_document_delivery && ['cmr', 'signature'].includes(order.doc_mode)
+  if (ascuns || !(areDovada || extractServiceBadges(order.notes).some((b) => explicatieSemn(b, lang)))) return null
   return (
     <div
       onClick={(e) => e.stopPropagation()}
@@ -8067,12 +8069,12 @@ function LegendaScreen({ lang }) {
 
       {grup(t('legendProofGroup', lang))}
       <RandLegenda
-        semn={<SemnDovada order={{ doc_mode: 'cmr' }} lang={lang} />}
+        semn={<SemnDovada order={{ doc_mode: 'cmr' }} lang={lang} faraInfo />}
         titlu={t('requireCmrTitle', lang)}
         text={t('legendCmr', lang)}
       />
       <RandLegenda
-        semn={<SemnDovada order={{ doc_mode: 'signature' }} lang={lang} />}
+        semn={<SemnDovada order={{ doc_mode: 'signature' }} lang={lang} faraInfo />}
         titlu={t('requireSignatureTitle', lang)}
         text={t('legendSignature', lang)}
       />

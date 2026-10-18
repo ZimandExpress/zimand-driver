@@ -5324,11 +5324,11 @@ function ZustellartChip({ order, lang }) {
           flex: '1 1 100%', lineHeight: 1.5,
           background: '#E7F4EE', border: '1px solid #A8D5BE', borderRadius: 12, padding: '12px 14px',
         }}>
+          <SelectorLimba value={limba} onChange={setLimba} />
           <div onClick={() => setDeschis(false)} style={{ cursor: 'pointer' }}>
             <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: 0.4, textTransform: 'uppercase', color: '#2E7D57' }}>{t('zustellartTitle', lang)}</div>
-            <div style={{ fontSize: 17.5, fontWeight: 800, color: '#1F7A50', marginTop: 3, marginBottom: 10 }}>{t(`zustellart${z}`, lang)}</div>
+            <div style={{ fontSize: 17.5, fontWeight: 800, color: '#1F7A50', marginTop: 3, marginBottom: 8 }}>{t(`zustellart${z}`, lang)}</div>
           </div>
-          <SelectorLimba value={limba} onChange={setLimba} />
           {(() => {
             const tr = REGULI_LIMBI[limba] || REGULI_LIMBI.de
             const reguli = z === 3 ? [tr.r1doar, tr.r3] : z === 2 ? [tr.r1pref, tr.r3] : [tr.r1std, tr.r2std, tr.r3]

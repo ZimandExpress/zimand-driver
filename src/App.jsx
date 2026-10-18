@@ -2125,7 +2125,7 @@ function RideCard({ order, isOwner, lang, onClick, compact }) {
             </span>
           )}
           <span className="ride-row-route">
-            {order.pickup_address} → {order.delivery_address}
+            {adresaScurta(order.pickup_address)} → {adresaScurta(order.delivery_address)}
           </span>
           {isCancelled ? (
             <span className="ride-row-date">{statusLabel(order.status, lang)}</span>
@@ -2182,7 +2182,7 @@ function RideCard({ order, isOwner, lang, onClick, compact }) {
         <div className="rc-route">
           <div className="rc-stop rc-stop-from">
             <span className="rc-dot rc-dot-from" />
-            <span className="rc-addr">{order.pickup_address}</span>
+            <span className="rc-addr">{adresaScurta(order.pickup_address)}</span>
           </div>
           {opriri.length > 0 && (
             <div className="rc-via">{opriri.length} {t('stopsMoreLabel', lang)}</div>
@@ -2192,7 +2192,7 @@ function RideCard({ order, isOwner, lang, onClick, compact }) {
               din listă că cursa nu se termină la livrare. */}
           <div className={`rc-stop ${order.is_round_trip ? 'rc-stop-mid' : ''}`}>
             <span className="rc-dot rc-dot-to" />
-            <span className="rc-addr">{order.delivery_address}</span>
+            <span className="rc-addr">{adresaScurta(order.delivery_address)}</span>
           </div>
           {order.is_round_trip && (
             <div className="rc-stop">
@@ -2223,7 +2223,7 @@ function RideCard({ order, isOwner, lang, onClick, compact }) {
               {opriri.slice(0, 6).map((st) => (
                 <div className="rc-row" key={st.id}>
                   {st.kind === 'delivery' ? <ArrowDownToLine size={14} strokeWidth={1.8} /> : <ArrowUpFromLine size={14} strokeWidth={1.8} />}
-                  <span className="rc-row-text">{st.address}</span>
+                  <span className="rc-row-text">{adresaScurta(st.address)}</span>
                   {(st.confirmed_at || st.failed_at) && (
                     <span className={st.failed_at ? 'rc-mark-bad' : 'rc-mark-ok'}>{st.failed_at ? '✕' : '✓'}</span>
                   )}
@@ -2360,9 +2360,10 @@ const DISPATCH_WA = '4915510062480'
 
 // Silueta WhatsApp. Lucide nu conţine logo-uri de marcă, iar o bulă de chat
 // generică nu spune şoferului unde îl duce butonul.
-function WhatsAppIcon({ size = 14 }) {
+// Verde WhatsApp peste tot (18.10.2026); alb doar pe butonul verde.
+function WhatsAppIcon({ size = 14, color = '#25D366' }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill={color} aria-hidden="true">
       <path d="M17.47 14.38c-.3-.15-1.76-.87-2.03-.97-.27-.1-.47-.15-.67.15-.2.3-.77.96-.94 1.16-.17.2-.35.22-.65.07-.3-.15-1.26-.46-2.4-1.48-.89-.79-1.49-1.76-1.66-2.06-.17-.3-.02-.46.13-.61.14-.14.3-.35.45-.53.15-.18.2-.3.3-.5.1-.2.05-.38-.02-.53-.08-.15-.67-1.6-.92-2.2-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.8.38-.27.3-1.04 1.02-1.04 2.48s1.07 2.88 1.22 3.08c.15.2 2.1 3.2 5.08 4.49.71.3 1.26.49 1.69.63.71.22 1.36.19 1.87.12.57-.09 1.76-.72 2.01-1.41.25-.69.25-1.29.17-1.41-.07-.12-.27-.2-.57-.35z"/>
       <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2 22l5.25-1.38a9.87 9.87 0 0 0 4.79 1.22h.01c5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2zm0 1.8c2.17 0 4.2.84 5.73 2.38a8.05 8.05 0 0 1 2.38 5.73c0 4.47-3.64 8.11-8.11 8.11h-.01c-1.45 0-2.88-.39-4.12-1.13l-.3-.18-3.06.8.82-2.99-.19-.31a8.07 8.07 0 0 1-1.24-4.3c0-4.47 3.64-8.11 8.1-8.11z"/>
     </svg>
@@ -3673,7 +3674,7 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
           <SemneEtapa order={order} etapa="pickup" lang={lang} />
           <ContactRow contact={pickupContact} lang={lang} />
           <div className="info-row address-row">
-            <span className="address-text">{order.pickup_address}</span>
+            <span className="address-text">{adresaScurta(order.pickup_address)}</span>
             <a className="maps-nav-btn" href={mapsNavUrl(order.pickup_address)} target="_blank" rel="noreferrer"><Navigation size={13} strokeWidth={2.2} /> {t('navigateButton', lang)}</a>
           </div>
           <SemneEtapa order={order} etapa="pickup" lang={lang} doarOk />
@@ -3740,7 +3741,7 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
           <SemneEtapa order={order} etapa="delivery" lang={lang} />
           <ContactRow contact={deliveryContact} lang={lang} />
           <div className="info-row address-row">
-            <span className="address-text">{order.delivery_address}</span>
+            <span className="address-text">{adresaScurta(order.delivery_address)}</span>
             <a className="maps-nav-btn" href={mapsNavUrl(order.delivery_address)} target="_blank" rel="noreferrer"><Navigation size={13} strokeWidth={2.2} /> {t('navigateButton', lang)}</a>
           </div>
           <SemneEtapa order={order} etapa="delivery" lang={lang} doarOk />
@@ -3796,7 +3797,7 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
               <SemneEtapa order={order} etapa="pickup" lang={lang} retur />
               <ContactRow contact={returPickupContact} lang={lang} />
               <div className="info-row address-row">
-                <span className="address-text">{order.return_pickup_address}</span>
+                <span className="address-text">{adresaScurta(order.return_pickup_address)}</span>
                 <a className="maps-nav-btn" href={mapsNavUrl(order.return_pickup_address)} target="_blank" rel="noreferrer"><Navigation size={13} strokeWidth={2.2} /> {t('navigateButton', lang)}</a>
               </div>
               {order.return_pickup_confirmed_at && <div className="info-row-time">✓ {fmtDateTime(order.return_pickup_confirmed_at)}</div>}
@@ -3823,7 +3824,7 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
               <SemneEtapa order={order} etapa="delivery" lang={lang} retur />
               <ContactRow contact={returDeliveryContact} lang={lang} />
               <div className="info-row address-row">
-                <span className="address-text">{order.return_delivery_address}</span>
+                <span className="address-text">{adresaScurta(order.return_delivery_address)}</span>
                 <a className="maps-nav-btn" href={mapsNavUrl(order.return_delivery_address)} target="_blank" rel="noreferrer"><Navigation size={13} strokeWidth={2.2} /> {t('navigateButton', lang)}</a>
               </div>
               {order.return_delivery_confirmed_at && <div className="info-row-time">✓ {fmtDateTime(order.return_delivery_confirmed_at)}</div>}
@@ -5220,7 +5221,7 @@ function AltCapat({ order, lang, spreLivrare, inCard }) {
                     </div>
                   )}
                   {c.address && (
-                    <div style={{ fontSize: 14, color: '#0F2240', marginTop: 3, lineHeight: 1.5 }}>{c.address}</div>
+                    <div style={{ fontSize: 14, color: '#0F2240', marginTop: 3, lineHeight: 1.5 }}>{adresaScurta(c.address)}</div>
                   )}
                   {(c.date || interval) && (
                     <div style={{ fontSize: 13, color: '#6B7A90', marginTop: 5 }}>
@@ -6569,7 +6570,7 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
                 fontSize: 13.5, padding: '9px 12px', borderRadius: 8, textDecoration: 'none',
               }}
             >
-              <WhatsAppIcon size={14} />
+              <WhatsAppIcon size={14} color="#fff" />
               {trD.buton}
             </a>
           </div>
@@ -6661,7 +6662,7 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
                 {laLivrare ? <ArrowDownToLine size={14} strokeWidth={1.8} /> : <ArrowUpFromLine size={14} strokeWidth={1.8} />} {contact.split(' · Tel.')[0].trim()}
               </div>
             )}
-            {adresa && <div style={{ color: 'var(--text-soft)' }}>{adresa}</div>}
+            {adresa && <div style={{ color: 'var(--text-soft)' }}>{adresaScurta(adresa)}</div>}
             {/* „Von wem wurde abgeholt?" chiar sub nume şi adresă, în acelaşi
                 card (18.10.2026). */}
             {!isDocumentDeliveryLeg && <AltCapat order={order} lang={lang} spreLivrare={!esteLivrareEtapa} inCard />}
@@ -7339,7 +7340,7 @@ function CompletedOrderDetail({ order, isOwner, lang, onBack }) {
 
       {isOwner && net != null && (
         <div className="summary-box">
-          <div className="route">{order.pickup_address} → {order.delivery_address}</div>
+          <div className="route">{adresaScurta(order.pickup_address)} → {adresaScurta(order.delivery_address)}</div>
           <div className="summary-grid">
             <div>{t('kmLabel', lang)}<b>{order.km ? `${order.km} km` : '—'}</b></div>
             <div>{t('priceLabel', lang)}<b>{net.toFixed(2)} €</b></div>
@@ -7511,7 +7512,7 @@ function AssignDriverCard({ order, lang, companyDrivers, onAssigned }) {
     <div className="bid-card2 open">
       <div className="bid-body-inner" style={{ paddingTop: 16 }}>
         <div className="bid-order-id">{t('orderRef', lang)} {order.order_number || order.id.slice(0, 8)}</div>
-        <div className="bid-stop"><span className="addr"><MapPin size={13} strokeWidth={1.8} /> {order.pickup_address}</span></div>
+        <div className="bid-stop"><span className="addr"><MapPin size={13} strokeWidth={1.8} /> {adresaScurta(order.pickup_address)}</span></div>
         {/* Cel mult trei rânduri. La douăzeci de opriri, cardul creştea la o
             mie de pixeli — o listă în care nu mai puteai compara două comenzi,
             iar butonul de la bază ieşea de pe ecran. Lista întreagă e pe
@@ -7525,7 +7526,7 @@ function AssignDriverCard({ order, lang, companyDrivers, onAssigned }) {
                 ? <FlagTriangleRight size={12} strokeWidth={1.8} />
                 : <MapPin size={12} strokeWidth={1.8} />}
               {' '}
-              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{st.address}</span>
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{adresaScurta(st.address)}</span>
               {(st.confirmed_at || st.failed_at) && (
                 <span style={{ marginLeft: 6, color: st.failed_at ? '#B23A24' : '#1F7A50', fontWeight: 700, flex: '0 0 auto' }}>
                   {st.failed_at ? '✕' : '✓'}
@@ -7541,7 +7542,7 @@ function AssignDriverCard({ order, lang, companyDrivers, onAssigned }) {
             </span>
           </div>
         )}
-        <div className="bid-stop"><span className="addr"><FlagTriangleRight size={13} strokeWidth={1.8} /> {order.delivery_address}</span></div>
+        <div className="bid-stop"><span className="addr"><FlagTriangleRight size={13} strokeWidth={1.8} /> {adresaScurta(order.delivery_address)}</span></div>
         <label className="bid-field-label">{t('assignDriverLabel', lang)}</label>
         <select className="doc-type-select" style={{ marginBottom: 10 }} value={selected} onChange={(e) => setSelected(e.target.value)}>
           <option value="">— {t('defaultDriverNone', lang)} —</option>
@@ -7628,7 +7629,7 @@ function NichtAngenommenScreen({ profile, session, lang }) {
         <div className="hist-item" key={b.id} style={{ opacity: 0.75, cursor: 'default' }}>
           <div>
             <div className="id">{b.orders.order_number || b.orders.id.slice(0, 8)}</div>
-            {b.orders.pickup_address} → {b.orders.delivery_address}
+            {adresaScurta(b.orders.pickup_address)} → {adresaScurta(b.orders.delivery_address)}
           </div>
           <div className="p" style={{ color: 'var(--text-soft)' }}>{b.price} €</div>
         </div>
@@ -7697,6 +7698,18 @@ const COUNTRY_CODES = {
   'Polen': 'PL', 'Poland': 'PL',
   'Tschechien': 'CZ', 'Czechia': 'CZ',
 }
+// Adresa pe ecran cu ţara scurtă: „…, 80333 München, Deutschland" →
+// „…, 80333 München, DE" (18.10.2026). Doar afişarea — linkul de navigare
+// primeşte adresa întreagă.
+function adresaScurta(address) {
+  if (!address || typeof address !== 'string') return address
+  const i = address.lastIndexOf(',')
+  if (i < 0) return address
+  const ultima = address.slice(i + 1).trim()
+  const cod = COUNTRY_CODES[ultima]
+  return cod ? `${address.slice(0, i)}, ${cod}` : address
+}
+
 function cityCountryOnly(address) {
   if (!address) return ''
 

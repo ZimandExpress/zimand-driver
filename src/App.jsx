@@ -4,7 +4,7 @@ import { supabase } from './supabaseClient'
 import { t, getLang, setLang, availableLangs } from './i18n'
 import { Maximize2, ArrowLeft as ArrowLeftMap, Eye, Play, ClipboardList, Pause, SlidersHorizontal, Building2, StickyNote, Receipt, Package, Repeat, Hourglass, Camera, Image as ImageIcon, Mail, Ruler, ChevronDown, Lock, Phone, Truck, CheckCircle2, Wallet, User, LogOut, Menu, Bell, MapPin, FlagTriangleRight, Tag, XCircle, Download, X, Navigation, Trophy, ThumbsUp, ArrowUpFromLine, ArrowDownToLine, EyeOff, Layers, AlertTriangle, Clock, FileText, Signature, BookOpen, Info as InfoIcon } from 'lucide-react'
 import { GHID_TRADUCERI, GHID_UI } from './ghidTraduceri.js'
-import { ZP_LIMBI, PLECARE_LIMBI, TRANSPORT_LIMBI, REGULI_LIMBI, RETUR_LIMBI, POSTA_LIMBI, ZUSTELLART_LIMBI, DEPARTE_LIMBI } from './zpTraduceri.js'
+import { ZP_LIMBI, PLECARE_LIMBI, TRANSPORT_LIMBI, REGULI_LIMBI, RETUR_LIMBI, POSTA_LIMBI, ZUSTELLART_LIMBI, DEPARTE_LIMBI, PASI_ZUSTELLART } from './zpTraduceri.js'
 import './index.css'
 import PodFiles from './components/PodFiles'
 import DocumentCamera from './components/DocumentCamera'
@@ -5427,15 +5427,7 @@ function ZustellartChip({ order, lang }) {
             <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: 0.4, textTransform: 'uppercase', color: '#2E7D57' }}>{(ZUSTELLART_LIMBI[limba] || ZUSTELLART_LIMBI.de).titlu}</div>
             <div style={{ fontSize: 17.5, fontWeight: 800, color: '#1F7A50', marginTop: 3, marginBottom: 8 }}>{(ZUSTELLART_LIMBI[limba] || ZUSTELLART_LIMBI.de)[`v${z}`]}</div>
           </div>
-          {(() => {
-            const tr = REGULI_LIMBI[limba] || REGULI_LIMBI.de
-            const reguli = z === 3 ? [tr.r1doar, tr.r3] : z === 2 ? [tr.r1pref, tr.r3] : [tr.r1std, tr.r2std, tr.r3]
-            return (
-              <div style={{ fontSize: 14, color: '#1F5E40' }}>
-                {reguli.filter(Boolean).map((r, i) => <div key={i} style={{ marginTop: i ? 6 : 0 }}>• {r}</div>)}
-              </div>
-            )
-          })()}
+          <PasiZustellart limba={limba} z={z} mic />
         </div>
       )}
     </>
@@ -5580,12 +5572,31 @@ const ZUSTELLART_NUME = {
   3: 'Ausschließlich persönliche Übergabe',
 }
 
+// Paşii DOAR pentru varianta aleasă de client — nu toate trei odată.
+// Partea dinainte de „:“ (Întâi / Dacă nu se poate / Interzis …) e îngroşată.
+function PasiZustellart({ limba, z, mic }) {
+  const v = [1, 2, 3].includes(Number(z)) ? Number(z) : 1
+  const pasi = (PASI_ZUSTELLART[limba] || PASI_ZUSTELLART.de)[`v${v}`] || []
+  return (
+    <ol style={{ paddingLeft: mic ? 20 : 22, margin: 0, fontSize: mic ? 14 : 15, lineHeight: mic ? 1.5 : 1.6, color: mic ? '#1F5E40' : '#0F2240' }}>
+      {pasi.map((p, i) => {
+        const k = p.search(/\s?:/)
+        const cap = k > 0 ? p.slice(0, k) : ''
+        const rest = k > 0 ? p.slice(k) : p
+        const interzis = v === 3 && i === 1
+        return (
+          <li key={i} style={{ marginBottom: mic ? 6 : 11, color: interzis ? '#B23A24' : undefined }}>
+            {cap && <strong>{cap}</strong>}{rest}
+          </li>
+        )
+      })}
+    </ol>
+  )
+}
+
 function ReguliZustellung({ lang, zustellart, ales, onAck }) {
   const [limba, setLimba] = useState(() => citesteLimba(lang))
   const tr = REGULI_LIMBI[limba] || REGULI_LIMBI.de
-  const reguli = zustellart === 3 ? [tr.r1doar, tr.r3]
-    : zustellart === 2 ? [tr.r1pref, tr.r3]
-      : [tr.r1std, tr.r2std, tr.r3]
   return (
     <div style={{ maxWidth: 440, width: '100%' }}>
       <SelectorLimba value={limba} onChange={setLimba} />
@@ -5599,20 +5610,14 @@ function ReguliZustellung({ lang, zustellart, ales, onAck }) {
         return (
           <div style={{ background: zustellart === 3 ? '#FDF1EF' : '#F3F6FB', border: `1px solid ${zustellart === 3 ? '#E4A296' : '#C9D5E8'}`, borderRadius: 10, padding: '9px 12px', marginBottom: 14 }}>
             <div style={{ fontSize: 11.5, fontWeight: 700, color: '#6B7A90', textTransform: 'uppercase', letterSpacing: 0.3 }}>{ales ? a.ales : a.nimic}</div>
-            <div style={{ fontSize: 15, fontWeight: 800, color: zustellart === 3 ? '#B23A24' : '#0F2240', marginTop: 2 }}>{ZUSTELLART_NUME[zustellart]}</div>
+            <div style={{ fontSize: 15, fontWeight: 800, color: zustellart === 3 ? '#B23A24' : '#0F2240', marginTop: 2 }}>{(ZUSTELLART_LIMBI[limba] || ZUSTELLART_LIMBI.de)[`v${zustellart}`] || ZUSTELLART_NUME[zustellart]}</div>
           </div>
         )
       })()}
-      <ol style={{ paddingLeft: 22, margin: 0, fontSize: 15, lineHeight: 1.7, color: '#0F2240' }}>
-        {reguli.map((r, i) => <li key={i} style={{ marginBottom: 13 }}>{r}</li>)}
-      </ol>
-      <div style={{
-        background: '#F3FBF6', border: '1px solid #BFE8CF', borderRadius: 9,
-        padding: '10px 12px', fontSize: 13, color: '#1B6E43', lineHeight: 1.55, margin: '14px 0 16px',
-      }}>
-        {tr.contact}
-      </div>
-      <button className="btn" style={{ width: '100%' }} onClick={onAck}>{tr.buton}</button>
+      {/* Doar paşii variantei alese; ultimul spune ce faci dacă nu merge
+          (WhatsApp la dispecerat), deci caseta separată de contact a căzut. */}
+      <PasiZustellart limba={limba} z={zustellart} />
+      <button className="btn" style={{ width: '100%', marginTop: 16 }} onClick={onAck}>{tr.buton}</button>
     </div>
   )
 }

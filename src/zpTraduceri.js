@@ -980,3 +980,445 @@ export const DEPARTE_LIMBI = {
  "lt": { "titlu": "Esate {m} m nuo tikslo.", "text": "Prieikite arčiau adreso. Pristatant dokumentus šio žingsnio negalima patvirtinti iš toli.", "buton": "Vieta neteisinga? Parašykite dispečeriui" },
  "lv": { "titlu": "Jūs atrodaties {m} m no mērķa.", "text": "Lūdzu, pieejiet tuvāk adresei. Dokumentu piegādē šo soli nevar apstiprināt no attāluma.", "buton": "Atrašanās vieta nav pareiza? Rakstiet dispečeram" }
 }
+
+// Paşii de livrare, DOAR pentru varianta aleasă de client (18.10.2026):
+// scurţi, în ordine, cu partea dinainte de „:“ scoasă în evidenţă.
+export const PASI_ZUSTELLART = {
+ "de": {
+  "v1": [
+   "Zuerst: Briefkasten – nur wenn der Name am Briefkasten zum Umschlag passt. Namensschild und Umschlag fotografieren.",
+   "Wenn nicht möglich: persönlich an den Empfänger übergeben.",
+   "Nicht erlaubt: Übergabe an Familie, Nachbarn, Freunde oder Kollegen.",
+   "Geht beides nicht: Disposition per WhatsApp („Dispo Zimand · Problem melden“)."
+  ],
+  "v2": [
+   "Zuerst: persönlich an den Empfänger übergeben.",
+   "Wenn nicht möglich: Briefkasten – nur wenn der Name am Briefkasten zum Umschlag passt. Namensschild und Umschlag fotografieren.",
+   "Nicht erlaubt: Übergabe an Familie, Nachbarn, Freunde oder Kollegen.",
+   "Geht beides nicht: Disposition per WhatsApp („Dispo Zimand · Problem melden“)."
+  ],
+  "v3": [
+   "Nur: persönlich an den Empfänger aus dem Zustellprotokoll.",
+   "Verboten: Briefkasten und Übergabe an Familie, Nachbarn, Freunde oder Kollegen.",
+   "Empfänger nicht da: Umschlag NICHT dalassen – Disposition Zimand Express per WhatsApp kontaktieren („Dispo Zimand · Problem melden“)."
+  ]
+ },
+ "en": {
+  "v1": [
+   "First: letterbox – only if the name on it matches the envelope. Photograph the name plate and the envelope.",
+   "If not possible: hand over personally to the recipient.",
+   "Not allowed: handing over to family, neighbours, friends or colleagues.",
+   "Neither works: contact dispatch on WhatsApp („Dispo Zimand · Problem melden“)."
+  ],
+  "v2": [
+   "First: hand over personally to the recipient.",
+   "If not possible: letterbox – only if the name on it matches the envelope. Photograph the name plate and the envelope.",
+   "Not allowed: handing over to family, neighbours, friends or colleagues.",
+   "Neither works: contact dispatch on WhatsApp („Dispo Zimand · Problem melden“)."
+  ],
+  "v3": [
+   "Only: personal handover to the recipient named in the Zustellprotokoll.",
+   "Forbidden: letterbox and handing over to family, neighbours, friends or colleagues.",
+   "Recipient not there: do NOT leave the envelope – contact Zimand Express dispatch on WhatsApp („Dispo Zimand · Problem melden“)."
+  ]
+ },
+ "ro": {
+  "v1": [
+   "Întâi: cutia poștală – doar dacă numele de pe cutie se potrivește cu plicul. Fotografiați plăcuța și plicul.",
+   "Dacă nu se poate: predați personal destinatarului.",
+   "Interzis: predarea către familie, vecini, prieteni sau colegi.",
+   "Nu merge niciuna: scrieți dispeceratului pe WhatsApp („Dispo Zimand · Problem melden“)."
+  ],
+  "v2": [
+   "Întâi: predați personal destinatarului.",
+   "Dacă nu se poate: cutia poștală – doar dacă numele de pe cutie se potrivește cu plicul. Fotografiați plăcuța și plicul.",
+   "Interzis: predarea către familie, vecini, prieteni sau colegi.",
+   "Nu merge niciuna: scrieți dispeceratului pe WhatsApp („Dispo Zimand · Problem melden“)."
+  ],
+  "v3": [
+   "Doar: predare personală destinatarului din Zustellprotokoll.",
+   "Interzis: cutia poștală și predarea către familie, vecini, prieteni sau colegi.",
+   "Destinatarul nu e acolo: NU lăsați plicul – contactați dispeceratul Zimand Express pe WhatsApp („Dispo Zimand · Problem melden“)."
+  ]
+ },
+ "pl": {
+  "v1": [
+   "Najpierw: skrzynka pocztowa – tylko gdy nazwisko na skrzynce zgadza się z kopertą. Sfotografuj tabliczkę i kopertę.",
+   "Jeśli się nie da: przekaż osobiście odbiorcy.",
+   "Zabronione: przekazanie rodzinie, sąsiadom, znajomym lub współpracownikom.",
+   "Nic nie działa: napisz do dyspozytora na WhatsApp („Dispo Zimand · Problem melden“)."
+  ],
+  "v2": [
+   "Najpierw: przekaż osobiście odbiorcy.",
+   "Jeśli się nie da: skrzynka pocztowa – tylko gdy nazwisko na skrzynce zgadza się z kopertą. Sfotografuj tabliczkę i kopertę.",
+   "Zabronione: przekazanie rodzinie, sąsiadom, znajomym lub współpracownikom.",
+   "Nic nie działa: napisz do dyspozytora na WhatsApp („Dispo Zimand · Problem melden“)."
+  ],
+  "v3": [
+   "Tylko: osobiste przekazanie odbiorcy z Zustellprotokoll.",
+   "Zabronione: skrzynka pocztowa oraz przekazanie rodzinie, sąsiadom, znajomym lub współpracownikom.",
+   "Odbiorcy nie ma: NIE zostawiaj koperty – skontaktuj się z dyspozytornią Zimand Express na WhatsApp („Dispo Zimand · Problem melden“)."
+  ]
+ },
+ "bg": {
+  "v1": [
+   "Първо: пощенска кутия – само ако името на кутията съвпада с плика. Снимайте табелката и плика.",
+   "Ако не е възможно: предайте лично на получателя.",
+   "Забранено: предаване на семейство, съседи, приятели или колеги.",
+   "Нищо не става: пишете на диспечера в WhatsApp („Dispo Zimand · Problem melden“)."
+  ],
+  "v2": [
+   "Първо: предайте лично на получателя.",
+   "Ако не е възможно: пощенска кутия – само ако името на кутията съвпада с плика. Снимайте табелката и плика.",
+   "Забранено: предаване на семейство, съседи, приятели или колеги.",
+   "Нищо не става: пишете на диспечера в WhatsApp („Dispo Zimand · Problem melden“)."
+  ],
+  "v3": [
+   "Само: лично предаване на получателя от Zustellprotokoll.",
+   "Забранено: пощенска кутия и предаване на семейство, съседи, приятели или колеги.",
+   "Получателят го няма: НЕ оставяйте плика – свържете се с диспечерската служба на Zimand Express в WhatsApp („Dispo Zimand · Problem melden“)."
+  ]
+ },
+ "hu": {
+  "v1": [
+   "Először: postaláda – csak ha a ládán lévő név egyezik a borítékkal. Fotózza le a névtáblát és a borítékot.",
+   "Ha nem lehetséges: adja át személyesen a címzettnek.",
+   "Tilos: átadás családtagnak, szomszédnak, barátnak vagy kollégának.",
+   "Egyik sem megy: írjon a diszpécsernek WhatsAppon („Dispo Zimand · Problem melden“)."
+  ],
+  "v2": [
+   "Először: adja át személyesen a címzettnek.",
+   "Ha nem lehetséges: postaláda – csak ha a ládán lévő név egyezik a borítékkal. Fotózza le a névtáblát és a borítékot.",
+   "Tilos: átadás családtagnak, szomszédnak, barátnak vagy kollégának.",
+   "Egyik sem megy: írjon a diszpécsernek WhatsAppon („Dispo Zimand · Problem melden“)."
+  ],
+  "v3": [
+   "Csak: személyes átadás a Zustellprotokollban szereplő címzettnek.",
+   "Tilos: postaláda, valamint átadás családtagnak, szomszédnak, barátnak vagy kollégának.",
+   "Nincs ott a címzett: NE hagyja ott a borítékot – lépjen kapcsolatba a Zimand Express diszpécserszolgálattal WhatsAppon („Dispo Zimand · Problem melden“)."
+  ]
+ },
+ "cs": {
+  "v1": [
+   "Nejdřív: poštovní schránka – jen když jméno na schránce odpovídá obálce. Vyfoťte jmenovku a obálku.",
+   "Když to nejde: předejte osobně příjemci.",
+   "Zakázáno: předání rodině, sousedům, přátelům nebo kolegům.",
+   "Nejde ani jedno: napište dispečinku na WhatsApp („Dispo Zimand · Problem melden“)."
+  ],
+  "v2": [
+   "Nejdřív: předejte osobně příjemci.",
+   "Když to nejde: poštovní schránka – jen když jméno na schránce odpovídá obálce. Vyfoťte jmenovku a obálku.",
+   "Zakázáno: předání rodině, sousedům, přátelům nebo kolegům.",
+   "Nejde ani jedno: napište dispečinku na WhatsApp („Dispo Zimand · Problem melden“)."
+  ],
+  "v3": [
+   "Jen: osobní předání příjemci uvedenému v Zustellprotokoll.",
+   "Zakázáno: poštovní schránka a předání rodině, sousedům, přátelům nebo kolegům.",
+   "Příjemce tam není: obálku NENECHÁVEJTE – kontaktujte dispečink Zimand Express na WhatsApp („Dispo Zimand · Problem melden“)."
+  ]
+ },
+ "sk": {
+  "v1": [
+   "Najprv: poštová schránka – len ak meno na schránke zodpovedá obálke. Odfoťte menovku a obálku.",
+   "Ak to nejde: odovzdajte osobne príjemcovi.",
+   "Zakázané: odovzdanie rodine, susedom, priateľom alebo kolegom.",
+   "Nejde ani jedno: napíšte dispečingu na WhatsApp („Dispo Zimand · Problem melden“)."
+  ],
+  "v2": [
+   "Najprv: odovzdajte osobne príjemcovi.",
+   "Ak to nejde: poštová schránka – len ak meno na schránke zodpovedá obálke. Odfoťte menovku a obálku.",
+   "Zakázané: odovzdanie rodine, susedom, priateľom alebo kolegom.",
+   "Nejde ani jedno: napíšte dispečingu na WhatsApp („Dispo Zimand · Problem melden“)."
+  ],
+  "v3": [
+   "Len: osobné odovzdanie príjemcovi uvedenému v Zustellprotokoll.",
+   "Zakázané: poštová schránka a odovzdanie rodine, susedom, priateľom alebo kolegom.",
+   "Príjemca tam nie je: obálku NENECHÁVAJTE – kontaktujte dispečing Zimand Express na WhatsApp („Dispo Zimand · Problem melden“)."
+  ]
+ },
+ "hr": {
+  "v1": [
+   "Prvo: poštanski sandučić – samo ako se ime na sandučiću podudara s omotnicom. Fotografirajte pločicu i omotnicu.",
+   "Ako nije moguće: predajte osobno primatelju.",
+   "Zabranjeno: predaja obitelji, susjedima, prijateljima ili kolegama.",
+   "Ništa ne ide: pišite dispečeru na WhatsApp („Dispo Zimand · Problem melden“)."
+  ],
+  "v2": [
+   "Prvo: predajte osobno primatelju.",
+   "Ako nije moguće: poštanski sandučić – samo ako se ime na sandučiću podudara s omotnicom. Fotografirajte pločicu i omotnicu.",
+   "Zabranjeno: predaja obitelji, susjedima, prijateljima ili kolegama.",
+   "Ništa ne ide: pišite dispečeru na WhatsApp („Dispo Zimand · Problem melden“)."
+  ],
+  "v3": [
+   "Samo: osobna predaja primatelju iz Zustellprotokolla.",
+   "Zabranjeno: poštanski sandučić i predaja obitelji, susjedima, prijateljima ili kolegama.",
+   "Primatelj nije tu: NE ostavljajte omotnicu – javite se dispečerskoj službi Zimand Express na WhatsApp („Dispo Zimand · Problem melden“)."
+  ]
+ },
+ "sr": {
+  "v1": [
+   "Prvo: poštansko sanduče – samo ako se ime na sandučetu poklapa s kovertom. Fotografišite pločicu i kovertu.",
+   "Ako nije moguće: predajte lično primaocu.",
+   "Zabranjeno: predaja porodici, komšijama, prijateljima ili kolegama.",
+   "Ništa ne ide: pišite dispečeru na WhatsApp („Dispo Zimand · Problem melden“)."
+  ],
+  "v2": [
+   "Prvo: predajte lično primaocu.",
+   "Ako nije moguće: poštansko sanduče – samo ako se ime na sandučetu poklapa s kovertom. Fotografišite pločicu i kovertu.",
+   "Zabranjeno: predaja porodici, komšijama, prijateljima ili kolegama.",
+   "Ništa ne ide: pišite dispečeru na WhatsApp („Dispo Zimand · Problem melden“)."
+  ],
+  "v3": [
+   "Samo: lična predaja primaocu iz Zustellprotokolla.",
+   "Zabranjeno: poštansko sanduče i predaja porodici, komšijama, prijateljima ili kolegama.",
+   "Primalac nije tu: NE ostavljajte kovertu – javite se dispečerskoj službi Zimand Express na WhatsApp („Dispo Zimand · Problem melden“)."
+  ]
+ },
+ "sl": {
+  "v1": [
+   "Najprej: poštni nabiralnik – le če se ime na nabiralniku ujema s kuverto. Fotografirajte tablico in kuverto.",
+   "Če ni mogoče: izročite osebno prejemniku.",
+   "Prepovedano: izročitev družini, sosedom, prijateljem ali sodelavcem.",
+   "Nič ne gre: pišite dispečerju na WhatsApp („Dispo Zimand · Problem melden“)."
+  ],
+  "v2": [
+   "Najprej: izročite osebno prejemniku.",
+   "Če ni mogoče: poštni nabiralnik – le če se ime na nabiralniku ujema s kuverto. Fotografirajte tablico in kuverto.",
+   "Prepovedano: izročitev družini, sosedom, prijateljem ali sodelavcem.",
+   "Nič ne gre: pišite dispečerju na WhatsApp („Dispo Zimand · Problem melden“)."
+  ],
+  "v3": [
+   "Samo: osebna izročitev prejemniku iz Zustellprotokolla.",
+   "Prepovedano: poštni nabiralnik in izročitev družini, sosedom, prijateljem ali sodelavcem.",
+   "Prejemnika ni: kuverte NE puščajte – obrnite se na dispečersko službo Zimand Express na WhatsApp („Dispo Zimand · Problem melden“)."
+  ]
+ },
+ "sq": {
+  "v1": [
+   "Së pari: kutia postare – vetëm nëse emri në kuti përputhet me zarfin. Fotografoni tabelën dhe zarfin.",
+   "Nëse nuk është e mundur: dorëzojeni personalisht te marrësi.",
+   "E ndaluar: dorëzimi te familja, fqinjët, miqtë ose kolegët.",
+   "Asnjëra nuk funksionon: shkruajini dispeçerit në WhatsApp („Dispo Zimand · Problem melden“)."
+  ],
+  "v2": [
+   "Së pari: dorëzojeni personalisht te marrësi.",
+   "Nëse nuk është e mundur: kutia postare – vetëm nëse emri në kuti përputhet me zarfin. Fotografoni tabelën dhe zarfin.",
+   "E ndaluar: dorëzimi te familja, fqinjët, miqtë ose kolegët.",
+   "Asnjëra nuk funksionon: shkruajini dispeçerit në WhatsApp („Dispo Zimand · Problem melden“)."
+  ],
+  "v3": [
+   "Vetëm: dorëzim personal te marrësi në Zustellprotokoll.",
+   "E ndaluar: kutia postare dhe dorëzimi te familja, fqinjët, miqtë ose kolegët.",
+   "Marrësi nuk është aty: MOS e lini zarfin – kontaktoni dispeçerinë e Zimand Express në WhatsApp („Dispo Zimand · Problem melden“)."
+  ]
+ },
+ "uk": {
+  "v1": [
+   "Спершу: поштова скринька – лише якщо ім’я на скриньці збігається з конвертом. Сфотографуйте табличку і конверт.",
+   "Якщо неможливо: передайте особисто одержувачу.",
+   "Заборонено: передавати родині, сусідам, друзям або колегам.",
+   "Нічого не виходить: напишіть диспетчеру у WhatsApp („Dispo Zimand · Problem melden“)."
+  ],
+  "v2": [
+   "Спершу: передайте особисто одержувачу.",
+   "Якщо неможливо: поштова скринька – лише якщо ім’я на скриньці збігається з конвертом. Сфотографуйте табличку і конверт.",
+   "Заборонено: передавати родині, сусідам, друзям або колегам.",
+   "Нічого не виходить: напишіть диспетчеру у WhatsApp („Dispo Zimand · Problem melden“)."
+  ],
+  "v3": [
+   "Лише: особисто одержувачу із Zustellprotokoll.",
+   "Заборонено: поштова скринька та передача родині, сусідам, друзям або колегам.",
+   "Одержувача немає: НЕ залишайте конверт – зв’яжіться з диспетчерською службою Zimand Express у WhatsApp („Dispo Zimand · Problem melden“)."
+  ]
+ },
+ "ru": {
+  "v1": [
+   "Сначала: почтовый ящик – только если имя на ящике совпадает с конвертом. Сфотографируйте табличку и конверт.",
+   "Если невозможно: передайте лично получателю.",
+   "Запрещено: передавать семье, соседям, друзьям или коллегам.",
+   "Ничего не получается: напишите диспетчеру в WhatsApp („Dispo Zimand · Problem melden“)."
+  ],
+  "v2": [
+   "Сначала: передайте лично получателю.",
+   "Если невозможно: почтовый ящик – только если имя на ящике совпадает с конвертом. Сфотографируйте табличку и конверт.",
+   "Запрещено: передавать семье, соседям, друзьям или коллегам.",
+   "Ничего не получается: напишите диспетчеру в WhatsApp („Dispo Zimand · Problem melden“)."
+  ],
+  "v3": [
+   "Только: лично получателю из Zustellprotokoll.",
+   "Запрещено: почтовый ящик и передача семье, соседям, друзьям или коллегам.",
+   "Получателя нет: НЕ оставляйте конверт – свяжитесь с диспетчерской службой Zimand Express в WhatsApp („Dispo Zimand · Problem melden“)."
+  ]
+ },
+ "tr": {
+  "v1": [
+   "Önce: posta kutusu – yalnızca kutudaki isim zarfla aynıysa. İsim levhasını ve zarfı fotoğraflayın.",
+   "Mümkün değilse: alıcıya bizzat teslim edin.",
+   "Yasak: aileye, komşulara, arkadaşlara veya iş arkadaşlarına teslim.",
+   "İkisi de olmuyorsa: dispeçere WhatsApp'tan yazın („Dispo Zimand · Problem melden“)."
+  ],
+  "v2": [
+   "Önce: alıcıya bizzat teslim edin.",
+   "Mümkün değilse: posta kutusu – yalnızca kutudaki isim zarfla aynıysa. İsim levhasını ve zarfı fotoğraflayın.",
+   "Yasak: aileye, komşulara, arkadaşlara veya iş arkadaşlarına teslim.",
+   "İkisi de olmuyorsa: dispeçere WhatsApp'tan yazın („Dispo Zimand · Problem melden“)."
+  ],
+  "v3": [
+   "Sadece: Zustellprotokoll'daki alıcıya bizzat teslim.",
+   "Yasak: posta kutusu ve aileye, komşulara, arkadaşlara veya iş arkadaşlarına teslim.",
+   "Alıcı yoksa: zarfı BIRAKMAYIN – Zimand Express dispeçer servisine WhatsApp'tan ulaşın („Dispo Zimand · Problem melden“)."
+  ]
+ },
+ "it": {
+  "v1": [
+   "Prima: cassetta postale – solo se il nome sulla cassetta corrisponde alla busta. Fotografate targhetta e busta.",
+   "Se non è possibile: consegnate di persona al destinatario.",
+   "Vietato: consegnare a familiari, vicini, amici o colleghi.",
+   "Nessuna delle due: scrivete al dispatcher su WhatsApp („Dispo Zimand · Problem melden“)."
+  ],
+  "v2": [
+   "Prima: consegnate di persona al destinatario.",
+   "Se non è possibile: cassetta postale – solo se il nome sulla cassetta corrisponde alla busta. Fotografate targhetta e busta.",
+   "Vietato: consegnare a familiari, vicini, amici o colleghi.",
+   "Nessuna delle due: scrivete al dispatcher su WhatsApp („Dispo Zimand · Problem melden“)."
+  ],
+  "v3": [
+   "Solo: consegna di persona al destinatario indicato nel Zustellprotokoll.",
+   "Vietato: cassetta postale e consegna a familiari, vicini, amici o colleghi.",
+   "Destinatario assente: NON lasciate la busta – contattate il servizio dispatch di Zimand Express su WhatsApp („Dispo Zimand · Problem melden“)."
+  ]
+ },
+ "es": {
+  "v1": [
+   "Primero: buzón – solo si el nombre del buzón coincide con el sobre. Fotografíe la placa y el sobre.",
+   "Si no es posible: entregue en persona al destinatario.",
+   "Prohibido: entregar a familiares, vecinos, amigos o compañeros.",
+   "No funciona ninguna: escriba al despacho por WhatsApp („Dispo Zimand · Problem melden“)."
+  ],
+  "v2": [
+   "Primero: entregue en persona al destinatario.",
+   "Si no es posible: buzón – solo si el nombre del buzón coincide con el sobre. Fotografíe la placa y el sobre.",
+   "Prohibido: entregar a familiares, vecinos, amigos o compañeros.",
+   "No funciona ninguna: escriba al despacho por WhatsApp („Dispo Zimand · Problem melden“)."
+  ],
+  "v3": [
+   "Solo: entrega en persona al destinatario del Zustellprotokoll.",
+   "Prohibido: buzón y entrega a familiares, vecinos, amigos o compañeros.",
+   "El destinatario no está: NO deje el sobre – contacte con el servicio de despacho de Zimand Express por WhatsApp („Dispo Zimand · Problem melden“)."
+  ]
+ },
+ "fr": {
+  "v1": [
+   "D’abord : boîte aux lettres – seulement si le nom sur la boîte correspond à l’enveloppe. Photographiez la plaque et l’enveloppe.",
+   "Si impossible : remettez en main propre au destinataire.",
+   "Interdit : remettre à la famille, aux voisins, aux amis ou aux collègues.",
+   "Rien ne marche : écrivez au dispatching sur WhatsApp („Dispo Zimand · Problem melden“)."
+  ],
+  "v2": [
+   "D’abord : remettez en main propre au destinataire.",
+   "Si impossible : boîte aux lettres – seulement si le nom sur la boîte correspond à l’enveloppe. Photographiez la plaque et l’enveloppe.",
+   "Interdit : remettre à la famille, aux voisins, aux amis ou aux collègues.",
+   "Rien ne marche : écrivez au dispatching sur WhatsApp („Dispo Zimand · Problem melden“)."
+  ],
+  "v3": [
+   "Uniquement : remise en main propre au destinataire du Zustellprotokoll.",
+   "Interdit : boîte aux lettres et remise à la famille, aux voisins, aux amis ou aux collègues.",
+   "Destinataire absent : NE laissez PAS l’enveloppe – contactez le dispatching Zimand Express sur WhatsApp („Dispo Zimand · Problem melden“)."
+  ]
+ },
+ "pt": {
+  "v1": [
+   "Primeiro: caixa de correio – só se o nome na caixa coincidir com o envelope. Fotografe a placa e o envelope.",
+   "Se não for possível: entregue pessoalmente ao destinatário.",
+   "Proibido: entregar a familiares, vizinhos, amigos ou colegas.",
+   "Nada resulta: escreva ao despacho no WhatsApp („Dispo Zimand · Problem melden“)."
+  ],
+  "v2": [
+   "Primeiro: entregue pessoalmente ao destinatário.",
+   "Se não for possível: caixa de correio – só se o nome na caixa coincidir com o envelope. Fotografe a placa e o envelope.",
+   "Proibido: entregar a familiares, vizinhos, amigos ou colegas.",
+   "Nada resulta: escreva ao despacho no WhatsApp („Dispo Zimand · Problem melden“)."
+  ],
+  "v3": [
+   "Apenas: entrega pessoal ao destinatário do Zustellprotokoll.",
+   "Proibido: caixa de correio e entrega a familiares, vizinhos, amigos ou colegas.",
+   "Destinatário ausente: NÃO deixe o envelope – contacte o serviço de despacho da Zimand Express no WhatsApp („Dispo Zimand · Problem melden“)."
+  ]
+ },
+ "nl": {
+  "v1": [
+   "Eerst: brievenbus – alleen als de naam op de brievenbus overeenkomt met de envelop. Fotografeer naambordje en envelop.",
+   "Lukt dat niet: persoonlijk aan de ontvanger overhandigen.",
+   "Niet toegestaan: afgeven aan familie, buren, vrienden of collega’s.",
+   "Lukt geen van beide: stuur de planning een WhatsApp („Dispo Zimand · Problem melden“)."
+  ],
+  "v2": [
+   "Eerst: persoonlijk aan de ontvanger overhandigen.",
+   "Lukt dat niet: brievenbus – alleen als de naam op de brievenbus overeenkomt met de envelop. Fotografeer naambordje en envelop.",
+   "Niet toegestaan: afgeven aan familie, buren, vrienden of collega’s.",
+   "Lukt geen van beide: stuur de planning een WhatsApp („Dispo Zimand · Problem melden“)."
+  ],
+  "v3": [
+   "Alleen: persoonlijke overhandiging aan de ontvanger uit het Zustellprotokoll.",
+   "Verboden: brievenbus en afgeven aan familie, buren, vrienden of collega’s.",
+   "Ontvanger niet aanwezig: envelop NIET achterlaten – neem via WhatsApp contact op met de planning van Zimand Express („Dispo Zimand · Problem melden“)."
+  ]
+ },
+ "el": {
+  "v1": [
+   "Πρώτα: γραμματοκιβώτιο – μόνο αν το όνομα στο κουτί ταιριάζει με τον φάκελο. Φωτογραφίστε την ταμπέλα και τον φάκελο.",
+   "Αν δεν γίνεται: παραδώστε προσωπικά στον παραλήπτη.",
+   "Απαγορεύεται: παράδοση σε οικογένεια, γείτονες, φίλους ή συναδέλφους.",
+   "Δεν γίνεται τίποτα: γράψτε στον διεκπεραιωτή στο WhatsApp („Dispo Zimand · Problem melden“)."
+  ],
+  "v2": [
+   "Πρώτα: παραδώστε προσωπικά στον παραλήπτη.",
+   "Αν δεν γίνεται: γραμματοκιβώτιο – μόνο αν το όνομα στο κουτί ταιριάζει με τον φάκελο. Φωτογραφίστε την ταμπέλα και τον φάκελο.",
+   "Απαγορεύεται: παράδοση σε οικογένεια, γείτονες, φίλους ή συναδέλφους.",
+   "Δεν γίνεται τίποτα: γράψτε στον διεκπεραιωτή στο WhatsApp („Dispo Zimand · Problem melden“)."
+  ],
+  "v3": [
+   "Μόνο: προσωπική παράδοση στον παραλήπτη του Zustellprotokoll.",
+   "Απαγορεύεται: γραμματοκιβώτιο και παράδοση σε οικογένεια, γείτονες, φίλους ή συναδέλφους.",
+   "Ο παραλήπτης λείπει: ΜΗΝ αφήσετε τον φάκελο – επικοινωνήστε με το κέντρο διεκπεραίωσης της Zimand Express στο WhatsApp („Dispo Zimand · Problem melden“)."
+  ]
+ },
+ "lt": {
+  "v1": [
+   "Pirmiausia: pašto dėžutė – tik jei vardas ant dėžutės sutampa su voku. Nufotografuokite lentelę ir voką.",
+   "Jei negalima: perduokite asmeniškai gavėjui.",
+   "Draudžiama: perduoti šeimai, kaimynams, draugams ar kolegoms.",
+   "Nepavyksta nei taip, nei taip: rašykite dispečeriui WhatsApp („Dispo Zimand · Problem melden“)."
+  ],
+  "v2": [
+   "Pirmiausia: perduokite asmeniškai gavėjui.",
+   "Jei negalima: pašto dėžutė – tik jei vardas ant dėžutės sutampa su voku. Nufotografuokite lentelę ir voką.",
+   "Draudžiama: perduoti šeimai, kaimynams, draugams ar kolegoms.",
+   "Nepavyksta nei taip, nei taip: rašykite dispečeriui WhatsApp („Dispo Zimand · Problem melden“)."
+  ],
+  "v3": [
+   "Tik: asmeniškai Zustellprotokoll nurodytam gavėjui.",
+   "Draudžiama: pašto dėžutė ir perdavimas šeimai, kaimynams, draugams ar kolegoms.",
+   "Gavėjo nėra: voko NEPALIKITE – susisiekite su Zimand Express dispečerine per WhatsApp („Dispo Zimand · Problem melden“)."
+  ]
+ },
+ "lv": {
+  "v1": [
+   "Vispirms: pastkastīte – tikai ja vārds uz pastkastītes sakrīt ar aploksni. Nofotografējiet plāksnīti un aploksni.",
+   "Ja nav iespējams: nododiet personīgi saņēmējam.",
+   "Aizliegts: nodot ģimenei, kaimiņiem, draugiem vai kolēģiem.",
+   "Neizdodas nekas: rakstiet dispečeram WhatsApp („Dispo Zimand · Problem melden“)."
+  ],
+  "v2": [
+   "Vispirms: nododiet personīgi saņēmējam.",
+   "Ja nav iespējams: pastkastīte – tikai ja vārds uz pastkastītes sakrīt ar aploksni. Nofotografējiet plāksnīti un aploksni.",
+   "Aizliegts: nodot ģimenei, kaimiņiem, draugiem vai kolēģiem.",
+   "Neizdodas nekas: rakstiet dispečeram WhatsApp („Dispo Zimand · Problem melden“)."
+  ],
+  "v3": [
+   "Tikai: personīga nodošana Zustellprotokoll norādītajam saņēmējam.",
+   "Aizliegts: pastkastīte un nodošana ģimenei, kaimiņiem, draugiem vai kolēģiem.",
+   "Saņēmēja nav: aploksni NEATSTĀJIET – sazinieties ar Zimand Express dispečerdienestu WhatsApp („Dispo Zimand · Problem melden“)."
+  ]
+ }
+}

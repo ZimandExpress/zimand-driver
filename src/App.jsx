@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useMemo } from 'react'
+import { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { supabase } from './supabaseClient'
 import { t, getLang, setLang, availableLangs } from './i18n'
@@ -2861,8 +2861,43 @@ function StopLegCard({ order, entry, lang, isCurrent, onOpenConfirm, onFailed })
    deschisă şi — fiindcă baza de date nu lasă turul să se încheie cu opriri
    fără dovadă — şoferul ar rămâne blocat în faţa unei uşi închise.
    --------------------------------------------------------------------------- */
+// Ciornă pentru textul scris de şofer (nume, motiv, notă, ofertă): rămâne pe
+// telefon la refresh, la ieşire/intrare sau când pică netul (18.10.2026).
+// Cheia e legată de comandă/etapă, deci nu trece la altă cursă. Se şterge
+// după trimitere; o ciornă uitată expiră singură după 3 zile.
+const CIORNA_ZILE = 3
+function useCiorna(cheie, initial = '') {
+  const k = cheie ? `zd-ciorna:${cheie}` : null
+  const [v, setV] = useState(() => {
+    if (!k) return initial
+    try {
+      const raw = localStorage.getItem(k)
+      if (!raw) return initial
+      const o = JSON.parse(raw)
+      if (!o || Date.now() - Number(o.t || 0) > CIORNA_ZILE * 864e5) { localStorage.removeItem(k); return initial }
+      return typeof o.v === 'string' ? o.v : initial
+    } catch { return initial }
+  })
+  const seteaza = useCallback((x) => {
+    setV((vechi) => {
+      const nou = typeof x === 'function' ? x(vechi) : x
+      if (k) {
+        try {
+          if (nou) localStorage.setItem(k, JSON.stringify({ v: nou, t: Date.now() }))
+          else localStorage.removeItem(k)
+        } catch { /* nimic */ }
+      }
+      return nou
+    })
+  }, [k])
+  const sterge = useCallback(() => {
+    if (k) { try { localStorage.removeItem(k) } catch { /* nimic */ } }
+  }, [k])
+  return [v, seteaza, sterge]
+}
+
 function StopFailedSheet({ stop, orderId, lang, onClose, onSaved }) {
-  const [motiv, setMotiv] = useState('')
+  const [motiv, setMotiv, stergeMotiv] = useCiorna(`stopfail:${orderId}:${stop?.id || ''}`)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [sumar, setSumar] = useState({ total: 0, allDone: false, photoCount: 0 })
@@ -2899,6 +2934,7 @@ function StopFailedSheet({ stop, orderId, lang, onClose, onSaved }) {
       return
     }
     setBusy(false)
+    stergeMotiv()
     onSaved(motiv.trim(), rezultat === 'pending')
   }
 
@@ -3027,7 +3063,7 @@ function textReluare(d, lang) {
 
 function PauseSheet({ orderId, leg, lang, onClose, onSaved }) {
   const [ales, setAles] = useState('')
-  const [nota, setNota] = useState('')
+  const [nota, setNota, stergeNota] = useCiorna(`pauza:${orderId}:${leg}`)
   const [ora, setOra] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -3060,6 +3096,7 @@ function PauseSheet({ orderId, leg, lang, onClose, onSaved }) {
       setError(err?.message && !/fetch|network/i.test(err.message) ? err.message : t('pauseFailed', lang))
       return
     }
+    stergeNota()
     onSaved({ at: new Date().toISOString(), until: reluare.toISOString(), reason: motiv })
   }
 
@@ -3124,7 +3161,7 @@ function PauseSheet({ orderId, leg, lang, onClose, onSaved }) {
 
 function DeliveryFailedSheet({ orderId, etapa, lang, onClose, onSaved }) {
   const [ales, setAles] = useState('')
-  const [nota, setNota] = useState('')
+  const [nota, setNota, stergeNota] = useCiorna(`livrfail:${orderId}:${etapa}`)
   const optiune = MOTIVE_LIVRARE.find((m) => m.id === ales)
   // „Sonstiges" are nevoie de text; la celelalte, nota e doar o completare.
   const motiv = !optiune ? ''
@@ -3152,6 +3189,7 @@ function DeliveryFailedSheet({ orderId, etapa, lang, onClose, onSaved }) {
       return
     }
     setBusy(false)
+    stergeNota()
     onSaved(motiv.trim(), rezultat === 'pending')
   }
 
@@ -4485,7 +4523,7 @@ function IncidentSheet({ order, leg, lang, driverId, blocking, onClose, onSaved 
   // La „livrarea nu e posibilă" categoria e deja evidentă din context; șoferul
   // alege doar motivul concret.
   const [kind, setKind] = useState(null)
-  const [comment, setComment] = useState('')
+  const [comment, setComment, stergeComment] = useCiorna(`incident:${order?.id}:${leg}`)
   const [photos, setPhotos] = useState([])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -4556,6 +4594,7 @@ function IncidentSheet({ order, leg, lang, driverId, blocking, onClose, onSaved 
       setError(t('incidentFailed', lang))
       return
     }
+    stergeComment()
     onSaved()
   }
 
@@ -5581,7 +5620,7 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
   const [busy, setBusy] = useState(false)
   const [fileSummary, setFileSummary] = useState({ total: 0, allDone: false, failed: 0, pending: 0, processing: 0, photoCount: 0, documentCount: 0 })
   const [signatureBlob, setSignatureBlob] = useState(null)
-  const [signerName, setSignerName] = useState('')
+  const [signerName, setSignerName] = useCiorna(`nume:${order?.id}:${leg}`)
   // Ce mai lipseşte apare abia după ce şoferul a atins butonul de
   // confirmare (cerut de Andrei pe 18.10.2026).
   const [aratLipsa, setAratLipsa] = useState(false)
@@ -9190,8 +9229,8 @@ function VehicleChips({ vehicles }) {
 }
 
 function BidCard({ order, lang, courierProfileId, open, onToggle, onBidPlaced }) {
-  const [ownPrice, setOwnPrice] = useState('')
-  const [message, setMessage] = useState('')
+  const [ownPrice, setOwnPrice] = useCiorna(`oferta-pret:${order?.id}`)
+  const [message, setMessage] = useCiorna(`oferta-mesaj:${order?.id}`)
   const [respectInterval, setRespectInterval] = useState(true)
   const [customFrom, setCustomFrom] = useState('')
   const [customTo, setCustomTo] = useState('')

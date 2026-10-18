@@ -4866,6 +4866,14 @@ function UndoBar({ field, at, lang, onUndo }) {
 // La comenzile de documente confidenţiale pleacă Zustellprotokoll-ul ȘI
 // Botenbestătigung-ul; la marfă, CMR-ul. Alegerea o face serverul, după
 // comandă — aici doar se scrie pe buton care dintre ele e.
+// Textele (DE din bază + 21 de traduceri) numesc butonul „Protokoll + Bote
+// senden“. La comenzile fără Botenbestätigung butonul se cheamă „Protokoll
+// senden“ — numele din text se potriveşte cu cel de pe ecran.
+function faraBote(text, cuBote) {
+  if (cuBote || typeof text !== 'string') return text
+  return text.replace(/Protokoll \+ Bote senden/g, 'Protokoll senden')
+}
+
 function mascheazaEmail(x) {
   const s = String(x || '').trim()
   const i = s.indexOf('@')
@@ -4889,8 +4897,10 @@ function TrimiteDocument({ order, lang }) {
 
   const modDoc = order?.doc_mode || 'ask'
   const esteDoc = !!order?.is_document_delivery
-  const eticheta = esteDoc ? t('docBtnDocs', lang) : t('docBtnCmr', lang)
-  const titlu = esteDoc ? t('docSheetTitleDocs', lang) : t('docSheetTitleCmr', lang)
+  // Fără Botenbestätigung comandată pleacă doar protocolul (18.10.2026).
+  const cuBote = order?.boten_confirmation === true
+  const eticheta = esteDoc ? t(cuBote ? 'docBtnDocs' : 'docBtnDocsOnly', lang) : t('docBtnCmr', lang)
+  const titlu = esteDoc ? t(cuBote ? 'docSheetTitleDocs' : 'docSheetTitleDocsOnly', lang) : t('docSheetTitleCmr', lang)
   const inEditare = alta != null || !adresa
   const destinatar = (alta == null ? adresa : alta).trim()
   const poateTrimite = destinatar.includes('@') && destinatar.includes('.')
@@ -6385,7 +6395,7 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
   ) : ghidFaza === 'transport' ? (
     <TransportSheet lang={lang} onClose={() => setGhidFaza(null)} />
   ) : ghidFaza && ghiduriFaza.length ? (
-    <GhidSheet ghiduri={ghiduriFaza} faza={ghidFaza} lang={lang} onClose={() => setGhidFaza(null)} />
+    <GhidSheet ghiduri={ghiduriFaza} faza={ghidFaza} lang={lang} cuBote={order.boten_confirmation === true} onClose={() => setGhidFaza(null)} />
   ) : null
 
   if (!startedAt) {
@@ -7064,7 +7074,7 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
             ) : (
               <>
                 <div style={{ fontSize: 18, fontWeight: 800, color: '#B23A24', lineHeight: 1.3 }}>⚠ {zpT('missTitle')}</div>
-                <div style={{ fontSize: 14, color: '#0F2240', marginTop: 8, lineHeight: 1.5 }}>{zpT('missText')}</div>
+                <div style={{ fontSize: 14, color: '#0F2240', marginTop: 8, lineHeight: 1.5 }}>{faraBote(zpT('missText'), order.boten_confirmation === true)}</div>
                 <button type="button" className="btn" style={{ marginTop: 16 }} onClick={() => setZpIntrebare('ask')}>
                   {zpT('gotIt')}
                 </button>
@@ -8073,7 +8083,7 @@ function ghidInLimba(g, faza, limba) {
   return { titlu: l.title || titluGhid(g, 'de'), pasi: l[faza] || [], tradus: true }
 }
 
-function GhidSheet({ ghiduri, faza, lang, onClose }) {
+function GhidSheet({ ghiduri, faza, lang, onClose, cuBote = true }) {
   const [ascunde, setAscunde] = useState(false)
   const [video, setVideo] = useState(null)
   // Aceeaşi limbă ca la informarea Botenbestätigung — aleasă o dată, ţinută pe telefon.
@@ -8119,7 +8129,7 @@ function GhidSheet({ ghiduri, faza, lang, onClose }) {
               ? <VideoGhid url={g.video_url} lang={lang} />
               : <button type="button" className="ghid-video-btn" onClick={() => setVideo(g.key)}><Play size={15} strokeWidth={2.2} /> {t('guideWatchVideo', lang)}</button>)}
             <ol className="ghid-pasi">
-              {pasi.map((p, i) => <li key={i}>{p}</li>)}
+              {pasi.map((p, i) => <li key={i}>{faraBote(p, cuBote)}</li>)}
             </ol>
             {g.url && (
               <a className="ghid-link" href={g.url} target="_blank" rel="noreferrer">{t('guideOpen', lang)} ↗</a>

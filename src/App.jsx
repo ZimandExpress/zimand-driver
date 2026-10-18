@@ -5351,6 +5351,9 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
   const [fileSummary, setFileSummary] = useState({ total: 0, allDone: false, failed: 0, pending: 0, processing: 0, photoCount: 0, documentCount: 0 })
   const [signatureBlob, setSignatureBlob] = useState(null)
   const [signerName, setSignerName] = useState('')
+  // Ce mai lipseşte apare abia după ce şoferul a atins butonul de
+  // confirmare (cerut de Andrei pe 18.10.2026).
+  const [aratLipsa, setAratLipsa] = useState(false)
   // Doar la Dokumentenzustellung: cum a fost predat documentul.
   // Zustellart aleasă de client: la 3 („ausschließlich persönlich") cutia
   // poştală nu există deloc pe ecran; la 2 predarea personală stă prima.
@@ -6323,6 +6326,16 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
     )
   }
 
+  // Aceeaşi regulă ca lista „Vor dem Abschluss erforderlich”.
+  const blocatConfirmare = busy || !!blockingIncident || turIncomplet || fileSummary.total === 0
+    || (reteaDisponibila() && !fileSummary.allDone)
+    || (dovadaLaAlegere && !signatureBlob && !fileSummary.documentCount)
+    || fileSummary.photoCount < minimPoze
+    || docLipsa.length > 0
+    || (isDocumentDeliveryLeg && (!deliveryMethod || metodaInterzisa))
+    || (numeCerut && !signerName.trim())
+    || (semnaturaCeruta && !signatureBlob)
+
   return (
     <div className="leg-workflow">
       {undoBlock}
@@ -6509,7 +6522,7 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
         lang={lang}
         onAddPhoto={() => setPhotoSourceOpen(true)}
         // La ridicarea de documente: 4 locuri (2 cerute — plicul faţă/spate — şi 2 de rezervă).
-        maxPhotos={esteEtapaLivrareDoc && deliveryMethod === 'briefkasten' ? 8 : (isDocumentDelivery && !esteLivrareEtapa ? 4 : 6)}
+        maxPhotos={esteEtapaLivrareDoc && deliveryMethod === 'briefkasten' ? 8 : (isDocumentDelivery ? 4 : 6)}
         minPhotos={minimPoze}
         onSummary={setFileSummary}
         photoHints={
@@ -6676,15 +6689,14 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
         if (dovadaLaAlegere && !signatureBlob && !fileSummary.documentCount) {
           lipsa.push(t('missingProof', lang))
         }
-        if (!lipsa.length) return null
+        if (!lipsa.length || !aratLipsa) return null
         return (
-          // Rând mic, gri, deasupra butonului — nu o casetă colorată
-          // (reorganizat 18.10.2026).
+          // Puncte unul sub altul, deasupra butonului — fără casetă colorată.
           <div style={{
-            marginTop: 12, color: '#4A5563', fontSize: 12.5, lineHeight: 1.55,
+            marginTop: 12, color: '#B23A24', fontSize: 13, lineHeight: 1.6,
           }}>
-            <span style={{ fontWeight: 700 }}>{t('requiredBeforeConfirm', lang)}</span>{' '}
-            {lipsa.join(' · ')}
+            <div style={{ fontWeight: 700 }}>{t('requiredBeforeConfirm', lang)}</div>
+            {lipsa.map((x, i) => <div key={i}>• {x}</div>)}
           </div>
         )
       })()}
@@ -6692,6 +6704,12 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
       <button
         className={`btn ${distanta.preaDeparte ? 'needs-proximity' : ''}`}
         onClick={() => {
+          // Butonul rămâne apăsabil şi când lipseşte ceva: atingerea arată
+          // lista; arată totuşi stins, ca să se vadă că nu e gata.
+          if (blocatConfirmare) {
+            setAratLipsa(true)
+            return
+          }
           if (distanta.preaDeparte) {
             setAvertismentDistanta(distanta.metri)
             return
@@ -6715,15 +6733,10 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
         // nici merge mai departe — stătea într-un subsol cu turul oprit.
         // Acum confirmarea se pune în așteptare, întreagă, și pleacă singură
         // când revine semnalul.
-        disabled={busy || !!blockingIncident || turIncomplet || fileSummary.total === 0
-          || (reteaDisponibila() && !fileSummary.allDone)
-          || (dovadaLaAlegere && !signatureBlob && !fileSummary.documentCount)
-          || fileSummary.photoCount < minimPoze
-          || docLipsa.length > 0
-          || (isDocumentDeliveryLeg && (!deliveryMethod || metodaInterzisa))
-          || (numeCerut && !signerName.trim())
-          || (semnaturaCeruta && !signatureBlob)}
-        style={{ marginTop: 14 }}
+        disabled={busy}
+        aria-disabled={blocatConfirmare}
+        data-blocat={blocatConfirmare ? '1' : undefined}
+        style={{ marginTop: 14, ...(blocatConfirmare ? { opacity: 0.6 } : {}) }}
       >
         {busy
           ? t('uploadingLabel', lang)

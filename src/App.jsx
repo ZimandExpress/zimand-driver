@@ -5297,6 +5297,10 @@ function ZustellartInfo({ order, lang, compact }) {
 // de mai jos. Atingerea arată explicaţia scurtă a variantei.
 function ZustellartChip({ order, lang }) {
   const [deschis, setDeschis] = useState(false)
+  // Regulile variantei în limba aleasă de şofer — aceleaşi texte ca în
+  // fereastra „Vor der Zustellung", cu acelaşi selector şi aceeaşi limbă ţinută
+  // minte (18.10.2026).
+  const [limba, setLimba] = useState(() => citesteLimba(lang))
   const z = Number(order?.zustellart) || 0
   if (!z) return null
   const rosu = z === 3
@@ -5316,13 +5320,24 @@ function ZustellartChip({ order, lang }) {
         <ChevronDown size={14} strokeWidth={2} style={{ transform: deschis ? 'rotate(180deg)' : undefined }} />
       </button>
       {deschis && (
-        <div onClick={() => setDeschis(false)} style={{
-          flex: '1 1 100%', lineHeight: 1.5, cursor: 'pointer',
+        <div style={{
+          flex: '1 1 100%', lineHeight: 1.5,
           background: '#E7F4EE', border: '1px solid #A8D5BE', borderRadius: 12, padding: '12px 14px',
         }}>
-          <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: 0.4, textTransform: 'uppercase', color: '#2E7D57' }}>{t('zustellartTitle', lang)}</div>
-          <div style={{ fontSize: 17.5, fontWeight: 800, color: '#1F7A50', marginTop: 3 }}>{t(`zustellart${z}`, lang)}</div>
-          <div style={{ fontSize: 14, color: '#1F5E40', marginTop: 4 }}>{t(`zustellart${z}Note`, lang)}</div>
+          <div onClick={() => setDeschis(false)} style={{ cursor: 'pointer' }}>
+            <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: 0.4, textTransform: 'uppercase', color: '#2E7D57' }}>{t('zustellartTitle', lang)}</div>
+            <div style={{ fontSize: 17.5, fontWeight: 800, color: '#1F7A50', marginTop: 3, marginBottom: 10 }}>{t(`zustellart${z}`, lang)}</div>
+          </div>
+          <SelectorLimba value={limba} onChange={setLimba} />
+          {(() => {
+            const tr = REGULI_LIMBI[limba] || REGULI_LIMBI.de
+            const reguli = z === 3 ? [tr.r1doar, tr.r3] : z === 2 ? [tr.r1pref, tr.r3] : [tr.r1std, tr.r2std, tr.r3]
+            return (
+              <div style={{ fontSize: 14, color: '#1F5E40' }}>
+                {reguli.filter(Boolean).map((r, i) => <div key={i} style={{ marginTop: i ? 6 : 0 }}>• {r}</div>)}
+              </div>
+            )
+          })()}
         </div>
       )}
     </>

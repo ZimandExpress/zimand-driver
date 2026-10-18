@@ -6576,7 +6576,9 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
                 <div style={{ color: 'var(--text-soft, #6B7A90)' }}>{t('legendNeutral', lang)}</div>
               </div>
             )}
-            {laLivrare && !isDocumentDeliveryLeg && (contactRidicare || order.pickup_address) && (
+            {/* „Abgeholt bei" nu mai apare: butonul „Von wem wurde abgeholt?"
+                de dedesubt spune acelaşi lucru, complet (18.10.2026). */}
+            {false && laLivrare && !isDocumentDeliveryLeg && (contactRidicare || order.pickup_address) && (
               <div style={{ color: 'var(--text-soft)', marginTop: 5, fontSize: 12.5 }}>
                 {t('pickedUpFrom', lang)}: {[
                   contactRidicare ? contactRidicare.split(' \u00b7 Tel.')[0].trim() : null,
@@ -6670,7 +6672,7 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
         lang={lang}
         onAddPhoto={() => setPhotoSourceOpen(true)}
         // La ridicarea de documente: 4 locuri (2 cerute — plicul faţă/spate — şi 2 de rezervă).
-        maxPhotos={esteEtapaLivrareDoc && deliveryMethod === 'briefkasten' ? 8 : (isDocumentDelivery ? 4 : 6)}
+        maxPhotos={esteEtapaLivrareDoc && deliveryMethod === 'briefkasten' ? 8 : (isDocumentDelivery || esteRetur ? 4 : 6)}
         minPhotos={minimPoze}
         onSummary={setFileSummary}
         photoHints={
@@ -6986,7 +6988,7 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
       {/* Aceeaşi scăpare la livrarea principală: firmă închisă, nimeni acasă.
           La Dokumentenzustellung nu: acolo decide doar dispeceratul
           (cerut de Andrei pe 18.10.2026). */}
-      {!esteOprire && onDeliveryFailed && !isDocumentDelivery && (
+      {!esteOprire && onDeliveryFailed && !order.is_document_delivery && (
         <button
           type="button"
           className="link-btn danger-link"

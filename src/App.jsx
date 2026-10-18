@@ -3907,26 +3907,10 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
         )
       })()}
 
-      {/* Hârtiile cursei, şi pe ecranul comenzii câştigate.
-          La licitaţie le-a citit o dată, acum o săptămână, poate alt om din
-          firmă. Aici le are sub ochi cel care chiar pleacă la drum. */}
-      {/* După livrarea dus nu mai au rost: nici hârtiile ridicării, nici
-          varianta de livrare (18.10.2026). */}
-      {order.is_document_delivery && !livrareDocAcum && !order.delivery_confirmed_at && (
-        <div style={{
-          background: '#FFF6ED', border: '1px solid #FFD2AE',
-          borderRadius: 10, padding: '11px 13px', margin: '10px 0',
-        }}>
-          <div style={{ fontSize: 14, fontWeight: 800, color: '#B35A12', marginBottom: 3 }}>
-            {t('docPapersTitle', lang)}
-          </div>
-          <div style={{ fontSize: 12.5, lineHeight: 1.55, color: '#8A5A16' }}>
-            <div>• {t('docPapersProtokoll', lang)}</div>
-            {order.boten_confirmation === true && <div>• {t('docPapersBoten', lang)}</div>}
-            <div>• {t('postOriginalsNote', lang)}</div>
-          </div>
-        </div>
-      )}
+      {/* Caseta „Unterlagen zu diesem Auftrag" a fost scoasă de pe ecranul
+          comenzii (18.10.2026): şoferul e întrebat oricum de protocol înainte de
+          confirmare, iar trimiterea originalului prin poştă i se spune la
+          livrare. Rămâne la licitaţie, înainte de ofertă. */}
       {/* Caseta Zustellart a urcat pe rândul cu „Zurück" (ZustellartChip). */}
       </>
         )

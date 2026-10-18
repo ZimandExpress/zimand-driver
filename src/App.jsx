@@ -3739,15 +3739,17 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
       )}
 
       {/* În pasul de livrare a documentelor, sub formular rămâne doar ce
-          contează acolo (18.10.2026): Fracht numai la Neutrale Zustellung,
-          iar hârtiile ridicării şi a doua casetă Zustellart dispar. */}
+          contează acolo (18.10.2026): hârtiile ridicării şi a doua casetă
+          Zustellart dispar. */}
       {(() => {
         const livrareDocAcum = order.is_document_delivery && inConfirmStep && confirmFormOpen
           && (leg === 'delivery' || leg === 'return_delivery')
-        const neutral = extractServiceBadges(order.notes).some((b) => b.key === 'neutralDeliveryBadge')
         return (
       <>
-      {(!livrareDocAcum || neutral) && (
+      {/* Pe pagina cu poze şi documente (ridicare sau livrare) Fracht nu mai
+          apare la documente (18.10.2026); Neutrale Zustellung stă deja în
+          cardul destinatarului. */}
+      {!(order.is_document_delivery && inConfirmStep && confirmFormOpen) && (
       <div className="info-card">
         <div className="info-card-head cargo-toggle" onClick={() => setCargoOpen((v) => !v)}>
           {/* Numărul comenzii, pe linia cu pachetul: acolo îl vede şi cine

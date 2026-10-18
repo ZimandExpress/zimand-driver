@@ -248,6 +248,52 @@ function aplicaLumina(canvas, lum, con) {
   return canvas
 }
 
+// „Klarheit": scoate umbrele şi face scrisul mai clar (cerut de Andrei pe
+// 18.10.2026). Fundalul foii (hârtia, cu umbre cu tot) se estimează pe o
+// copie mică — dilatare + median şterg scrisul — apoi fiecare punct se
+// împarte la el: hârtia iese albă uniform, umbra dispare, scrisul rămâne.
+// Peste asta, o accentuare uşoară (unsharp mask). `nivel` 0..100 amestecă
+// rezultatul cu originalul. Fără OpenCV, imaginea rămâne neschimbată.
+async function aplicaClaritate(canvas, nivel) {
+  if (!nivel) return canvas
+  try { await incarcaOpenCv() } catch { return canvas }
+  const cv = window.cv
+  const s = nivel / 100
+  const de = []
+  try {
+    const src = cv.imread(canvas); de.push(src)
+    const rgb = new cv.Mat(); de.push(rgb)
+    cv.cvtColor(src, rgb, cv.COLOR_RGBA2RGB)
+    const W = rgb.cols, H = rgb.rows
+    const f = Math.max(1, Math.max(W, H) / 600)
+    const mic = new cv.Mat(); de.push(mic)
+    cv.resize(rgb, mic, new cv.Size(Math.max(1, Math.round(W / f)), Math.max(1, Math.round(H / f))), 0, 0, cv.INTER_AREA)
+    const k = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(9, 9)); de.push(k)
+    const bg = new cv.Mat(); de.push(bg)
+    cv.dilate(mic, bg, k)
+    const bg2 = new cv.Mat(); de.push(bg2)
+    cv.medianBlur(bg, bg2, 21)
+    const bgMare = new cv.Mat(); de.push(bgMare)
+    cv.resize(bg2, bgMare, new cv.Size(W, H), 0, 0, cv.INTER_LINEAR)
+    const norm = new cv.Mat(); de.push(norm)
+    cv.divide(rgb, bgMare, norm, 255)
+    const mix = new cv.Mat(); de.push(mix)
+    cv.addWeighted(rgb, 1 - s, norm, s, 0, mix)
+    const blur = new cv.Mat(); de.push(blur)
+    cv.GaussianBlur(mix, blur, new cv.Size(0, 0), 1.2)
+    const out = new cv.Mat(); de.push(out)
+    const a = 0.9 * s
+    cv.addWeighted(mix, 1 + a, blur, -a, 0, out)
+    const c = document.createElement('canvas')
+    cv.imshow(c, out)
+    return c
+  } catch {
+    return canvas
+  } finally {
+    de.forEach((m) => { try { m.delete() } catch { /* nimic */ } })
+  }
+}
+
 const INITIAL = [{ x: 0.06, y: 0.06 }, { x: 0.94, y: 0.06 }, { x: 0.94, y: 0.94 }, { x: 0.06, y: 0.94 }]
 
 export default function DocumentCrop({ file, lang, titlu, onDone, onRetake }) {
@@ -259,6 +305,10 @@ export default function DocumentCrop({ file, lang, titlu, onDone, onRetake }) {
   // pentru foi fotografiate în umbră sau scris palid.
   const [lum, setLum] = useState(0)
   const [con, setCon] = useState(0)
+  const [cla, setCla] = useState(0)
+  // Previzualizarea pentru „Klarheit" nu se poate face cu filtru CSS: se
+  // calculează pe o copie mică a pozei, cu o mică pauză după ce se lasă bara.
+  const [previz, setPreviz] = useState(null)
   const mareRef = useRef(null)
   const zonaRef = useRef(null)
   const tras = useRef(null)
@@ -282,6 +332,17 @@ export default function DocumentCrop({ file, lang, titlu, onDone, onRetake }) {
     return () => { viu = false; URL.revokeObjectURL(u) }
   }, [file])
 
+  useEffect(() => {
+    if (!cla || cauta || !mareRef.current) { setPreviz(null); return }
+    let viu = true
+    const tm = setTimeout(async () => {
+      const mic = laCanvas(mareRef.current, Math.min(1, 1200 / Math.max(mareRef.current.width, mareRef.current.height)))
+      const rez = await aplicaClaritate(mic, cla)
+      if (viu) setPreviz(rez.toDataURL('image/jpeg', 0.85))
+    }, 250)
+    return () => { viu = false; clearTimeout(tm) }
+  }, [cla, cauta])
+
   const pozitie = (e) => {
     const r = zonaRef.current.getBoundingClientRect()
     return { x: Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)), y: Math.min(1, Math.max(0, (e.clientY - r.top) / r.height)) }
@@ -299,6 +360,7 @@ export default function DocumentCrop({ file, lang, titlu, onDone, onRetake }) {
     setLucreaza(true)
     try {
       let out = intreg ? mareRef.current : await decupeaza(mareRef.current, colturi)
+      if (cla) out = await aplicaClaritate(out, cla)
       if (lum || con) {
         if (out === mareRef.current) {
           const copie = document.createElement('canvas')
@@ -330,7 +392,7 @@ export default function DocumentCrop({ file, lang, titlu, onDone, onRetake }) {
         {url && (
           <div ref={zonaRef} style={{ position: 'relative', maxWidth: '100%', maxHeight: '100%', touchAction: 'none' }}
                onPointerMove={misca} onPointerUp={ridica} onPointerCancel={ridica}>
-            <img src={url} alt="" draggable={false}
+            <img src={previz || url} alt="" draggable={false}
                  style={{ display: 'block', maxWidth: '100%', maxHeight: 'calc(100vh - 320px)', userSelect: 'none',
                           filter: `brightness(${1 + lum / 100}) contrast(${1 + con / 100})` }} />
             <svg viewBox="0 0 100 100" preserveAspectRatio="none"
@@ -351,7 +413,7 @@ export default function DocumentCrop({ file, lang, titlu, onDone, onRetake }) {
       </div>
 
       <div style={{ padding: '10px 16px calc(14px + env(safe-area-inset-bottom, 0px))' }}>
-        {[[t('cropBrightness', lang), '', lum, setLum, -60, 60], [t('cropContrast', lang), '', con, setCon, -40, 80]].map(([eticheta, semn, val, setVal, min, max]) => (
+        {[[t('cropClarity', lang), '', cla, setCla, 0, 100], [t('cropBrightness', lang), '', lum, setLum, -60, 60], [t('cropContrast', lang), '', con, setCon, -40, 80]].map(([eticheta, semn, val, setVal, min, max]) => (
           <label key={eticheta} style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#fff', fontSize: 13, marginBottom: 8 }}>
             <span style={{ width: 82, flex: '0 0 auto' }}>{eticheta}</span>
             <input type="range" min={min} max={max} step={1} value={val} onChange={(e) => setVal(Number(e.target.value))}

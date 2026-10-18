@@ -2387,6 +2387,13 @@ textarea.bid-input2 {
   color: #B23A24;
 }
 
+/* „Frühere Abholung/Zustellung ggf. möglich" — o veste bună, deci verde. */
+.service-badge.ok {
+  background: #E7F4EE;
+  border-color: #A8D5BE;
+  color: #1F7A50;
+}
+
 .radius-filter-row {
   display: flex;
   align-items: center;

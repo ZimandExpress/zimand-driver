@@ -3854,7 +3854,7 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
             {extractServiceBadges(order.notes).length > 0 && (
               <div className="service-badges">
                 {extractServiceBadges(order.notes).map((b, i) => (
-                  <span key={b.key || i} className={`service-badge${b.warn ? ' warn' : ''}`}>{b.Icon ? <b.Icon size={13} strokeWidth={2} /> : null} {b.key ? t(b.key, lang) : b.text}</span>
+                  <span key={b.key || i} className={`service-badge${b.warn ? ' warn' : b.ok ? ' ok' : ''}`}>{b.Icon ? <b.Icon size={13} strokeWidth={2} /> : null} {b.key ? t(b.key, lang) : b.text}</span>
                 ))}
               </div>
             )}
@@ -7643,7 +7643,7 @@ function SemneEtapa({ order, etapa, lang, retur }) {
   return (
     <div className="service-badges" style={{ margin: '2px 0 8px' }}>
       {semne.map((b, i) => (
-        <span key={b.key || i} className={`service-badge${b.warn ? ' warn' : ''}`}>
+        <span key={b.key || i} className={`service-badge${b.warn ? ' warn' : b.ok ? ' ok' : ''}`}>
           {b.Icon ? <b.Icon size={13} strokeWidth={2} /> : null} {b.key ? t(b.key, lang) : b.text}
         </span>
       ))}
@@ -7695,8 +7695,8 @@ function SemnServiciu({ b, lang }) {
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
         gap: b.eticheta ? 4 : 0,
         minWidth: 26, height: 22, padding: b.eticheta ? '0 8px' : '0 6px', borderRadius: 7,
-        background: b.warn ? '#FCEBE8' : '#EDEFF3',
-        color: b.warn ? '#B23A24' : '#28344A',
+        background: b.warn ? '#FCEBE8' : b.ok ? '#E7F4EE' : '#EDEFF3',
+        color: b.warn ? '#B23A24' : b.ok ? '#1F7A50' : '#28344A',
       }}
     >
       {Pictograma ? <Pictograma size={14} strokeWidth={2} /> : null}
@@ -8011,7 +8011,7 @@ function LegendaScreen({ lang }) {
         text={t('legendNotStackable', lang)}
       />
       <RandLegenda
-        semn={serviciu({ Icon: Clock, text: 'Frühere Abholung' })}
+        semn={serviciu({ Icon: Clock, text: 'Frühere Abholung', ok: true })}
         titlu="Frühere Abholung / Zustellung"
         text={t('legendEarlier', lang)}
       />
@@ -8057,8 +8057,8 @@ function extractServiceBadges(notesText) {
     if (line.startsWith('ADR: ')) badges.push({ Icon: AlertTriangle, key: null, eticheta: 'ADR', text: line.replace('ADR: ', 'ADR — '), warn: true })
     else if (line.startsWith('Stapelbar: Ja')) badges.push({ Icon: Layers, key: null, text: 'Stapelbar', warn: false })
     else if (line.startsWith('Stapelbar: Nein')) badges.push({ Icon: Layers, key: null, text: 'Nicht stapelbar', warn: true })
-    else if (line.includes('frühere Abholung')) badges.push({ Icon: Clock, key: null, text: 'Frühere Abholung ggf. möglich', warn: false, etapa: 'pickup' })
-    else if (line.includes('frühere Zustellung')) badges.push({ Icon: Clock, key: null, text: 'Frühere Zustellung ggf. möglich', warn: false, etapa: 'delivery' })
+    else if (line.includes('frühere Abholung')) badges.push({ Icon: Clock, key: null, text: 'Frühere Abholung ggf. möglich', warn: false, ok: true, etapa: 'pickup' })
+    else if (line.includes('frühere Zustellung')) badges.push({ Icon: Clock, key: null, text: 'Frühere Zustellung ggf. möglich', warn: false, ok: true, etapa: 'delivery' })
   }
   return badges
 }
@@ -9185,7 +9185,7 @@ function BidCard({ order, lang, courierProfileId, open, onToggle, onBidPlaced })
           {extractServiceBadges(order.notes).length > 0 && (
             <div className="service-badges">
               {extractServiceBadges(order.notes).map((b, i) => (
-                <span key={b.key || i} className={`service-badge${b.warn ? ' warn' : ''}`}>{b.Icon ? <b.Icon size={13} strokeWidth={2} /> : null} {b.key ? t(b.key, lang) : b.text}</span>
+                <span key={b.key || i} className={`service-badge${b.warn ? ' warn' : b.ok ? ' ok' : ''}`}>{b.Icon ? <b.Icon size={13} strokeWidth={2} /> : null} {b.key ? t(b.key, lang) : b.text}</span>
               ))}
             </div>
           )}

@@ -3009,3 +3009,22 @@ body { -webkit-font-smoothing: antialiased; }
 .menu-group-title { margin: 8px 0 2px; padding: 14px 22px 6px; }
 .earn-mini { margin: 0 10px 10px; }
 .menu-item.logout { color: #B03A3A; }
+
+/* Clopoţelul de la Ankunftszeit sună scurt, la câteva secunde (18.10.2026). */
+@keyframes bell-ring {
+  0%, 62%, 100% { transform: rotate(0); }
+  66% { transform: rotate(16deg); }
+  70% { transform: rotate(-14deg); }
+  74% { transform: rotate(11deg); }
+  78% { transform: rotate(-8deg); }
+  82% { transform: rotate(5deg); }
+  86% { transform: rotate(-2deg); }
+  90% { transform: rotate(0); }
+}
+.bell-ring {
+  transform-origin: 50% 8%;
+  animation: bell-ring 2.8s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .bell-ring { animation: none; }
+}

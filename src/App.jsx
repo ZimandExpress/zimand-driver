@@ -6069,7 +6069,7 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
       }}
     >
-      <Bell size={15} strokeWidth={2} color="#FF7A29" />
+      <Bell size={15} strokeWidth={2} color="#FF7A29" className="bell-ring" />
       {etaCount > 0 ? t('etaButtonAgain', lang) : t('etaButton', lang)}
     </button>
   )

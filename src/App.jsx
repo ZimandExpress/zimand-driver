@@ -5414,9 +5414,9 @@ function ReturSheet({ order, lang, transport, onClose }) {
   return (
     <div className="sig-fullscreen" style={{ justifyContent: 'flex-end', background: 'rgba(15,34,64,.55)', zIndex: 9990 }}>
       <div style={{ background: '#fff', borderRadius: '16px 16px 0 0', padding: '20px 20px calc(20px + env(safe-area-inset-bottom))', maxHeight: '88vh', overflowY: 'auto' }}>
+        <SelectorLimba value={limba} onChange={setLimba} />
         <div style={{ fontSize: 12.5, fontWeight: 600, color: '#5A6878', marginBottom: 2 }}>🔁 {transport ? tr.fazaT : tr.fazaP}</div>
         <div style={{ fontSize: 18, fontWeight: 800, color: '#0F2240', marginBottom: 10 }}>{transport ? tr.titluT : tr.titluP}</div>
-        <SelectorLimba value={limba} onChange={setLimba} />
         <div style={{ background: '#F4F7FC', border: '2px solid #0F2240', borderRadius: 10, padding: '11px 13px', marginBottom: 12 }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: '#5A6878', textTransform: 'uppercase', letterSpacing: '.03em' }}>{transport ? tr.duci : tr.ce}</div>
           {ce
@@ -5444,9 +5444,9 @@ function TransportSheet({ lang, onClose }) {
   return (
     <div className="sig-fullscreen" style={{ justifyContent: 'flex-end', background: 'rgba(15,34,64,.55)', zIndex: 9990 }}>
       <div style={{ background: '#fff', borderRadius: '16px 16px 0 0', padding: '20px 20px calc(20px + env(safe-area-inset-bottom))', maxHeight: '88vh', overflowY: 'auto' }}>
+        <SelectorLimba value={limba} onChange={setLimba} />
         <div style={{ fontSize: 12.5, fontWeight: 600, color: '#5A6878', marginBottom: 2 }}>{tr.faza}</div>
         <div style={{ fontSize: 18, fontWeight: 800, color: '#0F2240', marginBottom: 10 }}>{tr.titlu}</div>
-        <SelectorLimba value={limba} onChange={setLimba} />
         <ol style={{ margin: 0, paddingLeft: 20, fontSize: 15.5, lineHeight: 1.55, color: '#0F2240' }}>
           {tr.pasi.map((p, i) => <li key={i} style={{ marginBottom: 8 }}>{p}</li>)}
         </ol>
@@ -5472,9 +5472,9 @@ function ReguliZustellung({ lang, zustellart, ales, onAck }) {
       : [tr.r1std, tr.r2std, tr.r3]
   return (
     <div style={{ maxWidth: 440, width: '100%' }}>
+      <SelectorLimba value={limba} onChange={setLimba} />
       <div style={{ marginBottom: 10, color: 'var(--navy)' }}><FileText size={40} strokeWidth={1.4} /></div>
       <div style={{ fontSize: 21, fontWeight: 800, color: '#0F2240', marginBottom: 12, lineHeight: 1.3 }}>{tr.titlu}</div>
-      <SelectorLimba value={limba} onChange={setLimba} />
       {/* Varianta aleasă de client, scrisă explicit — curierul vede pe ce se
           bazează regulile de mai jos. Fără alegere (comenzi vechi sau făcute
           de dispecerat): se spune clar că se aplică Standard. */}
@@ -5514,11 +5514,6 @@ function BotenInfoSheet({ lang, onClose }) {
   return (
     <div className="sig-fullscreen" style={{ justifyContent: 'flex-end', background: 'rgba(15,34,64,.55)', zIndex: 9991 }}>
       <div style={{ background: '#fff', borderRadius: '16px 16px 0 0', padding: '20px 20px calc(20px + env(safe-area-inset-bottom))', maxHeight: '88vh', overflowY: 'auto' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 10 }}>
-          <div style={{ fontSize: 18, fontWeight: 800, color: '#B35A12', lineHeight: 1.3 }}>
-            <ClipboardList size={18} style={{ verticalAlign: -3, marginRight: 6 }} />{titlu}
-          </div>
-        </div>
         <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#5A6878', marginBottom: 12 }}>
           🌐
           <select value={rand[0]} onChange={(e) => alege(e.target.value)}
@@ -5526,6 +5521,11 @@ function BotenInfoSheet({ lang, onClose }) {
             {BOTEN_INFO_LIMBI.map(([cod, nume]) => <option key={cod} value={cod}>{nume}</option>)}
           </select>
         </label>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 10 }}>
+          <div style={{ fontSize: 18, fontWeight: 800, color: '#B35A12', lineHeight: 1.3 }}>
+            <ClipboardList size={18} style={{ verticalAlign: -3, marginRight: 6 }} />{titlu}
+          </div>
+        </div>
         <ol style={{ margin: 0, paddingLeft: 20, fontSize: 15.5, lineHeight: 1.55, color: '#0F2240' }}>
           {pasi.map((p, i) => <li key={i} style={{ marginBottom: 8 }}>{p}</li>)}
         </ol>
@@ -8052,8 +8052,6 @@ function GhidSheet({ ghiduri, faza, lang, onClose }) {
   return (
     <div className="sig-fullscreen" style={{ justifyContent: 'flex-end', background: 'rgba(15,34,64,.55)', zIndex: 9990 }}>
       <div style={{ background: '#fff', borderRadius: '16px 16px 0 0', padding: '20px 20px calc(20px + env(safe-area-inset-bottom))', maxHeight: '88vh', overflowY: 'auto' }}>
-        <div style={{ fontSize: 12.5, fontWeight: 600, color: '#5A6878', marginBottom: 2 }}>{titluFaza}</div>
-        <div style={{ fontSize: 18, fontWeight: 700, color: '#0F2240', marginBottom: 10 }}>{ui('sheetTitle', 'guideSheetTitle')}</div>
         <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#5A6878', marginBottom: 12 }}>
           🌐
           <select value={limba} onChange={(e) => alegeLimba(e.target.value)}
@@ -8061,6 +8059,8 @@ function GhidSheet({ ghiduri, faza, lang, onClose }) {
             {BOTEN_INFO_LIMBI.map(([cod, nume]) => <option key={cod} value={cod}>{nume}</option>)}
           </select>
         </label>
+        <div style={{ fontSize: 12.5, fontWeight: 600, color: '#5A6878', marginBottom: 2 }}>{titluFaza}</div>
+        <div style={{ fontSize: 18, fontWeight: 700, color: '#0F2240', marginBottom: 10 }}>{ui('sheetTitle', 'guideSheetTitle')}</div>
         {netradus && (
           <div style={{ fontSize: 12.5, color: '#8A5A16', background: '#FFF6ED', borderRadius: 8, padding: '7px 10px', marginBottom: 10 }}>
             {ui('noTranslation', 'guideSheetTitle')}

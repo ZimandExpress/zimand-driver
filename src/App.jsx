@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { supabase } from './supabaseClient'
 import { t, getLang, setLang, availableLangs } from './i18n'
-import { Maximize2, ArrowLeft as ArrowLeftMap, Eye, Play, ClipboardList, Pause, SlidersHorizontal, Building2, StickyNote, Receipt, Package, Repeat, Hourglass, Camera, Image as ImageIcon, Mail, Ruler, ChevronDown, Lock, Phone, Truck, CheckCircle2, Wallet, User, LogOut, Menu, Bell, MapPin, FlagTriangleRight, Tag, XCircle, Download, X, Navigation, Trophy, ThumbsUp, ArrowUpFromLine, ArrowDownToLine, EyeOff, Layers, AlertTriangle, Clock, FileText, Signature, BookOpen } from 'lucide-react'
+import { Maximize2, ArrowLeft as ArrowLeftMap, Eye, Play, ClipboardList, Pause, SlidersHorizontal, Building2, StickyNote, Receipt, Package, Repeat, Hourglass, Camera, Image as ImageIcon, Mail, Ruler, ChevronDown, Lock, Phone, Truck, CheckCircle2, Wallet, User, LogOut, Menu, Bell, MapPin, FlagTriangleRight, Tag, XCircle, Download, X, Navigation, Trophy, ThumbsUp, ArrowUpFromLine, ArrowDownToLine, EyeOff, Layers, AlertTriangle, Clock, FileText, Signature, BookOpen, Info as InfoIcon } from 'lucide-react'
 import { GHID_TRADUCERI, GHID_UI } from './ghidTraduceri.js'
 import { ZP_LIMBI, PLECARE_LIMBI, TRANSPORT_LIMBI, REGULI_LIMBI, RETUR_LIMBI, POSTA_LIMBI } from './zpTraduceri.js'
 import './index.css'
@@ -2213,6 +2213,7 @@ function RideCard({ order, isOwner, lang, onClick, compact }) {
       {deschis && (
         <div className="rc-more">
           <StageProgress order={order} lang={lang} />
+          <HintSemne order={order} lang={lang} />
 
           {opriri.length > 0 && (
             <div className="rc-section">
@@ -7686,12 +7687,44 @@ function SemnDovada({ order, lang }) {
   )
 }
 
-function SemnServiciu({ b, lang }) {
+// Ce înseamnă fiecare semn, la atingere (18.10.2026): aceleaşi texte ca în
+// legendă, ca şoferul să nu mai caute legenda pentru un singur semn.
+function explicatieSemn(b, lang) {
+  if (b.key === 'loadHelpBadge') return t('legendLoadHelp', lang)
+  if (b.key === 'unloadHelpBadge') return t('legendUnloadHelp', lang)
+  if (b.key === 'neutralDeliveryBadge') return t('legendNeutral', lang)
+  const x = String(b.text || '')
+  if (x.startsWith('ADR')) return t('legendAdr', lang)
+  if (x.startsWith('Nicht stapelbar')) return t('legendNotStackable', lang)
+  if (x.startsWith('Stapelbar')) return t('legendStackable', lang)
+  if (x.startsWith('Frühere')) return t('legendEarlier', lang)
+  return ''
+}
+
+// Un singur bilet deschis odată: cel nou îl închide pe cel vechi.
+let inchideSemnDeschis = null
+
+function SemnServiciu({ b, lang, faraInfo }) {
   const Pictograma = b.Icon
-  return (
+  const [info, setInfo] = useState(false)
+  const titluSemn = b.key ? t(b.key, lang) : b.text
+  const explicatie = faraInfo ? '' : explicatieSemn(b, lang)
+  useEffect(() => {
+    if (!info) return undefined
+    const inchide = () => setInfo(false)
+    if (inchideSemnDeschis && inchideSemnDeschis !== inchide) inchideSemnDeschis()
+    inchideSemnDeschis = inchide
+    const tm = setTimeout(inchide, 6000)
+    return () => { clearTimeout(tm); if (inchideSemnDeschis === inchide) inchideSemnDeschis = null }
+  }, [info])
+  const semn = (
     <span
-      title={b.key ? t(b.key, lang) : b.text}
+      title={titluSemn}
+      role={explicatie ? 'button' : undefined}
+      tabIndex={explicatie ? 0 : undefined}
+      onClick={explicatie ? (e) => { e.stopPropagation(); e.preventDefault(); setInfo((v) => !v) } : undefined}
       style={{
+        cursor: explicatie ? 'pointer' : undefined,
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
         gap: b.eticheta ? 4 : 0,
         minWidth: 26, height: 22, padding: b.eticheta ? '0 8px' : '0 6px', borderRadius: 7,
@@ -7704,6 +7737,71 @@ function SemnServiciu({ b, lang }) {
         <span style={{ fontSize: 11.5, fontWeight: 800, letterSpacing: '.02em' }}>{b.eticheta}</span>
       ) : null}
     </span>
+  )
+  if (!explicatie) return semn
+  return (
+    <>
+      {semn}
+      {info && createPortal(
+        <div
+          role="status"
+          onClick={(e) => { e.stopPropagation(); setInfo(false) }}
+          style={{
+            position: 'fixed', left: 12, right: 12, bottom: 'calc(84px + env(safe-area-inset-bottom, 0px))', zIndex: 9600,
+            background: '#0F2240', color: '#fff', borderRadius: 12, padding: '12px 14px',
+            boxShadow: '0 8px 24px rgba(15,34,64,.35)', display: 'flex', gap: 10, alignItems: 'flex-start',
+          }}
+        >
+          <span style={{
+            flex: '0 0 auto', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 28, height: 28, borderRadius: 8,
+            background: b.warn ? '#FCEBE8' : b.ok ? '#E7F4EE' : '#EDEFF3', color: b.warn ? '#B23A24' : b.ok ? '#1F7A50' : '#28344A',
+          }}>
+            {Pictograma ? <Pictograma size={15} strokeWidth={2} /> : null}
+          </span>
+          <span style={{ minWidth: 0, flex: 1 }}>
+            <span style={{ display: 'block', fontSize: 14, fontWeight: 700, lineHeight: 1.35 }}>{titluSemn}</span>
+            <span style={{ display: 'block', fontSize: 13, color: '#C9D3E2', lineHeight: 1.5, marginTop: 2 }}>{explicatie}</span>
+          </span>
+          <X size={16} strokeWidth={2} style={{ flex: '0 0 auto', opacity: .7, marginTop: 2 }} />
+        </div>,
+        document.body,
+      )}
+    </>
+  )
+}
+
+// Indiciul „atinge un semn" din cardul deschis, cu „Nicht mehr anzeigen".
+// Ascuns pentru 3 luni, apoi revine o dată, ca şoferii noi să-l vadă iar.
+const CHEIE_HINT_SEMNE = 'zd-semne-hint-ascuns-la'
+const TREI_LUNI_MS = 90 * 24 * 60 * 60 * 1000
+function hintSemneAscuns() {
+  try {
+    const v = Number(localStorage.getItem(CHEIE_HINT_SEMNE) || 0)
+    return v > 0 && Date.now() - v < TREI_LUNI_MS
+  } catch { return false }
+}
+function HintSemne({ order, lang }) {
+  const [ascuns, setAscuns] = useState(hintSemneAscuns)
+  if (ascuns || !extractServiceBadges(order.notes).some((b) => explicatieSemn(b, lang))) return null
+  return (
+    <div
+      onClick={(e) => e.stopPropagation()}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', margin: '8px 0 4px',
+        background: '#F2F5FA', border: '1px solid #DCE3EE', borderRadius: 10, padding: '8px 10px',
+        fontSize: 12.5, color: '#28344A', lineHeight: 1.45,
+      }}
+    >
+      <InfoIcon size={15} strokeWidth={2} style={{ flex: "0 0 auto", color: "#1F4E8C" }} />
+      <span style={{ flex: '1 1 160px' }}>{t('semneHint', lang)}</span>
+      <button
+        type="button"
+        onClick={() => { try { localStorage.setItem(CHEIE_HINT_SEMNE, String(Date.now())) } catch { /* fără memorie, rămâne ascuns doar acum */ } setAscuns(true) }}
+        style={{ background: 'none', border: 0, padding: '2px 0', color: '#1F4E8C', fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}
+      >
+        {t('semneHintHide', lang)}
+      </button>
+    </div>
   )
 }
 
@@ -7953,7 +8051,7 @@ function LegendaScreen({ lang }) {
       {titlu}
     </div>
   )
-  const serviciu = (b) => <SemnServiciu b={b} lang={lang} />
+  const serviciu = (b) => <SemnServiciu b={b} lang={lang} faraInfo />
 
   return (
     <div style={{ padding: '4px 2px 28px' }}>

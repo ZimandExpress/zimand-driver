@@ -3738,6 +3738,16 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
       </>
       )}
 
+      {/* În pasul de livrare a documentelor, sub formular rămâne doar ce
+          contează acolo (18.10.2026): Fracht numai la Neutrale Zustellung,
+          iar hârtiile ridicării şi a doua casetă Zustellart dispar. */}
+      {(() => {
+        const livrareDocAcum = order.is_document_delivery && inConfirmStep && confirmFormOpen
+          && (leg === 'delivery' || leg === 'return_delivery')
+        const neutral = extractServiceBadges(order.notes).some((b) => b.key === 'neutralDeliveryBadge')
+        return (
+      <>
+      {(!livrareDocAcum || neutral) && (
       <div className="info-card">
         <div className="info-card-head cargo-toggle" onClick={() => setCargoOpen((v) => !v)}>
           {/* Numărul comenzii, pe linia cu pachetul: acolo îl vede şi cine
@@ -3771,6 +3781,7 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
           </div>
         )}
       </div>
+      )}
 
       {/* Ce dovadă cere comanda asta, scris pe ecranul ei.
           Cerinţa apărea abia în pasul de confirmare, după „Losfahren" — adică
@@ -3806,7 +3817,7 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
       {/* Hârtiile cursei, şi pe ecranul comenzii câştigate.
           La licitaţie le-a citit o dată, acum o săptămână, poate alt om din
           firmă. Aici le are sub ochi cel care chiar pleacă la drum. */}
-      {order.is_document_delivery && (
+      {order.is_document_delivery && !livrareDocAcum && (
         <div style={{
           background: '#FFF6ED', border: '1px solid #FFD2AE',
           borderRadius: 10, padding: '11px 13px', margin: '10px 0',
@@ -3821,11 +3832,14 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
           </div>
         </div>
       )}
-      {order.is_document_delivery && <ZustellartInfo order={order} lang={lang} />}
+      {order.is_document_delivery && !livrareDocAcum && <ZustellartInfo order={order} lang={lang} />}
+      </>
+        )
+      })()}
 
       {/* Hârtiile către client, sub Fracht: acolo stă marfa, deci acolo se
-          caută și actele ei. */}
-      <TrimiteDocument order={order} lang={lang} />
+          caută și actele ei. După ridicare nu mai e nevoie de ele (18.10.2026). */}
+      {!order.pickup_confirmed_at && <TrimiteDocument order={order} lang={lang} />}
 
       {isOwner && companyDrivers.length > 0 && !order.pickup_started_at && (
         <div className="reassign-footer">
@@ -5810,7 +5824,7 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
     || (dovadaLaAlegere && !!signatureBlob)
     // Cu Botenbestätigung, numele celui care predă stă deja pe declaraţia
     // semnată — la ridicare nu-l mai cerem şi pe telefon.
-    || (isDocumentDelivery && ((!esteLivrareEtapa && !cereBoten) || (esteLivrareEtapa && deliveryMethod === 'persoenlich')))
+    || (isDocumentDelivery && !esteLivrareEtapa && !cereBoten)
 
   const [incidentOpen, setIncidentOpen] = useState(false)
   const [incidentBlocking, setIncidentBlocking] = useState(false)
@@ -6383,7 +6397,25 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
                 "de la cine vine?". Numele și firma expeditorului stau în
                 `notes`, lângă adresă. Se arată și la opriri: tocmai la livrarea
                 7 din 20 nu mai ţine minte nimeni de unde a plecat marfa. */}
-            {laLivrare && (contactRidicare || order.pickup_address) && (
+            {/* La livrarea de documente: varianta clientului, o singură dată,
+                ca etichetă mică în acelaşi card (cerut de Andrei pe 18.10.2026).
+                Fără „Abgeholt bei" — acolo nu-l mai întreabă nimeni. */}
+            {isDocumentDeliveryLeg && Number(order.zustellart) > 0 && (
+              <div style={{
+                marginTop: 7, fontSize: 12.5, fontWeight: 700,
+                color: Number(order.zustellart) === 3 ? '#B23A24' : '#33415A',
+              }}>
+                <span style={{ fontWeight: 600, color: 'var(--text-soft, #6B7A90)' }}>{t('zustellartShort', lang)}: </span>
+                {t(`zustellart${Number(order.zustellart)}`, lang)}
+              </div>
+            )}
+            {isDocumentDeliveryLeg && extractServiceBadges(order.notes).some((b) => b.key === 'neutralDeliveryBadge') && (
+              <div style={{ marginTop: 7, paddingTop: 7, borderTop: '1px solid var(--border, #E2E7EE)', fontSize: 12.5, lineHeight: 1.5, color: '#33415A' }}>
+                <div style={{ fontWeight: 800 }}><EyeOff size={13} strokeWidth={2} style={{ verticalAlign: -2 }} /> {t('neutralDeliveryBadge', lang)}</div>
+                <div style={{ color: 'var(--text-soft, #6B7A90)' }}>{t('legendNeutral', lang)}</div>
+              </div>
+            )}
+            {laLivrare && !isDocumentDeliveryLeg && (contactRidicare || order.pickup_address) && (
               <div style={{ color: 'var(--text-soft)', marginTop: 5, fontSize: 12.5 }}>
                 {t('pickedUpFrom', lang)}: {[
                   contactRidicare ? contactRidicare.split(' \u00b7 Tel.')[0].trim() : null,
@@ -6397,7 +6429,8 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
 
       {/* La ridicare arată unde merge marfa; la livrare, de la cine a fost
           luată. Deasupra pozelor, în pasul în care șoferul se uită oricum. */}
-      <AltCapat order={order} lang={lang} spreLivrare={!esteLivrareEtapa} />
+      {/* La livrarea de documente nu mai apare (cerut de Andrei pe 18.10.2026). */}
+      {!isDocumentDeliveryLeg && <AltCapat order={order} lang={lang} spreLivrare={!esteLivrareEtapa} />}
 
 
       {/* Dokumentenzustellung: cum a fost predat documentul.
@@ -6409,9 +6442,10 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
           mai cerem semnătură și nume. Dovada sunt fotografiile. */}
       {isDocumentDeliveryLeg && (
         <>
-          <ZustellartInfo order={order} lang={lang} />
+          {/* Calm: rânduri albe, chenar închis doar pe varianta aleasă.
+              Condiţia apare numai sub varianta aleasă (reorganizat 18.10.2026). */}
           <div className="pod-label">{t('deliveryMethodLabel', lang)}</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 7, marginBottom: 14 }}>
             {variantePredare.map((m) => {
               const active = deliveryMethod === m.id
               return (
@@ -6421,75 +6455,52 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
                   onClick={() => setDeliveryMethod(m.id)}
                   style={{
                     width: '100%', textAlign: 'left', cursor: 'pointer',
-                    background: active ? '#FFF6ED' : '#fff',
-                    border: `2px solid ${active ? '#FF7A29' : '#D8DEE8'}`,
-                    borderRadius: 10, padding: '13px 15px',
+                    background: active ? '#F4F7FC' : '#fff',
+                    border: `${active ? 2 : 1}px solid ${active ? '#0F2240' : '#D8DEE8'}`,
+                    borderRadius: 10, padding: active ? '11px 13px' : '12px 14px',
                   }}
                 >
-                  <div style={{ fontSize: 15, fontWeight: 700, color: active ? '#B35A12' : '#0F2240' }}>
+                  <div style={{ fontSize: 15, fontWeight: active ? 800 : 600, color: '#0F2240' }}>
                     {active ? '● ' : '○ '}{t(m.key, lang)}
                   </div>
-                  <div style={{ fontSize: 12, color: '#6B7A90', marginTop: 3, lineHeight: 1.45 }}>
-                    {t(m.note, lang)}
-                  </div>
-                  {/* Condiţia care face predarea în cutie admisibilă, scrisă
-                      chiar pe opţiune — nu într-un document de la instructaj. */}
-                  {m.id === 'persoenlich' && (
-                    <div style={{
-                      fontSize: 12, color: '#1B6E43', background: '#F3FBF6',
-                      border: '1px solid #BFE8CF', borderRadius: 7,
-                      padding: '7px 9px', marginTop: 7, lineHeight: 1.5, fontWeight: 600,
-                    }}>
-                      <Signature size={14} strokeWidth={1.8} /> {t('persoenlichCondition', lang)}
+                  {active && m.id === 'persoenlich' && (
+                    <div style={{ fontSize: 12.5, color: '#4A5563', marginTop: 5, lineHeight: 1.5 }}>
+                      {t('persoenlichCondition', lang)}
                     </div>
                   )}
-                  {m.id === 'briefkasten' && (
-                    <div style={{
-                      fontSize: 12, color: '#B35A12', background: '#FFF6ED',
-                      border: '1px solid #FFD2AE', borderRadius: 7,
-                      padding: '7px 9px', marginTop: 7, lineHeight: 1.5, fontWeight: 600,
-                    }}>
-                      ⚠ {zustellartClient === 2 ? `${t('briefkastenNachVersuch', lang)} ` : ''}{t('briefkastenCondition', lang)}
+                  {active && m.id === 'briefkasten' && (
+                    <div style={{ fontSize: 12.5, color: '#8A4B12', marginTop: 5, lineHeight: 1.5, fontWeight: 600 }}>
+                      {zustellartClient === 2 ? `${t('briefkastenNachVersuch', lang)} ` : ''}{t('briefkastenCondition', lang).replace('{min}', String(MINIM_POZE_CUTIE))}
                     </div>
                   )}
                 </button>
               )
             })}
-            <button
-              type="button"
-              onClick={() => setIncidentBlocking(true)}
-              disabled={!!blockingIncident}
-              style={{
-                width: '100%', textAlign: 'left',
-                cursor: blockingIncident ? 'not-allowed' : 'pointer',
-                opacity: blockingIncident ? 0.5 : 1,
-                background: '#fff', border: '1px solid #E4A296', borderRadius: 10,
-                padding: '13px 15px', fontSize: 14.5, fontWeight: 600, color: '#B23A24',
-              }}
-            >
-              ⚠ {t('deliveryMethodImpossible', lang)}
-              <div style={{ fontSize: 12, color: '#6B7A90', marginTop: 3, fontWeight: 400, lineHeight: 1.45 }}>
-                {t('deliveryMethodImpossibleNote', lang)}
-              </div>
-            </button>
+            {/* „Zustellung nicht möglich" stă o singură dată: jos, sub butonul
+                de confirmare. Aici rămâne doar unde jos nu există. */}
+            {!onDeliveryFailed && (
+              <button
+                type="button"
+                onClick={() => setIncidentBlocking(true)}
+                disabled={!!blockingIncident}
+                style={{
+                  width: '100%', textAlign: 'left',
+                  cursor: blockingIncident ? 'not-allowed' : 'pointer',
+                  opacity: blockingIncident ? 0.5 : 1,
+                  background: '#fff', border: '1px solid #D8DEE8', borderRadius: 10,
+                  padding: '12px 14px', fontSize: 15, fontWeight: 600, color: '#B23A24',
+                }}
+              >
+                ○ {t('deliveryMethodImpossible', lang)}
+              </button>
+            )}
           </div>
         </>
       )}
 
-      {/* Cate sunt cerute si cate ajuta. Scris langa casute, nu doar in
-          butonul stins de jos. */}
-      {esteEtapaLivrareDoc && (
-        <div style={{ fontSize: 12.5, color: '#6B7A90', lineHeight: 1.5, margin: '0 0 8px' }}>
-          {deliveryMethod === 'briefkasten'
-            ? t('photosMinRecommended', lang)
-                .replace('{min}', String(minimPoze))
-                .replace('{rec}', String(POZE_RECOMANDATE))
-            : deliveryMethod === 'persoenlich'
-              ? t('photosMinOnly', lang).replace('{min}', String(minimPoze))
-              : t('photosAfterMethod', lang)}
-        </div>
-      )}
-
+      {/* Câte poze sunt cerute scrie deja PodFiles („min. N”); la livrarea
+          de documente căsuţele apar abia după alegerea variantei (18.10.2026). */}
+      {!(esteEtapaLivrareDoc && !deliveryMethod) && (
       <PodFiles
         orderId={order.id}
         leg={leg}
@@ -6509,6 +6520,7 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
               : (esteLivrareNormala ? [t('hintWare1', lang), t('hintWare2', lang)] : [])
         }
       />
+      )}
 
       {photoSourceOpen && (
         <div className="sig-fullscreen" style={{ justifyContent: 'flex-end', background: 'rgba(15,34,64,.55)' }}>
@@ -6543,7 +6555,9 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
         onChange={addPhotos}
       />
 
-      <div className="pod-label">{t('documentsLabel', lang)}</div>
+      <div className="pod-label">
+        {esteEtapaLivrareDoc ? `${t('docTypeProtocol', lang)} · ${t('requiredWord', lang)}` : t('documentsLabel', lang)}
+      </div>
       <button
         type="button"
         className="btn secondary"
@@ -6572,24 +6586,12 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
           ea este singura dovadă existentă. */}
       {/* La ridicare nota e scurtă şi stă SUB butonul de confirmare (vezi mai
           jos); aici rămâne doar la livrare, unde contează la cutia poştală. */}
-      {isDocumentDelivery && esteLivrareEtapa && (
-        <div style={{
-          background: '#EAF0FB', border: '2px solid #2A5299', borderRadius: 10,
-          padding: '13px 15px', marginBottom: 14,
-        }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: '#2A5299', marginBottom: 4 }}>
-            <MapPin size={14} strokeWidth={1.8} /> {t('locationNoticeTitle', lang)}
-          </div>
-          <div style={{ fontSize: 13, color: '#2A5299', lineHeight: 1.5 }}>
-            {t('locationNoticeBody', lang)}
-          </div>
-        </div>
-      )}
-
       {/* La Briefkasten nu are cine semna — nu cerem nume și semnătură.
           Cu Übergabe- und Botenbestätigung, la ridicare numele şi semnătura
           stau pe formular — câmpurile nici nu mai apar (17.10.2026). */}
-      {!(isDocumentDeliveryLeg && deliveryMethod === 'briefkasten') && !cereBoten && (
+      {/* La livrarea de documente numele nu se mai cere pe telefon:
+          destinatarul semnează pe Zustellprotokoll (18.10.2026). */}
+      {!isDocumentDeliveryLeg && !cereBoten && (
       <>
       <div className="pod-label">{t(esteLivrareEtapa ? 'signerNameLabelDelivery' : 'signerNameLabelPickup', lang)}</div>
       <input
@@ -6674,13 +6676,13 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
         }
         if (!lipsa.length) return null
         return (
+          // Rând mic, gri, deasupra butonului — nu o casetă colorată
+          // (reorganizat 18.10.2026).
           <div style={{
-            marginTop: 12, padding: '10px 12px', borderRadius: 9,
-            background: '#FFF6ED', border: '1px solid #FFD2AE', color: '#B35A12',
-            fontSize: 13, lineHeight: 1.6,
+            marginTop: 12, color: '#4A5563', fontSize: 12.5, lineHeight: 1.55,
           }}>
-            <div style={{ fontWeight: 700 }}>⚠ {t('requiredBeforeConfirm', lang)}</div>
-            {lipsa.map((x, i) => <div key={i}>• {x}</div>)}
+            <span style={{ fontWeight: 700 }}>{t('requiredBeforeConfirm', lang)}</span>{' '}
+            {lipsa.join(' · ')}
           </div>
         )
       })()}
@@ -6727,8 +6729,8 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
             ? t('waitingForUploads', lang)
             : esteLivrareEtapa ? t('confirmDelivery', lang) : t('confirmPickup', lang)}
       </button>
-      {isDocumentDelivery && !esteLivrareEtapa && (
-        <div style={{ fontSize: 13, color: '#2A5299', lineHeight: 1.45, marginTop: 8, textAlign: 'center' }}>
+      {isDocumentDelivery && (
+        <div style={{ fontSize: 13, color: '#4A5563', lineHeight: 1.45, marginTop: 8, textAlign: 'center' }}>
           <MapPin size={13} strokeWidth={1.8} style={{ verticalAlign: -2 }} /> {t('locationNoticePickup', lang)}
         </div>
       )}
@@ -6811,7 +6813,7 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
           rel="noreferrer"
           style={{
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
-            color: '#1B9E50', border: '1px solid #BFE8CF', background: '#F3FBF6',
+            color: '#33415A', border: '1px solid #D8DEE8', background: '#fff',
             fontSize: 13.5, fontWeight: 600, padding: '10px 12px', borderRadius: 10,
             textDecoration: 'none',
           }}

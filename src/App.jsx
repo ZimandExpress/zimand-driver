@@ -2247,6 +2247,7 @@ function RideCard({ order, isOwner, lang, onClick, compact }) {
                 <span className="rc-row-text">{order.vehicles.map((v) => v.charAt(0).toUpperCase() + v.slice(1)).join(', ')}</span>
                 <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 5, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                   <SemnDovada order={order} lang={lang} />
+                  <SemnZustellart order={order} lang={lang} />
                   {extractServiceBadges(order.notes).map((b, i) => <SemnServiciu key={b.key || b.text || i} b={b} lang={lang} />)}
                 </span>
               </div>
@@ -2270,6 +2271,7 @@ function RideCard({ order, isOwner, lang, onClick, compact }) {
           <div className="rc-badges">
             {/* Fără rândul cu vehiculul, semnele rămân aici, ca să nu se piardă. */}
             {!(order.vehicles || []).length && <SemnDovada order={order} lang={lang} />}
+            {!(order.vehicles || []).length && <SemnZustellart order={order} lang={lang} />}
             {!(order.vehicles || []).length && extractServiceBadges(order.notes).map((b, i) => <SemnServiciu key={b.key || b.text || i} b={b} lang={lang} />)}
             <StageBadge order={order} lang={lang} />
           </div>
@@ -7732,6 +7734,25 @@ function SemnDovada({ order, lang, faraInfo }) {
   )
 }
 
+// Zustellart ca semn în „Meine Aufträge" (18.10.2026): plic + cifra variantei,
+// la atingere numele şi explicaţia. Varianta 3 (doar personal) cu roşu.
+function SemnZustellart({ order, lang }) {
+  const z = order?.is_document_delivery ? (Number(order?.zustellart) || 0) : 0
+  if (!z) return null
+  return (
+    <SemnServiciu
+      lang={lang}
+      b={{
+        Icon: Mail,
+        eticheta: String(z),
+        text: `${t('zustellartShort', lang)}: ${t(`zustellart${z}`, lang)}`,
+        explicatie: t(`zustellart${z}Note`, lang),
+        warn: z === 3,
+      }}
+    />
+  )
+}
+
 // Ce înseamnă fiecare semn, la atingere (18.10.2026): aceleaşi texte ca în
 // legendă, ca şoferul să nu mai caute legenda pentru un singur semn.
 function explicatieSemn(b, lang) {
@@ -7836,7 +7857,8 @@ function HintSemne({ order, lang }) {
     return () => clearTimeout(tm)
   }, [])
   if (expirat) return null
-  const areDovada = !order.is_document_delivery && ['cmr', 'signature'].includes(order.doc_mode)
+  const areDovada = (!order.is_document_delivery && ['cmr', 'signature'].includes(order.doc_mode))
+    || (order.is_document_delivery && Number(order.zustellart) > 0)
   if (ascuns || !(areDovada || extractServiceBadges(order.notes).some((b) => explicatieSemn(b, lang)))) return null
   return (
     <div

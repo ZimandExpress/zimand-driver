@@ -3521,6 +3521,9 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
         {/* Progresul („Stopp 1/4") pe acelaşi rând cu „Zurück" — nu mai ocupă
             un rând separat deasupra hărţii. */}
         <StageProgress order={order} lang={lang} inline />
+        {order.is_document_delivery && !order.delivery_confirmed_at && !(inConfirmStep && confirmFormOpen) && (
+          <ZustellartChip order={order} lang={lang} />
+        )}
         {/* Wartezeit, calculată din ora sosirii — nu dintr-un cronometru ţinut
             în memorie: dacă șoferul reîncarcă aplicaţia, timpul rămâne corect.
             Stătea în pasul cu pozele, deci dispărea de sub ochi exact când
@@ -3918,7 +3921,7 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
           </div>
         </div>
       )}
-      {order.is_document_delivery && !livrareDocAcum && !order.delivery_confirmed_at && <ZustellartInfo order={order} lang={lang} />}
+      {/* Caseta Zustellart a urcat pe rândul cu „Zurück" (ZustellartChip). */}
       </>
         )
       })()}
@@ -5285,6 +5288,43 @@ function ZustellartInfo({ order, lang, compact }) {
         </>
       )}
     </div>
+  )
+}
+
+// Zustellart sus, pe rândul cu „Zurück" (18.10.2026) — în locul casetei mari
+// de mai jos. Atingerea arată explicaţia scurtă a variantei.
+function ZustellartChip({ order, lang }) {
+  const [deschis, setDeschis] = useState(false)
+  const z = Number(order?.zustellart) || 0
+  if (!z) return null
+  const rosu = z === 3
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setDeschis((v) => !v)}
+        style={{
+          flex: '1 1 170px', minWidth: 0, textAlign: 'left', cursor: 'pointer',
+          background: rosu ? '#FDF1EF' : '#F3F6FB', border: `1px solid ${rosu ? '#E4A296' : '#C9D5E8'}`,
+          borderRadius: 10, padding: '5px 10px', lineHeight: 1.25,
+        }}
+      >
+        <span style={{ display: 'block', fontSize: 10, fontWeight: 700, letterSpacing: 0.4, textTransform: 'uppercase', color: '#6B7A90' }}>
+          {t('zustellartTitle', lang)}
+        </span>
+        <span style={{ display: 'block', fontSize: 13, fontWeight: 800, color: rosu ? '#B23A24' : '#0F2240' }}>
+          {t(`zustellart${z}`, lang)}
+        </span>
+      </button>
+      {deschis && (
+        <div onClick={() => setDeschis(false)} style={{
+          flex: '1 1 100%', fontSize: 12.5, color: '#4A5563', lineHeight: 1.5,
+          background: rosu ? '#FDF1EF' : '#F3F6FB', borderRadius: 8, padding: '7px 10px',
+        }}>
+          {t(`zustellart${z}Note`, lang)}
+        </div>
+      )}
+    </>
   )
 }
 

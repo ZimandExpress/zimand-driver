@@ -3819,7 +3819,9 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
       {/* Hârtiile cursei, şi pe ecranul comenzii câştigate.
           La licitaţie le-a citit o dată, acum o săptămână, poate alt om din
           firmă. Aici le are sub ochi cel care chiar pleacă la drum. */}
-      {order.is_document_delivery && !livrareDocAcum && (
+      {/* După livrarea dus nu mai au rost: nici hârtiile ridicării, nici
+          varianta de livrare (18.10.2026). */}
+      {order.is_document_delivery && !livrareDocAcum && !order.delivery_confirmed_at && (
         <div style={{
           background: '#FFF6ED', border: '1px solid #FFD2AE',
           borderRadius: 10, padding: '11px 13px', margin: '10px 0',
@@ -3834,7 +3836,7 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
           </div>
         </div>
       )}
-      {order.is_document_delivery && !livrareDocAcum && <ZustellartInfo order={order} lang={lang} />}
+      {order.is_document_delivery && !livrareDocAcum && !order.delivery_confirmed_at && <ZustellartInfo order={order} lang={lang} />}
       </>
         )
       })()}

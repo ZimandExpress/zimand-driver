@@ -5568,7 +5568,7 @@ const ZUSTELLART_ALES = {"de": {"ales": "Vom Auftraggeber gewählt", "nimic": "K
 // Numele oficiale ale variantelor (ca în formularul clientului), în germană.
 const ZUSTELLART_NUME = {
   1: 'Standard – Briefkasteneinwurf mit alternativem persönlichem Zustellversuch',
-  2: 'Persönliche Übergabe bevorzugt',
+  2: 'Persönliche Übergabe bevorzugt, sonst Briefkasten',
   3: 'Ausschließlich persönliche Übergabe',
 }
 

@@ -3662,6 +3662,7 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
             <span className="address-text">{order.pickup_address}</span>
             <a className="maps-nav-btn" href={mapsNavUrl(order.pickup_address)} target="_blank" rel="noreferrer"><Navigation size={13} strokeWidth={2.2} /> {t('navigateButton', lang)}</a>
           </div>
+          <SemneEtapa order={order} etapa="pickup" lang={lang} doarOk />
           {order.pickup_confirmed_at && <div className="info-row-time">✓ {fmtDateTime(order.pickup_confirmed_at)}</div>}
           {order.flexible_time_notes && (
             <div className="flex-time-note" style={{ marginTop: 8 }}>
@@ -3728,6 +3729,7 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
             <span className="address-text">{order.delivery_address}</span>
             <a className="maps-nav-btn" href={mapsNavUrl(order.delivery_address)} target="_blank" rel="noreferrer"><Navigation size={13} strokeWidth={2.2} /> {t('navigateButton', lang)}</a>
           </div>
+          <SemneEtapa order={order} etapa="delivery" lang={lang} doarOk />
           {order.delivery_confirmed_at && <div className="info-row-time">✓ {fmtDateTime(order.delivery_confirmed_at)}</div>}
           {deliveryNotiz && <div className="leg-notiz"><StickyNote size={13} strokeWidth={1.8} /> {deliveryNotiz}</div>}
           {returLaLivrare && (
@@ -7635,14 +7637,17 @@ const SERVICE_BADGE_PREFIXES = [
 // Cerinţele care ţin de UN capăt al cursei, scrise întreg pe cardul lui.
 // În listă sunt semne, ca să încapă; aici, pe ecranul comenzii, e loc de
 // cuvinte — iar cuvintele sunt cele care se citesc înainte de a opri maşina.
-function SemneEtapa({ order, etapa, lang, retur }) {
+function SemneEtapa({ order, etapa, lang, retur, doarOk }) {
   // La întoarcere nu există livrare neutră: plicul se duce înapoi la
   // expeditor, care ştie de unde vine (cerut de Andrei pe 17.10.2026).
+  // „Frühere … ggf. möglich" (ok) stă separat, sub adresă (18.10.2026), şi
+  // nu se arată la retur — priveşte doar cursa dus.
   const semne = extractServiceBadges(order.notes)
     .filter((b) => b.etapa === etapa && !(retur && b.key === 'neutralDeliveryBadge'))
+    .filter((b) => (doarOk ? !!b.ok && !retur : !b.ok))
   if (!semne.length) return null
   return (
-    <div className="service-badges" style={{ margin: '2px 0 8px' }}>
+    <div className="service-badges" style={{ margin: doarOk ? '6px 0 2px' : '2px 0 8px' }}>
       {semne.map((b, i) => (
         <span key={b.key || i} className={`service-badge${b.warn ? ' warn' : b.ok ? ' ok' : ''}`}>
           {b.Icon ? <b.Icon size={13} strokeWidth={2} /> : null} {b.key ? t(b.key, lang) : b.text}

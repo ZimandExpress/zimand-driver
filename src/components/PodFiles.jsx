@@ -10,6 +10,7 @@ import {
   subscribe, listFiles, removeFile, retryFile, retryAllFailed, summarize, isOnline,
 } from '../offline/uploadQueue'
 import { formatBytes } from '../services/imageService'
+import { supabase } from '../supabaseClient'
 
 const NAVY = '#0F2240'
 const ORANGE = '#FF7A29'
@@ -74,15 +75,40 @@ function PhotoTile({ file, lang, onRemove, onRetry, onOpen }) {
 
 // Poza, pe tot ecranul. De aici se șterge — nu dintr-o atingere greșită
 // pe grila de miniaturi.
+// Mare se vede poza întreagă, nu miniatura (care e mică şi arăta neclar —
+// observat de Andrei pe 18.10.2026): din telefon cât încă n-a plecat, apoi
+// de pe server. Până se încarcă, rămâne miniatura.
+function usePozaMare(file) {
+  const [url, setUrl] = useState(null)
+  useEffect(() => {
+    let viu = true
+    let local = null
+    if (file.blob) {
+      local = URL.createObjectURL(file.blob)
+      setUrl(local)
+    } else if (file.remotePath) {
+      supabase.storage.from('proof-of-delivery').createSignedUrl(file.remotePath, 3600)
+        .then((r) => { if (viu && r.data?.signedUrl) setUrl(r.data.signedUrl) })
+        .catch(() => {})
+    }
+    return () => { viu = false; if (local) URL.revokeObjectURL(local) }
+  // Pe id, nu pe obiectul Blob: coada îl reciteşte la fiecare procent urcat.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [file.id, !!file.blob, file.remotePath])
+  return url
+}
+
 function PhotoPreview({ file, lang, onClose, onDelete }) {
-  const url = useThumbUrl(file.thumb)
+  const mic = useThumbUrl(file.thumb)
+  const mare = usePozaMare(file)
+  const url = mare || mic
   return (
     <div
       className="sig-fullscreen"
       style={{ background: 'rgba(15,34,64,.92)', flexDirection: 'column', justifyContent: 'center', padding: 16 }}
     >
       {url
-        ? <img src={url} alt="" style={{ maxWidth: '100%', maxHeight: '70vh', objectFit: 'contain', borderRadius: 10 }} />
+        ? <img src={url} alt="" style={{ maxWidth: '100%', maxHeight: '75vh', objectFit: 'contain', borderRadius: 10, background: '#fff' }} />
         : <div style={{ color: '#fff', fontSize: 14 }}>{t('photoOpenLabel', lang)}</div>}
       <div style={{ display: 'flex', gap: 10, marginTop: 18, width: '100%', maxWidth: 420 }}>
         <button

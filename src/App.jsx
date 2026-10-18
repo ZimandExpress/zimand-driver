@@ -7788,6 +7788,14 @@ function hintSemneAscuns() {
 }
 function HintSemne({ order, lang }) {
   const [ascuns, setAscuns] = useState(hintSemneAscuns)
+  // Doar 6 secunde la fiecare deschidere a cardului, apoi dispare singur
+  // (18.10.2026). „Nicht mehr anzeigen" îl ascunde pentru 3 luni.
+  const [expirat, setExpirat] = useState(false)
+  useEffect(() => {
+    const tm = setTimeout(() => setExpirat(true), 6000)
+    return () => clearTimeout(tm)
+  }, [])
+  if (expirat) return null
   const areDovada = !order.is_document_delivery && ['cmr', 'signature'].includes(order.doc_mode)
   if (ascuns || !(areDovada || extractServiceBadges(order.notes).some((b) => explicatieSemn(b, lang)))) return null
   return (

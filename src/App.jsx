@@ -4677,8 +4677,13 @@ function EtaSheet({ order, leg, entry, lang, driverPhone, onClose, onSent }) {
   }
 
   const [date, setDate] = useState(todayIso())
-  const [from, setFrom] = useState(() => (scheduledFrom ? String(scheduledFrom).slice(0, 5) : plusMinutes(30)))
-  const [to, setTo] = useState(() => (scheduledTo ? String(scheduledTo).slice(0, 5) : plusMinutes(90)))
+  // Intervalul NU se mai completează singur (18.10.2026): şoferul alege el ora
+  // şi minutele, ca să nu plece la client o oră pe care n-a ales-o. Intervalul
+  // programat apare doar ca informaţie, sub câmpuri.
+  const [from, setFrom] = useState('')
+  const [to, setTo] = useState('')
+  const intervalOk = !!from && !!to && to > from
+  const programat = [scheduledFrom, scheduledTo].filter(Boolean).map((x) => String(x).slice(0, 5)).join('–')
   const [sharePhone, setSharePhone] = useState(false)   // implicit OPRIT
   const [phone, setPhone] = useState(driverPhone || '')
   const [busy, setBusy] = useState(false)
@@ -4752,6 +4757,10 @@ function EtaSheet({ order, leg, entry, lang, driverPhone, onClose, onSent }) {
             <input type="time" value={to} onChange={(e) => setTo(e.target.value)} style={field} />
           </div>
         </div>
+        <div style={{ fontSize: 12, color: '#6B7A90', margin: '-8px 0 16px', lineHeight: 1.45 }}>
+          {!intervalOk && <div style={{ color: '#B35A12', fontWeight: 600 }}>{t('etaPickTime', lang)}</div>}
+          {programat && <div>{t('etaScheduled', lang)}: {programat} Uhr</div>}
+        </div>
 
         <div style={{ background: '#F6F8FA', borderRadius: 10, padding: '12px 14px', marginBottom: 16 }}>
           <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer' }}>
@@ -4791,7 +4800,7 @@ function EtaSheet({ order, leg, entry, lang, driverPhone, onClose, onSent }) {
           </div>
         )}
 
-        <button className="btn" onClick={send} disabled={busy} style={{ width: '100%' }}>
+        <button className="btn" onClick={send} disabled={busy || !intervalOk} style={{ width: '100%', opacity: intervalOk ? 1 : 0.5 }}>
           {busy ? '…' : t('etaSendButton', lang)}
         </button>
         <button type="button" className="link-btn" onClick={onClose} style={{ marginTop: 8 }}>

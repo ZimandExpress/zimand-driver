@@ -4,7 +4,7 @@ import { supabase } from './supabaseClient'
 import { t, getLang, setLang, availableLangs } from './i18n'
 import { Eye, Play, ClipboardList, Pause, SlidersHorizontal, Building2, StickyNote, Receipt, Package, Repeat, Hourglass, Camera, Image as ImageIcon, Mail, Ruler, ChevronDown, Lock, Phone, Truck, CheckCircle2, Wallet, User, LogOut, Menu, Bell, MapPin, FlagTriangleRight, Tag, XCircle, Download, X, Navigation, Trophy, ThumbsUp, ArrowUpFromLine, ArrowDownToLine, EyeOff, Layers, AlertTriangle, Clock, FileText, Signature, BookOpen } from 'lucide-react'
 import { GHID_TRADUCERI, GHID_UI } from './ghidTraduceri.js'
-import { ZP_LIMBI, PLECARE_LIMBI, TRANSPORT_LIMBI, REGULI_LIMBI, RETUR_LIMBI } from './zpTraduceri.js'
+import { ZP_LIMBI, PLECARE_LIMBI, TRANSPORT_LIMBI, REGULI_LIMBI, RETUR_LIMBI, POSTA_LIMBI } from './zpTraduceri.js'
 import './index.css'
 import PodFiles from './components/PodFiles'
 import DocumentCamera from './components/DocumentCamera'
@@ -5403,6 +5403,10 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
   // Ce mai lipseşte apare abia după ce şoferul a atins butonul de
   // confirmare (cerut de Andrei pe 18.10.2026).
   const [aratLipsa, setAratLipsa] = useState(false)
+  // Nota cu originalul Zustellprotokoll-ului, înainte de confirmarea livrării
+  // de documente (18.10.2026).
+  const [postaInfo, setPostaInfo] = useState(false)
+  const [postaLimba, setPostaLimba] = useState(() => citesteLimba(lang))
   // Doar la Dokumentenzustellung: cum a fost predat documentul.
   // Zustellart aleasă de client: la 3 („ausschließlich persönlich") cutia
   // poştală nu există deloc pe ecran; la 2 predarea personală stă prima.
@@ -6782,6 +6786,11 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
             setZpIntrebare('ask')
             return
           }
+          // Livrare de documente (dus): întâi nota despre original.
+          if (isDocumentDeliveryLeg) {
+            setPostaInfo(true)
+            return
+          }
           confirmLeg()
         }}
         // Fără internet, dovezile rămân în coadă şi `allDone` nu devine
@@ -6812,6 +6821,33 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
           <MapPin size={13} strokeWidth={1.8} style={{ verticalAlign: -2 }} /> {t('locationNoticePickup', lang)}
         </div>
       )}
+
+      {postaInfo && (() => {
+        const tr = POSTA_LIMBI[postaLimba] || POSTA_LIMBI.de
+        return (
+          <div role="dialog" aria-modal="true" style={{
+            position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(8,20,40,.55)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 18,
+          }}>
+            <div style={{ background: '#fff', borderRadius: 14, padding: '20px 18px', width: '100%', maxWidth: 380, boxShadow: '0 12px 40px rgba(0,0,0,.25)' }}>
+              <SelectorLimba value={postaLimba} onChange={setPostaLimba} />
+              <div style={{ fontSize: 18, fontWeight: 800, color: '#0F2240', lineHeight: 1.3 }}>
+                <FileText size={18} strokeWidth={2} style={{ verticalAlign: -3, marginRight: 6 }} />{tr.titlu}
+              </div>
+              <ol style={{ margin: '10px 0 0', paddingLeft: 20, fontSize: 14.5, lineHeight: 1.55, color: '#0F2240' }}>
+                {tr.pasi.map((p, i) => <li key={i} style={{ marginBottom: 6, fontWeight: i === 1 ? 700 : 400 }}>{p}</li>)}
+              </ol>
+              <button type="button" className="btn" style={{ marginTop: 14 }}
+                onClick={() => { setPostaInfo(false); confirmLeg() }}>
+                {tr.da}
+              </button>
+              <button type="button" className="link-btn" style={{ marginTop: 10, width: '100%' }} onClick={() => setPostaInfo(false)}>
+                {tr.inapoi}
+              </button>
+            </div>
+          </div>
+        )
+      })()}
 
       {zpIntrebare && (
         <div role="dialog" aria-modal="true" style={{

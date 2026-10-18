@@ -1293,9 +1293,12 @@ function statusScurt(order) {
   return { key, ton: st.moving ? 'drum' : 'loc', familie }
 }
 
-function StageProgress({ order, lang, inline }) {
+function StageProgress({ order, lang, inline, doarTur }) {
   const p = stageProgress(order)
   if (!p || p.done === 0) return null
+  // Sus, lângă „Zurück", doar la tururi („Stopp 1/4"); la o cursă simplă
+  // locul e al butonului de Ankunftszeit (18.10.2026).
+  if (doarTur && !(p.etape > 2)) return null
   return (
     <div style={inline
       ? { display: 'flex', alignItems: 'center', gap: 8, flex: '1 1 120px', minWidth: 0, margin: 0 }
@@ -3522,7 +3525,9 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
         <button className="back-btn" style={{ margin: 0, alignSelf: 'center' }} onClick={handleBack}>← {t('back', lang)}</button>
         {/* Progresul („Stopp 1/4") pe acelaşi rând cu „Zurück" — nu mai ocupă
             un rând separat deasupra hărţii. */}
-        <StageProgress order={order} lang={lang} inline />
+        <StageProgress order={order} lang={lang} inline doarTur />
+        {/* Locul butonului „Ankunftszeit" (îl pune aici LegWorkflow, pe drum). */}
+        <div id="zd-eta-slot" style={{ marginLeft: 'auto', display: 'flex', alignSelf: 'center' }} />
         {/* Zustellart: înainte de „Losfahren" şi din nou la locul livrării; pe
             drum (de la plecare până la sosirea la livrare) nu e nevoie de ea
             (18.10.2026). */}
@@ -6045,21 +6050,32 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
     ? (intrare.stop.eta_count || 0)
     : (intrare.key === 'pickup' ? (order.pickup_eta_count || 0) : (order.delivery_eta_count || 0))
 
+  // Butonul urcă pe rândul cu „Zurück" (18.10.2026), în locul liniei
+  // „Schritt 2/6". Dacă locul nu există, rămâne aici, ca până acum.
+  const [etaSlot, setEtaSlot] = useState(null)
+  useEffect(() => { setEtaSlot(document.getElementById('zd-eta-slot')) }, [])
+  const etaButon = (
+    <button
+      type="button"
+      onClick={() => setEtaOpen(true)}
+      style={etaSlot ? {
+        background: '#fff', border: '1px solid #D8DEE8', borderRadius: 10, padding: '8px 12px',
+        fontSize: 13.5, fontWeight: 700, color: '#0F2240', cursor: 'pointer', whiteSpace: 'nowrap',
+        display: 'inline-flex', alignItems: 'center', gap: 6,
+      } : {
+        width: '100%', background: '#fff', border: '1px solid #D8DEE8',
+        borderRadius: 10, padding: '11px 14px', fontSize: 14, fontWeight: 600,
+        color: '#0F2240', marginBottom: 10, cursor: 'pointer',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+      }}
+    >
+      <Bell size={15} strokeWidth={2} color="#FF7A29" />
+      {etaCount > 0 ? t('etaButtonAgain', lang) : t('etaButton', lang)}
+    </button>
+  )
   const etaBlock = etaAvailable ? (
     <>
-      <button
-        type="button"
-        onClick={() => setEtaOpen(true)}
-        style={{
-          width: '100%', background: '#fff', border: '1px solid #D8DEE8',
-          borderRadius: 10, padding: '11px 14px', fontSize: 14, fontWeight: 600,
-          color: '#0F2240', marginBottom: 10, cursor: 'pointer',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
-        }}
-      >
-        <Bell size={15} strokeWidth={2} color="#FF7A29" />
-        {etaCount > 0 ? t('etaButtonAgain', lang) : t('etaButton', lang)}
-      </button>
+      {etaSlot ? createPortal(etaButon, etaSlot) : etaButon}
       {etaToast && (
         <div style={{ background: '#EAF5EF', border: '1px solid #A8D5BE', borderRadius: 10, padding: '10px 12px', fontSize: 13, color: '#1F7A50', marginBottom: 10 }}>
           ✓ {etaToast}

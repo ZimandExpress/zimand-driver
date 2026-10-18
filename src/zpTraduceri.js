@@ -924,3 +924,31 @@ export const POSTA_LIMBI = {
   lt: { titlu: 'Zustellprotokoll lieka pas jus', pasi: ['Pasirašytas Zustellprotokoll (originalas) lieka pas jus – nepalikite jo gavėjui.', 'Prašome per 3–5 dienas išsiųsti jį paštu į Zimand Express.', 'Iki tol laikykite jį saugiai, sausai ir nesulenktą.'], da: 'Gerai, toliau', inapoi: 'Atgal' },
   lv: { titlu: 'Zustellprotokoll paliek pie jums', pasi: ['Parakstītais Zustellprotokoll (oriģināls) paliek pie jums – neatstājiet to saņēmējam.', 'Lūdzu, 3–5 dienu laikā nosūtiet to pa pastu uz Zimand Express.', 'Līdz tam glabājiet to droši, sausu un nesalocītu.'], da: 'Labi, turpināt', inapoi: 'Atpakaļ' },
 }
+
+// Fereastra „Zustellart ansehen" de lângă „Zurück": titlul şi numele celor trei
+// variante, în limba aleasă de şofer (18.10.2026).
+export const ZUSTELLART_LIMBI = {
+ "de": { "titlu": "Zustellart — vom Auftraggeber gewählt", "v1": "1 · Standard: Briefkasten, sonst persönlich", "v2": "2 · Persönliche Übergabe bevorzugt", "v3": "3 · Ausschließlich persönlich" },
+ "en": { "titlu": "Delivery method — chosen by the client", "v1": "1 · Standard: letterbox, otherwise in person", "v2": "2 · Personal handover preferred", "v3": "3 · Personal handover only" },
+ "ro": { "titlu": "Modul de livrare — ales de client", "v1": "1 · Standard: cutia poștală, altfel personal", "v2": "2 · Predare personală preferată", "v3": "3 · Exclusiv personal" },
+ "pl": { "titlu": "Sposób doręczenia — wybrany przez zleceniodawcę", "v1": "1 · Standard: skrzynka pocztowa, w przeciwnym razie osobiście", "v2": "2 · Preferowane doręczenie osobiste", "v3": "3 · Wyłącznie osobiście" },
+ "bg": { "titlu": "Начин на доставка — избран от възложителя", "v1": "1 · Стандарт: пощенска кутия, иначе лично", "v2": "2 · За предпочитане лично предаване", "v3": "3 · Само лично" },
+ "hu": { "titlu": "Kézbesítés módja — a megrendelő választása", "v1": "1 · Alap: postaláda, egyébként személyesen", "v2": "2 · Személyes átadás előnyben", "v3": "3 · Kizárólag személyesen" },
+ "cs": { "titlu": "Způsob doručení — zvolený zadavatelem", "v1": "1 · Standard: poštovní schránka, jinak osobně", "v2": "2 · Přednostně osobní předání", "v3": "3 · Výhradně osobně" },
+ "sk": { "titlu": "Spôsob doručenia — zvolený zadávateľom", "v1": "1 · Štandard: poštová schránka, inak osobne", "v2": "2 · Prednostne osobné odovzdanie", "v3": "3 · Výhradne osobne" },
+ "hr": { "titlu": "Način dostave — odabrao naručitelj", "v1": "1 · Standard: poštanski sandučić, inače osobno", "v2": "2 · Prednost osobnoj predaji", "v3": "3 · Isključivo osobno" },
+ "sr": { "titlu": "Način dostave — izabrao naručilac", "v1": "1 · Standard: poštansko sanduče, inače lično", "v2": "2 · Prednost ličnoj predaji", "v3": "3 · Isključivo lično" },
+ "sl": { "titlu": "Način dostave — izbral naročnik", "v1": "1 · Standard: poštni nabiralnik, sicer osebno", "v2": "2 · Prednost osebni izročitvi", "v3": "3 · Izključno osebno" },
+ "sq": { "titlu": "Mënyra e dorëzimit — e zgjedhur nga klienti", "v1": "1 · Standard: kutia postare, përndryshe personalisht", "v2": "2 · Preferohet dorëzimi personal", "v3": "3 · Vetëm personalisht" },
+ "uk": { "titlu": "Спосіб доставки — обраний замовником", "v1": "1 · Стандарт: поштова скринька, інакше особисто", "v2": "2 · Бажано особиста передача", "v3": "3 · Виключно особисто" },
+ "ru": { "titlu": "Способ доставки — выбран заказчиком", "v1": "1 · Стандарт: почтовый ящик, иначе лично", "v2": "2 · Предпочтительно личная передача", "v3": "3 · Исключительно лично" },
+ "tr": { "titlu": "Teslimat şekli — müşteri tarafından seçildi", "v1": "1 · Standart: posta kutusu, aksi halde elden", "v2": "2 · Elden teslim tercih edilir", "v3": "3 · Yalnızca elden" },
+ "it": { "titlu": "Modalità di consegna — scelta dal cliente", "v1": "1 · Standard: cassetta postale, altrimenti di persona", "v2": "2 · Consegna di persona preferita", "v3": "3 · Esclusivamente di persona" },
+ "es": { "titlu": "Modo de entrega — elegido por el cliente", "v1": "1 · Estándar: buzón, si no, en persona", "v2": "2 · Preferible entrega en persona", "v3": "3 · Exclusivamente en persona" },
+ "fr": { "titlu": "Mode de livraison — choisi par le client", "v1": "1 · Standard : boîte aux lettres, sinon en main propre", "v2": "2 · Remise en main propre de préférence", "v3": "3 · Exclusivement en main propre" },
+ "pt": { "titlu": "Modo de entrega — escolhido pelo cliente", "v1": "1 · Padrão: caixa de correio, caso contrário em mão", "v2": "2 · Entrega em mão preferida", "v3": "3 · Exclusivamente em mão" },
+ "nl": { "titlu": "Bezorgwijze — gekozen door de opdrachtgever", "v1": "1 · Standaard: brievenbus, anders persoonlijk", "v2": "2 · Persoonlijke overhandiging bij voorkeur", "v3": "3 · Uitsluitend persoonlijk" },
+ "el": { "titlu": "Τρόπος παράδοσης — επιλογή του πελάτη", "v1": "1 · Κανονικά: γραμματοκιβώτιο, αλλιώς αυτοπροσώπως", "v2": "2 · Προτιμάται η παράδοση αυτοπροσώπως", "v3": "3 · Αποκλειστικά αυτοπροσώπως" },
+ "lt": { "titlu": "Pristatymo būdas — pasirinktas užsakovo", "v1": "1 · Standartas: pašto dėžutė, kitaip asmeniškai", "v2": "2 · Pageidautina įteikti asmeniškai", "v3": "3 · Tik asmeniškai" },
+ "lv": { "titlu": "Piegādes veids — pasūtītāja izvēle", "v1": "1 · Standarts: pastkastīte, citādi personīgi", "v2": "2 · Vēlama personīga nodošana", "v3": "3 · Tikai personīgi" }
+}

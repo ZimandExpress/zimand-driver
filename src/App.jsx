@@ -4,7 +4,7 @@ import { supabase } from './supabaseClient'
 import { t, getLang, setLang, availableLangs } from './i18n'
 import { Maximize2, ArrowLeft as ArrowLeftMap, Eye, Play, ClipboardList, Pause, SlidersHorizontal, Building2, StickyNote, Receipt, Package, Repeat, Hourglass, Camera, Image as ImageIcon, Mail, Ruler, ChevronDown, Lock, Phone, Truck, CheckCircle2, Wallet, User, LogOut, Menu, Bell, MapPin, FlagTriangleRight, Tag, XCircle, Download, X, Navigation, Trophy, ThumbsUp, ArrowUpFromLine, ArrowDownToLine, EyeOff, Layers, AlertTriangle, Clock, FileText, Signature, BookOpen, Info as InfoIcon } from 'lucide-react'
 import { GHID_TRADUCERI, GHID_UI } from './ghidTraduceri.js'
-import { ZP_LIMBI, PLECARE_LIMBI, TRANSPORT_LIMBI, REGULI_LIMBI, RETUR_LIMBI, POSTA_LIMBI } from './zpTraduceri.js'
+import { ZP_LIMBI, PLECARE_LIMBI, TRANSPORT_LIMBI, REGULI_LIMBI, RETUR_LIMBI, POSTA_LIMBI, ZUSTELLART_LIMBI } from './zpTraduceri.js'
 import './index.css'
 import PodFiles from './components/PodFiles'
 import DocumentCamera from './components/DocumentCamera'
@@ -5326,8 +5326,8 @@ function ZustellartChip({ order, lang }) {
         }}>
           <SelectorLimba value={limba} onChange={setLimba} />
           <div onClick={() => setDeschis(false)} style={{ cursor: 'pointer' }}>
-            <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: 0.4, textTransform: 'uppercase', color: '#2E7D57' }}>{t('zustellartTitle', lang)}</div>
-            <div style={{ fontSize: 17.5, fontWeight: 800, color: '#1F7A50', marginTop: 3, marginBottom: 8 }}>{t(`zustellart${z}`, lang)}</div>
+            <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: 0.4, textTransform: 'uppercase', color: '#2E7D57' }}>{(ZUSTELLART_LIMBI[limba] || ZUSTELLART_LIMBI.de).titlu}</div>
+            <div style={{ fontSize: 17.5, fontWeight: 800, color: '#1F7A50', marginTop: 3, marginBottom: 8 }}>{(ZUSTELLART_LIMBI[limba] || ZUSTELLART_LIMBI.de)[`v${z}`]}</div>
           </div>
           {(() => {
             const tr = REGULI_LIMBI[limba] || REGULI_LIMBI.de

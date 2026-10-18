@@ -3546,6 +3546,9 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
     )
   }
 
+  const docSusLaRidicare = !order.pickup_confirmed_at && !!order.pickup_arrived_at
+    && !(order.is_document_delivery && order.boten_confirmation === true)
+
   function handleBack() {
     if (inConfirmStep && confirmFormOpen) {
       setConfirmFormOpen(false)
@@ -3567,6 +3570,10 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
         <StageProgress order={order} lang={lang} inline doarTur />
         {/* Locul butonului „Ankunftszeit" (îl pune aici LegWorkflow, pe drum). */}
         <div id="zd-eta-slot" style={{ marginLeft: 'auto', display: 'flex', alignSelf: 'center' }} />
+        {/* La locul ridicării, „Protokoll senden" / „CMR senden" urcă aici,
+            între „Zurück" şi ceas (18.10.2026). Varianta lungă „+ Bote" nu
+            încape pe rând — rămâne jos, ca până acum. */}
+        {docSusLaRidicare && <TrimiteDocument order={order} lang={lang} compact />}
         {/* Zustellart: înainte de „Losfahren" şi din nou la locul livrării; pe
             drum (de la plecare până la sosirea la livrare) nu e nevoie de ea
             (18.10.2026). */}
@@ -3962,7 +3969,7 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
 
       {/* Hârtiile către client, sub Fracht: acolo stă marfa, deci acolo se
           caută și actele ei. După ridicare nu mai e nevoie de ele (18.10.2026). */}
-      {!order.pickup_confirmed_at && <TrimiteDocument order={order} lang={lang} />}
+      {!order.pickup_confirmed_at && !docSusLaRidicare && <TrimiteDocument order={order} lang={lang} />}
 
       {isOwner && companyDrivers.length > 0 && !order.pickup_started_at && (
         <div className="reassign-footer">
@@ -4926,7 +4933,7 @@ function mascheazaEmail(x) {
   return `${scurt(s.slice(0, i), 1)}@${scurt(nume, 1)}${tld}`
 }
 
-function TrimiteDocument({ order, lang }) {
+function TrimiteDocument({ order, lang, compact }) {
   const [deschis, setDeschis] = useState(false)
   // Adresa clientului nu se arată întreagă: șoferul duce plicul, nu are
   // nevoie să știe cu cine lucrează firma. Dar o poate înlocui, căci la
@@ -4982,6 +4989,21 @@ function TrimiteDocument({ order, lang }) {
           Pe un rând cu „Zurück“ și ceasul, eticheta întreagă nu încape pe un
           telefon de 360 de puncte — măsurat: 337 de puncte pe 320. Aici încape,
           și mai încape și rândul care spune LA CE e bun butonul. */}
+      {compact ? (
+        // La ridicare: scurt, pe rândul cu „Zurück" şi ceasul (18.10.2026).
+        <button
+          type="button"
+          onClick={deschide}
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6, alignSelf: 'center',
+            background: '#fff', border: '1px solid var(--line, #D8DEE8)', borderRadius: 18,
+            padding: '6px 12px', fontSize: 13.5, fontWeight: 700, color: '#0F2240',
+            whiteSpace: 'nowrap', cursor: 'pointer',
+          }}
+        >
+          <FileText size={15} strokeWidth={1.8} style={{ color: 'var(--navy)' }} /> {eticheta}
+        </button>
+      ) : (
       <button
         type="button"
         onClick={deschide}
@@ -5001,6 +5023,7 @@ function TrimiteDocument({ order, lang }) {
           </span>
         </span>
       </button>
+      )}
 
       {deschis && (
         <div className="sig-fullscreen" style={{ justifyContent: 'flex-end', background: 'rgba(15,34,64,.55)' }}>

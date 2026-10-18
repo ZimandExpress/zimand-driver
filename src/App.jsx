@@ -4,7 +4,7 @@ import { supabase } from './supabaseClient'
 import { t, getLang, setLang, availableLangs } from './i18n'
 import { Maximize2, ArrowLeft as ArrowLeftMap, Eye, Play, ClipboardList, Pause, SlidersHorizontal, Building2, StickyNote, Receipt, Package, Repeat, Hourglass, Camera, Image as ImageIcon, Mail, Ruler, ChevronDown, Lock, Phone, Truck, CheckCircle2, Wallet, User, LogOut, Menu, Bell, MapPin, FlagTriangleRight, Tag, XCircle, Download, X, Navigation, Trophy, ThumbsUp, ArrowUpFromLine, ArrowDownToLine, EyeOff, Layers, AlertTriangle, Clock, FileText, Signature, BookOpen, Info as InfoIcon } from 'lucide-react'
 import { GHID_TRADUCERI, GHID_UI } from './ghidTraduceri.js'
-import { ZP_LIMBI, PLECARE_LIMBI, TRANSPORT_LIMBI, REGULI_LIMBI, RETUR_LIMBI, POSTA_LIMBI, ZUSTELLART_LIMBI } from './zpTraduceri.js'
+import { ZP_LIMBI, PLECARE_LIMBI, TRANSPORT_LIMBI, REGULI_LIMBI, RETUR_LIMBI, POSTA_LIMBI, ZUSTELLART_LIMBI, DEPARTE_LIMBI } from './zpTraduceri.js'
 import './index.css'
 import PodFiles from './components/PodFiles'
 import DocumentCamera from './components/DocumentCamera'
@@ -5384,6 +5384,24 @@ const BOTEN_INFO_LIMBI = [
 function citesteLimba(lang) {
   try { return localStorage.getItem('zd-boten-info-limba') || lang || 'de' } catch { return lang || 'de' }
 }
+// Varianta discretă: doar 🌐 şi codul limbii, ca un buton mic (18.10.2026).
+function SelectorLimbaMic({ value, onChange }) {
+  return (
+    <label style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: 3, flex: '0 0 auto',
+      fontSize: 11.5, fontWeight: 700, color: '#8A3A2A', background: 'rgba(255,255,255,.7)', border: '1px solid #E4A296',
+      borderRadius: 7, padding: '2px 6px', cursor: 'pointer' }}>
+      🌐 {String(value || 'de').toUpperCase()}
+      <select value={value} onChange={(e) => {
+        onChange(e.target.value)
+        try { localStorage.setItem('zd-boten-info-limba', e.target.value) } catch { /* nimic */ }
+      }} aria-label="Sprache"
+        style={{ position: 'absolute', inset: 0, opacity: 0, width: '100%', cursor: 'pointer' }}>
+        {BOTEN_INFO_LIMBI.map(([cod, nume]) => <option key={cod} value={cod}>{nume}</option>)}
+      </select>
+    </label>
+  )
+}
+
 function SelectorLimba({ value, onChange }) {
   return (
     <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#5A6878', marginBottom: 12 }}>
@@ -5828,6 +5846,7 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
   // distanţă. Poziţia se măsoară şi se salvează în continuare.
   const distanta = useDistantaFataDe(tintaEtapei, isDocumentDelivery && !order.proximity_check_off)
   const [avertismentDistanta, setAvertismentDistanta] = useState(null)
+  const [limbaDeparte, setLimbaDeparte] = useState(() => citesteLimba(lang))
   // Informarea despre Botenbestätigung: văzută o dată pe etapă (ţinută pe telefon).
   // O dată la fiecare sosire (cheia conţine ora sosirii): dacă sosirea e
   // anulată şi bifată din nou, informarea apare iar.
@@ -6511,16 +6530,22 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
                       .replace('{m}', distanta.marja != null ? `${distanta.marja}` : '?')}
           </div>
         )}
-        {avertismentDistanta != null && (
+        {avertismentDistanta != null && (() => {
+          // În limba aleasă de şofer, cu un selector mic în colţ (18.10.2026).
+          const trD = DEPARTE_LIMBI[limbaDeparte] || DEPARTE_LIMBI.de
+          return (
           <div style={{
             marginTop: 8, padding: '10px 12px', borderRadius: 9,
             background: '#FCEBE8', border: '1px solid #E4A296', color: '#B23A24',
             fontSize: 13, lineHeight: 1.55,
           }}>
-            <div style={{ fontWeight: 700 }}>
-              ⚠ {t('tooFarTitle', lang).replace('{m}', avertismentDistanta)}
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+              <div style={{ fontWeight: 700, flex: 1 }}>
+                ⚠ {trD.titlu.replace('{m}', avertismentDistanta)}
+              </div>
+              <SelectorLimbaMic value={limbaDeparte} onChange={setLimbaDeparte} />
             </div>
-            <div style={{ marginTop: 3 }}>{t('tooFarHint', lang)}</div>
+            <div style={{ marginTop: 3 }}>{trD.text}</div>
             {/* Singura ieşire când poziţia chiar e greşită: dispeceratul.
                 Aşa rămâne o urmă scrisă, în loc de o a doua atingere
                 despre care nimeni nu află niciodată. */}
@@ -6535,10 +6560,11 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
               }}
             >
               <WhatsAppIcon size={14} />
-              {t('tooFarContact', lang)}
+              {trD.buton}
             </a>
           </div>
-        )}
+          )
+        })()}
         {incidentBlock}
       </>
     )

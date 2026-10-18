@@ -952,3 +952,31 @@ export const ZUSTELLART_LIMBI = {
  "lt": { "titlu": "Pristatymo būdas — pasirinktas užsakovo", "v1": "1 · Standartas: pašto dėžutė, kitaip asmeniškai", "v2": "2 · Pageidautina įteikti asmeniškai", "v3": "3 · Tik asmeniškai" },
  "lv": { "titlu": "Piegādes veids — pasūtītāja izvēle", "v1": "1 · Standarts: pastkastīte, citādi personīgi", "v2": "2 · Vēlama personīga nodošana", "v3": "3 · Tikai personīgi" }
 }
+
+// Avertismentul „prea departe" la Angekommen / confirmare (18.10.2026):
+// titlu ({m} = metri), explicaţie, butonul spre dispecerat.
+export const DEPARTE_LIMBI = {
+ "de": { "titlu": "Sie sind {m} m vom Zielort entfernt.", "text": "Bitte gehen Sie näher an die Adresse heran. Bei Dokumentenzustellungen kann dieser Schritt nicht aus der Ferne bestätigt werden.", "buton": "Position stimmt nicht? Disposition schreiben" },
+ "en": { "titlu": "You are {m} m away from the location.", "text": "Please move closer to the address. For document deliveries this step cannot be confirmed from a distance.", "buton": "Position wrong? Message dispatch" },
+ "ro": { "titlu": "Sunteți la {m} m de destinație.", "text": "Vă rugăm să vă apropiați de adresă. La livrările de documente, acest pas nu poate fi confirmat de la distanță.", "buton": "Poziția nu e corectă? Scrieți dispeceratului" },
+ "pl": { "titlu": "Jesteś {m} m od miejsca docelowego.", "text": "Podejdź bliżej adresu. Przy doręczeniach dokumentów tego kroku nie można potwierdzić z daleka.", "buton": "Zła pozycja? Napisz do dyspozytora" },
+ "bg": { "titlu": "Намирате се на {m} м от адреса.", "text": "Моля, приближете се до адреса. При доставка на документи тази стъпка не може да се потвърди от разстояние.", "buton": "Позицията е грешна? Пишете на диспечера" },
+ "hu": { "titlu": "{m} m-re van a céltól.", "text": "Kérjük, menjen közelebb a címhez. Dokumentumkézbesítésnél ez a lépés nem igazolható távolról.", "buton": "Rossz a pozíció? Írjon a diszpécsernek" },
+ "cs": { "titlu": "Jste {m} m od cíle.", "text": "Přejděte prosím blíže k adrese. U doručení dokumentů nelze tento krok potvrdit na dálku.", "buton": "Poloha nesedí? Napište dispečinku" },
+ "sk": { "titlu": "Ste {m} m od cieľa.", "text": "Prejdite, prosím, bližšie k adrese. Pri doručení dokumentov nemožno tento krok potvrdiť na diaľku.", "buton": "Poloha nesedí? Napíšte dispečingu" },
+ "hr": { "titlu": "Udaljeni ste {m} m od odredišta.", "text": "Molimo priđite bliže adresi. Kod dostave dokumenata ovaj se korak ne može potvrditi na daljinu.", "buton": "Pozicija nije točna? Pišite dispečeru" },
+ "sr": { "titlu": "Udaljeni ste {m} m od odredišta.", "text": "Molimo priđite bliže adresi. Kod dostave dokumenata ovaj korak ne može da se potvrdi na daljinu.", "buton": "Pozicija nije tačna? Pišite dispečeru" },
+ "sl": { "titlu": "Od cilja ste oddaljeni {m} m.", "text": "Prosimo, pojdite bližje naslovu. Pri dostavi dokumentov tega koraka ni mogoče potrditi na daljavo.", "buton": "Položaj ni pravilen? Pišite dispečerju" },
+ "sq": { "titlu": "Jeni {m} m larg destinacionit.", "text": "Ju lutemi afrohuni më pranë adresës. Te dorëzimet e dokumenteve ky hap nuk mund të konfirmohet nga larg.", "buton": "Pozicioni nuk është i saktë? Shkruani dispeçerit" },
+ "uk": { "titlu": "Ви за {m} м від місця призначення.", "text": "Будь ласка, підійдіть ближче до адреси. Під час доставки документів цей крок не можна підтвердити на відстані.", "buton": "Позиція неправильна? Напишіть диспетчеру" },
+ "ru": { "titlu": "Вы в {m} м от места назначения.", "text": "Пожалуйста, подойдите ближе к адресу. При доставке документов этот шаг нельзя подтвердить на расстоянии.", "buton": "Позиция неверна? Напишите диспетчеру" },
+ "tr": { "titlu": "Hedefe {m} m uzaklıktasınız.", "text": "Lütfen adrese daha fazla yaklaşın. Belge teslimatlarında bu adım uzaktan onaylanamaz.", "buton": "Konum yanlış mı? Operasyona yazın" },
+ "it": { "titlu": "Si trova a {m} m dalla destinazione.", "text": "Si avvicini all'indirizzo. Per le consegne di documenti questo passaggio non può essere confermato a distanza.", "buton": "Posizione errata? Scrivi alla centrale" },
+ "es": { "titlu": "Está a {m} m del destino.", "text": "Acérquese a la dirección. En las entregas de documentos este paso no se puede confirmar a distancia.", "buton": "¿Posición incorrecta? Escriba a la central" },
+ "fr": { "titlu": "Vous êtes à {m} m de la destination.", "text": "Veuillez vous rapprocher de l'adresse. Pour les livraisons de documents, cette étape ne peut pas être confirmée à distance.", "buton": "Position incorrecte ? Écrire au dispatch" },
+ "pt": { "titlu": "Está a {m} m do destino.", "text": "Aproxime-se do endereço. Nas entregas de documentos, este passo não pode ser confirmado à distância.", "buton": "Posição errada? Escreva à central" },
+ "nl": { "titlu": "U bent {m} m van de bestemming.", "text": "Ga dichter naar het adres. Bij documentbezorging kan deze stap niet op afstand worden bevestigd.", "buton": "Positie klopt niet? Schrijf de planning" },
+ "el": { "titlu": "Βρίσκεστε {m} μ. από τον προορισμό.", "text": "Παρακαλούμε πλησιάστε τη διεύθυνση. Στις παραδόσεις εγγράφων αυτό το βήμα δεν μπορεί να επιβεβαιωθεί από απόσταση.", "buton": "Λάθος θέση; Γράψτε στο κέντρο" },
+ "lt": { "titlu": "Esate {m} m nuo tikslo.", "text": "Prieikite arčiau adreso. Pristatant dokumentus šio žingsnio negalima patvirtinti iš toli.", "buton": "Vieta neteisinga? Parašykite dispečeriui" },
+ "lv": { "titlu": "Jūs atrodaties {m} m no mērķa.", "text": "Lūdzu, pieejiet tuvāk adresei. Dokumentu piegādē šo soli nevar apstiprināt no attāluma.", "buton": "Atrašanās vieta nav pareiza? Rakstiet dispečeram" }
+}

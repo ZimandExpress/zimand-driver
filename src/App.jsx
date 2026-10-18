@@ -4019,7 +4019,7 @@ function SignatureLine({ lang, signatureBlob, onChange, obligatoriu }) {
             <button type="button" className="sig-fullscreen-close" onClick={() => setOpen(false)}>✕</button>
           </div>
           <div className="sig-fullscreen-canvas">
-            <SignaturePad onChange={onChange} />
+            <SignaturePad onChange={onChange} initial={signatureBlob} />
           </div>
           <button type="button" className="btn" style={{ margin: 16 }} onClick={() => setOpen(false)}>
             {t('doneLabel', lang)}
@@ -4030,10 +4030,10 @@ function SignatureLine({ lang, signatureBlob, onChange, obligatoriu }) {
   )
 }
 
-function SignaturePad({ onChange }) {
+function SignaturePad({ onChange, initial }) {
   const canvasRef = useRef(null)
   const drawingRef = useRef(false)
-  const [hasDrawing, setHasDrawing] = useState(false)
+  const [hasDrawing, setHasDrawing] = useState(!!initial)
 
   function getPos(e, canvas) {
     const rect = canvas.getBoundingClientRect()
@@ -4086,6 +4086,17 @@ function SignaturePad({ onChange }) {
     canvas.width = rect.width * ratio
     canvas.height = rect.height * ratio
     canvas.getContext('2d').scale(ratio, ratio)
+    // Semnătura deja făcută (sau păstrată după refresh) se vede din nou.
+    if (initial) {
+      const url = URL.createObjectURL(initial)
+      const img = new Image()
+      img.onload = () => {
+        canvas.getContext('2d').drawImage(img, 0, 0, rect.width, rect.height)
+        URL.revokeObjectURL(url)
+      }
+      img.src = url
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   return (
@@ -5642,7 +5653,32 @@ function BotenInfoSheet({ lang, onClose }) {
 function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatusChange, isOwner, onDeliveryComplete, profile, onStopFailed, onDeliveryFailed }) {
   const [busy, setBusy] = useState(false)
   const [fileSummary, setFileSummary] = useState({ total: 0, allDone: false, failed: 0, pending: 0, processing: 0, photoCount: 0, documentCount: 0 })
-  const [signatureBlob, setSignatureBlob] = useState(null)
+  // Semnătura rămâne şi ea la refresh / ieşire / fără net (18.10.2026):
+  // ţinută pe telefon ca imagine, legată de comandă şi etapă, 3 zile.
+  const cheieSemnatura = `zd-ciorna-semnatura:${order?.id}:${leg}`
+  const [signatureBlob, setSignatureBlobStare] = useState(null)
+  useEffect(() => {
+    let anulat = false
+    try {
+      const raw = localStorage.getItem(cheieSemnatura)
+      if (!raw) return
+      const o = JSON.parse(raw)
+      if (!o?.v || Date.now() - Number(o.t || 0) > CIORNA_ZILE * 864e5) { localStorage.removeItem(cheieSemnatura); return }
+      fetch(o.v).then((r) => r.blob()).then((b) => { if (!anulat) setSignatureBlobStare(b) }).catch(() => {})
+    } catch { /* nimic */ }
+    return () => { anulat = true }
+  }, [cheieSemnatura])
+  const setSignatureBlob = useCallback((blob) => {
+    setSignatureBlobStare(blob)
+    try {
+      if (!blob) { localStorage.removeItem(cheieSemnatura); return }
+      const fr = new FileReader()
+      fr.onload = () => {
+        try { localStorage.setItem(cheieSemnatura, JSON.stringify({ v: fr.result, t: Date.now() })) } catch { /* nimic */ }
+      }
+      fr.readAsDataURL(blob)
+    } catch { /* nimic */ }
+  }, [cheieSemnatura])
   const [signerName, setSignerName] = useCiorna(`nume:${order?.id}:${leg}`)
   // Ce mai lipseşte apare abia după ce şoferul a atins butonul de
   // confirmare (cerut de Andrei pe 18.10.2026).
@@ -6312,7 +6348,11 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
     setBusy(true)
     setUploadError('')
     try {
-      if (signatureBlob) await enqueueSignature(order.id, leg, signatureBlob)
+      if (signatureBlob) {
+        await enqueueSignature(order.id, leg, signatureBlob)
+        // De aici o ţine coada de încărcare — ciorna nu mai trebuie.
+        try { localStorage.removeItem(cheieSemnatura) } catch { /* nimic */ }
+      }
 
       // Poziția în momentul confirmării — doar la livrările de documente.
       //

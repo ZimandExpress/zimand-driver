@@ -6821,6 +6821,11 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
         onChange={addPhotos}
       />
 
+      {/* La ridicarea de documente fără Botenbestätigung nu e nimic de urcat
+          (Zustellprotokoll-ul e încă necompletat) — butonul nu mai apare
+          (18.10.2026). */}
+      {!(isDocumentDelivery && !esteLivrareEtapa && !cereBoten) && (
+      <>
       <div className="pod-label">
         {esteEtapaLivrareDoc ? `${t('docTypeProtocol', lang)} · ${t('requiredWord', lang)}` : t('documentsLabel', lang)}
       </div>
@@ -6832,6 +6837,8 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
       >
         {t('addDocument', lang)}
       </button>
+      </>
+      )}
 
       {docCaptureOpen && (
         <DocumentCapture

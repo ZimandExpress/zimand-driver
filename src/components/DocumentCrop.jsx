@@ -380,8 +380,17 @@ export default function DocumentCrop({ file, lang, titlu, onDone, onRetake }) {
 
   const poli = colturi.map((p) => `${p.x * 100},${p.y * 100}`).join(' ')
   return (
-    <div className="sig-fullscreen" style={{ background: '#0B1420', flexDirection: 'column', justifyContent: 'space-between', padding: 0, zIndex: 10000 }}>
-      <div style={{ padding: 'calc(14px + env(safe-area-inset-top, 0px)) 16px 6px', color: '#fff', textAlign: 'center' }}>
+    <div className="sig-fullscreen" style={{ background: '#0B1420', flexDirection: 'column', justifyContent: 'space-between', padding: 0, zIndex: 10000, overflowY: 'auto' }}>
+      <div style={{ padding: 'calc(10px + env(safe-area-inset-top, 0px)) 16px 6px', color: '#fff', textAlign: 'center' }}>
+        {/* „Neu aufnehmen" şi sus, mereu la vedere: pe telefoanele mici
+            butoanele de jos ieşeau din ecran (18.10.2026). */}
+        <div style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: 6 }}>
+          <button type="button" onClick={onRetake} disabled={lucreaza}
+                  style={{ background: 'rgba(255,255,255,.12)', border: '1px solid rgba(255,255,255,.35)', color: '#fff',
+                           borderRadius: 8, padding: '7px 12px', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>
+            {t('qRetake', lang)}
+          </button>
+        </div>
         <div style={{ fontSize: 14.5, fontWeight: 700 }}>{titlu}</div>
         <div style={{ fontSize: 13, color: '#C9D5E8', marginTop: 4, lineHeight: 1.4 }}>
           {cauta ? t('cropSearching', lang) : t('cropHint', lang)}
@@ -393,7 +402,7 @@ export default function DocumentCrop({ file, lang, titlu, onDone, onRetake }) {
           <div ref={zonaRef} style={{ position: 'relative', maxWidth: '100%', maxHeight: '100%', touchAction: 'none' }}
                onPointerMove={misca} onPointerUp={ridica} onPointerCancel={ridica}>
             <img src={previz || url} alt="" draggable={false}
-                 style={{ display: 'block', maxWidth: '100%', maxHeight: 'calc(100vh - 320px)', userSelect: 'none',
+                 style={{ display: 'block', maxWidth: '100%', maxHeight: 'calc(100dvh - 370px)', minHeight: 160, userSelect: 'none',
                           filter: `brightness(${1 + lum / 100}) contrast(${1 + con / 100})` }} />
             <svg viewBox="0 0 100 100" preserveAspectRatio="none"
                  style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }}>

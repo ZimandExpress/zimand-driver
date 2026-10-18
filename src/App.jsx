@@ -4165,10 +4165,21 @@ function DocumentCapture({ lang, tipuri, onPick, onClose }) {
   }
 
   async function dupaDecupaj(file) {
+    // Poza originală rămâne ţinută minte: „Zurück" duce înapoi la decupare,
+    // cu ea, fără o poză nouă (cerut de Andrei pe 18.10.2026).
+    const original = crop
     setCrop(null)
-    setReview({ file, url: URL.createObjectURL(file), checking: true, result: null })
+    setReview({ file, url: URL.createObjectURL(file), checking: true, result: null, original })
     const result = await analyzeDocumentPhoto(file)
     setReview((r) => (r && r.file === file ? { ...r, checking: false, result } : r))
+  }
+
+  function inapoiLaDecupare() {
+    if (!review?.original) { retake(); return }
+    const original = review.original
+    if (review.url) URL.revokeObjectURL(review.url)
+    setReview(null)
+    setCrop(original)
   }
 
   function retake() {
@@ -4252,9 +4263,9 @@ function DocumentCapture({ lang, tipuri, onPick, onClose }) {
                   type="button"
                   className={review.result?.ok ? 'btn secondary' : 'btn'}
                   style={{ width: '100%', marginTop: 0 }}
-                  onClick={retake}
+                  onClick={inapoiLaDecupare}
                 >
-                  {t('qRetake', lang)}
+                  ‹ {t('back', lang)}
                 </button>
                 {/* „Totuși“ dispare la hârtiile obligatorii.
                     Un CMR neînţeles sau un Zustellprotokoll tăiat pe jumătate

@@ -8,7 +8,7 @@
 // Deocamdată: instrucţiunile pentru Dokumentenzustellung (17.10.2026).
 export const GHID_TRADUCERI = {
  "doc_standard": {
-  "version": 3,
+  "version": 4,
   "langs": {
    "ro": {
     "title": "Atenție: livrare de documente",
@@ -26,6 +26,7 @@ export const GHID_TRADUCERI = {
     "delivery": [
      "Respectați modul de livrare din aplicație.",
      "Verificați numele destinatarului pe cutia poștală și la sonerie.",
+     "Dacă există mai multe cutii poștale cu același nume de familie: nu lăsați plicul în cutie, contactați dispeceratul.",
      "Lăsați în cutia poștală numai dacă numele se vede clar și poate fi fotografiat – altfel predați personal destinatarului. La „Ausschließlich persönliche Übergabe“ nu lăsați niciodată în cutie.",
      "Nu predați niciodată altor persoane: nici membrilor familiei, nici vecinilor sau colegilor.",
      "Fotografii: numărul casei, plăcuța cu numele, cutia poștală cu plicul introdus.",
@@ -48,6 +49,7 @@ export const GHID_TRADUCERI = {
     "delivery": [
      "Przestrzegaj sposobu doręczenia podanego w aplikacji.",
      "Sprawdź nazwisko odbiorcy na skrzynce i przy dzwonku.",
+     "Jeśli jest kilka skrzynek z tym samym nazwiskiem: nie wrzucaj, skontaktuj się z dyspozycją.",
      "Do skrzynki tylko wtedy, gdy nazwisko jest wyraźnie widoczne i można je sfotografować – inaczej osobiście do odbiorcy. Przy „Ausschließlich persönliche Übergabe“ nigdy nie wrzucaj.",
      "Nigdy nie przekazuj innym osobom: ani członkom rodziny, ani sąsiadom, ani współpracownikom.",
      "Zdjęcia: numer domu, tabliczka z nazwiskiem, skrzynka z wrzucaną kopertą.",
@@ -70,6 +72,7 @@ export const GHID_TRADUCERI = {
     "delivery": [
      "Спазвайте начина на доставка в приложението.",
      "Проверете името на получателя на пощенската кутия и на звънеца.",
+     "Ако има няколко пощенски кутии с една и съща фамилия: не пускайте плика, свържете се с диспечера.",
      "В кутията само ако името се вижда ясно и може да се снима – иначе лично на получателя. При „Ausschließlich persönliche Übergabe“ никога не пускайте в кутията.",
      "Никога не предавайте на други хора: нито на членове на семейството, нито на съседи или колеги.",
      "Снимки: номер на сградата, табелка с името, пощенската кутия с плика при пускане.",
@@ -92,6 +95,7 @@ export const GHID_TRADUCERI = {
     "delivery": [
      "Tartsa be az alkalmazásban megadott kézbesítési módot.",
      "Ellenőrizze a címzett nevét a postaládán és a csengőn.",
+     "Ha több postaláda van ugyanazzal a családnévvel: ne dobja be, lépjen kapcsolatba a diszpécserrel.",
      "Postaládába csak akkor, ha a név jól látható és lefényképezhető – különben személyesen a címzettnek. „Ausschließlich persönliche Übergabe“ esetén soha ne dobja be.",
      "Soha ne adja át más személynek: se családtagnak, se szomszédnak, se kollégának.",
      "Fotók: házszám, névtábla, postaláda a bedobott borítékkal.",
@@ -114,6 +118,7 @@ export const GHID_TRADUCERI = {
     "delivery": [
      "Dodržujte způsob doručení uvedený v aplikaci.",
      "Zkontrolujte jméno příjemce na schránce a u zvonku.",
+     "Pokud je více schránek se stejným příjmením: nevhazujte, kontaktujte dispečink.",
      "Do schránky jen tehdy, je-li jméno jasně vidět a lze ho vyfotit – jinak osobně příjemci. Při „Ausschließlich persönliche Übergabe“ nikdy nevhazujte.",
      "Nikdy nepředávejte jiným osobám: ani rodinným příslušníkům, sousedům či kolegům.",
      "Fotografie: číslo domu, jmenovka, schránka s vhazovanou obálkou.",
@@ -136,6 +141,7 @@ export const GHID_TRADUCERI = {
     "delivery": [
      "Dodržiavajte spôsob doručenia uvedený v aplikácii.",
      "Skontrolujte meno príjemcu na schránke a pri zvončeku.",
+     "Ak je viac schránok s rovnakým priezviskom: nevhadzujte, kontaktujte dispečing.",
      "Do schránky len vtedy, ak je meno jasne viditeľné a dá sa odfotiť – inak osobne príjemcovi. Pri „Ausschließlich persönliche Übergabe“ nikdy nevhadzujte.",
      "Nikdy neodovzdávajte iným osobám: ani rodinným príslušníkom, susedom či kolegom.",
      "Fotografie: číslo domu, menovka, schránka s vhadzovanou obálkou.",
@@ -158,6 +164,7 @@ export const GHID_TRADUCERI = {
     "delivery": [
      "Pridržavajte se načina dostave u aplikaciji.",
      "Provjerite ime primatelja na sandučiću i zvonu.",
+     "Ako postoji više sandučića s istim prezimenom: ne ubacujte, kontaktirajte dispečersku službu.",
      "U sandučić samo ako je ime jasno vidljivo i može se fotografirati – inače osobno primatelju. Kod „Ausschließlich persönliche Übergabe“ nikada ne ubacujte.",
      "Nikada ne predajte drugim osobama: ni članovima obitelji, susjedima ni kolegama.",
      "Fotografije: kućni broj, pločica s imenom, sandučić s omotnicom pri ubacivanju.",
@@ -180,6 +187,7 @@ export const GHID_TRADUCERI = {
     "delivery": [
      "Pridržavajte se načina dostave u aplikaciji.",
      "Proverite ime primaoca na sandučetu i zvonu.",
+     "Ako postoji više sandučića sa istim prezimenom: ne ubacujte, kontaktirajte dispečera.",
      "U sanduče samo ako je ime jasno vidljivo i može da se fotografiše – inače lično primaocu. Kod „Ausschließlich persönliche Übergabe“ nikada ne ubacujte.",
      "Nikada ne predajte drugim osobama: ni članovima porodice, komšijama ni kolegama.",
      "Fotografije: kućni broj, pločica sa imenom, sanduče sa kovertom pri ubacivanju.",
@@ -202,6 +210,7 @@ export const GHID_TRADUCERI = {
     "delivery": [
      "Upoštevajte način dostave v aplikaciji.",
      "Preverite ime prejemnika na nabiralniku in zvoncu.",
+     "Če je več nabiralnikov z istim priimkom: ne vstavljajte, obrnite se na dispečerja.",
      "V nabiralnik le, če je ime jasno vidno in ga je mogoče fotografirati – sicer osebno prejemniku. Pri „Ausschließlich persönliche Übergabe“ nikoli ne vstavljajte.",
      "Nikoli ne izročite drugim osebam: ne družinskim članom, sosedom ali sodelavcem.",
      "Fotografije: hišna številka, tablica z imenom, nabiralnik s kuverto ob vstavljanju.",
@@ -224,6 +233,7 @@ export const GHID_TRADUCERI = {
     "delivery": [
      "Respektoni mënyrën e dorëzimit në aplikacion.",
      "Kontrolloni emrin e marrësit në kutinë postare dhe te zilja.",
+     "Nëse ka disa kuti postare me të njëjtin mbiemër: mos e futni, kontaktoni dispeçerinë.",
      "Në kuti vetëm nëse emri duket qartë dhe mund të fotografohet – përndryshe personalisht marrësit. Me „Ausschließlich persönliche Übergabe“ mos e futni kurrë.",
      "Mos ia dorëzoni kurrë personave të tjerë: as familjarëve, as fqinjëve, as kolegëve.",
      "Foto: numri i shtëpisë, tabela me emrin, kutia postare me zarfin.",
@@ -246,6 +256,7 @@ export const GHID_TRADUCERI = {
     "delivery": [
      "Дотримуйтеся способу доставки, вказаного в додатку.",
      "Перевірте ім’я одержувача на поштовій скриньці та біля дзвінка.",
+     "Якщо є кілька скриньок з однаковим прізвищем: не вкидайте, зверніться до диспетчерської.",
      "У скриньку лише тоді, коли ім’я добре видно і його можна сфотографувати – інакше особисто одержувачу. При „Ausschließlich persönliche Übergabe“ ніколи не кидайте.",
      "Ніколи не передавайте іншим особам: ні членам сім’ї, ні сусідам, ні колегам.",
      "Фото: номер будинку, табличка з ім’ям, скринька з конвертом під час вкидання.",
@@ -268,6 +279,7 @@ export const GHID_TRADUCERI = {
     "delivery": [
      "Соблюдайте способ доставки, указанный в приложении.",
      "Проверьте имя получателя на почтовом ящике и у звонка.",
+     "Если есть несколько ящиков с одинаковой фамилией: не бросайте, свяжитесь с диспетчером.",
      "В ящик только если имя хорошо видно и его можно сфотографировать – иначе лично получателю. При „Ausschließlich persönliche Übergabe“ никогда не бросайте.",
      "Никогда не передавайте другим лицам: ни членам семьи, ни соседям, ни коллегам.",
      "Фото: номер дома, табличка с именем, ящик с конвертом при вбрасывании.",
@@ -290,6 +302,7 @@ export const GHID_TRADUCERI = {
     "delivery": [
      "Uygulamadaki teslimat şekline uyun.",
      "Alıcının adını posta kutusunda ve zilde kontrol edin.",
+     "Aynı soyadına sahip birden fazla posta kutusu varsa: atmayın, operasyon birimiyle iletişime geçin.",
      "Posta kutusuna yalnızca ad açıkça görünüyor ve fotoğraflanabiliyorsa – aksi halde alıcıya şahsen. „Ausschließlich persönliche Übergabe“ seçiliyse asla kutuya atmayın.",
      "Asla başka kişilere vermeyin: ne aile üyelerine, ne komşulara, ne iş arkadaşlarına.",
      "Fotoğraflar: kapı numarası, isim levhası, zarfın atıldığı posta kutusu.",
@@ -312,6 +325,7 @@ export const GHID_TRADUCERI = {
     "delivery": [
      "Rispettate la modalità di consegna indicata nell’app.",
      "Controllate il nome del destinatario sulla cassetta e sul campanello.",
+     "Se ci sono più cassette con lo stesso cognome: non imbucate, contattate la centrale.",
      "Nella cassetta solo se il nome è chiaramente visibile e fotografabile – altrimenti di persona al destinatario. Con „Ausschließlich persönliche Übergabe“ non imbucate mai.",
      "Non consegnate mai ad altre persone: né a familiari, né a vicini, né a colleghi.",
      "Foto: numero civico, targhetta col nome, cassetta con la busta mentre la imbucate.",
@@ -334,6 +348,7 @@ export const GHID_TRADUCERI = {
     "delivery": [
      "Respete el modo de entrega indicado en la app.",
      "Compruebe el nombre del destinatario en el buzón y en el timbre.",
+     "Si hay varios buzones con el mismo apellido: no lo deje en el buzón, contacte con la central.",
      "En el buzón solo si el nombre se ve claramente y se puede fotografiar – si no, en persona al destinatario. Con „Ausschließlich persönliche Übergabe“ nunca lo deje en el buzón.",
      "Nunca lo entregue a otras personas: ni a familiares, ni a vecinos, ni a compañeros.",
      "Fotos: número de la casa, placa con el nombre, buzón con el sobre al introducirlo.",
@@ -356,6 +371,7 @@ export const GHID_TRADUCERI = {
     "delivery": [
      "Respectez le mode de livraison indiqué dans l’appli.",
      "Vérifiez le nom du destinataire sur la boîte aux lettres et la sonnette.",
+     "S’il y a plusieurs boîtes aux lettres avec le même nom de famille : ne déposez pas, contactez la régulation.",
      "En boîte aux lettres uniquement si le nom est bien visible et peut être photographié – sinon en main propre au destinataire. Avec „Ausschließlich persönliche Übergabe“, ne déposez jamais.",
      "Ne remettez jamais à d’autres personnes : ni à la famille, ni aux voisins, ni aux collègues.",
      "Photos : numéro de rue, plaque nominative, boîte aux lettres avec l’enveloppe déposée.",
@@ -378,6 +394,7 @@ export const GHID_TRADUCERI = {
     "delivery": [
      "Respeite o modo de entrega indicado na app.",
      "Verifique o nome do destinatário na caixa do correio e na campainha.",
+     "Se houver várias caixas do correio com o mesmo apelido: não deixe na caixa, contacte a central.",
      "Na caixa do correio só se o nome estiver bem visível e puder ser fotografado – caso contrário, em mão ao destinatário. Com „Ausschließlich persönliche Übergabe“ nunca deixe na caixa.",
      "Nunca entregue a outras pessoas: nem a familiares, nem a vizinhos, nem a colegas.",
      "Fotos: número da porta, placa com o nome, caixa do correio com o envelope a entrar.",
@@ -400,6 +417,7 @@ export const GHID_TRADUCERI = {
     "delivery": [
      "Houd u aan de bezorgwijze in de app.",
      "Controleer de naam van de ontvanger op brievenbus en bel.",
+     "Zijn er meerdere brievenbussen met dezelfde achternaam: niet inwerpen, neem contact op met de planning.",
      "In de brievenbus alleen als de naam duidelijk zichtbaar is en gefotografeerd kan worden – anders persoonlijk aan de ontvanger. Bij „Ausschließlich persönliche Übergabe“ nooit in de brievenbus.",
      "Nooit aan anderen afgeven: geen familieleden, buren of collega’s.",
      "Foto’s: huisnummer, naambordje, brievenbus met de envelop bij het inwerpen.",
@@ -422,6 +440,7 @@ export const GHID_TRADUCERI = {
     "delivery": [
      "Τηρήστε τον τρόπο παράδοσης της εφαρμογής.",
      "Ελέγξτε το όνομα του παραλήπτη στο γραμματοκιβώτιο και στο κουδούνι.",
+     "Αν υπάρχουν πολλά γραμματοκιβώτια με το ίδιο επώνυμο: μην τον ρίξετε, επικοινωνήστε με το κέντρο.",
      "Στο γραμματοκιβώτιο μόνο αν το όνομα φαίνεται καθαρά και μπορεί να φωτογραφηθεί – αλλιώς προσωπικά στον παραλήπτη. Με „Ausschließlich persönliche Übergabe“ ποτέ στο γραμματοκιβώτιο.",
      "Μην παραδίδετε ποτέ σε άλλα πρόσωπα: ούτε σε μέλη οικογένειας, γείτονες ή συναδέλφους.",
      "Φωτογραφίες: αριθμός σπιτιού, ταμπέλα ονόματος, γραμματοκιβώτιο με τον φάκελο.",
@@ -444,6 +463,7 @@ export const GHID_TRADUCERI = {
     "delivery": [
      "Laikykitės programėlėje nurodyto pristatymo būdo.",
      "Patikrinkite gavėjo vardą ant pašto dėžutės ir prie skambučio.",
+     "Jei yra kelios pašto dėžutės su ta pačia pavarde: nemeskite, susisiekite su dispečerine.",
      "Į dėžutę tik tada, kai vardas aiškiai matomas ir jį galima nufotografuoti – kitaip asmeniškai gavėjui. Esant „Ausschließlich persönliche Übergabe“ niekada nemeskite.",
      "Niekada neperduokite kitiems asmenims: nei šeimos nariams, nei kaimynams, nei kolegoms.",
      "Nuotraukos: namo numeris, lentelė su vardu, pašto dėžutė su metamu voku.",
@@ -466,6 +486,7 @@ export const GHID_TRADUCERI = {
     "delivery": [
      "Ievērojiet lietotnē norādīto piegādes veidu.",
      "Pārbaudiet saņēmēja vārdu uz pastkastītes un pie zvana.",
+     "Ja ir vairākas pastkastītes ar vienu un to pašu uzvārdu: nemetiet, sazinieties ar dispečeriem.",
      "Pastkastītē tikai tad, ja vārds ir skaidri redzams un to var nofotografēt – citādi personīgi saņēmējam. Ja „Ausschließlich persönliche Übergabe“, nekad nemetiet.",
      "Nekad nenododiet citām personām: ne ģimenes locekļiem, ne kaimiņiem, ne kolēģiem.",
      "Foto: mājas numurs, vārda plāksnīte, pastkastīte ar iemetamo aploksni.",
@@ -475,7 +496,7 @@ export const GHID_TRADUCERI = {
   }
  },
  "zustellprotokoll": {
-  "version": 3,
+  "version": 4,
   "langs": {
    "ro": {
     "title": "Completarea Zustellprotokoll",
@@ -484,7 +505,7 @@ export const GHID_TRADUCERI = {
     "delivery": [
      "Treceți data, ora și modul livrării: cutie poștală sau predare personală.",
      "La predare personală: numele și semnătura destinatarului.",
-     "Semnați și dumneavoastră și scanați protocolul completat în aplicație."
+     "Semnați și dumneavoastră. Apoi alegeți „Dokument hinzufügen“ → „Zustellprotokoll” și încărcați protocolul cu atenție, urmând instrucțiunile – ajunge direct la client."
     ]
    },
    "pl": {
@@ -494,7 +515,7 @@ export const GHID_TRADUCERI = {
     "delivery": [
      "Wpisz datę, godzinę i sposób doręczenia: skrzynka lub przekazanie osobiste.",
      "Przy przekazaniu osobistym: imię i nazwisko oraz podpis odbiorcy.",
-     "Podpisz się sam i zeskanuj wypełniony protokół w aplikacji."
+     "Podpisz się sam. Następnie wybierz „Dokument hinzufügen“ → „Zustellprotokoll” i starannie prześlij protokół zgodnie z instrukcją – trafia on bezpośrednio do klienta."
     ]
    },
    "bg": {
@@ -504,7 +525,7 @@ export const GHID_TRADUCERI = {
     "delivery": [
      "Впишете дата, час и начин на доставка: пощенска кутия или лично предаване.",
      "При лично предаване: име и подпис на получателя.",
-     "Подпишете се и сканирайте попълнения протокол в приложението."
+     "Подпишете се. След това изберете „Dokument hinzufügen“ → „Zustellprotokoll“ и качете внимателно протокола според указанията – той отива директно при клиента."
     ]
    },
    "hu": {
@@ -514,7 +535,7 @@ export const GHID_TRADUCERI = {
     "delivery": [
      "Írja be a kézbesítés dátumát, idejét és módját: postaláda vagy személyes átadás.",
      "Személyes átadásnál: a címzett neve és aláírása.",
-     "Írja alá Ön is, és szkennelje be a kitöltött jegyzőkönyvet az alkalmazásban."
+     "Írja alá Ön is. Ezután válassza a „Dokument hinzufügen“ → „Zustellprotokoll” pontot, és gondosan, az útmutató szerint töltse fel – közvetlenül az ügyfélhez kerül."
     ]
    },
    "cs": {
@@ -524,7 +545,7 @@ export const GHID_TRADUCERI = {
     "delivery": [
      "Zapište datum, čas a způsob doručení: schránka nebo osobní předání.",
      "Při osobním předání: jméno a podpis příjemce.",
-     "Sami se podepište a vyplněný protokol naskenujte v aplikaci."
+     "Sami se podepište. Pak zvolte „Dokument hinzufügen“ → „Zustellprotokoll“ a protokol pečlivě nahrajte podle pokynů – jde přímo zákazníkovi."
     ]
    },
    "sk": {
@@ -534,7 +555,7 @@ export const GHID_TRADUCERI = {
     "delivery": [
      "Zapíšte dátum, čas a spôsob doručenia: schránka alebo osobné odovzdanie.",
      "Pri osobnom odovzdaní: meno a podpis príjemcu.",
-     "Sami sa podpíšte a vyplnený protokol naskenujte v aplikácii."
+     "Sami sa podpíšte. Potom zvoľte „Dokument hinzufügen“ → „Zustellprotokoll“ a protokol starostlivo nahrajte podľa pokynov – ide priamo zákazníkovi."
     ]
    },
    "hr": {
@@ -544,7 +565,7 @@ export const GHID_TRADUCERI = {
     "delivery": [
      "Upišite datum, vrijeme i način dostave: sandučić ili osobna predaja.",
      "Kod osobne predaje: ime i potpis primatelja.",
-     "Sami se potpišite i skenirajte ispunjeni protokol u aplikaciji."
+     "Sami se potpišite. Zatim odaberite „Dokument hinzufügen“ → „Zustellprotokoll” i pažljivo učitajte protokol prema uputama – ide izravno klijentu."
     ]
    },
    "sr": {
@@ -554,7 +575,7 @@ export const GHID_TRADUCERI = {
     "delivery": [
      "Upišite datum, vreme i način dostave: sanduče ili lična predaja.",
      "Kod lične predaje: ime i potpis primaoca.",
-     "Sami se potpišite i skenirajte popunjeni protokol u aplikaciji."
+     "Sami se potpišite. Zatim izaberite „Dokument hinzufügen“ → „Zustellprotokoll“ i pažljivo otpremite protokol prema uputstvima – ide direktno klijentu."
     ]
    },
    "sl": {
@@ -564,7 +585,7 @@ export const GHID_TRADUCERI = {
     "delivery": [
      "Vpišite datum, uro in način dostave: nabiralnik ali osebna izročitev.",
      "Pri osebni izročitvi: ime in podpis prejemnika.",
-     "Podpišite se še sami in izpolnjeni protokol skenirajte v aplikaciji."
+     "Podpišite se še sami. Nato izberite „Dokument hinzufügen“ → „Zustellprotokoll“ in protokol skrbno naložite po navodilih – gre neposredno stranki."
     ]
    },
    "sq": {
@@ -574,7 +595,7 @@ export const GHID_TRADUCERI = {
     "delivery": [
      "Shënoni datën, orën dhe mënyrën e dorëzimit: kuti postare ose dorëzim personal.",
      "Te dorëzimi personal: emri dhe nënshkrimi i marrësit.",
-     "Nënshkruani edhe vetë dhe skanoni protokollin e plotësuar në aplikacion."
+     "Nënshkruani edhe vetë. Pastaj zgjidhni „Dokument hinzufügen“ → „Zustellprotokoll” dhe ngarkojeni me kujdes protokollin sipas udhëzimeve – shkon drejtpërdrejt te klienti."
     ]
    },
    "uk": {
@@ -584,7 +605,7 @@ export const GHID_TRADUCERI = {
     "delivery": [
      "Впишіть дату, час і спосіб доставки: поштова скринька або особиста передача.",
      "При особистій передачі: ім’я та підпис одержувача.",
-     "Підпишіться самі й відскануйте заповнений протокол у додатку."
+     "Підпишіться самі. Потім виберіть „Dokument hinzufügen“ → «Zustellprotokoll» і ретельно завантажте протокол за інструкцією – він надходить безпосередньо клієнту."
     ]
    },
    "ru": {
@@ -594,7 +615,7 @@ export const GHID_TRADUCERI = {
     "delivery": [
      "Впишите дату, время и способ доставки: почтовый ящик или личная передача.",
      "При личной передаче: имя и подпись получателя.",
-     "Подпишитесь сами и отсканируйте заполненный протокол в приложении."
+     "Подпишитесь сами. Затем выберите „Dokument hinzufügen“ → «Zustellprotokoll» и аккуратно загрузите протокол по инструкции – он поступает прямо клиенту."
     ]
    },
    "tr": {
@@ -604,7 +625,7 @@ export const GHID_TRADUCERI = {
     "delivery": [
      "Teslimatın tarihini, saatini ve şeklini yazın: posta kutusu veya şahsen teslim.",
      "Şahsen teslimde: alıcının adı ve imzası.",
-     "Siz de imzalayın ve doldurulan protokolü uygulamada tarayın."
+     "Siz de imzalayın. Ardından „Dokument hinzufügen“ → „Zustellprotokoll” seçin ve protokolü talimatlara göre özenle yükleyin – doğrudan müşteriye gider."
     ]
    },
    "it": {
@@ -614,7 +635,7 @@ export const GHID_TRADUCERI = {
     "delivery": [
      "Inserite data, ora e modalità di consegna: cassetta o consegna di persona.",
      "In caso di consegna di persona: nome e firma del destinatario.",
-     "Firmate anche voi e scansionate il protocollo compilato nell’app."
+     "Firmate anche voi. Poi scegliete „Dokument hinzufügen“ → „Zustellprotokoll” e caricate il protocollo con cura seguendo le istruzioni – arriva direttamente al cliente."
     ]
    },
    "es": {
@@ -624,7 +645,7 @@ export const GHID_TRADUCERI = {
     "delivery": [
      "Anote fecha, hora y modo de entrega: buzón o entrega en persona.",
      "En la entrega en persona: nombre y firma del destinatario.",
-     "Firme usted también y escanee el protocolo rellenado en la app."
+     "Firme usted también. Después elija „Dokument hinzufügen“ → «Zustellprotokoll» y suba el protocolo con cuidado siguiendo las instrucciones – llega directamente al cliente."
     ]
    },
    "fr": {
@@ -634,7 +655,7 @@ export const GHID_TRADUCERI = {
     "delivery": [
      "Inscrivez la date, l’heure et le mode de livraison : boîte aux lettres ou remise en main propre.",
      "En cas de remise en main propre : nom et signature du destinataire.",
-     "Signez vous-même et scannez le protocole rempli dans l’appli."
+     "Signez vous-même. Puis choisissez „Dokument hinzufügen“ → « Zustellprotokoll » et téléchargez le protocole avec soin en suivant les instructions – il est envoyé directement au client."
     ]
    },
    "pt": {
@@ -644,7 +665,7 @@ export const GHID_TRADUCERI = {
     "delivery": [
      "Indique a data, a hora e o modo de entrega: caixa do correio ou entrega em mão.",
      "Na entrega em mão: nome e assinatura do destinatário.",
-     "Assine também e digitalize o protocolo preenchido na app."
+     "Assine também. Depois escolha „Dokument hinzufügen“ → «Zustellprotokoll» e carregue o protocolo com cuidado seguindo as instruções – vai diretamente para o cliente."
     ]
    },
    "nl": {
@@ -654,7 +675,7 @@ export const GHID_TRADUCERI = {
     "delivery": [
      "Vul datum, tijd en bezorgwijze in: brievenbus of persoonlijke overhandiging.",
      "Bij persoonlijke overhandiging: naam en handtekening van de ontvanger.",
-     "Teken zelf en scan het ingevulde protocol in de app."
+     "Teken zelf. Kies daarna „Dokument hinzufügen“ → „Zustellprotokoll” en upload het protocol zorgvuldig volgens de instructies – het gaat direct naar de klant."
     ]
    },
    "el": {
@@ -664,7 +685,7 @@ export const GHID_TRADUCERI = {
     "delivery": [
      "Γράψτε ημερομηνία, ώρα και τρόπο παράδοσης: γραμματοκιβώτιο ή προσωπική παράδοση.",
      "Σε προσωπική παράδοση: όνομα και υπογραφή του παραλήπτη.",
-     "Υπογράψτε κι εσείς και σαρώστε το συμπληρωμένο πρωτόκολλο στην εφαρμογή."
+     "Υπογράψτε κι εσείς. Έπειτα επιλέξτε „Dokument hinzufügen“ → «Zustellprotokoll» και ανεβάστε προσεκτικά το πρωτόκολλο σύμφωνα με τις οδηγίες – πηγαίνει απευθείας στον πελάτη."
     ]
    },
    "lt": {
@@ -674,7 +695,7 @@ export const GHID_TRADUCERI = {
     "delivery": [
      "Įrašykite pristatymo datą, laiką ir būdą: pašto dėžutė ar asmeninis perdavimas.",
      "Perduodant asmeniškai: gavėjo vardas ir parašas.",
-     "Pasirašykite patys ir nuskenuokite užpildytą protokolą programėlėje."
+     "Pasirašykite patys. Tada pasirinkite „Dokument hinzufügen“ → „Zustellprotokoll“ ir kruopščiai įkelkite protokolą pagal nurodymus – jis keliauja tiesiai klientui."
     ]
    },
    "lv": {
@@ -684,7 +705,7 @@ export const GHID_TRADUCERI = {
     "delivery": [
      "Ierakstiet piegādes datumu, laiku un veidu: pastkastīte vai personīga nodošana.",
      "Personīgas nodošanas gadījumā: saņēmēja vārds un paraksts.",
-     "Parakstieties arī paši un noskenējiet aizpildīto protokolu lietotnē."
+     "Parakstieties arī paši. Pēc tam izvēlieties „Dokument hinzufügen“ → „Zustellprotokoll” un rūpīgi augšupielādējiet protokolu pēc norādījumiem – tas nonāk tieši pie klienta."
     ]
    }
   }

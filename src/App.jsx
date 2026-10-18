@@ -2864,8 +2864,9 @@ function StopLegCard({ order, entry, lang, isCurrent, onOpenConfirm, onFailed })
 // Ciornă pentru textul scris de şofer (nume, motiv, notă, ofertă): rămâne pe
 // telefon la refresh, la ieşire/intrare sau când pică netul (18.10.2026).
 // Cheia e legată de comandă/etapă, deci nu trece la altă cursă. Se şterge
-// după trimitere; o ciornă uitată expiră singură după 3 zile.
-const CIORNA_ZILE = 3
+// după trimitere; o ciornă uitată expiră singură după 30 de minute.
+// 30 de minute de la ultima modificare (18.10.2026), apoi dispare.
+const CIORNA_MS = 30 * 60 * 1000
 function useCiorna(cheie, initial = '') {
   const k = cheie ? `zd-ciorna:${cheie}` : null
   const [v, setV] = useState(() => {
@@ -2874,7 +2875,7 @@ function useCiorna(cheie, initial = '') {
       const raw = localStorage.getItem(k)
       if (!raw) return initial
       const o = JSON.parse(raw)
-      if (!o || Date.now() - Number(o.t || 0) > CIORNA_ZILE * 864e5) { localStorage.removeItem(k); return initial }
+      if (!o || Date.now() - Number(o.t || 0) > CIORNA_MS) { localStorage.removeItem(k); return initial }
       return typeof o.v === 'string' ? o.v : initial
     } catch { return initial }
   })
@@ -5654,7 +5655,7 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
   const [busy, setBusy] = useState(false)
   const [fileSummary, setFileSummary] = useState({ total: 0, allDone: false, failed: 0, pending: 0, processing: 0, photoCount: 0, documentCount: 0 })
   // Semnătura rămâne şi ea la refresh / ieşire / fără net (18.10.2026):
-  // ţinută pe telefon ca imagine, legată de comandă şi etapă, 3 zile.
+  // ţinută pe telefon ca imagine, legată de comandă şi etapă, 30 de minute.
   const cheieSemnatura = `zd-ciorna-semnatura:${order?.id}:${leg}`
   const [signatureBlob, setSignatureBlobStare] = useState(null)
   useEffect(() => {
@@ -5663,7 +5664,7 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
       const raw = localStorage.getItem(cheieSemnatura)
       if (!raw) return
       const o = JSON.parse(raw)
-      if (!o?.v || Date.now() - Number(o.t || 0) > CIORNA_ZILE * 864e5) { localStorage.removeItem(cheieSemnatura); return }
+      if (!o?.v || Date.now() - Number(o.t || 0) > CIORNA_MS) { localStorage.removeItem(cheieSemnatura); return }
       fetch(o.v).then((r) => r.blob()).then((b) => { if (!anulat) setSignatureBlobStare(b) }).catch(() => {})
     } catch { /* nimic */ }
     return () => { anulat = true }

@@ -6116,8 +6116,11 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
   // Calculat aici, după ce sunt cunoscute tipul dovezii (CMR / semnătură),
   // nu sus: acelea se declară mai jos în componentă.
   const ghidChei = () => order.is_document_delivery
-    // La ridicare, Botenbestätigung are informarea ei proprie (BotenInfoSheet).
-    ? ['doc_standard', 'zustellprotokoll', ...(order.boten_confirmation && ghidFaza !== 'pickup' ? ['boten'] : [])]
+    // Übergabe- und Botenbestätigung: numai la plecarea spre ridicare (şi
+    // numai dacă e comandată). La ridicare are fereastra ei (BotenInfoSheet),
+    // iar „originalul rămâne la expeditor" apare la încărcarea ei. La livrare
+    // nu mai e nimic de spus despre ea (cerut de Andrei pe 18.10.2026).
+    ? ['doc_standard', 'zustellprotokoll', ...(order.boten_confirmation === true && ghidFaza === 'start' ? ['boten'] : [])]
     : ['ware', ...(cereDocument ? ['cmr'] : cereSemnatura ? ['signatur'] : [])]
   const ghiduriFaza = ghidFaza
     ? ghidChei().map((k) => ghiduriToate.find((g) => g.key === k))

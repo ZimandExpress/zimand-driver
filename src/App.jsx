@@ -7177,14 +7177,17 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
               <>
                 <div style={{ fontSize: 18, fontWeight: 800, color: '#0F2240', lineHeight: 1.3 }}>{zpT('askTitle')}</div>
                 <div style={{ fontSize: 14, color: '#B23A24', fontWeight: 600, marginTop: 8, lineHeight: 1.45 }}>{zpT('askText')}</div>
-                <button type="button" className="btn" style={{ marginTop: 16 }}
+                {/* Da / Nu centrate, cu spaţiu între ele (18.10.2026). */}
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, marginTop: 16, flexWrap: 'wrap' }}>
+                <button type="button" className="btn" style={{ margin: 0 }}
                   onClick={() => { setZpIntrebare(null); confirmLeg() }}>
                   {zpT('yes')}
                 </button>
-                <button type="button" className="btn btn-secondary" style={{ marginTop: 8, background: '#fff', color: '#B23A24', border: '2px solid #E4A296' }}
+                <button type="button" className="btn btn-secondary" style={{ margin: 0, background: '#fff', color: '#B23A24', border: '2px solid #E4A296' }}
                   onClick={() => setZpIntrebare('lipsa')}>
                   {zpT('no')}
                 </button>
+                </div>
               </>
             ) : (
               <>

@@ -6837,7 +6837,7 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
               <ol style={{ margin: '10px 0 0', paddingLeft: 20, fontSize: 14.5, lineHeight: 1.55, color: '#0F2240' }}>
                 {tr.pasi.map((p, i) => <li key={i} style={{ marginBottom: 6, fontWeight: i === 1 ? 700 : 400 }}>{p}</li>)}
               </ol>
-              <button type="button" className="btn" style={{ marginTop: 14 }}
+              <button type="button" className="btn" style={{ marginTop: 16, width: '100%', borderRadius: 12, fontSize: 16 }}
                 onClick={() => { setPostaInfo(false); confirmLeg() }}>
                 {tr.da}
               </button>

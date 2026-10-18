@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { supabase } from './supabaseClient'
 import { t, getLang, setLang, availableLangs } from './i18n'
-import { Eye, Play, ClipboardList, Pause, SlidersHorizontal, Building2, StickyNote, Receipt, Package, Repeat, Hourglass, Camera, Image as ImageIcon, Mail, Ruler, ChevronDown, Lock, Phone, Truck, CheckCircle2, Wallet, User, LogOut, Menu, Bell, MapPin, FlagTriangleRight, Tag, XCircle, Download, X, Navigation, Trophy, ThumbsUp, ArrowUpFromLine, ArrowDownToLine, EyeOff, Layers, AlertTriangle, Clock, FileText, Signature, BookOpen } from 'lucide-react'
+import { Maximize2, ArrowLeft as ArrowLeftMap, Eye, Play, ClipboardList, Pause, SlidersHorizontal, Building2, StickyNote, Receipt, Package, Repeat, Hourglass, Camera, Image as ImageIcon, Mail, Ruler, ChevronDown, Lock, Phone, Truck, CheckCircle2, Wallet, User, LogOut, Menu, Bell, MapPin, FlagTriangleRight, Tag, XCircle, Download, X, Navigation, Trophy, ThumbsUp, ArrowUpFromLine, ArrowDownToLine, EyeOff, Layers, AlertTriangle, Clock, FileText, Signature, BookOpen } from 'lucide-react'
 import { GHID_TRADUCERI, GHID_UI } from './ghidTraduceri.js'
 import { ZP_LIMBI, PLECARE_LIMBI, TRANSPORT_LIMBI, REGULI_LIMBI, RETUR_LIMBI, POSTA_LIMBI } from './zpTraduceri.js'
 import './index.css'
@@ -2473,13 +2473,18 @@ function scanDocument(file) {
   })
 }
 
-function GoogleLiveMap({ pickupCoords, deliveryCoords, stopCoords }) {
+function GoogleLiveMap({ pickupCoords, deliveryCoords, stopCoords, returnPickupCoords, returnDeliveryCoords }) {
   const mapRef = useRef(null)
   const mapInstanceRef = useRef(null)
   const directionsRendererRef = useRef(null)
   const markersRef = useRef([])
+  const boundsRef = useRef(null)
+  const eumarkerRef = useRef(null)
   const mapsKey = useGoogleMapsKey()
   const [ready, setReady] = useState(false)
+  // Harta pe tot ecranul (18.10.2026). Aceeaşi hartă, doar containerul se
+  // măreşte — nicio încărcare nouă, deci niciun cost în plus la Google.
+  const [mare, setMare] = useState(false)
 
   useEffect(() => {
     if (!mapsKey) return
@@ -2515,7 +2520,7 @@ function GoogleLiveMap({ pickupCoords, deliveryCoords, stopCoords }) {
       const marker = new window.google.maps.Marker({
         position: { lat: coords[0], lng: coords[1] },
         map,
-        label: { text: label, color: '#fff', fontWeight: '700', fontSize: '13px' },
+        label: { text: label, color: '#fff', fontWeight: '700', fontSize: label.length > 2 ? '10.5px' : '13px' },
         icon: {
           path: window.google.maps.SymbolPath.CIRCLE,
           scale: 14,
@@ -2530,7 +2535,13 @@ function GoogleLiveMap({ pickupCoords, deliveryCoords, stopCoords }) {
 
     // Alb pe #FF7A29 dă 2,6:1 — nelizibil. Aceeaşi familie de portocaliu,
     // închisă cât trebuie ca cifra să se vadă.
-    if (pickupCoords) addMarker(pickupCoords, 'A', '#B04A10')
+    // Retur (18.10.2026): de obicei ridicarea retur e la adresa B şi livrarea
+    // retur la A — atunci acelaşi semn primeşte ambele litere („B/C", „A/D"),
+    // iar traseul se întoarce. Dacă adresele diferă, apar semne proprii.
+    const aproape = (x, y) => x && y && Math.hypot((x[0] - y[0]) * 111000, (x[1] - y[1]) * 74000) < 60
+    const rpLaB = aproape(returnPickupCoords, deliveryCoords)
+    const rdLaA = aproape(returnDeliveryCoords, pickupCoords)
+    if (pickupCoords) addMarker(pickupCoords, returnDeliveryCoords && rdLaA ? 'A/D' : 'A', '#B04A10')
     // Opririle turului, numerotate între cele două capete. Ridicările în
     // portocaliu ca A, livrările în bleumarin ca B — aceeaşi logică de culoare.
     // Eticheta vine de la oprire, nu de la poziţia din listă.
@@ -2544,7 +2555,10 @@ function GoogleLiveMap({ pickupCoords, deliveryCoords, stopCoords }) {
     intermediare.forEach((x, i) => {
       addMarker(x.coords, x.label || String(i + 1), x.kind === 'delivery' ? '#1F4E8C' : '#B04A10')
     })
-    if (deliveryCoords) addMarker(deliveryCoords, 'B', '#0F2240')
+    if (deliveryCoords) addMarker(deliveryCoords, returnPickupCoords && rpLaB ? 'B/C' : 'B', '#0F2240')
+    if (returnPickupCoords && !rpLaB) addMarker(returnPickupCoords, 'C', '#1F4E8C')
+    if (returnDeliveryCoords && !rdLaA) addMarker(returnDeliveryCoords, 'D', '#B04A10')
+    const capatRetur = returnDeliveryCoords || null
 
     if (pickupCoords && deliveryCoords) {
       // Traseul dintre două puncte fixe nu se schimbă. Îl memorăm, altfel se
@@ -2552,14 +2566,25 @@ function GoogleLiveMap({ pickupCoords, deliveryCoords, stopCoords }) {
       // de ori pe zi pentru aceeași cursă.
       // Google acceptă până la 23 de puncte intermediare într-o cerere; la un
       // tur mai lung desenăm primele şi lăsăm restul ca semne pe hartă.
-      const waypoints = intermediare.slice(0, 23).map((x) => ({
+      const waypoints = intermediare.slice(0, 21).map((x) => ({
         location: { lat: x.coords[0], lng: x.coords[1] }, stopover: true,
       }))
+      // La dus-întors traseul continuă: B devine punct intermediar, apoi
+      // ridicarea retur (dacă e altundeva), iar capătul e livrarea retur.
+      if (capatRetur) {
+        waypoints.push({ location: { lat: deliveryCoords[0], lng: deliveryCoords[1] }, stopover: true })
+        if (returnPickupCoords && !rpLaB) waypoints.push({ location: { lat: returnPickupCoords[0], lng: returnPickupCoords[1] }, stopover: true })
+      }
+      const tinta = capatRetur || deliveryCoords
       const routeKey = [
         `${pickupCoords[0]},${pickupCoords[1]}`,
         ...waypoints.map((w) => `${w.location.lat},${w.location.lng}`),
-        `${deliveryCoords[0]},${deliveryCoords[1]}`,
+        `${tinta[0]},${tinta[1]}`,
       ].join('|')
+      const bounds = new window.google.maps.LatLngBounds()
+      ;[pickupCoords, deliveryCoords, returnPickupCoords, returnDeliveryCoords, ...intermediare.map((x) => x.coords)]
+        .filter(Boolean).forEach((c) => bounds.extend({ lat: c[0], lng: c[1] }))
+      boundsRef.current = bounds
       const cachedRoute = directionsCache.get(routeKey)
       if (cachedRoute) { renderer.setDirections(cachedRoute); return }
 
@@ -2568,7 +2593,7 @@ function GoogleLiveMap({ pickupCoords, deliveryCoords, stopCoords }) {
       directionsService.route(
         {
           origin: { lat: pickupCoords[0], lng: pickupCoords[1] },
-          destination: { lat: deliveryCoords[0], lng: deliveryCoords[1] },
+          destination: { lat: tinta[0], lng: tinta[1] },
           waypoints,
           travelMode: window.google.maps.TravelMode.DRIVING,
         },
@@ -2589,13 +2614,61 @@ function GoogleLiveMap({ pickupCoords, deliveryCoords, stopCoords }) {
       map.setCenter({ lat: pickupCoords[0], lng: pickupCoords[1] })
       map.setZoom(12)
     }
-  }, [pickupCoords, deliveryCoords, stopCoords, ready])
+  }, [pickupCoords, deliveryCoords, stopCoords, returnPickupCoords, returnDeliveryCoords, ready])
+
+  // Pe tot ecranul: harta se reîncadrează pe traseu, iar poziţia proprie
+  // apare ca punct albastru (GPS-ul telefonului — gratuit, fără Google).
+  useEffect(() => {
+    const map = mapInstanceRef.current
+    if (!map) return
+    const t0 = setTimeout(() => { if (boundsRef.current) map.fitBounds(boundsRef.current, 40) }, 80)
+    if (!mare || !navigator.geolocation) return () => clearTimeout(t0)
+    const id = navigator.geolocation.watchPosition((p) => {
+      const pos = { lat: p.coords.latitude, lng: p.coords.longitude }
+      if (!eumarkerRef.current) {
+        eumarkerRef.current = new window.google.maps.Marker({
+          position: pos, map, zIndex: 999,
+          icon: { path: window.google.maps.SymbolPath.CIRCLE, scale: 8, fillColor: '#1A73E8', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 3 },
+        })
+      } else {
+        eumarkerRef.current.setPosition(pos)
+        eumarkerRef.current.setMap(map)
+      }
+    }, () => {}, { enableHighAccuracy: true, maximumAge: 10000, timeout: 20000 })
+    return () => {
+      clearTimeout(t0)
+      navigator.geolocation.clearWatch(id)
+      if (eumarkerRef.current) eumarkerRef.current.setMap(null)
+    }
+  }, [mare])
 
   if (!mapsKey || !ready) {
     return <div className="live-map"><div className="live-map-loading"><Navigation size={22} strokeWidth={1.5} /></div></div>
   }
 
-  return <div className="live-map"><div ref={mapRef} style={{ width: '100%', height: '100%' }} /></div>
+  const btnHarta = {
+    position: 'absolute', zIndex: 2, display: 'flex', alignItems: 'center', gap: 6,
+    background: '#fff', color: '#0F2240', border: '1px solid #D8DEE8', borderRadius: 10,
+    padding: '8px 11px', fontSize: 14, fontWeight: 700, boxShadow: '0 2px 8px rgba(0,0,0,.18)', cursor: 'pointer',
+  }
+  return (
+    <div className="live-map" style={mare ? {
+      position: 'fixed', inset: 0, height: '100dvh', borderRadius: 0, border: 0, zIndex: 9500,
+    } : undefined}>
+      <div ref={mapRef} style={{ width: '100%', height: '100%' }} />
+      {mare ? (
+        <button type="button" onClick={() => setMare(false)}
+          style={{ ...btnHarta, top: 'calc(12px + env(safe-area-inset-top, 0px))', left: 12, padding: '10px 14px', fontSize: 15 }}>
+          <ArrowLeftMap size={17} strokeWidth={2.2} /> Zurück
+        </button>
+      ) : (
+        <button type="button" onClick={() => setMare(true)} aria-label="Karte vergrößern"
+          style={{ ...btnHarta, top: 8, right: 8, padding: 8 }}>
+          <Maximize2 size={17} strokeWidth={2.2} />
+        </button>
+      )}
+    </div>
+  )
 }
 
 function ContactRow({ contact, lang }) {
@@ -3263,6 +3336,10 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
     }))
   const pickupCoords = useGeocode(order.pickup_address)
   const deliveryCoords = useGeocode(order.delivery_address)
+  // Retur: adresele lui, pentru harta. Aceeaşi adresă ca B/A vine din memoria
+  // geocodării, fără o cerere nouă.
+  const returPickupCoords = useGeocode(order.is_round_trip ? (order.return_pickup_address || order.delivery_address) : null)
+  const returDeliveryCoords = useGeocode(order.is_round_trip ? (order.return_delivery_address || order.pickup_address) : null)
   const companyName = useCompanyName(order.created_by)
   const companyProfileId = useCompanyProfileId(session, null)
   const [companyDrivers, setCompanyDrivers] = useState([])
@@ -3468,7 +3545,9 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
       {/* Harta nu mai apare cât şoferul e la adresă (a bifat „Angekommen" şi
           n-a confirmat încă): urmează încărcarea sau predarea, nu drumul. */}
       {!(arrivedAt && !confirmedAt) && (
-        <GoogleLiveMap pickupCoords={pickupCoords} deliveryCoords={deliveryCoords} stopCoords={puncteOpriri} />
+        <GoogleLiveMap pickupCoords={pickupCoords} deliveryCoords={deliveryCoords} stopCoords={puncteOpriri}
+          returnPickupCoords={order.is_round_trip ? returPickupCoords : null}
+          returnDeliveryCoords={order.is_round_trip ? returDeliveryCoords : null} />
       )}
 
       {companyName && (

@@ -8,13 +8,13 @@
 // Deocamdată: instrucţiunile pentru Dokumentenzustellung (17.10.2026).
 export const GHID_TRADUCERI = {
  "doc_standard": {
-  "version": 4,
+  "version": 5,
   "langs": {
    "ro": {
     "title": "Atenție: livrare de documente",
     "start": [
      "Aceasta este o livrare de documente: fără Zustellprotokoll livrarea nu este posibilă.",
-     "Zustellprotokoll vi-l dă clientul la ridicare – tipărit, câte o foaie pentru fiecare destinatar. Dacă lipsește, nu finalizați ridicarea, ci cereți-l clientului.",
+     "Zustellprotokoll vi-l dă clientul la ridicare – tipărit; la mai mulți destinatari, câte o foaie pentru fiecare. Dacă lipsește, nu finalizați ridicarea, ci cereți-l clientului.",
      "Verificați în aplicație modul de livrare – la „Ausschließlich persönliche Übergabe“ nu se lasă în cutia poștală.",
      "Telefon încărcat, locația pornită: fotografiile și locația sunt obligatorii.",
      "Nu lăsați niciodată plicul din mână până la livrare."
@@ -37,7 +37,7 @@ export const GHID_TRADUCERI = {
     "title": "Uwaga: doręczenie dokumentów",
     "start": [
      "To jest doręczenie dokumentów: bez Zustellprotokoll doręczenie nie jest możliwe.",
-     "Zustellprotokoll przekazuje Ci zleceniodawca przy odbiorze – wydrukowany, jedna kartka na każdego odbiorcę. Jeśli go brakuje, nie kończ odbioru, tylko poproś o niego zleceniodawcę.",
+     "Zustellprotokoll przekazuje Ci zleceniodawca przy odbiorze – wydrukowany; przy kilku odbiorcach jedna kartka na każdego odbiorcę. Jeśli go brakuje, nie kończ odbioru, tylko poproś o niego zleceniodawcę.",
      "Sprawdź w aplikacji sposób doręczenia – przy „Ausschließlich persönliche Übergabe“ nie wrzuca się do skrzynki.",
      "Telefon naładowany, lokalizacja włączona: zdjęcia i lokalizacja są obowiązkowe.",
      "Nigdy nie wypuszczaj koperty z rąk aż do doręczenia."
@@ -60,7 +60,7 @@ export const GHID_TRADUCERI = {
     "title": "Внимание: доставка на документи",
     "start": [
      "Това е доставка на документи: без Zustellprotokoll доставката не е възможна.",
-     "Zustellprotokoll ви го дава възложителят при вземането – отпечатан, по един лист за всеки получател. Ако липсва, не приключвайте вземането, а го поискайте от възложителя.",
+     "Zustellprotokoll ви го дава възложителят при вземането – отпечатан; при няколко получатели по един лист за всеки. Ако липсва, не приключвайте вземането, а го поискайте от възложителя.",
      "Проверете начина на доставка в приложението – при „Ausschließlich persönliche Übergabe“ не се пуска в пощенската кутия.",
      "Телефонът зареден, локацията включена: снимките и локацията са задължителни.",
      "Никога не изпускайте плика от ръцете си до доставката."
@@ -83,7 +83,7 @@ export const GHID_TRADUCERI = {
     "title": "Figyelem: dokumentumkézbesítés",
     "start": [
      "Ez dokumentumkézbesítés: Zustellprotokoll nélkül a kézbesítés nem lehetséges.",
-     "A Zustellprotokollt az átvételkor a megrendelő adja át – kinyomtatva, címzettenként egy lap. Ha hiányzik, ne zárja le az átvételt, kérje el a megrendelőtől.",
+     "A Zustellprotokollt az átvételkor a megrendelő adja át – kinyomtatva; több címzett esetén címzettenként egy lap. Ha hiányzik, ne zárja le az átvételt, kérje el a megrendelőtől.",
      "Ellenőrizze az alkalmazásban a kézbesítés módját – „Ausschließlich persönliche Übergabe“ esetén nincs postaládába dobás.",
      "Telefon feltöltve, helymeghatározás bekapcsolva: a fotók és a helyadat kötelezők.",
      "A borítékot a kézbesítésig soha ne adja ki a kezéből."
@@ -106,7 +106,7 @@ export const GHID_TRADUCERI = {
     "title": "Pozor: doručení dokumentů",
     "start": [
      "Jde o doručení dokumentů: bez Zustellprotokoll není doručení možné.",
-     "Zustellprotokoll vám předá zadavatel při vyzvednutí – vytištěný, jeden list na každého příjemce. Pokud chybí, vyzvednutí nedokončujte a vyžádejte si ho od zadavatele.",
+     "Zustellprotokoll vám předá zadavatel při vyzvednutí – vytištěný; při více příjemcích jeden list na každého příjemce. Pokud chybí, vyzvednutí nedokončujte a vyžádejte si ho od zadavatele.",
      "Zkontrolujte v aplikaci způsob doručení – při „Ausschließlich persönliche Übergabe“ se nevhazuje do schránky.",
      "Telefon nabitý, poloha zapnutá: fotografie a poloha jsou povinné.",
      "Obálku až do doručení nikdy nepouštějte z ruky."
@@ -129,7 +129,7 @@ export const GHID_TRADUCERI = {
     "title": "Pozor: doručenie dokumentov",
     "start": [
      "Ide o doručenie dokumentov: bez Zustellprotokoll nie je doručenie možné.",
-     "Zustellprotokoll vám odovzdá objednávateľ pri vyzdvihnutí – vytlačený, jeden list na každého príjemcu. Ak chýba, vyzdvihnutie nedokončujte a vyžiadajte si ho od objednávateľa.",
+     "Zustellprotokoll vám odovzdá objednávateľ pri vyzdvihnutí – vytlačený; pri viacerých príjemcoch jeden list na každého príjemcu. Ak chýba, vyzdvihnutie nedokončujte a vyžiadajte si ho od objednávateľa.",
      "Skontrolujte v aplikácii spôsob doručenia – pri „Ausschließlich persönliche Übergabe“ sa nevhadzuje do schránky.",
      "Telefón nabitý, poloha zapnutá: fotografie a poloha sú povinné.",
      "Obálku až do doručenia nikdy nepúšťajte z ruky."
@@ -152,7 +152,7 @@ export const GHID_TRADUCERI = {
     "title": "Pažnja: dostava dokumenata",
     "start": [
      "Ovo je dostava dokumenata: bez Zustellprotokoll dostava nije moguća.",
-     "Zustellprotokoll vam pri preuzimanju predaje naručitelj – ispisan, jedan list po primatelju. Ako nedostaje, ne završavajte preuzimanje, nego ga zatražite od naručitelja.",
+     "Zustellprotokoll vam pri preuzimanju predaje naručitelj – ispisan; kod više primatelja jedan list po primatelju. Ako nedostaje, ne završavajte preuzimanje, nego ga zatražite od naručitelja.",
      "Provjerite u aplikaciji način dostave – kod „Ausschließlich persönliche Übergabe“ nema ubacivanja u sandučić.",
      "Telefon napunjen, lokacija uključena: fotografije i lokacija su obavezni.",
      "Omotnicu do dostave nikada ne ispuštajte iz ruku."
@@ -175,7 +175,7 @@ export const GHID_TRADUCERI = {
     "title": "Pažnja: dostava dokumenata",
     "start": [
      "Ovo je dostava dokumenata: bez Zustellprotokoll dostava nije moguća.",
-     "Zustellprotokoll vam pri preuzimanju predaje naručilac – odštampan, jedan list po primaocu. Ako nedostaje, ne završavajte preuzimanje, već ga zatražite od naručioca.",
+     "Zustellprotokoll vam pri preuzimanju predaje naručilac – odštampan; kod više primalaca jedan list po primaocu. Ako nedostaje, ne završavajte preuzimanje, već ga zatražite od naručioca.",
      "Proverite u aplikaciji način dostave – kod „Ausschließlich persönliche Übergabe“ nema ubacivanja u poštansko sanduče.",
      "Telefon napunjen, lokacija uključena: fotografije i lokacija su obavezni.",
      "Kovertu do dostave nikada ne ispuštajte iz ruku."
@@ -198,7 +198,7 @@ export const GHID_TRADUCERI = {
     "title": "Pozor: dostava dokumentov",
     "start": [
      "To je dostava dokumentov: brez Zustellprotokoll dostava ni mogoča.",
-     "Zustellprotokoll vam ob prevzemu izroči naročnik – natisnjen, en list na prejemnika. Če manjka, prevzema ne zaključite, temveč ga zahtevajte od naročnika.",
+     "Zustellprotokoll vam ob prevzemu izroči naročnik – natisnjen; pri več prejemnikih en list na prejemnika. Če manjka, prevzema ne zaključite, temveč ga zahtevajte od naročnika.",
      "V aplikaciji preverite način dostave – pri „Ausschließlich persönliche Übergabe“ ni vstavljanja v nabiralnik.",
      "Telefon napolnjen, lokacija vklopljena: fotografije in lokacija so obvezne.",
      "Kuverte do dostave nikoli ne izpustite iz rok."
@@ -221,7 +221,7 @@ export const GHID_TRADUCERI = {
     "title": "Kujdes: dorëzim dokumentesh",
     "start": [
      "Ky është dorëzim dokumentesh: pa Zustellprotokoll dorëzimi nuk është i mundur.",
-     "Zustellprotokoll jua jep porositësi gjatë marrjes – i printuar, një fletë për çdo marrës. Nëse mungon, mos e përfundoni marrjen, por kërkojani porositësit.",
+     "Zustellprotokoll jua jep porositësi gjatë marrjes – i printuar; me disa marrës, një fletë për çdo marrës. Nëse mungon, mos e përfundoni marrjen, por kërkojani porositësit.",
      "Kontrolloni në aplikacion mënyrën e dorëzimit – me „Ausschließlich persönliche Übergabe“ nuk futet në kutinë postare.",
      "Telefoni i karikuar, vendndodhja e ndezur: fotot dhe vendndodhja janë të detyrueshme.",
      "Mos e lëshoni kurrë zarfin nga dora deri në dorëzim."
@@ -244,7 +244,7 @@ export const GHID_TRADUCERI = {
     "title": "Увага: доставка документів",
     "start": [
      "Це доставка документів: без Zustellprotokoll доставка неможлива.",
-     "Zustellprotokoll вам передає замовник під час забору – надрукований, по одному аркушу на кожного одержувача. Якщо його немає, не завершуйте забір, а попросіть його в замовника.",
+     "Zustellprotokoll вам передає замовник під час забору – надрукований; якщо одержувачів кілька, по одному аркушу на кожного. Якщо його немає, не завершуйте забір, а попросіть його в замовника.",
      "Перевірте в додатку спосіб доставки – при „Ausschließlich persönliche Übergabe“ у поштову скриньку не кидають.",
      "Телефон заряджений, геолокація увімкнена: фото та геолокація обов’язкові.",
      "Ніколи не випускайте конверт з рук до доставки."
@@ -267,7 +267,7 @@ export const GHID_TRADUCERI = {
     "title": "Внимание: доставка документов",
     "start": [
      "Это доставка документов: без Zustellprotokoll доставка невозможна.",
-     "Zustellprotokoll вам передаёт заказчик при заборе – распечатанный, по одному листу на каждого получателя. Если его нет, не завершайте забор, а попросите его у заказчика.",
+     "Zustellprotokoll вам передаёт заказчик при заборе – распечатанный; если получателей несколько, по одному листу на каждого. Если его нет, не завершайте забор, а попросите его у заказчика.",
      "Проверьте в приложении способ доставки – при „Ausschließlich persönliche Übergabe“ в почтовый ящик не бросают.",
      "Телефон заряжен, геолокация включена: фото и геолокация обязательны.",
      "Никогда не выпускайте конверт из рук до доставки."
@@ -290,7 +290,7 @@ export const GHID_TRADUCERI = {
     "title": "Dikkat: belge teslimatı",
     "start": [
      "Bu bir belge teslimatıdır: Zustellprotokoll olmadan teslimat mümkün değildir.",
-     "Zustellprotokoll size teslim alırken müşteri tarafından verilir – yazdırılmış, her alıcı için bir sayfa. Yoksa teslim almayı tamamlamayın, müşteriden isteyin.",
+     "Zustellprotokoll size teslim alırken müşteri tarafından verilir – yazdırılmış; birden fazla alıcı varsa her alıcı için bir sayfa. Yoksa teslim almayı tamamlamayın, müşteriden isteyin.",
      "Uygulamada teslimat şeklini kontrol edin – „Ausschließlich persönliche Übergabe“ seçiliyse posta kutusuna atılmaz.",
      "Telefon şarjlı, konum açık: fotoğraflar ve konum zorunludur.",
      "Zarfı teslimata kadar asla elinizden bırakmayın."
@@ -313,7 +313,7 @@ export const GHID_TRADUCERI = {
     "title": "Attenzione: consegna di documenti",
     "start": [
      "Questa è una consegna di documenti: senza Zustellprotokoll la consegna non è possibile.",
-     "Lo Zustellprotokoll ve lo consegna il committente al ritiro – stampato, un foglio per ogni destinatario. Se manca, non concludete il ritiro, ma chiedetelo al committente.",
+     "Lo Zustellprotokoll ve lo consegna il committente al ritiro – stampato; con più destinatari, un foglio per ogni destinatario. Se manca, non concludete il ritiro, ma chiedetelo al committente.",
      "Controllate nell’app la modalità di consegna – con „Ausschließlich persönliche Übergabe“ non si imbuca nella cassetta.",
      "Telefono carico, posizione attiva: foto e posizione sono obbligatorie.",
      "Non lasciate mai la busta dalle mani fino alla consegna."
@@ -336,7 +336,7 @@ export const GHID_TRADUCERI = {
     "title": "Atención: entrega de documentos",
     "start": [
      "Esta es una entrega de documentos: sin Zustellprotokoll la entrega no es posible.",
-     "El Zustellprotokoll se lo entrega el cliente en la recogida – impreso, una hoja por destinatario. Si falta, no finalice la recogida, pídaselo al cliente.",
+     "El Zustellprotokoll se lo entrega el cliente en la recogida – impreso; con varios destinatarios, una hoja por destinatario. Si falta, no finalice la recogida, pídaselo al cliente.",
      "Compruebe en la app el modo de entrega – con „Ausschließlich persönliche Übergabe“ no se deja en el buzón.",
      "Teléfono cargado, ubicación activada: las fotos y la ubicación son obligatorias.",
      "No suelte nunca el sobre hasta la entrega."
@@ -359,7 +359,7 @@ export const GHID_TRADUCERI = {
     "title": "Attention : livraison de documents",
     "start": [
      "Il s’agit d’une livraison de documents : sans Zustellprotokoll, la livraison n’est pas possible.",
-     "Le Zustellprotokoll vous est remis par le donneur d’ordre à l’enlèvement – imprimé, une feuille par destinataire. S’il manque, ne terminez pas l’enlèvement, demandez-le au donneur d’ordre.",
+     "Le Zustellprotokoll vous est remis par le donneur d’ordre à l’enlèvement – imprimé ; avec plusieurs destinataires, une feuille par destinataire. S’il manque, ne terminez pas l’enlèvement, demandez-le au donneur d’ordre.",
      "Vérifiez dans l’appli le mode de livraison – avec „Ausschließlich persönliche Übergabe“, pas de dépôt en boîte aux lettres.",
      "Téléphone chargé, localisation activée : photos et localisation sont obligatoires.",
      "Ne lâchez jamais l’enveloppe jusqu’à la livraison."
@@ -382,7 +382,7 @@ export const GHID_TRADUCERI = {
     "title": "Atenção: entrega de documentos",
     "start": [
      "Esta é uma entrega de documentos: sem Zustellprotokoll a entrega não é possível.",
-     "O Zustellprotokoll é-lhe entregue pelo cliente na recolha – impresso, uma folha por destinatário. Se faltar, não conclua a recolha, peça-o ao cliente.",
+     "O Zustellprotokoll é-lhe entregue pelo cliente na recolha – impresso; com vários destinatários, uma folha por destinatário. Se faltar, não conclua a recolha, peça-o ao cliente.",
      "Verifique na app o modo de entrega – com „Ausschließlich persönliche Übergabe“ não se deixa na caixa do correio.",
      "Telemóvel carregado, localização ligada: fotos e localização são obrigatórias.",
      "Nunca largue o envelope até à entrega."
@@ -405,7 +405,7 @@ export const GHID_TRADUCERI = {
     "title": "Let op: documentbezorging",
     "start": [
      "Dit is een documentbezorging: zonder Zustellprotokoll is bezorgen niet mogelijk.",
-     "Het Zustellprotokoll krijgt u bij het ophalen van de opdrachtgever – geprint, één blad per ontvanger. Ontbreekt het, rond het ophalen dan niet af maar vraag het bij de opdrachtgever.",
+     "Het Zustellprotokoll krijgt u bij het ophalen van de opdrachtgever – geprint; bij meerdere ontvangers één blad per ontvanger. Ontbreekt het, rond het ophalen dan niet af maar vraag het bij de opdrachtgever.",
      "Controleer in de app de bezorgwijze – bij „Ausschließlich persönliche Übergabe“ niet in de brievenbus.",
      "Telefoon opgeladen, locatie aan: foto’s en locatie zijn verplicht.",
      "Laat de envelop tot de bezorging nooit uit handen."
@@ -428,7 +428,7 @@ export const GHID_TRADUCERI = {
     "title": "Προσοχή: παράδοση εγγράφων",
     "start": [
      "Πρόκειται για παράδοση εγγράφων: χωρίς Zustellprotokoll η παράδοση δεν είναι δυνατή.",
-     "Το Zustellprotokoll σας το δίνει ο πελάτης κατά την παραλαβή – τυπωμένο, ένα φύλλο ανά παραλήπτη. Αν λείπει, μην ολοκληρώσετε την παραλαβή, ζητήστε το από τον πελάτη.",
+     "Το Zustellprotokoll σας το δίνει ο πελάτης κατά την παραλαβή – τυπωμένο· με περισσότερους παραλήπτες, ένα φύλλο ανά παραλήπτη. Αν λείπει, μην ολοκληρώσετε την παραλαβή, ζητήστε το από τον πελάτη.",
      "Ελέγξτε στην εφαρμογή τον τρόπο παράδοσης – με „Ausschließlich persönliche Übergabe“ δεν ρίχνεται στο γραμματοκιβώτιο.",
      "Τηλέφωνο φορτισμένο, τοποθεσία ενεργή: οι φωτογραφίες και η τοποθεσία είναι υποχρεωτικές.",
      "Μην αφήνετε ποτέ τον φάκελο από τα χέρια σας μέχρι την παράδοση."
@@ -451,7 +451,7 @@ export const GHID_TRADUCERI = {
     "title": "Dėmesio: dokumentų pristatymas",
     "start": [
      "Tai dokumentų pristatymas: be Zustellprotokoll pristatyti neįmanoma.",
-     "Zustellprotokoll jums paėmimo metu perduoda užsakovas – atspausdintą, po vieną lapą kiekvienam gavėjui. Jei jo nėra, paėmimo neužbaikite, o paprašykite užsakovo.",
+     "Zustellprotokoll jums paėmimo metu perduoda užsakovas – atspausdintą; esant keliems gavėjams, po vieną lapą kiekvienam. Jei jo nėra, paėmimo neužbaikite, o paprašykite užsakovo.",
      "Programėlėje patikrinkite pristatymo būdą – esant „Ausschließlich persönliche Übergabe“ į pašto dėžutę nemetama.",
      "Telefonas įkrautas, vieta įjungta: nuotraukos ir vieta privalomos.",
      "Voko iki pristatymo niekada nepaleiskite iš rankų."
@@ -474,7 +474,7 @@ export const GHID_TRADUCERI = {
     "title": "Uzmanību: dokumentu piegāde",
     "start": [
      "Šī ir dokumentu piegāde: bez Zustellprotokoll piegāde nav iespējama.",
-     "Zustellprotokoll jums saņemšanas brīdī nodod pasūtītājs – izdrukātu, pa vienai lapai katram saņēmējam. Ja tā nav, saņemšanu nepabeidziet, bet palūdziet to pasūtītājam.",
+     "Zustellprotokoll jums saņemšanas brīdī nodod pasūtītājs – izdrukātu; ja saņēmēji ir vairāki, pa vienai lapai katram. Ja tā nav, saņemšanu nepabeidziet, bet palūdziet to pasūtītājam.",
      "Pārbaudiet lietotnē piegādes veidu – ja „Ausschließlich persönliche Übergabe“, pastkastītē nemet.",
      "Telefons uzlādēts, atrašanās vieta ieslēgta: foto un atrašanās vieta ir obligāti.",
      "Līdz piegādei nekad nelaidiet aploksni no rokām."

@@ -3575,6 +3575,9 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
             între „Zurück" şi ceas (18.10.2026). Varianta lungă „+ Bote" nu
             încape pe rând — rămâne jos, ca până acum. */}
         {docSusLaRidicare && <TrimiteDocument order={order} lang={lang} compact />}
+        {/* „Dispo Zimand · Problem melden" urcă aici după „Angekommen" (îl pune
+            LegWorkflow), între „Zurück" şi ceas (18.10.2026). */}
+        <div id="zd-dispo-slot" style={{ display: 'flex', alignSelf: 'center' }} />
         {/* Zustellart: înainte de „Losfahren" şi din nou la locul livrării; pe
             drum (de la plecare până la sosirea la livrare) nu e nevoie de ea
             (18.10.2026). */}
@@ -6205,6 +6208,8 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
   // „Schritt 2/6". Dacă locul nu există, rămâne aici, ca până acum.
   const [etaSlot, setEtaSlot] = useState(null)
   useEffect(() => { setEtaSlot(document.getElementById('zd-eta-slot')) }, [])
+  const [dispoSlot, setDispoSlot] = useState(null)
+  useEffect(() => { setDispoSlot(document.getElementById('zd-dispo-slot')) }, [])
   const etaButon = (
     <button
       type="button"
@@ -7253,20 +7258,46 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
           confirmarea nu merge. */}
       <div style={{ marginTop: 18, paddingTop: 14, borderTop: '1px solid var(--line, #E2E7EE)' }}>
         {incidentBlock}
-        <a
-          href={dispatchWaUrl(order, fapte)}
-          target="_blank"
-          rel="noreferrer"
-          style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
-            color: '#33415A', border: '1px solid #D8DEE8', background: '#fff',
-            fontSize: 13.5, fontWeight: 600, padding: '10px 12px', borderRadius: 10,
-            textDecoration: 'none',
-          }}
-        >
-          <WhatsAppIcon size={15} />
-          {t('dispatchWa', lang)}
-        </a>
+        {(() => {
+          // Sus, lângă „Zurück", când rândul e liber: la livrare, sau la o
+          // ridicare unde „Protokoll/CMR senden" nu a urcat deja acolo.
+          const susDispo = !!dispoSlot && (esteLivrareEtapa || (isDocumentDelivery && order.boten_confirmation === true))
+          if (susDispo) {
+            return createPortal(
+              <a
+                href={dispatchWaUrl(order, fapte)}
+                target="_blank"
+                rel="noreferrer"
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap',
+                  color: '#33415A', border: '1px solid #D8DEE8', background: '#fff',
+                  fontSize: 13, fontWeight: 700, padding: '6px 11px', borderRadius: 18,
+                  textDecoration: 'none',
+                }}
+              >
+                <WhatsAppIcon size={15} />
+                {t('dispatchWa', lang)}
+              </a>,
+              dispoSlot,
+            )
+          }
+          return (
+            <a
+              href={dispatchWaUrl(order, fapte)}
+              target="_blank"
+              rel="noreferrer"
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                color: '#33415A', border: '1px solid #D8DEE8', background: '#fff',
+                fontSize: 13.5, fontWeight: 600, padding: '10px 12px', borderRadius: 10,
+                textDecoration: 'none',
+              }}
+            >
+              <WhatsAppIcon size={15} />
+              {t('dispatchWa', lang)}
+            </a>
+          )
+        })()}
       </div>
     </div>
   )

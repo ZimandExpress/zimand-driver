@@ -3523,7 +3523,11 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
         {/* Progresul („Stopp 1/4") pe acelaşi rând cu „Zurück" — nu mai ocupă
             un rând separat deasupra hărţii. */}
         <StageProgress order={order} lang={lang} inline />
-        {order.is_document_delivery && !order.delivery_confirmed_at && !(inConfirmStep && confirmFormOpen) && (
+        {/* Zustellart: înainte de „Losfahren" şi din nou la locul livrării; pe
+            drum (de la plecare până la sosirea la livrare) nu e nevoie de ea
+            (18.10.2026). */}
+        {order.is_document_delivery && !order.delivery_confirmed_at && !(inConfirmStep && confirmFormOpen)
+          && (!order.pickup_started_at || order.delivery_arrived_at) && (
           <ZustellartChip order={order} lang={lang} />
         )}
         {/* Wartezeit, calculată din ora sosirii — nu dintr-un cronometru ţinut

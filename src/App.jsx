@@ -5608,9 +5608,15 @@ function ReguliZustellung({ lang, zustellart, ales, onAck }) {
       {(() => {
         const a = ZUSTELLART_ALES[limba] || ZUSTELLART_ALES.de
         return (
-          <div style={{ background: zustellart === 3 ? '#FDF1EF' : '#F3F6FB', border: `1px solid ${zustellart === 3 ? '#E4A296' : '#C9D5E8'}`, borderRadius: 10, padding: '9px 12px', marginBottom: 14 }}>
-            <div style={{ fontSize: 11.5, fontWeight: 700, color: '#6B7A90', textTransform: 'uppercase', letterSpacing: 0.3 }}>{ales ? a.ales : a.nimic}</div>
-            <div style={{ fontSize: 15, fontWeight: 800, color: zustellart === 3 ? '#B23A24' : '#0F2240', marginTop: 2 }}>{(ZUSTELLART_LIMBI[limba] || ZUSTELLART_LIMBI.de)[`v${zustellart}`] || ZUSTELLART_NUME[zustellart]}</div>
+          // Verde (1, 2) sau portocaliu (3 — exclusiv personal), ca să sară
+          // în ochi (18.10.2026).
+          <div style={{
+            background: zustellart === 3 ? '#FFF1E6' : '#E7F4EE',
+            border: `2px solid ${zustellart === 3 ? '#F28C38' : '#3FA472'}`,
+            borderRadius: 12, padding: '11px 14px', marginBottom: 14,
+          }}>
+            <div style={{ fontSize: 12, fontWeight: 800, color: zustellart === 3 ? '#C2551A' : '#2E7D57', textTransform: 'uppercase', letterSpacing: 0.4 }}>{ales ? a.ales : a.nimic}</div>
+            <div style={{ fontSize: 17, fontWeight: 800, color: zustellart === 3 ? '#B4470F' : '#1F7A50', marginTop: 3, lineHeight: 1.35 }}>{(ZUSTELLART_LIMBI[limba] || ZUSTELLART_LIMBI.de)[`v${zustellart}`] || ZUSTELLART_NUME[zustellart]}</div>
           </div>
         )
       })()}

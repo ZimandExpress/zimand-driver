@@ -5068,6 +5068,17 @@ function TrimiteDocument({ order, lang }) {
                 {stare.ok ? '\u2713 ' : '\u26a0 '}{stare.msg}
               </div>
             )}
+            {/* După trimitere: buton clar de închidere (18.10.2026). */}
+            {stare?.ok && (
+              <button
+                type="button"
+                className="btn"
+                style={{ width: '100%', marginTop: 12, background: '#1F7A50' }}
+                onClick={() => { setDeschis(false); setStare(null); setAlta(null) }}
+              >
+                {t('docSheetClose', lang)}
+              </button>
+            )}
           </div>
         </div>
       )}

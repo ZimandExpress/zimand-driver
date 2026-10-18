@@ -7190,7 +7190,7 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
               <>
                 <div style={{ fontSize: 18, fontWeight: 800, color: '#B23A24', lineHeight: 1.3 }}>⚠ {zpT('missTitle')}</div>
                 <div style={{ fontSize: 14, color: '#0F2240', marginTop: 8, lineHeight: 1.5 }}>{faraBote(zpT('missText'), order.boten_confirmation === true)}</div>
-                <button type="button" className="btn" style={{ marginTop: 16 }} onClick={() => setZpIntrebare('ask')}>
+                <button type="button" className="btn" style={{ marginTop: 16, display: 'block', marginLeft: 'auto', marginRight: 'auto' }} onClick={() => setZpIntrebare('ask')}>
                   {zpT('gotIt')}
                 </button>
                 <button type="button" className="link-btn" style={{ marginTop: 10, width: '100%' }} onClick={() => setZpIntrebare(null)}>

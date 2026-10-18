@@ -5306,7 +5306,7 @@ function ZustellartChip({ order, lang }) {
         type="button"
         onClick={() => setDeschis((v) => !v)}
         style={{
-          display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', alignSelf: 'center',
+          display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', alignSelf: 'center', marginLeft: 'auto',
           background: rosu ? '#FDF1EF' : '#F3F6FB', border: `1px solid ${rosu ? '#E4A296' : '#C9D5E8'}`,
           color: rosu ? '#B23A24' : '#0F2240', borderRadius: 10, padding: '7px 11px',
           fontSize: 13.5, fontWeight: 700, whiteSpace: 'nowrap',
@@ -5318,11 +5318,11 @@ function ZustellartChip({ order, lang }) {
       {deschis && (
         <div onClick={() => setDeschis(false)} style={{
           flex: '1 1 100%', lineHeight: 1.5, cursor: 'pointer',
-          background: rosu ? '#FDF1EF' : '#F3F6FB', border: `1px solid ${rosu ? '#E4A296' : '#C9D5E8'}`, borderRadius: 10, padding: '9px 12px',
+          background: '#E7F4EE', border: '1px solid #A8D5BE', borderRadius: 12, padding: '12px 14px',
         }}>
-          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.4, textTransform: 'uppercase', color: '#6B7A90' }}>{t('zustellartTitle', lang)}</div>
-          <div style={{ fontSize: 14.5, fontWeight: 800, color: rosu ? '#B23A24' : '#0F2240', marginTop: 2 }}>{t(`zustellart${z}`, lang)}</div>
-          <div style={{ fontSize: 12.5, color: '#4A5563', marginTop: 3 }}>{t(`zustellart${z}Note`, lang)}</div>
+          <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: 0.4, textTransform: 'uppercase', color: '#2E7D57' }}>{t('zustellartTitle', lang)}</div>
+          <div style={{ fontSize: 17.5, fontWeight: 800, color: '#1F7A50', marginTop: 3 }}>{t(`zustellart${z}`, lang)}</div>
+          <div style={{ fontSize: 14, color: '#1F5E40', marginTop: 4 }}>{t(`zustellart${z}Note`, lang)}</div>
         </div>
       )}
     </>

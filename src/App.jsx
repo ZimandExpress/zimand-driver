@@ -3553,6 +3553,29 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
     )
   }
 
+  // După încărcare, până la „Losfahren", Fracht urcă pe rândul cu „Zurück"
+  // (19.10.2026); după plecare revine jos, ca înainte.
+  const frachtSus = !order.is_document_delivery && !!order.pickup_confirmed_at
+    && !order.delivery_started_at && !order.delivery_confirmed_at
+  const cargoBody = (
+          <div className="info-card-body">
+            {cargoSummary(order) && <div className="info-row"><span className="k"><Package size={14} strokeWidth={1.8} /></span><span className="v">{cargoSummary(order)}</span></div>}
+            {order.cargo_desc && <div className="info-row"><span className="k">{t('cargoLabel', lang)}</span><span className="v">{order.cargo_desc}</span></div>}
+            {order.weight && <div className="info-row"><span className="k">{t('weightLabel', lang)}</span><span className="v">{order.weight} kg</span></div>}
+            {order.dims && <div className="info-row"><span className="k">{t('dimsLabel', lang)}</span><span className="v">{order.dims}</span></div>}
+            {order.km && <div className="info-row"><span className="k">{t('kmLabel', lang)}</span><span className="v">{order.km} km</span></div>}
+            {order.reference && <div className="info-row"><span className="k">{t('referenceLabel', lang)}</span><span className="v">{order.reference}</span></div>}
+            {extractServiceBadges(order.notes).length > 0 && (
+              <div className="service-badges">
+                {extractServiceBadges(order.notes).map((b, i) => (
+                  <span key={b.key || i} className={`service-badge${b.warn ? ' warn' : b.ok ? ' ok' : (b.key === 'loadHelpBadge' || b.key === 'unloadHelpBadge') ? ' navy' : ''}`}>{b.Icon ? <b.Icon size={13} strokeWidth={2} /> : null} {b.key ? t(b.key, lang) : b.text}</span>
+                ))}
+              </div>
+            )}
+            {order.notes && driverSafeNotesWithoutContacts(order.notes) && <div className="info-note">{driverSafeNotesWithoutContacts(order.notes)}</div>}
+          </div>
+  )
+
   const docSusLaRidicare = !order.pickup_confirmed_at && !!order.pickup_arrived_at
     && !(order.is_document_delivery && order.boten_confirmation === true)
 
@@ -3581,6 +3604,22 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
             între „Zurück" şi ceas (18.10.2026). Varianta lungă „+ Bote" nu
             încape pe rând — rămâne jos, ca până acum. */}
         {docSusLaRidicare && <TrimiteDocument order={order} lang={lang} compact />}
+        {frachtSus && (
+          <button
+            type="button"
+            onClick={() => setCargoOpen((v) => !v)}
+            aria-expanded={cargoOpen}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6, alignSelf: 'center', whiteSpace: 'nowrap',
+              background: cargoOpen ? '#0F2240' : '#fff', color: cargoOpen ? '#fff' : '#0F2240',
+              border: '1.5px solid #0F2240', borderRadius: 18, padding: '6px 12px',
+              fontSize: 13.5, fontWeight: 700, cursor: 'pointer',
+            }}
+          >
+            <Package size={15} strokeWidth={1.9} /> {t('cargoLabel', lang)}
+            <span style={{ fontSize: 10, transition: 'transform .15s', transform: cargoOpen ? 'rotate(180deg)' : 'none' }}>▼</span>
+          </button>
+        )}
         {/* „CMR erforderlich" lângă „Zurück", înainte de „Losfahren"
             (19.10.2026). După plecare ecranul rămâne cum era. */}
         {!order.is_document_delivery && order.doc_mode === 'cmr' && !order.pickup_started_at && (
@@ -3623,6 +3662,18 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
       </div>
 
       {/* Bara de progres a urcat pe rândul cu „Zurück" (vezi mai sus). */}
+      {frachtSus && cargoOpen && (
+        <div className="info-card" style={{ border: '1.5px solid #0F2240', marginTop: 0 }}>
+          <div className="info-card-head" style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <span><Package size={13} strokeWidth={1.8} /> {t('cargoLabel', lang)}
+              <span style={{ marginLeft: 8, fontFamily: 'monospace', fontSize: 11.5, fontWeight: 600, color: 'var(--text-soft, #6B7A90)' }}>
+                {order.order_number || order.reference || order.id.slice(0, 8)}
+              </span>
+            </span>
+          </div>
+          {cargoBody}
+        </div>
+      )}
 
       {/* Harta nu mai apare cât şoferul e la adresă (a bifat „Angekommen" şi
           n-a confirmat încă): urmează încărcarea sau predarea, nu drumul. */}
@@ -3918,7 +3969,7 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
       {/* Pe pagina cu poze şi documente (ridicare sau livrare) Fracht nu mai
           apare la documente (18.10.2026); Neutrale Zustellung stă deja în
           cardul destinatarului. */}
-      {!(order.is_document_delivery && inConfirmStep && confirmFormOpen) && (
+      {!(order.is_document_delivery && inConfirmStep && confirmFormOpen) && !frachtSus && (
       <div className="info-card">
         <div className="info-card-head cargo-toggle" onClick={() => setCargoOpen((v) => !v)}>
           {/* Numărul comenzii, pe linia cu pachetul: acolo îl vede şi cine
@@ -3933,24 +3984,7 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
           </span>
           <span className={`cargo-chev ${cargoOpen ? 'open' : ''}`}>▼</span>
         </div>
-        {cargoOpen && (
-          <div className="info-card-body">
-            {cargoSummary(order) && <div className="info-row"><span className="k"><Package size={14} strokeWidth={1.8} /></span><span className="v">{cargoSummary(order)}</span></div>}
-            {order.cargo_desc && <div className="info-row"><span className="k">{t('cargoLabel', lang)}</span><span className="v">{order.cargo_desc}</span></div>}
-            {order.weight && <div className="info-row"><span className="k">{t('weightLabel', lang)}</span><span className="v">{order.weight} kg</span></div>}
-            {order.dims && <div className="info-row"><span className="k">{t('dimsLabel', lang)}</span><span className="v">{order.dims}</span></div>}
-            {order.km && <div className="info-row"><span className="k">{t('kmLabel', lang)}</span><span className="v">{order.km} km</span></div>}
-            {order.reference && <div className="info-row"><span className="k">{t('referenceLabel', lang)}</span><span className="v">{order.reference}</span></div>}
-            {extractServiceBadges(order.notes).length > 0 && (
-              <div className="service-badges">
-                {extractServiceBadges(order.notes).map((b, i) => (
-                  <span key={b.key || i} className={`service-badge${b.warn ? ' warn' : b.ok ? ' ok' : ''}`}>{b.Icon ? <b.Icon size={13} strokeWidth={2} /> : null} {b.key ? t(b.key, lang) : b.text}</span>
-                ))}
-              </div>
-            )}
-            {order.notes && driverSafeNotesWithoutContacts(order.notes) && <div className="info-note">{driverSafeNotesWithoutContacts(order.notes)}</div>}
-          </div>
-        )}
+        {cargoOpen && cargoBody}
       </div>
       )}
 
@@ -5594,7 +5628,9 @@ function CmrLivrareSheet({ lang, onClose }) {
             {tr.p.map((x, i) => {
               const [rol, camp] = x.split(' · ')
               return (
-                <div key={i} style={{ background: '#fff', border: '1px solid #C9D1DD', borderRadius: 8, padding: '7px 4px', textAlign: 'center' }}>
+                // Expeditor şi şofer (au semnat deja) — verde; destinatarul,
+                // care semnează acum — roşu (19.10.2026).
+                <div key={i} style={{ background: i === 2 ? '#FFF5F3' : '#F3FBF6', border: `2px solid ${i === 2 ? '#D64532' : '#2E9E5B'}`, borderRadius: 8, padding: '7px 4px', textAlign: 'center' }}>
                   <div style={{ fontSize: 13.5, fontWeight: 800, color: '#0F2240', lineHeight: 1.25 }}>{i + 1}. {rol}</div>
                   {camp && <div style={{ fontSize: 11.5, color: '#5A6878', marginTop: 2 }}>{camp}</div>}
                 </div>

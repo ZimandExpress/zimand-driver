@@ -4,6 +4,9 @@ import { supabase } from './supabaseClient'
 import { t, getLang, setLang, availableLangs } from './i18n'
 import { Maximize2, ArrowLeft as ArrowLeftMap, Eye, Play, ClipboardList, Pause, SlidersHorizontal, Building2, StickyNote, Receipt, Package, Repeat, Hourglass, Camera, Image as ImageIcon, Mail, Ruler, ChevronDown, Lock, Phone, Truck, CheckCircle2, Wallet, User, LogOut, Menu, Bell, MapPin, FlagTriangleRight, Tag, XCircle, Download, X, Navigation, Trophy, ThumbsUp, ArrowUpFromLine, ArrowDownToLine, EyeOff, Layers, AlertTriangle, Clock, FileText, Signature, BookOpen, Info as InfoIcon } from 'lucide-react'
 import { GHID_TRADUCERI, GHID_UI } from './ghidTraduceri.js'
+import { GHID_TRADUCERI_MARFA } from './ghidTraduceriMarfa.js'
+// Ghidurile pentru marfă (Ware, CMR, Unterschrift) — tradusele lor stau separat.
+Object.assign(GHID_TRADUCERI, GHID_TRADUCERI_MARFA)
 import { ZP_LIMBI, PLECARE_LIMBI, TRANSPORT_LIMBI, REGULI_LIMBI, RETUR_LIMBI, POSTA_LIMBI, ZUSTELLART_LIMBI, DEPARTE_LIMBI, PASI_ZUSTELLART } from './zpTraduceri.js'
 import './index.css'
 import PodFiles from './components/PodFiles'
@@ -2244,11 +2247,13 @@ function RideCard({ order, isOwner, lang, onClick, compact }) {
               </span>
             </div>
             {(order.vehicles || []).length > 0 && (
-              <div className="rc-row">
+              // Semnele de serviciu trec pe rândul următor când nu mai încap lângă
+              // vehicul (19.10.2026) — înainte se înghesuiau şi tăiau textul.
+              <div className="rc-row" style={{ flexWrap: 'wrap', rowGap: 6 }}>
                 <Truck size={14} strokeWidth={1.8} />
                 <span className="rc-row-label">{lang === 'en' ? 'Vehicle' : 'Fahrzeug'}</span>
                 <span className="rc-row-text">{order.vehicles.map((v) => v.charAt(0).toUpperCase() + v.slice(1)).join(', ')}</span>
-                <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 5, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 5, flexWrap: 'wrap', justifyContent: 'flex-end', flex: '0 1 auto', maxWidth: '100%' }}>
                   <SemnDovada order={order} lang={lang} />
                   <SemnZustellart order={order} lang={lang} />
                   {extractServiceBadges(order.notes).map((b, i) => <SemnServiciu key={b.key || b.text || i} b={b} lang={lang} />)}
@@ -3719,6 +3724,13 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
           )}
         </div>
         <div className="info-card-body">
+          {/* Ora alternativă, sus, chiar sub ora din antet (19.10.2026) — înainte
+              stătea la capătul cardului, după note, şi trecea neobservată. */}
+          {order.pickup_alt_date && (
+            <div style={{ background: '#FFF6ED', border: '1px solid #FF7A29', borderRadius: 6, padding: '6px 10px', marginBottom: 8, fontSize: 12.5, color: '#E8631A', fontWeight: 600 }}>
+              <Clock size={12} strokeWidth={2} /> {t('altTimeLabel', lang)}: {fmtDate(order.pickup_alt_date)} {order.pickup_alt_from ? `${fmtTime(order.pickup_alt_from)}${order.pickup_alt_to ? `–${fmtTime(order.pickup_alt_to)}` : ''}` : ''}
+            </div>
+          )}
           {insemnEtapa('pickup')}
           <SemneEtapa order={order} etapa="pickup" lang={lang} />
           <ContactRow contact={pickupContact} lang={lang} />
@@ -3734,11 +3746,6 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
             </div>
           )}
           {pickupNotiz && <div className="leg-notiz"><StickyNote size={13} strokeWidth={1.8} /> {pickupNotiz}</div>}
-          {order.pickup_alt_date && (
-            <div style={{ background: '#FFF6ED', border: '1px solid #FF7A29', borderRadius: 6, padding: '6px 10px', marginTop: 6, fontSize: 12.5, color: '#E8631A', fontWeight: 600 }}>
-              <Clock size={12} strokeWidth={2} /> {t('altTimeLabel', lang)}: {fmtDate(order.pickup_alt_date)} {order.pickup_alt_from ? `${fmtTime(order.pickup_alt_from)}${order.pickup_alt_to ? `–${fmtTime(order.pickup_alt_to)}` : ''}` : ''}
-            </div>
-          )}
         </div>
       </div>
 
@@ -3786,6 +3793,13 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
           )}
         </div>
         <div className="info-card-body">
+          {/* Ora alternativă, sus, chiar sub ora din antet (19.10.2026) — înainte
+              stătea la capătul cardului, după note, şi trecea neobservată. */}
+          {order.delivery_alt_date && (
+            <div style={{ background: '#FFF6ED', border: '1px solid #FF7A29', borderRadius: 6, padding: '6px 10px', marginBottom: 8, fontSize: 12.5, color: '#E8631A', fontWeight: 600 }}>
+              <Clock size={12} strokeWidth={2} /> {t('altTimeLabel', lang)}: {fmtDate(order.delivery_alt_date)} {order.delivery_alt_from ? `${fmtTime(order.delivery_alt_from)}${order.delivery_alt_to ? `–${fmtTime(order.delivery_alt_to)}` : ''}` : ''}
+            </div>
+          )}
           {insemnEtapa('delivery')}
           <SemneEtapa order={order} etapa="delivery" lang={lang} />
           <ContactRow contact={deliveryContact} lang={lang} />
@@ -3808,11 +3822,6 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
               {returPickupContact !== deliveryContact && <ContactRow contact={returPickupContact} lang={lang} />}
               {order.return_pickup_confirmed_at && <div className="info-row-time">✓ {fmtDateTime(order.return_pickup_confirmed_at)}</div>}
               {order.return_cargo_desc && <div className="leg-notiz"><StickyNote size={13} strokeWidth={1.8} /> {order.return_cargo_desc}</div>}
-            </div>
-          )}
-          {order.delivery_alt_date && (
-            <div style={{ background: '#FFF6ED', border: '1px solid #FF7A29', borderRadius: 6, padding: '6px 10px', marginTop: 6, fontSize: 12.5, color: '#E8631A', fontWeight: 600 }}>
-              <Clock size={12} strokeWidth={2} /> {t('altTimeLabel', lang)}: {fmtDate(order.delivery_alt_date)} {order.delivery_alt_from ? `${fmtTime(order.delivery_alt_from)}${order.delivery_alt_to ? `–${fmtTime(order.delivery_alt_to)}` : ''}` : ''}
             </div>
           )}
         </div>

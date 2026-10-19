@@ -5020,12 +5020,13 @@ function TrimiteDocument({ order, lang, compact }) {
           onClick={deschide}
           style={{
             display: 'inline-flex', alignItems: 'center', gap: 6, alignSelf: 'center',
-            background: '#fff', border: '1px solid var(--line, #D8DEE8)', borderRadius: 18,
-            padding: '6px 12px', fontSize: 13.5, fontWeight: 700, color: '#0F2240',
+            // „CMR senden" pe fundalul Zimand (19.10.2026), de probă.
+            background: esteDoc ? '#fff' : '#0F2240', border: `1px solid ${esteDoc ? 'var(--line, #D8DEE8)' : '#0F2240'}`, borderRadius: 18,
+            padding: '6px 12px', fontSize: 13.5, fontWeight: 700, color: esteDoc ? '#0F2240' : '#fff',
             whiteSpace: 'nowrap', cursor: 'pointer',
           }}
         >
-          <FileText size={15} strokeWidth={1.8} style={{ color: 'var(--navy)' }} /> {eticheta}
+          <FileText size={15} strokeWidth={1.8} style={{ color: esteDoc ? 'var(--navy)' : '#fff' }} /> {eticheta}
         </button>
       ) : (
       <button
@@ -6193,7 +6194,8 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
   // A doua semnătură pe telefon era dublură — rămâne doar la documentele
   // standard, cu Zustellprotokoll. Câmpul rămâne pe ecran, opţional.
   const semnaturaCeruta = isDocumentDelivery ? (!esteLivrareEtapa && !cereBoten) : cereSemnatura
-  const numeCerut = cereDocument || cereSemnatura
+  // La CMR numele stă pe CMR — nu-l mai cerem şi în aplicaţie (19.10.2026).
+  const numeCerut = cereSemnatura
     || (dovadaLaAlegere && !!signatureBlob)
     // Cu Botenbestätigung, numele celui care predă stă deja pe declaraţia
     // semnată — la ridicare nu-l mai cerem şi pe telefon.
@@ -6740,30 +6742,9 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
       {ghidSheet || (cereBoten && !botenInfoVazut ? <BotenInfoSheet lang={lang} onClose={inchideBotenInfo} /> : null)}
       {waitingBlock}
 
-      {/* Ce se cere aici, scris înainte ca șoferul să înceapă — nu descoperit
-          la final, când butonul de confirmare rămâne stins și nu se știe de ce. */}
-      {(cereDocument || cereSemnatura) && (
-        <div style={{
-          background: cereDocument ? '#FFF6ED' : '#F3FBF6',
-          border: `1px solid ${cereDocument ? '#FFD2AE' : '#BFE8CF'}`,
-          borderRadius: 10, padding: '11px 13px', marginBottom: 12,
-        }}>
-          <div style={{
-            fontSize: 14.5, fontWeight: 800, lineHeight: 1.35,
-            color: cereDocument ? '#B35A12' : '#1B6E43',
-          }}>
-            {cereDocument ? <FileText size={15} style={{ verticalAlign: -2, marginRight: 5 }} /> : <Signature size={15} style={{ verticalAlign: -2, marginRight: 5 }} />}
-            {t(cereDocument ? 'requireCmrTitle' : 'requireSignatureTitle', lang)}
-          </div>
-          <div style={{
-            fontSize: 12.5, lineHeight: 1.5, marginTop: 3,
-            color: cereDocument ? '#8A5A16' : '#1B6E43',
-          }}>
-            {t(cereDocument ? 'requireCmrNote' : 'requireSignatureNote', lang)}
-          </div>
-        </div>
-      )}
-
+      {/* Caseta „CMR / Digitale Unterschrift erforderlich" de aici a fost scoasă
+          (19.10.2026): aceeaşi casetă apare o dată, jos, sub pasul de
+          confirmare (în RideDetailScreen). */}
       <div className="leg-title">{legLabel} · {t('confirmStep', lang)}</div>
 
       {/* Cu cine are de-a face, chiar aici.
@@ -6923,7 +6904,8 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
         lang={lang}
         onAddPhoto={() => setPhotoSourceOpen(true)}
         // La ridicarea de documente: 4 locuri (2 cerute — plicul faţă/spate — şi 2 de rezervă).
-        maxPhotos={esteEtapaLivrareDoc && deliveryMethod === 'briefkasten' ? 8 : (isDocumentDelivery || esteRetur ? 4 : 6)}
+        // Marfă: 8 locuri (două rânduri a câte 4) — 19.10.2026.
+        maxPhotos={esteEtapaLivrareDoc && deliveryMethod === 'briefkasten' ? 8 : (isDocumentDelivery || esteRetur ? 4 : 8)}
         minPhotos={minimPoze}
         onSummary={setFileSummary}
         photoHints={
@@ -7014,7 +6996,7 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
           stau pe formular — câmpurile nici nu mai apar (17.10.2026). */}
       {/* La livrarea de documente numele nu se mai cere pe telefon:
           destinatarul semnează pe Zustellprotokoll (18.10.2026). */}
-      {!isDocumentDeliveryLeg && !cereBoten && (
+      {!isDocumentDeliveryLeg && !cereBoten && !cereDocument && (
       <>
       <div className="pod-label">{t(esteLivrareEtapa ? 'signerNameLabelDelivery' : 'signerNameLabelPickup', lang)}</div>
       <input

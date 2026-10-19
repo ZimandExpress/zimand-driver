@@ -2519,7 +2519,8 @@ textarea.bid-input2 {
 }
 
 .celebration-trophy {
-  color: var(--orange);
+  /* Cupa şi suma în verde (19.10.2026). */
+  color: #1E9E5A;
   display: flex;
   justify-content: center;
   margin-bottom: 12px;
@@ -2536,7 +2537,7 @@ textarea.bid-input2 {
   font-family: 'Oswald', sans-serif;
   font-size: 39px;
   font-weight: 700;
-  color: var(--orange);
+  color: #1E9E5A;
   letter-spacing: -.01em;
 }
 

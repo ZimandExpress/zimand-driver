@@ -5,6 +5,7 @@ import { t, getLang, setLang, availableLangs } from './i18n'
 import { Maximize2, ArrowLeft as ArrowLeftMap, Eye, Play, ClipboardList, Pause, SlidersHorizontal, Building2, StickyNote, Receipt, Package, Repeat, Hourglass, Camera, Image as ImageIcon, Mail, Ruler, ChevronDown, Lock, Phone, Truck, CheckCircle2, Wallet, User, LogOut, Menu, Bell, MapPin, FlagTriangleRight, Tag, XCircle, Download, X, Navigation, Trophy, ThumbsUp, ArrowUpFromLine, ArrowDownToLine, EyeOff, Layers, AlertTriangle, Clock, FileText, Signature, BookOpen, Info as InfoIcon } from 'lucide-react'
 import { GHID_TRADUCERI, GHID_UI } from './ghidTraduceri.js'
 import { GHID_TRADUCERI_MARFA } from './ghidTraduceriMarfa.js'
+import { CMR_LIVRARE_LIMBI } from './cmrLivrareTraduceri.js'
 // Ghidurile pentru marfă (Ware, CMR, Unterschrift) — tradusele lor stau separat.
 Object.assign(GHID_TRADUCERI, GHID_TRADUCERI_MARFA)
 import { ZP_LIMBI, PLECARE_LIMBI, TRANSPORT_LIMBI, REGULI_LIMBI, RETUR_LIMBI, POSTA_LIMBI, ZUSTELLART_LIMBI, DEPARTE_LIMBI, PASI_ZUSTELLART } from './zpTraduceri.js'
@@ -3732,13 +3733,14 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
             </div>
           )}
           {insemnEtapa('pickup')}
-          <SemneEtapa order={order} etapa="pickup" lang={lang} />
           <ContactRow contact={pickupContact} lang={lang} />
           <div className="info-row address-row">
             <span className="address-text">{adresaScurta(order.pickup_address)}</span>
             <a className="maps-nav-btn" href={mapsNavUrl(order.pickup_address)} target="_blank" rel="noreferrer"><Navigation size={13} strokeWidth={2.2} /> {t('navigateButton', lang)}</a>
           </div>
           <SemneEtapa order={order} etapa="pickup" lang={lang} doarOk />
+          {/* Serviciile (Entladehilfe/Verladehilfe …) sub „Frühere … ggf. möglich" (19.10.2026). */}
+          <SemneEtapa order={order} etapa="pickup" lang={lang} />
           {order.pickup_confirmed_at && <div className="info-row-time">✓ {fmtDateTime(order.pickup_confirmed_at)}</div>}
           {order.flexible_time_notes && (
             <div className="flex-time-note" style={{ marginTop: 8 }}>
@@ -3801,13 +3803,14 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
             </div>
           )}
           {insemnEtapa('delivery')}
-          <SemneEtapa order={order} etapa="delivery" lang={lang} />
           <ContactRow contact={deliveryContact} lang={lang} />
           <div className="info-row address-row">
             <span className="address-text">{adresaScurta(order.delivery_address)}</span>
             <a className="maps-nav-btn" href={mapsNavUrl(order.delivery_address)} target="_blank" rel="noreferrer"><Navigation size={13} strokeWidth={2.2} /> {t('navigateButton', lang)}</a>
           </div>
           <SemneEtapa order={order} etapa="delivery" lang={lang} doarOk />
+          {/* Serviciile (Entladehilfe/Verladehilfe …) sub „Frühere … ggf. möglich" (19.10.2026). */}
+          <SemneEtapa order={order} etapa="delivery" lang={lang} />
           {order.delivery_confirmed_at && <div className="info-row-time">✓ {fmtDateTime(order.delivery_confirmed_at)}</div>}
           {deliveryNotiz && <div className="leg-notiz"><StickyNote size={13} strokeWidth={1.8} /> {deliveryNotiz}</div>}
           {returLaLivrare && (
@@ -3947,6 +3950,9 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
       {(() => {
         const mod = order.doc_mode || 'ask'
         if (order.is_document_delivery || (mod !== 'cmr' && mod !== 'signature')) return null
+        // După încărcare nu mai apare (19.10.2026): la livrare, fereastra de la
+        // „Angekommen" spune ce trebuie pe CMR.
+        if (order.pickup_confirmed_at) return null
         const cmr = mod === 'cmr'
         return (
           <div style={{
@@ -5559,6 +5565,42 @@ function ReturSheet({ order, lang, transport, onClose }) {
   )
 }
 
+// La „Angekommen" la livrare, comenzi cu CMR (19.10.2026): CMR-ul trebuie
+// semnat de toate 3 părţile, fiecare cu nume şi prenume.
+function CmrLivrareSheet({ lang, onClose }) {
+  const [limba, setLimba] = useState(() => citesteLimba(lang))
+  const tr = CMR_LIVRARE_LIMBI[limba] || CMR_LIVRARE_LIMBI.de
+  return (
+    <div className="sig-fullscreen" style={{ justifyContent: 'flex-end', background: 'rgba(15,34,64,.55)', zIndex: 9990 }}>
+      <div style={{ background: '#fff', borderRadius: '16px 16px 0 0', padding: '20px 20px calc(20px + env(safe-area-inset-bottom))', maxHeight: '88vh', overflowY: 'auto' }}>
+        <SelectorLimba value={limba} onChange={setLimba} />
+        <div style={{ fontSize: 12.5, fontWeight: 600, color: '#5A6878', marginBottom: 2 }}>{tr.faza}</div>
+        <div style={{ fontSize: 18, fontWeight: 800, color: '#0F2240', marginBottom: 10 }}>
+          <FileText size={18} strokeWidth={2} style={{ verticalAlign: -3, marginRight: 6 }} />{tr.titlu}
+        </div>
+        <div style={{ background: '#F4F7FC', border: '2px solid #0F2240', borderRadius: 10, padding: '10px 12px', marginBottom: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
+            {tr.p.map((x, i) => {
+              const [rol, camp] = x.split(' · ')
+              return (
+                <div key={i} style={{ background: '#fff', border: '1px solid #C9D1DD', borderRadius: 8, padding: '7px 4px', textAlign: 'center' }}>
+                  <div style={{ fontSize: 13.5, fontWeight: 800, color: '#0F2240', lineHeight: 1.25 }}>{i + 1}. {rol}</div>
+                  {camp && <div style={{ fontSize: 11.5, color: '#5A6878', marginTop: 2 }}>{camp}</div>}
+                </div>
+              )
+            })}
+          </div>
+          <div style={{ fontSize: 13.5, fontWeight: 700, color: '#0F2240', marginTop: 9, lineHeight: 1.4 }}>✍ {tr.nota}</div>
+        </div>
+        <ol style={{ margin: 0, paddingLeft: 20, fontSize: 15, lineHeight: 1.55, color: '#0F2240' }}>
+          {tr.pasi.map((x, i) => <li key={i} style={{ marginBottom: 8 }}>{x}</li>)}
+        </ol>
+        <button type="button" className="btn" style={{ width: '100%', margin: '14px 0 0' }} onClick={onClose}>{tr.buton}</button>
+      </div>
+    </div>
+  )
+}
+
 function TransportSheet({ lang, onClose }) {
   const [limba, setLimba] = useState(() => citesteLimba(lang))
   const tr = TRANSPORT_LIMBI[limba] || TRANSPORT_LIMBI.de
@@ -5889,7 +5931,9 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
         ? (pas === 'started' ? (esteLivrareEtapa ? 'retur_transport' : null) : (esteLivrareEtapa ? null : 'retur_pickup'))
         : pas === 'started'
           ? (esteLivrareEtapa ? (isDocumentDelivery ? 'transport' : null) : 'start')
-          : (esteLivrareEtapa ? 'delivery' : 'pickup'))
+          // Marfă cu CMR, la sosirea la livrare: fereastra cu cele 3
+          // semnături (19.10.2026) în locul instrucţiunilor generale.
+          : (esteLivrareEtapa ? (!isDocumentDelivery && cereDocument ? 'cmr_delivery' : 'delivery') : 'pickup'))
     }
   }
 
@@ -6534,6 +6578,8 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
     : []
   const ghidSheet = (ghidFaza === 'retur_pickup' || ghidFaza === 'retur_transport') ? (
     <ReturSheet order={order} lang={lang} transport={ghidFaza === 'retur_transport'} onClose={() => setGhidFaza(null)} />
+  ) : ghidFaza === 'cmr_delivery' ? (
+    <CmrLivrareSheet lang={lang} onClose={() => setGhidFaza(null)} />
   ) : ghidFaza === 'transport' ? (
     <TransportSheet lang={lang} onClose={() => setGhidFaza(null)} />
   ) : ghidFaza && ghiduriFaza.length ? (
@@ -7262,12 +7308,15 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
                 style={{
                   display: 'inline-flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap',
                   color: '#33415A', border: '1px solid #D8DEE8', background: '#fff',
-                  fontSize: 13, fontWeight: 700, padding: '6px 11px', borderRadius: 18,
+                  fontSize: 13, fontWeight: 700, padding: '6px 10px', borderRadius: 18,
                   textDecoration: 'none',
                 }}
+                title={t('dispatchWa', lang)}
               >
+                {/* Prescurtat la „Dispo" ca „Zurück", butonul şi ceasul să
+                    încapă pe un rând (19.10.2026). */}
                 <WhatsAppIcon size={15} />
-                {t('dispatchWa', lang)}
+                Dispo
               </a>,
               dispoSlot,
             )

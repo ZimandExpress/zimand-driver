@@ -201,7 +201,10 @@ export default function PodFiles({ orderId, leg, lang, maxPhotos = 6, minPhotos 
       {/* Mai strâns: patru pe rând în loc de trei. Șase locuri intrau pe două
           rânduri înalte care împingeau restul formularului sub marginea
           ecranului, iar șoferul derula ca să ajungă la nume și semnătură. */}
-      <div className="photo-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
+      {/* Secţiunea într-un cadru al ei (19.10.2026): locul activ e conturat în
+          albastrul Zimand, cele cerute în portocaliu, restul numerotate. */}
+      <div style={{ background: '#F7F9FC', border: '1px solid #E2E7EE', borderRadius: 12, padding: 8 }}>
+      <div className="photo-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', gap: 7 }}>
         {photos.map((f) => (
           <PhotoTile key={f.id} file={f} lang={lang} onRemove={removeFile} onRetry={retryFile} onOpen={setPrivita} />
         ))}
@@ -216,31 +219,32 @@ export default function PodFiles({ orderId, leg, lang, maxPhotos = 6, minPhotos 
           for (let i = 0; i < ramase; i++) {
             const hint = indicatii[i]
             const primul = i === 0
+            const nr = photos.length + i + 1
+            const cerut = nr <= minPhotos
             locuri.push(
               <div
                 key={'slot' + i}
                 className="photo-slot"
                 onClick={primul ? onAddPhoto : undefined}
                 style={{
-                  opacity: primul ? 1 : 0.55,
                   cursor: primul ? 'pointer' : 'default',
                   display: 'flex', flexDirection: 'column', alignItems: 'center',
-                  justifyContent: 'center', gap: 3, textAlign: 'center', padding: 6,
+                  justifyContent: 'center', gap: 4, textAlign: 'center', padding: 5,
+                  background: primul ? '#EEF3FA' : '#fff',
+                  border: primul ? `2px solid ${NAVY}` : `1.5px dashed ${cerut ? ORANGE : '#D3D9E2'}`,
+                  color: primul ? NAVY : (cerut ? ORANGE : '#B7BEC9'),
                 }}
               >
-                {hint ? (
-                  <>
-                    <span style={{ fontSize: 17, lineHeight: 1 }}>{primul ? '📷' : '○'}</span>
-                    <span style={{ fontSize: 10, fontWeight: 700, lineHeight: 1.25 }}>{hint}</span>
-                  </>
-                ) : (
-                  <span style={{ fontSize: 20, lineHeight: 1 }}>+</span>
-                )}
+                {primul
+                  ? <span style={{ fontSize: 20, lineHeight: 1 }}>📷</span>
+                  : <span style={{ fontSize: 13, fontWeight: 700, lineHeight: 1 }}>{nr}</span>}
+                {hint && <span style={{ fontSize: 10, fontWeight: 700, lineHeight: 1.2, color: primul ? NAVY : '#8A96A8' }}>{hint}</span>}
               </div>
             )
           }
           return locuri
         })()}
+      </div>
       </div>
 
       {privita && (

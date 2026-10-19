@@ -2387,6 +2387,13 @@ textarea.bid-input2 {
   color: #B23A24;
 }
 
+/* Verladehilfe / Entladehilfe pe fundalul Zimand (19.10.2026). */
+.service-badge.navy {
+  background: #0F2240;
+  border-color: #0F2240;
+  color: #fff;
+}
+
 /* „Frühere Abholung/Zustellung ggf. möglich" — o veste bună, deci verde. */
 .service-badge.ok {
   background: #E7F4EE;

@@ -3581,6 +3581,17 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
             între „Zurück" şi ceas (18.10.2026). Varianta lungă „+ Bote" nu
             încape pe rând — rămâne jos, ca până acum. */}
         {docSusLaRidicare && <TrimiteDocument order={order} lang={lang} compact />}
+        {/* „CMR erforderlich" lângă „Zurück", înainte de „Losfahren"
+            (19.10.2026). După plecare ecranul rămâne cum era. */}
+        {!order.is_document_delivery && order.doc_mode === 'cmr' && !order.pickup_started_at && (
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6, alignSelf: 'center', whiteSpace: 'nowrap',
+            background: '#FFF6ED', border: '1.5px solid #FF7A29', color: '#B35A12',
+            borderRadius: 18, padding: '6px 12px', fontSize: 13.5, fontWeight: 800,
+          }}>
+            <FileText size={15} strokeWidth={2} /> {t('requireCmrTitle', lang)}
+          </span>
+        )}
         {/* „Dispo Zimand · Problem melden" urcă aici după „Angekommen" (îl pune
             LegWorkflow), între „Zurück" şi ceas (18.10.2026). */}
         <div id="zd-dispo-slot" style={{ display: 'flex', alignSelf: 'center' }} />
@@ -6571,7 +6582,8 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
     // iar „originalul rămâne la expeditor" apare la încărcarea ei. La livrare
     // nu mai e nimic de spus despre ea (cerut de Andrei pe 18.10.2026).
     ? ['doc_standard', 'zustellprotokoll', ...(order.boten_confirmation === true && ghidFaza === 'start' ? ['boten'] : [])]
-    : ['ware', ...(cereDocument ? ['cmr'] : cereSemnatura ? ['signatur'] : [])]
+    // La plecare, anunţul CMR întâi (19.10.2026).
+    : (ghidFaza === 'start' && cereDocument ? ['cmr', 'ware'] : ['ware', ...(cereDocument ? ['cmr'] : cereSemnatura ? ['signatur'] : [])])
   const ghiduriFaza = ghidFaza
     ? ghidChei().map((k) => ghiduriToate.find((g) => g.key === k))
         .filter((g) => g && pasiGhid(g, ghidFaza, lang).length && !esteAscuns(g, ghidFaza))
@@ -7973,7 +7985,7 @@ function SemneEtapa({ order, etapa, lang, retur, doarOk }) {
   return (
     <div className="service-badges" style={{ margin: doarOk ? '6px 0 2px' : '2px 0 8px' }}>
       {semne.map((b, i) => (
-        <span key={b.key || i} className={`service-badge${b.warn ? ' warn' : b.ok ? ' ok' : ''}`}>
+        <span key={b.key || i} className={`service-badge${b.warn ? ' warn' : b.ok ? ' ok' : (b.key === 'loadHelpBadge' || b.key === 'unloadHelpBadge') ? ' navy' : ''}`}>
           {b.Icon ? <b.Icon size={13} strokeWidth={2} /> : null} {b.key ? t(b.key, lang) : b.text}
         </span>
       ))}

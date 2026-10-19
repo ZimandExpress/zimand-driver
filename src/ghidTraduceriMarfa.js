@@ -254,3 +254,62 @@ export const GHID_TRADUCERI_MARFA = {
     },
   },
 }
+
+// Versiunea 2 a textelor de la plecare (19.10.2026, cerut de Andrei): fără
+// „vehicul potrivit / chingi"; anunţul că e comandă cu CMR, ETA către client
+// ca să fie pregătit, iar la întârziere — dispeceratul Zimand, nu clientul.
+// Rândurile de la ridicare şi livrare rămân cele din versiunea 1.
+const START_V2 = {
+  ware: {
+    ro: ['Înainte de plecare, trimiteți clientului din aplicație ora de sosire (ETA), ca să fie pregătit.', 'La întârziere sau probleme: contactați Zimand Express Dispo – nu clientul.'],
+    pl: ['Przed wyjazdem wyślij klientowi przez aplikację godzinę przyjazdu (ETA), aby był przygotowany.', 'W razie opóźnienia lub problemów: skontaktuj się z Zimand Express Dispo – nie z klientem.'],
+    bg: ['Преди тръгване изпратете на клиента през приложението часа на пристигане (ETA), за да е подготвен.', 'При закъснение или проблеми: свържете се със Zimand Express Dispo – не с клиента.'],
+    hu: ['Indulás előtt küldje el az ügyfélnek az alkalmazásból az érkezési időt (ETA), hogy felkészülhessen.', 'Késés vagy probléma esetén: a Zimand Express Dispót keresse – ne az ügyfelet.'],
+    cs: ['Před odjezdem pošlete zákazníkovi z aplikace čas příjezdu (ETA), aby byl připraven.', 'Při zpoždění nebo problémech: kontaktujte Zimand Express Dispo – ne zákazníka.'],
+    sk: ['Pred odchodom pošlite zákazníkovi z aplikácie čas príchodu (ETA), aby bol pripravený.', 'Pri meškaní alebo problémoch: kontaktujte Zimand Express Dispo – nie zákazníka.'],
+    hr: ['Prije polaska pošaljite klijentu iz aplikacije vrijeme dolaska (ETA) kako bi bio spreman.', 'Kod kašnjenja ili problema: kontaktirajte Zimand Express Dispo – ne klijenta.'],
+    sr: ['Pre polaska pošaljite klijentu iz aplikacije vreme dolaska (ETA) kako bi bio spreman.', 'Kod kašnjenja ili problema: kontaktirajte Zimand Express Dispo – ne klijenta.'],
+    sl: ['Pred odhodom stranki iz aplikacije pošljite čas prihoda (ETA), da bo pripravljena.', 'Ob zamudi ali težavah: kontaktirajte Zimand Express Dispo – ne stranke.'],
+    sq: ['Para nisjes, dërgojini klientit nga aplikacioni orën e mbërritjes (ETA), që të jetë gati.', 'Në rast vonese ose problemi: kontaktoni Zimand Express Dispo – jo klientin.'],
+    uk: ['Перед виїздом надішліть клієнту з додатка час прибуття (ETA), щоб він був готовий.', 'У разі запізнення чи проблем: звертайтеся до Zimand Express Dispo – не до клієнта.'],
+    ru: ['Перед выездом отправьте клиенту из приложения время прибытия (ETA), чтобы он был готов.', 'При опоздании или проблемах: обращайтесь в Zimand Express Dispo – не к клиенту.'],
+    tr: ['Yola çıkmadan önce müşteriye uygulamadan varış saatini (ETA) gönderin, hazır olsun.', 'Gecikme veya sorun olursa: müşteriyle değil, Zimand Express Dispo ile iletişime geçin.'],
+    it: ['Prima della partenza inviate al cliente dall’app l’orario di arrivo (ETA), così sarà pronto.', 'In caso di ritardo o problemi: contattate Zimand Express Dispo – non il cliente.'],
+    es: ['Antes de salir, envíe al cliente desde la app la hora de llegada (ETA) para que esté preparado.', 'En caso de retraso o problemas: contacte con Zimand Express Dispo, no con el cliente.'],
+    fr: ['Avant le départ, envoyez au client depuis l’appli l’heure d’arrivée (ETA) pour qu’il soit prêt.', 'En cas de retard ou de problème : contactez Zimand Express Dispo – pas le client.'],
+    pt: ['Antes de partir, envie ao cliente pela app a hora de chegada (ETA), para que esteja preparado.', 'Em caso de atraso ou problemas: contacte a Zimand Express Dispo – não o cliente.'],
+    nl: ['Stuur de klant vóór vertrek via de app de aankomsttijd (ETA), zodat hij voorbereid is.', 'Bij vertraging of problemen: neem contact op met Zimand Express Dispo – niet met de klant.'],
+    el: ['Πριν ξεκινήσετε, στείλτε στον πελάτη από την εφαρμογή την ώρα άφιξης (ETA), για να είναι έτοιμος.', 'Σε καθυστέρηση ή πρόβλημα: επικοινωνήστε με τη Zimand Express Dispo – όχι με τον πελάτη.'],
+    lt: ['Prieš išvykdami programėle išsiųskite klientui atvykimo laiką (ETA), kad jis būtų pasiruošęs.', 'Vėluojant ar kilus problemų: kreipkitės į Zimand Express Dispo – ne į klientą.'],
+    lv: ['Pirms izbraukšanas nosūtiet klientam no lietotnes ierašanās laiku (ETA), lai viņš būtu gatavs.', 'Kavēšanās vai problēmu gadījumā: sazinieties ar Zimand Express Dispo – nevis ar klientu.'],
+  },
+  cmr: {
+    ro: ['Atenție: această comandă este cu CMR. Expeditorul vă predă la ridicare CMR-ul tipărit (3 exemplare).'],
+    pl: ['Uwaga: to zlecenie jest z listem przewozowym CMR. Nadawca przekaże Ci przy odbiorze wydrukowany CMR (3 egzemplarze).'],
+    bg: ['Внимание: тази поръчка е с CMR. Подателят ще ви предаде при вземането разпечатания CMR (3 екземпляра).'],
+    hu: ['Figyelem: ez a megbízás CMR-rel megy. A feladó az átvételkor átadja Önnek a kinyomtatott CMR-t (3 példány).'],
+    cs: ['Pozor: tato zakázka je s CMR. Odesílatel vám při vyzvednutí předá vytištěný CMR (3 výtisky).'],
+    sk: ['Pozor: táto zákazka je s CMR. Odosielateľ vám pri vyzdvihnutí odovzdá vytlačený CMR (3 exempláre).'],
+    hr: ['Pozor: ovaj nalog ide s CMR-om. Pošiljatelj vam pri preuzimanju predaje ispisani CMR (3 primjerka).'],
+    sr: ['Pažnja: ovaj nalog ide sa CMR-om. Pošiljalac vam pri preuzimanju predaje odštampani CMR (3 primerka).'],
+    sl: ['Pozor: to naročilo je s CMR. Pošiljatelj vam ob prevzemu preda natisnjen CMR (3 izvodi).'],
+    sq: ['Kujdes: kjo porosi është me CMR. Dërguesi ju dorëzon në marrje CMR-në e printuar (3 kopje).'],
+    uk: ['Увага: це замовлення з CMR. Відправник передасть вам під час завантаження роздрукований CMR (3 примірники).'],
+    ru: ['Внимание: этот заказ с CMR. Отправитель передаст вам при загрузке распечатанный CMR (3 экземпляра).'],
+    tr: ['Dikkat: bu sipariş CMR’li. Gönderici yüklemede size basılı CMR’yi (3 nüsha) teslim eder.'],
+    it: ['Attenzione: questo ordine è con CMR. Il mittente vi consegna al ritiro il CMR stampato (3 copie).'],
+    es: ['Atención: este pedido va con CMR. El remitente le entrega en la recogida el CMR impreso (3 ejemplares).'],
+    fr: ['Attention : cette commande se fait avec CMR. L’expéditeur vous remet à l’enlèvement le CMR imprimé (3 exemplaires).'],
+    pt: ['Atenção: esta encomenda é com CMR. O expedidor entrega-lhe na recolha o CMR impresso (3 exemplares).'],
+    nl: ['Let op: deze opdracht is met CMR. De afzender geeft u bij het ophalen de geprinte CMR (3 exemplaren).'],
+    el: ['Προσοχή: αυτή η παραγγελία είναι με CMR. Ο αποστολέας σας παραδίδει κατά την παραλαβή το τυπωμένο CMR (3 αντίτυπα).'],
+    lt: ['Dėmesio: šis užsakymas su CMR. Siuntėjas pasikrovimo metu perduos jums atspausdintą CMR (3 egzemplioriai).'],
+    lv: ['Uzmanību: šis pasūtījums ir ar CMR. Nosūtītājs iekraušanas laikā jums nodos izdrukātu CMR (3 eksemplāri).'],
+  },
+}
+for (const k of Object.keys(START_V2)) {
+  GHID_TRADUCERI_MARFA[k].version = 2
+  for (const [l, pasi] of Object.entries(START_V2[k])) {
+    if (GHID_TRADUCERI_MARFA[k].langs[l]) GHID_TRADUCERI_MARFA[k].langs[l].start = pasi
+  }
+}

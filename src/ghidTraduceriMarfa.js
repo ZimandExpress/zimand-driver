@@ -313,3 +313,34 @@ for (const k of Object.keys(START_V2)) {
     if (GHID_TRADUCERI_MARFA[k].langs[l]) GHID_TRADUCERI_MARFA[k].langs[l].start = pasi
   }
 }
+
+// Versiunea 3 (19.10.2026): la ridicare nu se cer poze cu marfa în vehicul —
+// doar câteva poze ale mărfii, ca să fim acoperiţi.
+const PICKUP3_V3 = {
+  ro: 'Faceți câteva fotografii cu marfa la ridicare – pentru protecția noastră.',
+  pl: 'Zrób kilka zdjęć towaru przy odbiorze – dla naszego zabezpieczenia.',
+  bg: 'Направете няколко снимки на стоката при вземането – за наша защита.',
+  hu: 'Készítsen néhány fotót az áruról az átvételkor – a biztonságunk érdekében.',
+  cs: 'Při vyzvednutí pořiďte několik fotografií zboží – pro naše zajištění.',
+  sk: 'Pri vyzdvihnutí urobte niekoľko fotografií tovaru – pre naše zabezpečenie.',
+  hr: 'Pri preuzimanju napravite nekoliko fotografija robe – radi naše zaštite.',
+  sr: 'Pri preuzimanju napravite nekoliko fotografija robe – radi naše zaštite.',
+  sl: 'Ob prevzemu naredite nekaj fotografij blaga – za našo zaščito.',
+  sq: 'Bëni disa fotografi të mallit gjatë marrjes – për mbrojtjen tonë.',
+  uk: 'Зробіть кілька фото вантажу під час завантаження – для нашого захисту.',
+  ru: 'Сделайте несколько фото груза при загрузке – для нашей защиты.',
+  tr: 'Yüklemede malın birkaç fotoğrafını çekin – güvencemiz için.',
+  it: 'Al ritiro scattate qualche foto della merce – per nostra tutela.',
+  es: 'Haga algunas fotos de la mercancía en la recogida – para nuestra protección.',
+  fr: 'Prenez quelques photos de la marchandise à l’enlèvement – pour notre protection.',
+  pt: 'Tire algumas fotografias da mercadoria na recolha – para nossa proteção.',
+  nl: 'Maak bij het ophalen een paar foto’s van de goederen – voor onze zekerheid.',
+  el: 'Τραβήξτε μερικές φωτογραφίες του εμπορεύματος κατά την παραλαβή – για την προστασία μας.',
+  lt: 'Pasikraudami padarykite kelias krovinio nuotraukas – mūsų apsaugai.',
+  lv: 'Iekraušanas laikā uzņemiet dažas kravas fotogrāfijas – mūsu drošībai.',
+}
+GHID_TRADUCERI_MARFA.ware.version = 3
+for (const [l, rand] of Object.entries(PICKUP3_V3)) {
+  const x = GHID_TRADUCERI_MARFA.ware.langs[l]
+  if (x && x.pickup) x.pickup = [x.pickup[0], x.pickup[1], rand]
+}

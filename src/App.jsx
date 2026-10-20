@@ -633,7 +633,16 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
         numar: o.order_number || String(o.id).slice(0, 8),
         anulata: o.status === 'cancelled' || o.client_cancelled === true,
         refuzata: !!b.rejected_at,
-        pierduta: !!o.winner_bid_id && o.winner_bid_id !== b.id,
+        // `lost_at` stă pe PROPRIA ofertă, iar oferta proprie se vede
+        // întotdeauna. Rândul comenzii, nu: RLS pe `orders` nu are nicio
+        // regulă pentru „firma care a licitat", deci schimbarea câştigătorului
+        // nu ajunge prin realtime la cine pierde — aplicaţia vede comenzile
+        // doar prin `courier_orders()`, care ocoleşte RLS. Fără semnul de pe
+        // ofertă, mesajul n-ar apărea decât la o redeschidere a aplicaţiei.
+        //
+        // `winner_bid_id` rămâne ca a doua cale, pentru comenzile pe care
+        // firma le vede oricum (are şofer atribuit, sau a creat-o ea).
+        pierduta: !!b.lost_at || (!!o.winner_bid_id && o.winner_bid_id !== b.id),
       })
     }
 

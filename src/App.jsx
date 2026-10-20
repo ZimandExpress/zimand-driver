@@ -2037,11 +2037,19 @@ function RidesScreen({ profile, isOwner, session, lang }) {
     function refreshOpenCount() {
       Promise.all([
         licitatiileDeschise(),
-        supabase.from('bids').select('order_id').eq('courier_id', session?.user?.id),
+        supabase.from('bids').select('order_id, rejected_at, counter_rejected_at').eq('courier_id', session?.user?.id),
       ]).then(([comenzi, bidsRes]) => {
         // null = interogarea a căzut. Nu stingem numărul de pe ecran.
         if (!comenzi) return
-        const biddedIds = new Set((bidsRes.data || []).map((b) => b.order_id))
+        // Aceeaşi regulă ca în lista de licitaţii: o ofertă refuzată nu mai e
+        // o ofertă. Fără filtrul ăsta, numărul de pe clopoţel şi de pe fila
+        // „Verfügbar" arăta 0, deşi comanda se vedea chiar dedesubt în listă —
+        // lista o socotea liberă, numărătoarea o socotea licitată.
+        const biddedIds = new Set(
+          (bidsRes.data || [])
+            .filter((b) => !b.rejected_at && !b.counter_rejected_at)
+            .map((b) => b.order_id),
+        )
         const deschise = comenzi.filter(esteLaLicitatie)
         setOpenCount(deschise.filter((o) => !biddedIds.has(o.id) && treceFiltrul(o, notifyRadiusKm, notifyMinPrice, notifyMaxPrice)).length)
 

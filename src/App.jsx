@@ -1640,11 +1640,21 @@ function playLostChime() {
 // obiecte diferite dar vorbesc despre aceeași cursă.
 const alerteDate = new Set()
 
+// Telefonul pe silenţios nu redă niciun sunet, iar şoferul tocmai atunci e
+// mai probabil la volan. Vibraţia merge şi aşa. Aceleaşi tipare ca în
+// service worker, ca vestea să se simtă la fel cu aplicaţia deschisă sau
+// închisă. Pe iPhone e ignorată — de aceea rămâne doar un adaos, nu singura
+// cale.
+function vibreaza(tipar) {
+  try { if (navigator.vibrate) navigator.vibrate(tipar) } catch {}
+}
+
 function anuntaPierdere(fel, numar, idComanda) {
   const cheie = idComanda + ':' + fel
   if (alerteDate.has(cheie)) return
   alerteDate.add(cheie)
   playLostChime()
+  vibreaza(fel === 'anulata' ? [400, 150, 400, 150, 400] : [500, 200, 200])
   // Învelișul aplicației ascultă și desenează mesajul — așa apare pe orice
   // ecran, nu doar pe cel de curse.
   window.dispatchEvent(new CustomEvent('zd-alerta', { detail: { fel, numar } }))
@@ -1702,6 +1712,7 @@ function anuntaAtribuire(comenzi, arata) {
   scrieAtribuiri(stiute)
 
   playSuccessSound()
+  vibreaza([120, 80, 120])
   arata(noi[0].order_number || String(noi[0].id).slice(0, 8))
 }
 

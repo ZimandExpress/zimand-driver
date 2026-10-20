@@ -46,12 +46,37 @@ self.addEventListener('push', (event) => {
   const eticheta = data.tag
     || ('zimand-' + String(data.title || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 60))
 
+  // Vibraţia, diferită după felul veştii.
+  //
+  // Cu aplicaţia închisă, SUNETUL nu poate fi al nostru: o notificare web
+  // foloseşte sunetul de sistem al telefonului, iar browserele nu lasă un
+  // fişier propriu acolo (cele două sunete ale aplicaţiei se aud doar cât
+  // ea e deschisă pe ecran). Deci toate notificările sunau la fel, şi din
+  // buzunar nu se putea ghici dacă e o cursă primită sau una pierdută.
+  //
+  // Vibraţia, însă, o putem alege. Trei tipare care se deosebesc fără să
+  // scoţi telefonul:
+  //   primit  — două bătăi scurte, ca un ciocănit
+  //   anulat  — trei bătăi lungi, insistente: ceva trebuie oprit
+  //   pierdut — una lungă şi două care se sting
+  //
+  // Felul se ia din etichetă dacă serverul o trimite, altfel din titlu.
+  // Titlurile le scrie baza noastră de date, deci sunt previzibile; dacă
+  // vreodată se schimbă vorbirea, se cade pe tiparul de dinainte — nu se
+  // pierde nicio notificare.
+  const semn = (data.tag || data.title || '').toLowerCase()
+  const tipar =
+    /storn|cancel|abgesagt/.test(semn)                 ? [400, 150, 400, 150, 400]
+    : /lost|vergeben|abgelehnt|verloren/.test(semn)    ? [500, 200, 200]
+    : /für sie|fur sie|zugewiesen|assign/.test(semn)   ? [120, 80, 120]
+    : [200, 100, 200]
+
   event.waitUntil(
     self.registration.showNotification(data.title, {
       body: data.body,
       icon: '/icon-192.png',
       badge: '/icon-192.png',
-      vibrate: [200, 100, 200],
+      vibrate: tipar,
       data: { url: data.url },
       tag: eticheta,
       renotify: true,

@@ -2222,6 +2222,22 @@ function RidesScreen({ profile, isOwner, session, lang }) {
 
   useEffect(() => { ordersRef.current = orders }, [orders])
 
+  // Mesajul de după refuzul unei contraoferte trimite aici. Fără rândul ăsta
+  // ecranul s-ar deschide pe „Meine Fahrten", adică lângă licitaţii, nu la ele.
+  //
+  // Stă AICI, sus, şi nu mai jos lângă randare: mai jos venea după `return`-ul
+  // care se face când e deschisă o comandă, deci la deschidere hook-ul nu se
+  // mai chema. React numără hook-urile şi cere acelaşi număr la fiecare
+  // randare — aşa apăreau erorile #300 (mai puţine, la deschidere) şi #310
+  // (mai multe, la întoarcere), iar ecranul se albea. Mutat sus, ascultătorul
+  // e şi activ tot timpul, cum trebuia de la bun început: înainte se oprea
+  // exact cât era deschisă o comandă.
+  useEffect(() => {
+    const laSemnal = () => setActiveTab('available')
+    window.addEventListener('zd-mergi-la-licitatii', laSemnal)
+    return () => window.removeEventListener('zd-mergi-la-licitatii', laSemnal)
+  }, [])
+
   function setSelectedId(id) {
     setSelectedIdState(id)
     if (id) {
@@ -2502,14 +2518,6 @@ function RidesScreen({ profile, isOwner, session, lang }) {
 
   const tabs = isOwner ? ['available', 'mine'] : ['mine']
   const currentTab = tabs.includes(activeTab) ? activeTab : 'mine'
-
-  // Mesajul de după refuzul unei contraoferte trimite aici. Fără rândul ăsta
-  // ecranul s-ar deschide pe „Meine Fahrten", adică lângă licitaţii, nu la ele.
-  useEffect(() => {
-    const laSemnal = () => setActiveTab('available')
-    window.addEventListener('zd-mergi-la-licitatii', laSemnal)
-    return () => window.removeEventListener('zd-mergi-la-licitatii', laSemnal)
-  }, [])
 
   return (
     <>

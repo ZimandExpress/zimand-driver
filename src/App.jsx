@@ -9225,6 +9225,21 @@ function BiddingScreen({ profile, session, lang, embedded }) {
     }
   }, [courierProfileId])
 
+  /* Notificarea de dupa pret.
+     Cinci secunde, cat sa fie citita fara sa stea in drum. Daca omul
+     liciteaza doua comenzi una dupa alta, cronometrul se ia de la capat
+     in loc sa se suprapuna doua — de-aia se tine minte si se opreste cel
+     vechi. Si se opreste la iesirea din ecran, ca sa nu incerce sa scrie
+     intr-o componenta care nu mai e. */
+  const [mutata, setMutata] = useState(false)
+  const ceasMutare = useRef(null)
+  const arataMutarea = useCallback(() => {
+    if (ceasMutare.current) clearTimeout(ceasMutare.current)
+    setMutata(true)
+    ceasMutare.current = setTimeout(() => setMutata(false), 5000)
+  }, [])
+  useEffect(() => () => { if (ceasMutare.current) clearTimeout(ceasMutare.current) }, [])
+
   // odată ce ai licitat, comanda trece exclusiv la "Meine Angebote" — nu mai
   // rămâne și în "Verfügbar"
   const neLicitate = orders.filter((o) => !biddedOrderIds.has(o.id))
@@ -9352,10 +9367,19 @@ function BiddingScreen({ profile, session, lang, embedded }) {
 
   return (
     <div className={embedded ? '' : 'rides-list'}>
+      {/* Dupa ce dai pretul, comanda dispare din lista asta — se muta la
+          „Meine Angebote". Mutarea se facea deja, dar fara niciun cuvant:
+          omul apasa, cardul se evapora, si nu stia daca oferta a plecat
+          sau s-a pierdut. Acum i se spune unde s-a dus, cinci secunde. */}
+      {mutata && (
+        <div className="new-order-toast" style={{ background: '#1F7A50' }}>
+          <CheckCircle2 size={16} strokeWidth={2} /> {t('bidMovedToOffers', lang)}
+        </div>
+      )}
       {!embedded && <h2 className="screen-title">{t('tabBidding', lang)}</h2>}
       {radiusFilter}
       {sortedOrders.map((o) => (
-        <BidCard key={o.id} order={o} lang={lang} courierProfileId={courierProfileId} open={openId === o.id} onToggle={() => setOpenId(openId === o.id ? null : o.id)} onBidPlaced={(orderId) => setBiddedOrderIds((prev) => new Set(prev).add(orderId))} />
+        <BidCard key={o.id} order={o} lang={lang} courierProfileId={courierProfileId} open={openId === o.id} onToggle={() => setOpenId(openId === o.id ? null : o.id)} onBidPlaced={(orderId) => { setBiddedOrderIds((prev) => new Set(prev).add(orderId)); arataMutarea() }} />
       ))}
     </div>
   )

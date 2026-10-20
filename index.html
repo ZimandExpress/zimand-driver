@@ -48,6 +48,16 @@
           try { if (sessionStorage.getItem(CHEIE)) return; } catch (e) { return; }
           try { sessionStorage.setItem(CHEIE, '1'); } catch (e) { return; }
 
+          // Uităm comanda deschisă înainte de reîncărcare. Aplicaţia ţine
+          // minte ce comandă era deschisă, ca să revină acolo după un
+          // refresh — bun în mod normal, dar dacă tocmai ACEA comandă a
+          // albit ecranul, reîncărcarea o redeschide şi albeşte iarăşi.
+          // Aşa rămâneau şoferii blocaţi: nu cădea o dată, cădea în buclă.
+          try {
+            sessionStorage.removeItem('zd-open-order');
+            sessionStorage.removeItem('zd-open-completed');
+          } catch (e) { /* mergem mai departe */ }
+
           var pasi = [];
           try {
             if ('serviceWorker' in navigator) {

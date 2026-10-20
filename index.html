@@ -15,6 +15,71 @@
 </head>
 <body>
   <div id="root"></div>
+  <!-- Raportor scris ÎNAINTE de pachet, şi în afara lui.
+       ====================================================================
+       Un şofer a observat că ecranul alb îşi revenea la refresh. Asta
+       exclude explicaţia cu comanda care cade din datele ei: aceeaşi
+       comandă, după refresh, se desenează perfect. Dacă un refresh rezolvă,
+       atunci de obicei codul nici nu a ajuns să ruleze — pachetul nu s-a
+       încărcat. Plasa din React nu poate prinde asta, fiindcă ea stă chiar
+       în pachetul care n-a pornit.
+       De aceea raportorul stă aici, fără `type="module"` şi fără import,
+       înaintea pachetului, ca să prindă chiar şi eşecul lui de încărcare. -->
+  <script>
+    (function () {
+      var URL_BAZA = '%VITE_SUPABASE_URL%';
+      var CHEIE = '%VITE_SUPABASE_ANON_KEY%';
+      var trimise = 0;
+
+      // Cel mult trei linii per deschidere: un raport care se repetă în
+      // buclă ar fi mai rău decât lipsa lui.
+      window.__zdRaport = function (ecran, mesaj, detaliu) {
+        if (trimise >= 3) return;
+        if (URL_BAZA.indexOf('http') !== 0) return;
+        trimise++;
+        var pachet = null;
+        try {
+          var s = document.querySelector('script[src*="/assets/"]');
+          pachet = s ? s.getAttribute('src') : null;
+        } catch (e) { /* nimic */ }
+        try {
+          fetch(URL_BAZA + '/rest/v1/app_errors', {
+            method: 'POST',
+            keepalive: true,                 // pleacă şi dacă pagina se reîncarcă
+            headers: {
+              'Content-Type': 'application/json',
+              apikey: CHEIE,
+              Authorization: 'Bearer ' + CHEIE,
+              Prefer: 'return=minimal',
+            },
+            body: JSON.stringify({
+              source_app: 'driver_app',
+              ecran: ecran,
+              message: String(mesaj).slice(0, 2000),
+              stack: detaliu ? String(detaliu).slice(0, 6000) : null,
+              app_version: pachet,
+              url: location.href,
+              user_agent: navigator.userAgent,
+            }),
+          }).catch(function () { /* raportarea n-are voie să strice nimic */ });
+        } catch (e) { /* nimic */ }
+      };
+
+      window.addEventListener('error', function (ev) {
+        // Un pachet care nu s-a încărcat: exact cazul „alb, dar refresh-ul
+        // rezolvă". Numele fişierului cerut arată şi dacă telefonul cerea un
+        // pachet vechi, rămas în service worker după o publicare.
+        if (ev && ev.target && ev.target.tagName === 'SCRIPT') {
+          window.__zdRaport('pachet-neincarcat',
+            'script nu s-a încărcat: ' + (ev.target.getAttribute('src') || '?'));
+          return;
+        }
+        if (ev && ev.message) {
+          window.__zdRaport('inainte-de-react', ev.message, ev.error && ev.error.stack);
+        }
+      }, true);
+    })();
+  </script>
   <script type="module" src="/src/main.jsx"></script>
   <!-- Plasă de siguranţă pentru ecranul alb.
        ====================================================================
@@ -47,6 +112,15 @@
           if (root && root.children.length > 0) return;      // s-a desenat
           try { if (sessionStorage.getItem(CHEIE)) return; } catch (e) { return; }
           try { sessionStorage.setItem(CHEIE, '1'); } catch (e) { return; }
+
+          // Spunem şi în baza de date că plasa a pornit. Altfel aplicaţia se
+          // vindecă în silenţiu şi n-am afla niciodată că un şofer a văzut
+          // alb — exact ce ne-a lipsit până acum.
+          try {
+            if (window.__zdRaport) {
+              window.__zdRaport('ecran-alb-plasa', 'ecranul a rămas gol 8 secunde după încărcare');
+            }
+          } catch (e) { /* nimic */ }
 
           // Uităm comanda deschisă înainte de reîncărcare. Aplicaţia ţine
           // minte ce comandă era deschisă, ca să revină acolo după un

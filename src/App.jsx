@@ -10015,8 +10015,15 @@ function BidCard({ order, lang, courierProfileId, open, onToggle, onBidPlaced, o
           .single()
         if (error) throw error
         setExistingBid(data)
-        if (onBidPlaced) onBidPlaced(order.id)
       }
+      // Anunţul vine la ORICE preţ trimis, nu doar la primul.
+      //
+      // Până acum stătea numai pe ramura cu ofertă nouă. Cine licita a doua
+      // oară pe aceeaşi comandă — adică exact cine revine după un preţ
+      // refuzat, pe rândul care există deja — nu vedea nimic: nici mesajul
+      // că s-a mutat la „Meine Angebote", nici mutarea însăşi, fiindcă tot
+      // de aici se scoate comanda din lista de licitaţii.
+      if (onBidPlaced) onBidPlaced(order.id)
       setEditing(false)
     } catch (err) {
       console.error('bid submit error:', err.message)

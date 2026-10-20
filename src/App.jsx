@@ -588,7 +588,12 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
   // decis încă) — afișat ca cifră lângă "Meine Angebote" în meniu, vizibil
   // indiferent de ecranul curent, nu doar când tab-ul respectiv e deschis.
   const { bids: menuBids } = useCourierBids(isOwner ? session?.user?.id : null)
-  const pendingOffersCount = isOwner ? menuBids.filter((b) => b.orders && b.orders.status === 'open').length : 0
+  // Aceeaşi socoteală ca pe ecranul „Meine Angebote": o ofertă refuzată nu
+  // mai aşteaptă răspuns, deci nu se numără. Altfel cifra din meniu arăta 3
+  // şi ecranul arăta una.
+  const pendingOffersCount = isOwner
+    ? menuBids.filter((b) => b.orders && b.orders.status === 'open' && !b.rejected_at && !b.counter_rejected_at).length
+    : 0
 
   // Vestea proastă, arătată pe ORICE ecran.
   //
@@ -633,6 +638,10 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
         numar: o.order_number || String(o.id).slice(0, 8),
         anulata: o.status === 'cancelled' || o.client_cancelled === true,
         refuzata: !!b.rejected_at,
+        // Contraoferta: dispecerul propune alt preţ şi aşteaptă răspuns.
+        // Soseşte prin acelaşi abonament de oferte — propria ofertă e mereu
+        // vizibilă firmei, deci evenimentul chiar ajunge la ea.
+        contraoferta: !!b.counter_price && !b.counter_rejected_at,
         // `lost_at` stă pe PROPRIA ofertă, iar oferta proprie se vede
         // întotdeauna. Rândul comenzii, nu: RLS pe `orders` nu are nicio
         // regulă pentru „firma care a licitat", deci schimbarea câştigătorului
@@ -656,16 +665,24 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
     for (const [idComanda, n] of acum) {
       const v = inainte.get(idComanda)
       if (!v) continue
-      // Doar trecerea de la bine la rău, o dată.
+      // Doar trecerea de la bine la rău, o dată. Anularea e cea mai gravă,
+      // deci are prioritate; contraoferta e cea mai puţin gravă, dar singura
+      // care cere un răspuns, aşa că o anunţăm dacă nimic rău nu s-a
+      // întâmplat între timp.
       if (n.anulata && !v.anulata) anuntaPierdere('anulata', n.numar, idComanda)
       else if (n.refuzata && !v.refuzata) anuntaPierdere('refuzata', n.numar, idComanda)
       else if (n.pierduta && !v.pierduta) anuntaPierdere('pierduta', n.numar, idComanda)
+      else if (n.contraoferta && !v.contraoferta) anuntaContraoferta(n.numar, idComanda)
 
       // Drumul înapoi: o comandă repusă în licitație trebuie să poată anunța
       // din nou, dacă se anulează a doua oară în aceeași sesiune.
       if (!n.anulata && v.anulata) uitaPierderea('anulata', idComanda)
       if (!n.refuzata && v.refuzata) uitaPierderea('refuzata', idComanda)
       if (!n.pierduta && v.pierduta) uitaPierderea('pierduta', idComanda)
+      // O contraofertă răspunsă (acceptată sau refuzată) curăţă semnul, deci
+      // o a doua contraofertă pe aceeaşi comandă sună din nou — negocierea
+      // poate avea mai multe runde.
+      if (!n.contraoferta && v.contraoferta) uitaPierderea('contraoferta', idComanda)
     }
   }, [menuBids, isOwner])
 
@@ -837,37 +854,58 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
             capul oricărui ecran, cu sunetul deja auzit, şi se închide şi cu
             mâna. Fără emoji şi fără culori ţipătoare: e o informaţie de
             lucru, nu o alarmă. */}
-        {alerta && (
-          <div style={{
-            display: 'flex', alignItems: 'flex-start', gap: 10,
-            background: '#FCEBE8', border: '1px solid #E4A296',
-            borderRadius: 11, padding: '13px 14px', marginBottom: 14,
-          }}>
-            {alerta.fel === 'anulata'
-              ? <XCircle size={17} strokeWidth={2} color="#B23A24" style={{ flexShrink: 0, marginTop: 1 }} />
-              : <AlertTriangle size={17} strokeWidth={2} color="#B23A24" style={{ flexShrink: 0, marginTop: 1 }} />}
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 15.5, fontWeight: 800, lineHeight: 1.4, color: '#B23A24' }}>
-                {t(alerta.fel === 'anulata' ? 'lostCancelledTitle'
-                  : alerta.fel === 'refuzata' ? 'lostRejectedTitle'
-                  : 'lostToOtherTitle', lang)}
-              </div>
-              <div style={{ fontSize: 13.5, marginTop: 4, lineHeight: 1.55, color: '#8A3A28' }}>
-                {alerta.numar} — {t(alerta.fel === 'anulata' ? 'lostCancelledBody'
-                  : alerta.fel === 'refuzata' ? 'lostRejectedBody'
-                  : 'lostToOtherBody', lang)}
-              </div>
-            </div>
-            <button
-              type="button"
-              aria-label={t('lostClose', lang)}
-              onClick={() => setAlerta(null)}
-              style={{ background: 'none', border: 'none', padding: 2, cursor: 'pointer', color: '#8A3A28', flexShrink: 0 }}
+        {alerta && (() => {
+          // Contraoferta nu e o veste proastă: nu s-a pierdut nimic, se
+          // aşteaptă un răspuns. Deci altă culoare — portocaliu, ca peste tot
+          // în aplicaţie la „de făcut" — şi mesajul se poate apăsa, ca să
+          // ajungă direct la ofertă, nu să o caute prin meniu.
+          const cerere = alerta.fel === 'contraoferta'
+          const fundal = cerere ? '#FFF6ED' : '#FCEBE8'
+          const margine = cerere ? '#FFD2AE' : '#E4A296'
+          const tare = cerere ? '#B35A12' : '#B23A24'
+          const moale = cerere ? '#8A5A16' : '#8A3A28'
+          const titlu = cerere ? 'counterIncomingTitle'
+            : alerta.fel === 'anulata' ? 'lostCancelledTitle'
+            : alerta.fel === 'refuzata' ? 'lostRejectedTitle'
+            : 'lostToOtherTitle'
+          const text = cerere ? 'counterIncomingBody'
+            : alerta.fel === 'anulata' ? 'lostCancelledBody'
+            : alerta.fel === 'refuzata' ? 'lostRejectedBody'
+            : 'lostToOtherBody'
+          return (
+            <div
+              onClick={cerere ? () => { setAlerta(null); navTo('angebote') } : undefined}
+              style={{
+                display: 'flex', alignItems: 'flex-start', gap: 10,
+                background: fundal, border: `1px solid ${margine}`,
+                borderRadius: 11, padding: '13px 14px', marginBottom: 14,
+                cursor: cerere ? 'pointer' : 'default',
+              }}
             >
-              <X size={17} strokeWidth={2} />
-            </button>
-          </div>
-        )}
+              {cerere
+                ? <Tag size={17} strokeWidth={2} color={tare} style={{ flexShrink: 0, marginTop: 1 }} />
+                : alerta.fel === 'anulata'
+                  ? <XCircle size={17} strokeWidth={2} color={tare} style={{ flexShrink: 0, marginTop: 1 }} />
+                  : <AlertTriangle size={17} strokeWidth={2} color={tare} style={{ flexShrink: 0, marginTop: 1 }} />}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 15.5, fontWeight: 800, lineHeight: 1.4, color: tare }}>
+                  {t(titlu, lang)}
+                </div>
+                <div style={{ fontSize: 13.5, marginTop: 4, lineHeight: 1.55, color: moale }}>
+                  {alerta.numar} — {t(text, lang)}
+                </div>
+              </div>
+              <button
+                type="button"
+                aria-label={t('lostClose', lang)}
+                onClick={(e) => { e.stopPropagation(); setAlerta(null) }}
+                style={{ background: 'none', border: 'none', padding: 2, cursor: 'pointer', color: moale, flexShrink: 0 }}
+              >
+                <X size={17} strokeWidth={2} />
+              </button>
+            </div>
+          )
+        })()}
         {/* Locaţia refuzată sau indisponibilă, spusă șoferului în clar.
             Comutatorul „Online" poate fi pornit și totuși dispeceratul să nu
             vadă nimic: permisiunea e a telefonului, nu a aplicaţiei. Atunci
@@ -1664,6 +1702,47 @@ function anuntaPierdere(fel, numar, idComanda) {
 // anunța din nou dacă se anulează a doua oară în aceeași sesiune.
 function uitaPierderea(fel, idComanda) {
   alerteDate.delete(idComanda + ':' + fel)
+}
+
+// Contraoferta e altceva decât o pierdere: nu s-a închis nimic, dispecerul
+// propune un preț și așteaptă un răspuns. De aceea sună ca „a venit ceva" —
+// sunetul urcător, cel de comandă nouă — nu ca sunetul coborâtor de veste
+// proastă. Mesajul e și de apăsat, ca să ajungă direct la ofertă.
+// Ofertele proprii, împărţite în două: cele vii (care ţin comanda ascunsă
+// din „Verfügbar", fiindcă aştepţi răspuns) şi cele MOARTE — refuzate de
+// dispecer, sau contraoferte pe care firma le-a refuzat.
+//
+// O ofertă moartă nu mai e o ofertă. Comanda se întoarce în listă, cu scris
+// pe card de ce a picat preţul de dinainte, şi firma poate trimite altul.
+// Un preţ nou reînvie acelaşi rând: declanşatorul `trg_clear_bid_rejection`
+// din bază şterge marcajul de refuz, iar trimiterea ofertei şterge
+// contraoferta — deci nu rămâne nimic în urmă.
+function incarcaOferteleMele(courierProfileId, setVii, setMoarte) {
+  return supabase
+    .from('bids')
+    .select('order_id, price, rejected_at, rejected_reason, counter_rejected_at')
+    .eq('courier_id', courierProfileId)
+    .then(({ data, error }) => {
+      if (error) { console.error('bids fetch error:', error.message); return }
+      const vii = new Set()
+      const moarte = new Map()
+      for (const b of data || []) {
+        const moarta = !!b.rejected_at || !!b.counter_rejected_at
+        if (moarta) moarte.set(b.order_id, { price: b.price, motiv: b.rejected_reason, contra: !b.rejected_at })
+        else vii.add(b.order_id)
+      }
+      setVii(vii)
+      setMoarte(moarte)
+    })
+}
+
+function anuntaContraoferta(numar, idComanda) {
+  const cheie = idComanda + ':contraoferta'
+  if (alerteDate.has(cheie)) return
+  alerteDate.add(cheie)
+  playNewOrderSound()
+  vibreaza([120, 80, 120])
+  window.dispatchEvent(new CustomEvent('zd-alerta', { detail: { fel: 'contraoferta', numar } }))
 }
 
 // Anunțul unei comenzi primite — „e a mea".
@@ -8109,7 +8188,13 @@ function MeineAngeboteScreen({ profile, session, lang }) {
 
   if (loading) return <PlaceholderScreen title={t('menuOffers', lang)} note={t('loadingRides', lang)} />
 
-  const pending = bids.filter((b) => b.orders && b.orders.status === 'open')
+  // O ofertă refuzată — de dispecer, sau o contraofertă refuzată de firmă —
+  // nu mai aşteaptă nimic, deci nu stă în „Meine Angebote". Comanda se vede
+  // din nou în „Verfügbar", cu motivul pe card, şi de acolo se trimite alt
+  // preţ. Altfel aceeaşi cursă ar apărea în două liste deodată, una zicând
+  // „aştepţi răspuns" şi cealaltă „licitează".
+  const ofertaVie = (b) => !b.rejected_at && !b.counter_rejected_at
+  const pending = bids.filter((b) => b.orders && b.orders.status === 'open' && ofertaVie(b))
   const needsAssignment = bids.filter(
     (b) => b.orders && b.orders.status === 'assigned' && b.orders.winner_bid_id === b.id && !b.orders.assigned_driver_id
   )
@@ -9342,6 +9427,10 @@ function BiddingScreen({ profile, session, lang, embedded }) {
   const [loading, setLoading] = useState(true)
   const [openId, setOpenId] = useState(null)
   const [biddedOrderIds, setBiddedOrderIds] = useState(new Set())
+  // Comenzile pe care firma a licitat, dar preţul a picat: refuzat de
+  // dispecer, sau contraofertă refuzată de ea. Se arată din nou în listă,
+  // cu motivul pe card.
+  const [oferteMoarte, setOferteMoarte] = useState(new Map())
   const [radiusKm, setRadiusKm] = useState(null) // null = alle
   // Pragurile de preţ: o firmă care nu poate trimite o maşină sub 100 € nu
   // trebuie să citească zilnic licitaţii de 60 €.
@@ -9478,12 +9567,13 @@ function BiddingScreen({ profile, session, lang, embedded }) {
     incarcaLicitatiile()
     reincarcaRef.current = incarcaLicitatiile
 
+    // Ofertele proprii, cu tot ce trebuie ca să ştim dacă mai sunt în
+    // picioare. O ofertă REFUZATĂ nu mai e o ofertă: comanda trebuie să se
+    // întoarcă în „Verfügbar", cu scris pe card de ce, ca firma să poată
+    // trimite alt preţ. Până acum orice ofertă, chiar refuzată, ţinea comanda
+    // ascunsă din listă pentru totdeauna — firma nu mai avea cum să revină.
     if (courierProfileId) {
-      supabase
-        .from('bids')
-        .select('order_id')
-        .eq('courier_id', courierProfileId)
-        .then(({ data }) => setBiddedOrderIds(new Set((data || []).map((b) => b.order_id))))
+      incarcaOferteleMele(courierProfileId, setBiddedOrderIds, setOferteMoarte)
     }
 
     const channel = supabase
@@ -9492,7 +9582,7 @@ function BiddingScreen({ profile, session, lang, embedded }) {
         incarcaLicitatiile()
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'bids', filter: `courier_id=eq.${courierProfileId}` }, () => {
-        supabase.from('bids').select('order_id').eq('courier_id', courierProfileId).then(({ data }) => setBiddedOrderIds(new Set((data || []).map((b) => b.order_id))))
+        incarcaOferteleMele(courierProfileId, setBiddedOrderIds, setOferteMoarte)
       })
       .subscribe()
 
@@ -9665,7 +9755,22 @@ function BiddingScreen({ profile, session, lang, embedded }) {
       {!embedded && <h2 className="screen-title">{t('tabBidding', lang)}</h2>}
       {radiusFilter}
       {sortedOrders.map((o) => (
-        <BidCard key={o.id} order={o} lang={lang} courierProfileId={courierProfileId} open={openId === o.id} onToggle={() => setOpenId(openId === o.id ? null : o.id)} onBidPlaced={(orderId) => { setBiddedOrderIds((prev) => new Set(prev).add(orderId)); arataMutarea() }} />
+        <BidCard
+          key={o.id}
+          order={o}
+          lang={lang}
+          courierProfileId={courierProfileId}
+          open={openId === o.id}
+          onToggle={() => setOpenId(openId === o.id ? null : o.id)}
+          // De ce comanda e din nou în listă, dacă firma licitase deja.
+          ofertaPicata={oferteMoarte.get(o.id) || null}
+          onBidPlaced={(orderId) => {
+            setBiddedOrderIds((prev) => new Set(prev).add(orderId))
+            // Preţul nou înlocuieşte cel picat: nota de pe card dispare.
+            setOferteMoarte((prev) => { const n = new Map(prev); n.delete(orderId); return n })
+            arataMutarea()
+          }}
+        />
       ))}
     </div>
   )
@@ -9735,7 +9840,7 @@ function VehicleChips({ vehicles }) {
   )
 }
 
-function BidCard({ order, lang, courierProfileId, open, onToggle, onBidPlaced }) {
+function BidCard({ order, lang, courierProfileId, open, onToggle, onBidPlaced, ofertaPicata }) {
   const [ownPrice, setOwnPrice] = useCiorna(`oferta-pret:${order?.id}`)
   const [message, setMessage] = useCiorna(`oferta-mesaj:${order?.id}`)
   const [respectInterval, setRespectInterval] = useState(true)
@@ -9761,6 +9866,11 @@ function BidCard({ order, lang, courierProfileId, open, onToggle, onBidPlaced })
           setExistingBid(data)
           setOwnPrice(String(data.price ?? ''))
           setMessage(data.message || '')
+          // O ofertă picată — refuzată de dispecer, sau contraofertă refuzată
+          // de firmă — nu mai e o ofertă în picioare. Fără asta, cardul arăta
+          // preţul vechi cu „Modifică / Retrage", deşi preţul acela nu mai
+          // există pentru nimeni: firma n-avea de unde trimite altul.
+          if (data.rejected_at || data.counter_rejected_at) setEditing(true)
         }
       })
   }, [courierProfileId, order.id])
@@ -10031,6 +10141,31 @@ function BidCard({ order, lang, courierProfileId, open, onToggle, onBidPlaced })
             <div className="order-notes-box">
               <div className="order-notes-label">{t('notesLabel', lang)}</div>
               <div className="order-notes-text">{preWinSafeNotes(order.notes)}</div>
+            </div>
+          )}
+
+          {/* De ce comanda e din nou aici, deşi firma licitase: preţul de
+              dinainte a picat. Fără rândul ăsta, cardul ar arăta ca o
+              licitaţie nouă şi nimeni n-ar înţelege ce s-a întâmplat cu
+              oferta trimisă. */}
+          {ofertaPicata && (
+            <div style={{
+              background: '#FCEBE8', border: '1px solid #E4A296', borderRadius: 10,
+              padding: '11px 13px', marginBottom: 12,
+            }}>
+              <div style={{ fontSize: 13.5, fontWeight: 700, color: '#B23A24', lineHeight: 1.45 }}>
+                {ofertaPicata.contra
+                  ? t('counterRejectedOnCard', lang)
+                  : t('bidRejectedOnCard', lang).replace('{price}', String(ofertaPicata.price ?? '—'))}
+              </div>
+              {!ofertaPicata.contra && (
+                <div style={{ fontSize: 12.5, color: '#8A3A28', marginTop: 4, lineHeight: 1.5 }}>
+                  {t(ofertaPicata.motiv === 'zu_teuer' ? 'bidRejectedReasonTooHigh'
+                    : ofertaPicata.motiv === 'zu_spaet' ? 'bidRejectedReasonLate'
+                    : 'bidRejectedReasonOther', lang)}
+                  {' — '}{t('bidRejectedCanRebid', lang)}
+                </div>
+              )}
             </div>
           )}
 

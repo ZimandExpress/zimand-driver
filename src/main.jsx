@@ -1,6 +1,6 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import App from './App.jsx'
+import App, { PlasaEroare } from './App.jsx'
 
 // O versiune nouă se vede de la PRIMA deschidere.
 //
@@ -37,8 +37,13 @@ if ('serviceWorker' in navigator) {
   })
 }
 
+// Plasa de aici e ultima: ecranele îşi au propria plasă, aşa că aici ajunge
+// doar ce cade în afara lor. Şi ea uită comanda deschisă, ca reîncărcarea să
+// nu redeschidă comanda care a căzut.
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <App />
+    <PlasaEroare ecran="aplicatie" lang={localStorage.getItem('zimand-driver-lang') === 'en' ? 'en' : 'de'}>
+      <App />
+    </PlasaEroare>
   </React.StrictMode>
 )

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+import { Component, useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { supabase } from './supabaseClient'
 import { t, getLang, setLang, availableLangs } from './i18n'
@@ -97,6 +97,110 @@ function treceFiltrul(o, radiusKm, minPrice, maxPrice) {
 // ca să vedem exact de unde vine consumul (raport în panoul de disponent).
 function logApiUsage(apiName, page, description) {
   supabase.from('api_usage_log').insert({ api_name: apiName, source_app: 'driver_app', page, description }).then(() => {}, () => {})
+}
+
+// ─────────────────────── Plasă pentru erori de desenare ───────────────────────
+//
+// React nu are plasă din construcţie: dacă UN component aruncă o eroare — la
+// desenare sau dintr-un useEffect — React desface TOT arborele. Rămâne un
+// ecran alb, fără text şi fără buton de întoarcere.
+//
+// Mai rău: comanda deschisă e ţinută în sessionStorage ('zd-open-order'), deci
+// la reîncărcare aplicaţia redeschide exact comanda care a căzut şi albeşte din
+// nou. De aceea şoferii spun că „rămâne albă": nu cade o dată, intră în buclă,
+// iar singura ieşire era ştergerea datelor aplicaţiei din setările telefonului.
+//
+// Plasa face trei lucruri:
+//   1. arată un ecran lizibil, cu buton de ieşire;
+//   2. uită comanda deschisă, ca reîncărcarea să scape din buclă;
+//   3. scrie eroarea în app_errors — aşa vedem din telefoanele şoferilor ce a
+//      aruncat de fapt, în loc să ghicim. (Zece build-uri şi nouă forme de
+//      comandă se încarcă curat în probă; harta Google, de pildă, nu porneşte
+//      acolo fiindcă proba nu are cheie.)
+//
+// Numele pachetului încărcat intră şi el în raport: dacă un telefon rulează un
+// build vechi rămas în service worker, se vede imediat din linia scrisă.
+function numePachet() {
+  try {
+    const s = document.querySelector('script[src*="/assets/"]')
+    return s ? s.getAttribute('src') : null
+  } catch (e) { return null }
+}
+
+function raporteazaEroare(eroare, info, ecran, numarComanda) {
+  try {
+    supabase.from('app_errors').insert({
+      source_app: 'driver_app',
+      ecran: ecran || null,
+      message: String((eroare && eroare.message) || eroare || '').slice(0, 2000),
+      stack: String((eroare && eroare.stack) || '').slice(0, 6000),
+      component_stack: String((info && info.componentStack) || '').slice(0, 6000),
+      order_number: numarComanda || null,
+      app_version: numePachet(),
+      url: (typeof location !== 'undefined' ? location.href : null),
+      user_agent: (typeof navigator !== 'undefined' ? navigator.userAgent : null),
+    }).then(() => {}, () => {})
+  } catch (e) { /* raportarea nu are voie să strice nimic */ }
+  try { console.error('[zd] ecran căzut:', ecran, eroare) } catch (e) {}
+}
+
+// Textele stau aici, scrise în clar: plasa nu are voie să depindă de nimic
+// care ar putea să cadă la rândul lui.
+const PLASA_TEXTE = {
+  de: {
+    titlu: 'Diese Ansicht konnte nicht geladen werden',
+    rand: 'Der Fehler wurde automatisch gemeldet. Der Auftrag selbst ist unverändert.',
+    inapoi: 'Zurück zur Übersicht',
+    reincarca: 'App neu laden',
+  },
+  en: {
+    titlu: 'This view could not be loaded',
+    rand: 'The error has been reported automatically. The order itself is unchanged.',
+    inapoi: 'Back to overview',
+    reincarca: 'Reload app',
+  },
+}
+
+export class PlasaEroare extends Component {
+  constructor(props) {
+    super(props)
+    this.state = { caz: null }
+  }
+
+  static getDerivedStateFromError(eroare) {
+    return { caz: eroare || new Error('eroare necunoscută') }
+  }
+
+  componentDidCatch(eroare, info) {
+    raporteazaEroare(eroare, info, this.props.ecran, this.props.numarComanda)
+    // Uităm comanda deschisă: altfel reîncărcarea o redeschide şi cade iar.
+    try {
+      sessionStorage.removeItem('zd-open-order')
+      sessionStorage.removeItem('zd-open-completed')
+    } catch (e) {}
+  }
+
+  render() {
+    if (!this.state.caz) return this.props.children
+    const T = PLASA_TEXTE[this.props.lang === 'en' ? 'en' : 'de']
+    return (
+      <div style={{ padding: '28px 20px', maxWidth: 520, margin: '0 auto', textAlign: 'center' }}>
+        <AlertTriangle size={34} strokeWidth={1.6} color="#B04A10" />
+        <h2 style={{ margin: '14px 0 6px', fontSize: 19, lineHeight: 1.3, color: '#0F2240' }}>{T.titlu}</h2>
+        <p style={{ margin: '0 0 20px', fontSize: 14.5, lineHeight: 1.5, color: '#5A6478' }}>{T.rand}</p>
+        {this.props.laIesire ? (
+          <button type="button" onClick={this.props.laIesire}
+            style={{ display: 'block', width: '100%', padding: '13px 16px', marginBottom: 10, borderRadius: 11, border: 0, background: '#0F2240', color: '#fff', fontSize: 15.5, fontWeight: 700, cursor: 'pointer' }}>
+            {T.inapoi}
+          </button>
+        ) : null}
+        <button type="button" onClick={() => { try { location.reload() } catch (e) {} }}
+          style={{ display: 'block', width: '100%', padding: '13px 16px', borderRadius: 11, border: '1px solid #D8DEE8', background: '#fff', color: '#0F2240', fontSize: 15.5, fontWeight: 600, cursor: 'pointer' }}>
+          {T.reincarca}
+        </button>
+      </div>
+    )
+  }
 }
 
 function InstallPrompt({ lang }) {
@@ -2344,17 +2448,29 @@ function RidesScreen({ profile, isOwner, session, lang }) {
   if (loading) return <PlaceholderScreen title={t('tabRides', lang)} note={t('loadingRides', lang)} />
 
   const selected = orders.find((o) => o.id === selectedId)
+  // `key` pe numărul comenzii: o comandă care cade nu blochează plasa pentru
+  // celelalte — la deschiderea alteia plasa porneşte curată.
   if (selected && (selected.status === 'done' || selected.status === 'cancelled')) {
-    return <CompletedOrderDetail order={selected} isOwner={isOwner} lang={lang} onBack={() => setSelectedId(null)} />
+    return (
+      <PlasaEroare key={selected.id} lang={lang} ecran="detaliu-comanda-incheiata"
+        numarComanda={selected.order_number} laIesire={() => setSelectedId(null)}>
+        <CompletedOrderDetail order={selected} isOwner={isOwner} lang={lang} onBack={() => setSelectedId(null)} />
+      </PlasaEroare>
+    )
   }
   if (selected) {
-    return <RideDetailScreen order={selected} isOwner={isOwner} session={session} profile={profile} lang={lang} onBack={() => setSelectedId(null)} onStatusChange={() => {}} onDeliveryComplete={(amount) => {
-      // Ecranul de felicitare cu suma câștigată este pentru firmele partenere,
-      // care văd remunerația. Un angajat la a unsprezecea livrare din tură nu
-      // are ce sărbători — se întoarce direct în lista de comenzi.
-      setSelectedId(null)
-      if (amount != null) setCelebration(amount)
-    }} />
+    return (
+      <PlasaEroare key={selected.id} lang={lang} ecran="detaliu-comanda"
+        numarComanda={selected.order_number} laIesire={() => setSelectedId(null)}>
+        <RideDetailScreen order={selected} isOwner={isOwner} session={session} profile={profile} lang={lang} onBack={() => setSelectedId(null)} onStatusChange={() => {}} onDeliveryComplete={(amount) => {
+          // Ecranul de felicitare cu suma câștigată este pentru firmele partenere,
+          // care văd remunerația. Un angajat la a unsprezecea livrare din tură nu
+          // are ce sărbători — se întoarce direct în lista de comenzi.
+          setSelectedId(null)
+          if (amount != null) setCelebration(amount)
+        }} />
+      </PlasaEroare>
+    )
   }
 
   const activeOrders = orders.filter((o) => o.status === 'assigned')
@@ -2490,7 +2606,12 @@ function CompletedOrdersListScreen({ profile, isOwner, lang }) {
 
   const selected = orders.find((o) => o.id === selectedId)
   if (selected) {
-    return <CompletedOrderDetail order={selected} isOwner={isOwner} lang={lang} onBack={() => setSelectedId(null)} />
+    return (
+      <PlasaEroare key={selected.id} lang={lang} ecran="lista-incheiate-detaliu"
+        numarComanda={selected.order_number} laIesire={() => setSelectedId(null)}>
+        <CompletedOrderDetail order={selected} isOwner={isOwner} lang={lang} onBack={() => setSelectedId(null)} />
+      </PlasaEroare>
+    )
   }
 
   const sorted = [...orders].sort((a, b) => {

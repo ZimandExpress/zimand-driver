@@ -32,6 +32,20 @@ self.addEventListener('push', (event) => {
     if (event.data) data = { ...data, ...event.data.json() }
   } catch {}
 
+  // Gruparea în bara de notificări.
+  //
+  // Toate notificările purtau aceeaşi etichetă, 'zimand-order-update'. Două
+  // cu aceeaşi etichetă se înlocuiesc una pe alta: o anulare ştergea din
+  // bară atribuirea de dinainte, şi două curse pierdute deodată se vedeau
+  // ca una singură. Telefonul suna oricum (`renotify`), dar în bară rămânea
+  // doar ultima.
+  //
+  // Acum fiecare veste îşi ţine locul: eticheta trimisă de server, dacă
+  // vine una, altfel una scoasă din titlu — care diferă de la o veste la
+  // alta. Aceeaşi notificare trimisă de două ori se uneşte în continuare.
+  const eticheta = data.tag
+    || ('zimand-' + String(data.title || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 60))
+
   event.waitUntil(
     self.registration.showNotification(data.title, {
       body: data.body,
@@ -39,7 +53,7 @@ self.addEventListener('push', (event) => {
       badge: '/icon-192.png',
       vibrate: [200, 100, 200],
       data: { url: data.url },
-      tag: 'zimand-order-update',
+      tag: eticheta,
       renotify: true,
     })
   )

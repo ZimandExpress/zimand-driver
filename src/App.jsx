@@ -590,6 +590,76 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
   const { bids: menuBids } = useCourierBids(isOwner ? session?.user?.id : null)
   const pendingOffersCount = isOwner ? menuBids.filter((b) => b.orders && b.orders.status === 'open').length : 0
 
+  // Vestea proastă, arătată pe ORICE ecran.
+  //
+  // Până acum șoferul nu afla nimic când o cursă îi era luată: nici sunet,
+  // nici mesaj. O comandă anulată rămânea în listă până se uita din nou, iar
+  // o licitație pierdută nu se vedea deloc. Mesajul stă aici, în învelișul
+  // aplicației, nu pe ecranul de curse — altfel ar fi apărut doar dacă
+  // șoferul se nimerea exact pe lista de curse în clipa aceea.
+  const [alerta, setAlerta] = useState(null)
+  const ceasAlerta = useRef(null)
+  useEffect(() => {
+    const laAlerta = (e) => {
+      setAlerta(e.detail)
+      if (ceasAlerta.current) clearTimeout(ceasAlerta.current)
+      // 12 secunde, nu 4 ca la comanda nouă: aici nu e ceva de prins din
+      // zbor, e ceva ce trebuie citit. Se închide și cu mâna.
+      ceasAlerta.current = setTimeout(() => setAlerta(null), 12000)
+    }
+    window.addEventListener('zd-alerta', laAlerta)
+    return () => {
+      window.removeEventListener('zd-alerta', laAlerta)
+      if (ceasAlerta.current) clearTimeout(ceasAlerta.current)
+    }
+  }, [])
+
+  // Urmăritorul ofertelor firmei. `useCourierBids` reîncarcă singur la orice
+  // schimbare de ofertă sau de comandă, deci aici doar comparăm fotografia
+  // de dinainte cu cea de acum și vedem ce s-a stricat între ele.
+  //
+  // Trei feluri de pierdere, toate invizibile până acum în aplicație:
+  //   anulată  — cursa e oprită (dispecerul, sau clientul cu despăgubire)
+  //   refuzată — dispecerul a refuzat oferta, cu motiv (e-mail exista deja)
+  //   pierdută — comanda s-a dat altei firme (nici măcar e-mail nu exista)
+  const stareOferte = useRef(null)
+  useEffect(() => {
+    if (!isOwner) return
+    const acum = new Map()
+    for (const b of menuBids) {
+      const o = b.orders
+      if (!o) continue
+      acum.set(b.order_id, {
+        numar: o.order_number || String(o.id).slice(0, 8),
+        anulata: o.status === 'cancelled' || o.client_cancelled === true,
+        refuzata: !!b.rejected_at,
+        pierduta: !!o.winner_bid_id && o.winner_bid_id !== b.id,
+      })
+    }
+
+    const inainte = stareOferte.current
+    stareOferte.current = acum
+    // Prima încărcare nu anunță nimic: altfel, la fiecare deschidere a
+    // aplicației, șoferul ar auzi sunetul pentru fiecare cursă pierdută
+    // vreodată.
+    if (!inainte) return
+
+    for (const [idComanda, n] of acum) {
+      const v = inainte.get(idComanda)
+      if (!v) continue
+      // Doar trecerea de la bine la rău, o dată.
+      if (n.anulata && !v.anulata) anuntaPierdere('anulata', n.numar, idComanda)
+      else if (n.refuzata && !v.refuzata) anuntaPierdere('refuzata', n.numar, idComanda)
+      else if (n.pierduta && !v.pierduta) anuntaPierdere('pierduta', n.numar, idComanda)
+
+      // Drumul înapoi: o comandă repusă în licitație trebuie să poată anunța
+      // din nou, dacă se anulează a doua oară în aceeași sesiune.
+      if (!n.anulata && v.anulata) uitaPierderea('anulata', idComanda)
+      if (!n.refuzata && v.refuzata) uitaPierderea('refuzata', idComanda)
+      if (!n.pierduta && v.pierduta) uitaPierderea('pierduta', idComanda)
+    }
+  }, [menuBids, isOwner])
+
   // Send GPS position continuously while profile.is_online is true —
   // starts/stops automatically whenever the toggle in Profile changes it.
   useEffect(() => {
@@ -754,6 +824,41 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
       </div>
 
       <div className="screen-body">
+        {/* O cursă pierdută — anulată, refuzată sau dată altei firme. Stă în
+            capul oricărui ecran, cu sunetul deja auzit, şi se închide şi cu
+            mâna. Fără emoji şi fără culori ţipătoare: e o informaţie de
+            lucru, nu o alarmă. */}
+        {alerta && (
+          <div style={{
+            display: 'flex', alignItems: 'flex-start', gap: 10,
+            background: '#FCEBE8', border: '1px solid #E4A296',
+            borderRadius: 11, padding: '13px 14px', marginBottom: 14,
+          }}>
+            {alerta.fel === 'anulata'
+              ? <XCircle size={17} strokeWidth={2} color="#B23A24" style={{ flexShrink: 0, marginTop: 1 }} />
+              : <AlertTriangle size={17} strokeWidth={2} color="#B23A24" style={{ flexShrink: 0, marginTop: 1 }} />}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 15.5, fontWeight: 800, lineHeight: 1.4, color: '#B23A24' }}>
+                {t(alerta.fel === 'anulata' ? 'lostCancelledTitle'
+                  : alerta.fel === 'refuzata' ? 'lostRejectedTitle'
+                  : 'lostToOtherTitle', lang)}
+              </div>
+              <div style={{ fontSize: 13.5, marginTop: 4, lineHeight: 1.55, color: '#8A3A28' }}>
+                {alerta.numar} — {t(alerta.fel === 'anulata' ? 'lostCancelledBody'
+                  : alerta.fel === 'refuzata' ? 'lostRejectedBody'
+                  : 'lostToOtherBody', lang)}
+              </div>
+            </div>
+            <button
+              type="button"
+              aria-label={t('lostClose', lang)}
+              onClick={() => setAlerta(null)}
+              style={{ background: 'none', border: 'none', padding: 2, cursor: 'pointer', color: '#8A3A28', flexShrink: 0 }}
+            >
+              <X size={17} strokeWidth={2} />
+            </button>
+          </div>
+        )}
         {/* Locaţia refuzată sau indisponibilă, spusă șoferului în clar.
             Comutatorul „Online" poate fi pornit și totuși dispeceratul să nu
             vadă nimic: permisiunea e a telefonului, nu a aplicaţiei. Atunci
@@ -1461,6 +1566,87 @@ function playBusinessChime() {
   }
 }
 
+// Sunetul pentru veste proastă: comandă anulată, ofertă refuzată, comandă
+// dată altei firme.
+//
+// Nu se reia niciunul din cele două sunete existente, nici fișierul de
+// comandă nouă, nici cel de confirmare: șoferul e la volan și decide după
+// ureche dacă merită să se uite la telefon. Dacă „am pierdut-o" sună ca
+// „am primit una", se uită degeaba — sau, mai rău, nu se uită când trebuie.
+//
+// Aceleași note ca la sunetul de notificare, dar în ordine inversă — Mi,
+// Do#, La — cu ultima ținută și mai jos. O coborâre se citește fără să te
+// gândești ca „ceva s-a dus", exact cum o urcare se citește ca „ceva a
+// venit". E generat din cod, nu dintr-un fișier: nu avem ce încărca, și
+// sună la fel pe orice telefon.
+function playLostChime() {
+  try {
+    const ctx = getSharedAudioCtx()
+    if (ctx.state === 'suspended') { ctx.resume().catch(() => {}) }
+    const now = ctx.currentTime
+
+    const note = (freq, start, dur, gain) => {
+      const osc = ctx.createOscillator()
+      const harm = ctx.createOscillator()
+      const g = ctx.createGain()
+      const hg = ctx.createGain()
+
+      osc.type = 'sine'
+      osc.frequency.value = freq
+      harm.type = 'sine'
+      harm.frequency.value = freq * 2
+
+      // Atac de 15 ms, ca la celălalt sunet: o pornire bruscă pocnește pe
+      // difuzorul telefonului.
+      g.gain.setValueAtTime(0, now + start)
+      g.gain.linearRampToValueAtTime(gain, now + start + 0.015)
+      g.gain.exponentialRampToValueAtTime(0.0001, now + start + dur)
+
+      hg.gain.setValueAtTime(0, now + start)
+      hg.gain.linearRampToValueAtTime(gain * 0.22, now + start + 0.015)
+      hg.gain.exponentialRampToValueAtTime(0.0001, now + start + dur * 0.7)
+
+      osc.connect(g); g.connect(ctx.destination)
+      harm.connect(hg); hg.connect(ctx.destination)
+      osc.start(now + start); osc.stop(now + start + dur + 0.05)
+      harm.start(now + start); harm.stop(now + start + dur + 0.05)
+    }
+
+    note(1318.51, 0.00, 0.20, 0.15)  // Mi
+    note(1108.73, 0.10, 0.22, 0.15)  // Do#
+    note(659.25, 0.22, 0.85, 0.17)   // Mi de jos, ținut
+  } catch (err) {
+    console.error('sound error:', err.message)
+  }
+}
+
+// Anunțul unei pierderi, într-un singur loc.
+//
+// Îl cheamă două părți care văd aceeași veste pe drumuri diferite: lista de
+// curse (abonată pe comenzile șoferului) și urmăritorul ofertelor firmei din
+// învelișul aplicației. De aceea ține minte ce a anunțat deja — altfel
+// șoferul-patron ar auzi sunetul de două ori pentru aceeași comandă.
+//
+// Cheia e id-ul COMENZII, nu al ofertei, fiindcă cele două părți se uită la
+// obiecte diferite dar vorbesc despre aceeași cursă.
+const alerteDate = new Set()
+
+function anuntaPierdere(fel, numar, idComanda) {
+  const cheie = idComanda + ':' + fel
+  if (alerteDate.has(cheie)) return
+  alerteDate.add(cheie)
+  playLostChime()
+  // Învelișul aplicației ascultă și desenează mesajul — așa apare pe orice
+  // ecran, nu doar pe cel de curse.
+  window.dispatchEvent(new CustomEvent('zd-alerta', { detail: { fel, numar } }))
+}
+
+// O comandă redeschisă (dispecerul o repune în licitație) trebuie să poată
+// anunța din nou dacă se anulează a doua oară în aceeași sesiune.
+function uitaPierderea(fel, idComanda) {
+  alerteDate.delete(idComanda + ':' + fel)
+}
+
 // Notificări push — funcționează chiar cu telefonul blocat sau aplicația
 // complet închisă (spre deosebire de playBusinessChime, care sună doar
 // cât timp aplicația e deschisă pe ecran). Cheia publică e sigură de expus
@@ -1852,6 +2038,21 @@ function RidesScreen({ profile, isOwner, session, lang }) {
             setDirectAwardToast(payload.new.order_number || payload.new.id.slice(0, 8))
             setTimeout(() => setDirectAwardToast(null), 8000)
           }
+
+          // Cursa i-a fost luată. Până acum rândul se schimba în listă în
+          // tăcere: șoferul pleca spre o adresă la care nu mai avea ce
+          // căuta, fiindcă nimic nu-l oprea.
+          //
+          // Drumul ăsta prinde și conturile de ANGAJAT, care n-au oferte și
+          // deci nu trec prin urmăritorul din învelișul aplicației. Dacă
+          // amândouă văd aceeași anulare, `anuntaPierdere` o spune o singură
+          // dată.
+          const anulataAcum = payload.new.status === 'cancelled' || payload.new.client_cancelled === true
+          const eraAnulata = !!known && (known.status === 'cancelled' || known.client_cancelled === true)
+          if (known && anulataAcum && !eraAnulata) {
+            anuntaPierdere('anulata', payload.new.order_number || payload.new.id.slice(0, 8), payload.new.id)
+          }
+          if (known && !anulataAcum && eraAnulata) uitaPierderea('anulata', payload.new.id)
 
           // Realtime trimite rândul BRUT din `orders`. Prețul câștigat la
           // licitație stă în `bids` și vine doar prin join, la încărcarea

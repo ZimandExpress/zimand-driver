@@ -16,5 +16,61 @@
 <body>
   <div id="root"></div>
   <script type="module" src="/src/main.jsx"></script>
+  <!-- Plasă de siguranţă pentru ecranul alb.
+       ====================================================================
+       O aplicaţie instalată îşi ţine fişierele în service worker. Dacă
+       acolo rămâne un amestec — pagina dintr-o versiune, pachetul din alta,
+       fiindcă s-au publicat mai multe una după alta cât telefonul avea
+       aplicaţia deschisă — browserul cere un fişier care nu mai există.
+       Nu se desenează nimic, iar şoferul rămâne cu ecranul alb.
+
+       Codul aplicaţiei nu poate prinde asta: el stă CHIAR în pachetul care
+       nu s-a încărcat. De aceea plasa e scrisă aici, în pagină, fără
+       `type="module"` şi fără import — ea porneşte chiar dacă tot restul
+       cade. (Prima variantă am pus-o în main.jsx; proba a arătat că acolo
+       e inutilă, fiindcă nu apucă să ruleze.)
+
+       Singura ieşire era ca şoferul să şteargă datele aplicaţiei din
+       setările telefonului. Acum încearcă aplicaţia singură: dacă după opt
+       secunde ecranul e tot gol, şterge service worker-ul şi cache-urile,
+       apoi reîncarcă.
+
+       O SINGURĂ dată per deschidere, însemnat în sessionStorage: dacă
+       ecranul alb vine din altceva, reîncărcarea nu rezolvă nimic, iar o
+       buclă de reîncărcări ar fi mai rea decât pagina albă. -->
+  <script>
+    (function () {
+      var CHEIE = 'zd-incercat-curatarea';
+      window.addEventListener('load', function () {
+        setTimeout(function () {
+          var root = document.getElementById('root');
+          if (root && root.children.length > 0) return;      // s-a desenat
+          try { if (sessionStorage.getItem(CHEIE)) return; } catch (e) { return; }
+          try { sessionStorage.setItem(CHEIE, '1'); } catch (e) { return; }
+
+          var pasi = [];
+          try {
+            if ('serviceWorker' in navigator) {
+              pasi.push(navigator.serviceWorker.getRegistrations().then(function (regs) {
+                return Promise.all(regs.map(function (r) { return r.unregister(); }));
+              }));
+            }
+            if (window.caches) {
+              pasi.push(caches.keys().then(function (nume) {
+                return Promise.all(nume.map(function (n) { return caches.delete(n); }));
+              }));
+            }
+          } catch (e) { /* mergem mai departe */ }
+
+          // Reîncărcăm şi dacă curăţarea se blochează: trei secunde sunt
+          // de ajuns, iar o aplicaţie albă n-are ce aştepta mai mult.
+          var gata = false;
+          function reincarca() { if (!gata) { gata = true; window.location.reload(); } }
+          setTimeout(reincarca, 3000);
+          Promise.all(pasi).then(reincarca, reincarca);
+        }, 8000);
+      });
+    })();
+  </script>
 </body>
 </html>

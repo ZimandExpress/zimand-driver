@@ -564,6 +564,9 @@ const translations = {
     // Bitte um Antwort. Der Hinweis lässt sich antippen.
     counterIncomingTitle: 'Gegenangebot erhalten',
     counterIncomingBody: 'Wir schlagen einen anderen Preis vor. Antippen, um anzunehmen oder abzulehnen.',
+    // Nach dem Ablehnen: kurz sagen, wohin der Auftrag gewandert ist.
+    counterDeclinedTitle: 'Gegenangebot abgelehnt',
+    counterDeclinedBody: 'Der Auftrag liegt wieder unter „Verfügbar". Antippen, um einen neuen Preis abzugeben.',
     // Auf der Karte in „Verfügbar", wenn ein früheres Angebot abgelehnt wurde
     bidRejectedOnCard: 'Ihr Angebot über {price} € wurde abgelehnt',
     bidRejectedReasonTooHigh: 'Preis zu hoch',
@@ -1188,6 +1191,8 @@ const translations = {
     lostClose: 'Close',
     counterIncomingTitle: 'Counter-offer received',
     counterIncomingBody: 'We propose a different price. Tap to accept or decline.',
+    counterDeclinedTitle: 'Counter-offer declined',
+    counterDeclinedBody: 'The order is back under “Available”. Tap to submit a new price.',
     bidRejectedOnCard: 'Your offer of {price} € was declined',
     bidRejectedReasonTooHigh: 'Price too high',
     bidRejectedReasonLate: 'Time window does not fit',

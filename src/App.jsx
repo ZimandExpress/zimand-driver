@@ -610,7 +610,12 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
       if (ceasAlerta.current) clearTimeout(ceasAlerta.current)
       // 12 secunde, nu 4 ca la comanda nouă: aici nu e ceva de prins din
       // zbor, e ceva ce trebuie citit. Se închide și cu mâna.
-      ceasAlerta.current = setTimeout(() => setAlerta(null), 12000)
+      //
+      // Excepţie: confirmarea de după refuzul contraofertei. Acolo şoferul
+      // tocmai a apăsat el butonul, deci ştie ce a făcut — mesajul doar îi
+      // spune unde s-a dus comanda. Şase secunde ajung.
+      const cat = e.detail?.fel === 'contraRefuzata' ? 6000 : 12000
+      ceasAlerta.current = setTimeout(() => setAlerta(null), cat)
     }
     window.addEventListener('zd-alerta', laAlerta)
     return () => {
@@ -860,29 +865,43 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
           // în aplicaţie la „de făcut" — şi mesajul se poate apăsa, ca să
           // ajungă direct la ofertă, nu să o caute prin meniu.
           const cerere = alerta.fel === 'contraoferta'
-          const fundal = cerere ? '#FFF6ED' : '#FCEBE8'
-          const margine = cerere ? '#FFD2AE' : '#E4A296'
-          const tare = cerere ? '#B35A12' : '#B23A24'
-          const moale = cerere ? '#8A5A16' : '#8A3A28'
+          // Confirmarea de după refuzul contraofertei nu e nici veste proastă,
+          // nici cerere: e o îndrumare. Verde liniştit, nu roşu de alarmă.
+          const indrumare = alerta.fel === 'contraRefuzata'
+          const fundal = cerere ? '#FFF6ED' : indrumare ? '#E7F4EE' : '#FCEBE8'
+          const margine = cerere ? '#FFD2AE' : indrumare ? '#A8D5BD' : '#E4A296'
+          const tare = cerere ? '#B35A12' : indrumare ? '#1F7A50' : '#B23A24'
+          const moale = cerere ? '#8A5A16' : indrumare ? '#2C6A4A' : '#8A3A28'
           const titlu = cerere ? 'counterIncomingTitle'
+            : indrumare ? 'counterDeclinedTitle'
             : alerta.fel === 'anulata' ? 'lostCancelledTitle'
             : alerta.fel === 'refuzata' ? 'lostRejectedTitle'
             : 'lostToOtherTitle'
           const text = cerere ? 'counterIncomingBody'
+            : indrumare ? 'counterDeclinedBody'
             : alerta.fel === 'anulata' ? 'lostCancelledBody'
             : alerta.fel === 'refuzata' ? 'lostRejectedBody'
             : 'lostToOtherBody'
+          // Amândouă duc undeva: cererea la ofertă, îndrumarea la licitaţii.
+          const duceLa = cerere ? 'angebote' : indrumare ? 'curse' : null
           return (
             <div
-              onClick={cerere ? () => { setAlerta(null); navTo('angebote') } : undefined}
+              onClick={duceLa ? () => {
+                setAlerta(null)
+                navTo(duceLa)
+                // Lista de curse se deschide pe fila lui, nu pe „Verfügbar".
+                // Semnalul ăsta o mută acolo, ca şoferul să ajungă chiar la
+                // licitaţii, nu lângă ele.
+                if (indrumare) window.dispatchEvent(new CustomEvent('zd-mergi-la-licitatii'))
+              } : undefined}
               style={{
                 display: 'flex', alignItems: 'flex-start', gap: 10,
                 background: fundal, border: `1px solid ${margine}`,
                 borderRadius: 11, padding: '13px 14px', marginBottom: 14,
-                cursor: cerere ? 'pointer' : 'default',
+                cursor: duceLa ? 'pointer' : 'default',
               }}
             >
-              {cerere
+              {cerere || indrumare
                 ? <Tag size={17} strokeWidth={2} color={tare} style={{ flexShrink: 0, marginTop: 1 }} />
                 : alerta.fel === 'anulata'
                   ? <XCircle size={17} strokeWidth={2} color={tare} style={{ flexShrink: 0, marginTop: 1 }} />
@@ -2363,6 +2382,14 @@ function RidesScreen({ profile, isOwner, session, lang }) {
 
   const tabs = isOwner ? ['available', 'mine'] : ['mine']
   const currentTab = tabs.includes(activeTab) ? activeTab : 'mine'
+
+  // Mesajul de după refuzul unei contraoferte trimite aici. Fără rândul ăsta
+  // ecranul s-ar deschide pe „Meine Fahrten", adică lângă licitaţii, nu la ele.
+  useEffect(() => {
+    const laSemnal = () => setActiveTab('available')
+    window.addEventListener('zd-mergi-la-licitatii', laSemnal)
+    return () => window.removeEventListener('zd-mergi-la-licitatii', laSemnal)
+  }, [])
 
   return (
     <>
@@ -9935,7 +9962,13 @@ function BidCard({ order, lang, courierProfileId, open, onToggle, onBidPlaced, o
         .single()
       if (error) throw error
       setExistingBid(data)
-      setEditing(true)
+      // Nu mai deschidem câmpul de preţ aici. Oferta refuzată nu mai e o
+      // ofertă: cardul pleacă din „Meine Angebote", iar comanda reapare la
+      // licitaţii. Un câmp de preţ pe un card care tocmai dispare ar fi un
+      // drum înfundat — spunem în schimb, scurt, unde s-a dus comanda.
+      window.dispatchEvent(new CustomEvent('zd-alerta', {
+        detail: { fel: 'contraRefuzata', numar: order.order_number || String(order.id).slice(0, 8) },
+      }))
     } catch (err) {
       console.error('reject counter error:', err.message)
       setBidError(t('counterFailed', lang))
@@ -10223,7 +10256,13 @@ function BidCard({ order, lang, courierProfileId, open, onToggle, onBidPlaced, o
             </div>
           )}
 
-          {existingBid && !editing ? (
+          {/* Cât timp dispecerul aşteaptă un răspuns la contraofertă, pe card
+              rămâne DOAR contraoferta, cu „acceptă" şi „refuză".
+              „Modifică" şi „Retrage" dispar: lângă o propunere la care
+              trebuie să răspunzi, ele sunt două drumuri în plus care nu duc
+              nicăieri — iar preţul vechi, arătat încă o dată dedesubt, nu
+              face decât să încurce. */}
+          {existingBid?.counter_price && !existingBid.counter_rejected_at ? null : existingBid && !editing ? (
             <div className="existing-bid-box">
               <div className="existing-bid-price">{existingBid.price} €</div>
               <div className="existing-bid-actions">

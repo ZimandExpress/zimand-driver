@@ -7517,7 +7517,7 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
               border: '1px solid #FFD2AE', borderRadius: 7,
               padding: '8px 10px', margin: '8px 0 4px', lineHeight: 1.5, fontWeight: 600,
             }}>
-              ⚠ {t('pickupSignatureRule', lang)}
+              ⚠ {tn('pickupSignatureRule', citesteLimba(lang))}
             </div>
           )}
           <SignatureLine lang={lang} signatureBlob={signatureBlob} onChange={setSignatureBlob} obligatoriu={semnaturaCeruta} />
@@ -7541,10 +7541,10 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
       {turIncomplet && (
         <div style={{ background: '#FFF7E8', border: '1px solid #F0B94D', borderRadius: 10, padding: '11px 13px', marginTop: 12 }}>
           <div style={{ fontSize: 13.5, fontWeight: 700, color: '#7A4E10', marginBottom: 3 }}>
-            {t('tourIncompleteTitle', lang)}
+            {tn('tourIncompleteTitle', citesteLimba(lang))}
           </div>
           <div style={{ fontSize: 12.5, color: '#6B5430', lineHeight: 1.5 }}>
-            {t('tourIncompleteNote', lang)} ({opririDeschise})
+            {tn('tourIncompleteNote', citesteLimba(lang))} ({opririDeschise})
           </div>
         </div>
       )}
@@ -7553,29 +7553,29 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
         const lipsa = []
         // Intai felul livrarii, pe urma pozele: de el depinde cate sunt
         // cerute, deci lista trebuie sa ceara in aceeasi ordine ca ecranul.
-        if (isDocumentDeliveryLeg && (!deliveryMethod || metodaInterzisa)) lipsa.push(t('missingMethod', lang))
+        if (isDocumentDeliveryLeg && (!deliveryMethod || metodaInterzisa)) lipsa.push(tn('missingMethod', citesteLimba(lang)))
         if (fileSummary.photoCount < minimPoze) {
           lipsa.push(minimPoze > 1
-            ? t('missingPhotosMin', lang)
+            ? tn('missingPhotosMin', citesteLimba(lang))
                 .replace('{n}', minimPoze)
                 .replace('{have}', fileSummary.photoCount)
-            : t('missingPhotos', lang))
+            : tn('missingPhotos', citesteLimba(lang)))
         }
         for (const tip of [...new Set(docLipsa)]) {
-          lipsa.push(t(
+          lipsa.push(tn(
             tip === 'cmr' ? 'missingCmr'
               : tip === 'botenbestaetigung' ? 'missingBote'
               : 'missingProtokoll',
-            lang,
+            citesteLimba(lang),
           ))
         }
         if (numeCerut && !signerName.trim()) {
-          lipsa.push(t(esteLivrareEtapa ? 'missingSigner' : 'missingSignerPickup', lang))
+          lipsa.push(tn(esteLivrareEtapa ? 'missingSigner' : 'missingSignerPickup', citesteLimba(lang)))
         }
-        if (semnaturaCeruta && !signatureBlob) lipsa.push(t('missingSignature', lang))
+        if (semnaturaCeruta && !signatureBlob) lipsa.push(tn('missingSignature', citesteLimba(lang)))
         // Comenzile vechi: una dintre cele două, la alegerea şoferului.
         if (dovadaLaAlegere && !signatureBlob && !fileSummary.documentCount) {
-          lipsa.push(t('missingProof', lang))
+          lipsa.push(tn('missingProof', citesteLimba(lang)))
         }
         if (!lipsa.length || !aratLipsa) return null
         return (
@@ -7583,7 +7583,7 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
           <div style={{
             marginTop: 12, color: '#B23A24', fontSize: 13, lineHeight: 1.6,
           }}>
-            <div style={{ fontWeight: 700 }}>{t('requiredBeforeConfirm', lang)}</div>
+            <div style={{ fontWeight: 700 }}>{tn('requiredBeforeConfirm', citesteLimba(lang))}</div>
             {lipsa.map((x, i) => <div key={i}>• {x}</div>)}
           </div>
         )

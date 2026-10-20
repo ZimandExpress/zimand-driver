@@ -6,6 +6,10 @@ import { Maximize2, ArrowLeft as ArrowLeftMap, Eye, Play, ClipboardList, Pause, 
 import { GHID_TRADUCERI, GHID_UI } from './ghidTraduceri.js'
 import { GHID_TRADUCERI_MARFA } from './ghidTraduceriMarfa.js'
 import { CMR_LIVRARE_LIMBI } from './cmrLivrareTraduceri.js'
+// Notificările merg după limba aleasă pentru documente, nu după cea a
+// interfeţei: interfaţa are două limbi, documentele au 23, iar un şofer care
+// nu ştie germana trebuie totuşi să înţeleagă „ai pierdut comanda".
+import { tn } from './notificariTraduceri.js'
 // Ghidurile pentru marfă (Ware, CMR, Unterschrift) — tradusele lor stau separat.
 Object.assign(GHID_TRADUCERI, GHID_TRADUCERI_MARFA)
 import { ZP_LIMBI, PLECARE_LIMBI, TRANSPORT_LIMBI, REGULI_LIMBI, RETUR_LIMBI, POSTA_LIMBI, ZUSTELLART_LIMBI, DEPARTE_LIMBI, PASI_ZUSTELLART } from './zpTraduceri.js'
@@ -908,15 +912,15 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
                   : <AlertTriangle size={17} strokeWidth={2} color={tare} style={{ flexShrink: 0, marginTop: 1 }} />}
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 15.5, fontWeight: 800, lineHeight: 1.4, color: tare }}>
-                  {t(titlu, lang)}
+                  {tn(titlu, citesteLimba(lang))}
                 </div>
                 <div style={{ fontSize: 13.5, marginTop: 4, lineHeight: 1.55, color: moale }}>
-                  {alerta.numar} — {t(text, lang)}
+                  {alerta.numar} — {tn(text, citesteLimba(lang))}
                 </div>
               </div>
               <button
                 type="button"
-                aria-label={t('lostClose', lang)}
+                aria-label={tn('lostClose', citesteLimba(lang))}
                 onClick={(e) => { e.stopPropagation(); setAlerta(null) }}
                 style={{ background: 'none', border: 'none', padding: 2, cursor: 'pointer', color: moale, flexShrink: 0 }}
               >
@@ -2396,12 +2400,12 @@ function RidesScreen({ profile, isOwner, session, lang }) {
       <div className="rides-list">
         {newOrderToast && (
           <div className="new-order-toast">
-            <Bell size={16} strokeWidth={2} /> {t('newOrderAlert', lang)}
+            <Bell size={16} strokeWidth={2} /> {tn('newOrderAlert', citesteLimba(lang))}
           </div>
         )}
         {directAwardToast && (
           <div className="new-order-toast" style={{ background: '#1F7A50' }}>
-            <Bell size={16} strokeWidth={2} /> {t('directAwardAlert', lang)} · {directAwardToast}
+            <Bell size={16} strokeWidth={2} /> {tn('directAwardAlert', citesteLimba(lang))} · {directAwardToast}
           </div>
         )}
         <div className="rides-tabs">
@@ -9784,7 +9788,7 @@ function BiddingScreen({ profile, session, lang, embedded }) {
           sau s-a pierdut. Acum i se spune unde s-a dus, cinci secunde. */}
       {mutata && (
         <div className="new-order-toast" style={{ background: '#1F7A50' }}>
-          <CheckCircle2 size={16} strokeWidth={2} /> {t('bidMovedToOffers', lang)}
+          <CheckCircle2 size={16} strokeWidth={2} /> {tn('bidMovedToOffers', citesteLimba(lang))}
         </div>
       )}
       {!embedded && <h2 className="screen-title">{t('tabBidding', lang)}</h2>}

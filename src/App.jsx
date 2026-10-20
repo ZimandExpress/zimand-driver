@@ -161,6 +161,32 @@ const PLASA_TEXTE = {
   },
 }
 
+// Când e sigur să preluăm o versiune nouă.
+//
+// Până acum criteriul era timpul: în primul minut de la deschidere se
+// reîncărca pe loc, iar după aceea la prima revenire în aplicaţie. Amândouă
+// pot cădea prost. Un şofer care deschide aplicaţia la adresă şi semnează în
+// secunda patruzeci e întrerupt în mijloc; iar „revenirea în aplicaţie" e fix
+// momentul în care se întoarce de la camera foto, deci poza tocmai făcută
+// riscă să se piardă înainte să apuce să intre în coada de încărcare.
+//
+// Criteriul corect nu e cât timp a trecut, ci ce face şoferul. Tot ce se
+// poate pierde — semnătură, poze, confirmări — se întâmplă într-o comandă
+// deschisă, iar comanda deschisă e deja însemnată în sessionStorage. Deci:
+// preluăm versiunea nouă doar când nu e nicio comandă deschisă şi aplicaţia
+// e pe ecran. Lista de curse e punctul sigur, şi şoferul trece prin ea des.
+//
+// Dacă ceva nu se poate citi, răspundem „nu e sigur": o versiune preluată mai
+// târziu nu strică nimic, una preluată în mijlocul unei semnături strică.
+export function momentSigurPentruVersiuneNoua() {
+  try {
+    if (typeof document === 'undefined' || document.visibilityState !== 'visible') return false
+    return !sessionStorage.getItem('zd-open-order')
+  } catch (e) {
+    return false
+  }
+}
+
 export class PlasaEroare extends Component {
   constructor(props) {
     super(props)

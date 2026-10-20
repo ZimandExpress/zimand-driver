@@ -1656,6 +1656,55 @@ function uitaPierderea(fel, idComanda) {
   alerteDate.delete(idComanda + ':' + fel)
 }
 
+// Anunțul unei comenzi primite — „e a mea".
+//
+// Până acum se auzea DOAR dacă șoferul se nimerea exact pe ecranul de curse
+// în secunda atribuirii: anunțul atârna de un eveniment în timp real, iar
+// ecranul acela e montat numai cât e deschis. Cine atribuia din panou și
+// apoi intra în aplicație nu auzea nimic, fiindcă totul se întâmplase cât
+// aplicația era în fundal.
+//
+// Acum ce s-a spus deja se ține minte pe telefon. Așa anunțul ajunge și
+// la întoarcere în aplicație, și tot o singură dată — nici la fiecare
+// reîncărcare a paginii, nici din nou mâine.
+const CHEIE_ATRIBUIRI = 'zd-atribuiri-stiute'
+let atribuiriInMemorie = null
+
+function atribuiriStiute() {
+  if (atribuiriInMemorie) return atribuiriInMemorie
+  try {
+    const scris = localStorage.getItem(CHEIE_ATRIBUIRI)
+    if (scris != null) { atribuiriInMemorie = new Set(JSON.parse(scris)); return atribuiriInMemorie }
+  } catch { /* memoria telefonului e blocată — mergem pe cea din sesiune */ }
+  return null
+}
+
+function scrieAtribuiri(set) {
+  atribuiriInMemorie = set
+  // Ultimele 300 — altfel lista crește la nesfârșit pe un telefon folosit un an.
+  try { localStorage.setItem(CHEIE_ATRIBUIRI, JSON.stringify([...set].slice(-300))) } catch {}
+}
+
+function anuntaAtribuire(comenzi, arata) {
+  const aleMele = (comenzi || []).filter((o) => o && o.id && o.status === 'assigned')
+  const stiute = atribuiriStiute()
+
+  // Primul contact cu telefonul ăsta: însemnăm ce există, fără să sunăm.
+  // Altfel, la prima deschidere, ar suna pentru fiecare cursă în lucru.
+  if (stiute === null) {
+    scrieAtribuiri(new Set(aleMele.map((o) => o.id)))
+    return
+  }
+
+  const noi = aleMele.filter((o) => !stiute.has(o.id))
+  if (!noi.length) return
+  noi.forEach((o) => stiute.add(o.id))
+  scrieAtribuiri(stiute)
+
+  playSuccessSound()
+  arata(noi[0].order_number || String(noi[0].id).slice(0, 8))
+}
+
 // Notificări push — funcționează chiar cu telefonul blocat sau aplicația
 // complet închisă (spre deosebire de playBusinessChime, care sună doar
 // cât timp aplicația e deschisă pe ecran). Cheia publică e sigură de expus
@@ -1823,6 +1872,17 @@ function RidesScreen({ profile, isOwner, session, lang }) {
   const [newOrderToast, setNewOrderToast] = useState(false)
   const [fetchError, setFetchError] = useState(null)
   const [directAwardToast, setDirectAwardToast] = useState(null)
+  // Un singur loc care arată mesajul de comandă primită — îl cheamă şi
+  // evenimentul în timp real, şi reîncărcarea listei la revenirea în
+  // aplicaţie. Ceasul se ţine într-un `ref`, ca două anunţuri apropiate să
+  // nu stingă mesajul unul altuia înainte de vreme.
+  const ceasAtribuire = useRef(null)
+  const arataAtribuirea = useCallback((numar) => {
+    setDirectAwardToast(numar)
+    if (ceasAtribuire.current) clearTimeout(ceasAtribuire.current)
+    ceasAtribuire.current = setTimeout(() => setDirectAwardToast(null), 8000)
+  }, [])
+  useEffect(() => () => { if (ceasAtribuire.current) clearTimeout(ceasAtribuire.current) }, [])
   const [celebration, setCelebration] = useState(null) // number (net earnings) | true (no amount) | null — la nivel de ecran, supraviețuiește comutării spre CompletedOrderDetail
   const [notifyRadiusKm, setNotifyRadiusKm] = useState(null)
   const [notifyMinPrice, setNotifyMinPrice] = useState(null)
@@ -1984,7 +2044,14 @@ function RidesScreen({ profile, isOwner, session, lang }) {
             // rău decât un tur fără opriri, fiindcă şoferul credea că n-are
             // nimic de lucru. Păstrăm ce aveam şi spunem că n-a reuşit.
             if (error) setFetchError(error.message || 'fetch')
-            else { setOrders(data || []); setFetchError(null); scrieCache('orders:' + profile.id, data || []) }
+            else {
+              setOrders(data || []); setFetchError(null); scrieCache('orders:' + profile.id, data || [])
+              // Aici se prinde atribuirea făcută cât aplicaţia era închisă sau
+              // în fundal: lista se reciteşte la revenire în prim-plan şi la
+              // revenirea internetului, iar ce n-a fost spus încă se spune
+              // acum. Prima încărcare pe telefonul ăsta tace.
+              anuntaAtribuire(data || [], arataAtribuirea)
+            }
             setLoading(false)
           }
         })
@@ -2039,14 +2106,12 @@ function RidesScreen({ profile, isOwner, session, lang }) {
           // confirmarea, nu semnalul de comandă nouă — acela e pentru ce
           // apare în licitație și încă trebuie câștigat.
           //
-          // Până acum nu se auzea nimic la atribuire: sunetul se declanșa doar
-          // la comenzi noi în licitație, iar push-ul se trimitea doar firmelor
-          // eligibile. O comandă atribuită ajungea tăcut în listă.
-          if (!known && payload.new.status === 'assigned') {
-            playSuccessSound()
-            setDirectAwardToast(payload.new.order_number || payload.new.id.slice(0, 8))
-            setTimeout(() => setDirectAwardToast(null), 8000)
-          }
+          // Condiția de dinainte era „nu o aveam în listă ȘI e atribuită".
+          // Mergea doar cât ecranul ăsta era deschis — iar cine atribuie din
+          // panou și apoi intră în aplicație pierdea clipa. `anuntaAtribuire`
+          // ține minte pe telefon ce s-a spus, deci anunță și la întoarcere,
+          // și tot o singură dată.
+          anuntaAtribuire([payload.new], arataAtribuirea)
 
           // Cursa i-a fost luată. Până acum rândul se schimba în listă în
           // tăcere: șoferul pleca spre o adresă la care nu mai avea ce

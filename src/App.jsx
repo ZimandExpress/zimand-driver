@@ -10620,16 +10620,27 @@ function ProfileScreen({ session, profile, isOwner, lang, onChangeLang, onProfil
     if (!file || !profile?.id) return
     setUploadingPhoto(true)
     try {
-      const ext = file.name.split('.').pop()
-      const path = `${profile.id}/profile.${ext}`
-      const { error: upErr } = await supabase.storage
-        .from('driver-photos')
-        .upload(path, file, { upsert: true })
-      if (upErr) throw upErr
-      const { data } = supabase.storage.from('driver-photos').getPublicUrl(path)
+      // Bucketul driver-photos e PRIVAT. Încărcarea trece prin funcția
+      // upload-foto-privat (service role), care întoarce un link SEMNAT.
+      // Tokenul șoferului se trimite ca Authorization: funcția derivă folderul
+      // din el, ca nimeni să nu poată suprascrie poza altui șofer.
+      const { data: sess } = await supabase.auth.getSession()
+      const token = sess?.session?.access_token
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/upload-foto-privat`, {
+        method: 'POST',
+        headers: {
+          apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${token}`,
+          'Content-Type': file.type && file.type.startsWith('image/') ? file.type : 'image/jpeg',
+          'x-kind': 'driver',
+        },
+        body: file,
+      })
+      const data = await res.json().catch(() => null)
+      if (!res.ok || !data?.url) throw new Error(data?.error || 'Upload fehlgeschlagen')
       const { error: dbErr } = await supabase
         .from('drivers')
-        .update({ photo_url: data.publicUrl })
+        .update({ photo_url: data.url })
         .eq('id', profile.id)
       if (dbErr) throw dbErr
       onProfileChange()

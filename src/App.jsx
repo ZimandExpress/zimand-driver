@@ -19,6 +19,7 @@ import DocumentCamera from './components/DocumentCamera'
 import DocumentCrop from './components/DocumentCrop'
 import {
   startQueue, enqueueFiles, enqueueSignature, confirmLeg as queueConfirmLeg,
+  enqueueSideRpc,
   isOnline as reteaDisponibila, reportStopFailed, reportDeliveryFailed,
   subscribe as ascultaCoada, confirmationsStatus, retryStuckConfirmations,
 } from './offline/uploadQueue'
@@ -7139,11 +7140,13 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
             p_error: result.error,
             p_distance: distantaMetri,
           }
+          // Prin coadă, nu direct: fără semnal poziţia rămâne pe telefon şi
+          // pleacă singură la revenirea reţelei, nu se mai pierde (§dovada).
           await (esteOprire
-            ? supabase.rpc('driver_set_stop_confirm_location', { p_stop_id: intrare.stop.id, ...pozitie })
-            : supabase.rpc('driver_set_confirm_location', { p_order_id: order.id, p_leg: intrare.key, ...pozitie }))
+            ? enqueueSideRpc(order.id, intrare.key, 'driver_set_stop_confirm_location', { p_stop_id: intrare.stop.id, ...pozitie }, `loc-${intrare.stop.id}`)
+            : enqueueSideRpc(order.id, intrare.key, 'driver_set_confirm_location', { p_order_id: order.id, p_leg: intrare.key, ...pozitie }, 'loc'))
         } catch (err) {
-          console.error('confirm location failed:', err.message)
+          console.error('confirm location enqueue failed:', err.message)
         }
       }
 
@@ -7154,11 +7157,16 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
       // oprire. La un tur cu cinci livrări, răspunsul fiecărei opriri îl
       // ştergea pe cel dinainte, iar dispeceratul vedea doar ultimul.
       if (!esteOprire && isDocumentDeliveryLeg && deliveryMethod) {
-        const { error: dmErr } = await supabase.rpc('driver_set_delivery_method', {
-          p_order_id: order.id,
-          p_method: deliveryMethod,
-        })
-        if (dmErr) console.error('delivery method error:', dmErr.message)
+        // Tot prin coadă: fără semnal modul de livrare nu se mai pierde, pleacă
+        // la revenirea reţelei odată cu restul.
+        try {
+          await enqueueSideRpc(order.id, intrare.key, 'driver_set_delivery_method', {
+            p_order_id: order.id,
+            p_method: deliveryMethod,
+          }, 'dm')
+        } catch (dmErr) {
+          console.error('delivery method enqueue failed:', dmErr.message)
+        }
       }
 
       // Fișierele au fost deja urcate de coadă, în fundal, pe măsură ce

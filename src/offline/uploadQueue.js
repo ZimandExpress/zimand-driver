@@ -383,6 +383,48 @@ export async function confirmLeg({ orderId, leg, rpcName, signerName, extraPaylo
 }
 
 /**
+ * Un RPC „însoţitor" al confirmării: poziţia GPS şi modul de livrare.
+ *
+ * DE CE EXISTĂ. Acestea se scriau direct cu `supabase.rpc(...)` chiar în clipa
+ * bifei, în afara cozii. Fără semnal (subsol, sat), apelul cădea cu o eroare
+ * doar scrisă în consolă, iar confirmarea — care MERGE în coadă — pleca mai
+ * târziu fără ele. Poziţia e „singura dovadă că şoferul a fost la adresă", deci
+ * nu are voie să se piardă aşa.
+ *
+ * Citirea GPS se face tot la bifă (merge şi offline); AICI doar punem apelul,
+ * cu valorile îngheţate, în aceeaşi coadă. Se reia singur până reuşeşte, fără
+ * să blocheze confirmarea (sunt coloane separate, ordinea nu contează).
+ * Funcţiile sunt idempotente — doar setează coloane — deci o reluare e sigură.
+ *
+ * @returns {'synced' | 'pending'}
+ */
+export async function enqueueSideRpc(orderId, leg, rpcName, args, suffix) {
+  const record = {
+    id: `${orderId}:${leg}:${suffix}`,
+    orderId, leg, fel: 'siderpc', rpcName, payload: args, createdAt: Date.now(),
+  }
+  if (!isOnline()) {
+    await dbPut(STORE_CONFIRMATIONS, record)
+    emit()
+    return 'pending'
+  }
+  const { error } = await supabase.rpc(rpcName, args)
+  if (error) {
+    if (eroareTrecatoare(error)) {
+      await dbPut(STORE_CONFIRMATIONS, record)
+      emit()
+      return 'pending'
+    }
+    // Refuz care nu se reia: îl păstrăm marcat `giveUp` (vizibil în banner), nu-l
+    // pierdem în tăcere cum se întâmpla înainte.
+    await dbPut(STORE_CONFIRMATIONS, { ...record, attempts: 1, lastError: error.message || String(error), giveUp: true })
+    emit()
+    return 'pending'
+  }
+  return 'synced'
+}
+
+/**
  * Raportează o oprire ca „nu s-a putut" — şi fără internet.
  *
  * DE CE EXISTĂ. Până acum raportul pleca direct către server. Dacă nu era
@@ -676,6 +718,24 @@ async function ruleazaReluarea() {
   const all = (await dbGetAll(STORE_CONFIRMATIONS)) || []
   for (const rec of all) {
     if (rec.giveUp) continue
+    // RPC însoţitor (poziţie GPS / mod de livrare): nu depinde de fişiere, deci
+    // nu aşteaptă dovezile — pleacă de îndată ce e semnal şi se şterge la reuşită.
+    if (rec.fel === 'siderpc') {
+      const { error } = await supabase.rpc(rec.rpcName, rec.payload)
+      if (!error) {
+        await dbDelete(STORE_CONFIRMATIONS, rec.id)
+        emit()
+        continue
+      }
+      const incercari = (rec.attempts || 0) + 1
+      if (!eroareTrecatoare(error) || incercari >= MAX_REPLAY) {
+        await dbPut(STORE_CONFIRMATIONS, { ...rec, attempts: incercari, lastError: error.message || String(error), giveUp: true })
+      } else {
+        await dbPut(STORE_CONFIRMATIONS, { ...rec, attempts: incercari, lastError: error.message || String(error) })
+      }
+      emit()
+      continue
+    }
     // Două feluri de fişe aşteaptă aici: confirmări de etapă şi rapoarte
     // „nu s-a putut". Se reiau pe acelaşi drum, dar nu cu acelaşi payload —
     // iar o fişă veche, scrisă înainte să existe al doilea fel, n-are `fel`

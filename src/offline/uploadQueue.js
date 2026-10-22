@@ -366,13 +366,18 @@ export async function confirmLeg({ orderId, leg, rpcName, signerName, extraPaylo
     // reîncerca la fiecare deschidere a aplicaţiei, pentru totdeauna, fără ca
     // nimeni să afle. Doar căderile trecătoare se păstrează.
     if (eroareTrecatoare(error)) {
+      // Cădere trecătoare (semnalul a pâlpâit o clipă): confirmarea e deja pusă
+      // în coadă şi pleacă singură la revenirea reţelei. O raportăm ca 'pending',
+      // NU ca eşec — aşa şoferul vede „salvat, se trimite automat", nu un buton
+      // care pare mort. Exact cazul în care marfa era livrată, dar apăsarea
+      // părea că nu face nimic.
       await dbPut(STORE_CONFIRMATIONS, record)
       await dbDelete(STORE_CONFIRMATIONS, `${orderId}:${leg}:esec`)
       emit()
+      return 'pending'
     }
-    // Un refuz care nu se reia lasă lucrurile EXACT cum erau. Ştearsă din
-    // prima, cum se făcea, fişa de „nu s-a putut" a aceleiaşi opriri pleca şi
-    // ea, fără ca nimic să-i ia locul: şoferul rămânea fără amândouă.
+    // Un refuz care nu se reia (drepturi, un declanşator) lasă lucrurile EXACT
+    // cum erau — îl aflăm, nu-l ascundem.
     throw error
   }
   await markConfirmed(orderId, leg)

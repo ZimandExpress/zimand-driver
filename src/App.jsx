@@ -455,6 +455,50 @@ function SplashScreen({ lang }) {
   )
 }
 
+// CAPTCHA pentru AUTENTIFICARE (logare / resetare parolă). Caseta Cloudflare
+// Turnstile stă pe formular și produce un token pe care Supabase îl cere la
+// fiecare apel de auth când protecția e pornită. De unică folosință: se
+// resetează după fiecare încercare. Token la nivel de modul.
+const TURNSTILE_SITE_KEY = '0x4AAAAAAFBXTtZtIsw5o_vg'
+const authCaptcha = { token: '', reset: () => {} }
+function AuthCaptchaBox() {
+  const boxRef = useRef(null)
+  const widgetRef = useRef(null)
+  useEffect(() => {
+    let cancelled = false
+    const render = () => {
+      if (cancelled || !boxRef.current || widgetRef.current != null || !window.turnstile) return
+      try {
+        widgetRef.current = window.turnstile.render(boxRef.current, {
+          sitekey: TURNSTILE_SITE_KEY,
+          callback: (tok) => { authCaptcha.token = tok },
+          'expired-callback': () => { authCaptcha.token = '' },
+          'error-callback': () => { authCaptcha.token = '' },
+        })
+        authCaptcha.reset = () => { authCaptcha.token = ''; try { window.turnstile.reset(widgetRef.current) } catch { /* nimic */ } }
+      } catch (e) { console.error('Turnstile auth nu a putut fi afișat', e) }
+    }
+    if (window.turnstile) { render() }
+    else {
+      const existing = document.querySelector('script[data-turnstile]')
+      if (existing) { existing.addEventListener('load', render) }
+      else {
+        const sc = document.createElement('script')
+        sc.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit'
+        sc.async = true; sc.defer = true; sc.dataset.turnstile = '1'; sc.onload = render
+        document.head.appendChild(sc)
+      }
+    }
+    return () => {
+      cancelled = true
+      try { if (widgetRef.current != null && window.turnstile) window.turnstile.remove(widgetRef.current) } catch { /* nimic */ }
+      widgetRef.current = null
+      authCaptcha.token = ''; authCaptcha.reset = () => {}
+    }
+  }, [])
+  return <div ref={boxRef} style={{ margin: '12px 0', display: 'flex', justifyContent: 'center' }} />
+}
+
 function LoginScreen({ lang, onChangeLang }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -466,7 +510,8 @@ function LoginScreen({ lang, onChangeLang }) {
     e.preventDefault()
     setError('')
     setBusy(true)
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    const { error } = await supabase.auth.signInWithPassword({ email, password, options: { captchaToken: authCaptcha.token } })
+    authCaptcha.reset()
     setBusy(false)
     if (error) setError(t('loginError', lang))
   }
@@ -477,7 +522,9 @@ function LoginScreen({ lang, onChangeLang }) {
     setBusy(true)
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: window.location.origin + '/?invite=1',
+      captchaToken: authCaptcha.token,
     })
+    authCaptcha.reset()
     setBusy(false)
     if (error) {
       setError(error.message)
@@ -500,6 +547,7 @@ function LoginScreen({ lang, onChangeLang }) {
               <form onSubmit={handleForgot}>
                 <label>{t('email', lang)}</label>
                 <input type="email" value={email} onChange={e => setEmail(e.target.value)} required />
+                <AuthCaptchaBox />
                 {error && <div className="login-error">{error}</div>}
                 <button className="btn" type="submit" disabled={busy}>
                   {busy ? '…' : t('sendResetLink', lang)}
@@ -526,6 +574,7 @@ function LoginScreen({ lang, onChangeLang }) {
           <input type="email" value={email} onChange={e => setEmail(e.target.value)} required />
           <label>{t('password', lang)}</label>
           <input type="password" value={password} onChange={e => setPassword(e.target.value)} required />
+          <AuthCaptchaBox />
           {error && <div className="login-error">{error}</div>}
           <button className="btn" type="submit" disabled={busy}>
             {busy ? t('loggingIn', lang) : t('loginButton', lang)}

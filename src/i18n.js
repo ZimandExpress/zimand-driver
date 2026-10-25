@@ -2,6 +2,10 @@ const translations = {
   de: {
     appName: 'Zimand Driver',
     loginSubtitle: 'Melde dich mit deinem Konto vom Disponenten an',
+    companyCode: 'Firmencode',
+    companyCodeHint: 'Den Firmencode erhältst du von deiner Disposition.',
+    companyCodeInvalid: 'Unbekannter Firmencode. Bitte prüfe die Eingabe.',
+    companyNotMember: 'Dieses Konto gehört nicht zu dieser Firma. Bitte wende dich an deine Disposition.',
     email: 'E-Mail',
     password: 'Passwort',
     loginButton: 'Anmelden',
@@ -633,6 +637,10 @@ const translations = {
   en: {
     appName: 'Zimand Driver',
     loginSubtitle: 'Sign in with the account provided by dispatch',
+    companyCode: 'Company code',
+    companyCodeHint: 'You get the company code from your dispatcher.',
+    companyCodeInvalid: 'Unknown company code. Please check your entry.',
+    companyNotMember: 'This account does not belong to this company. Please contact your dispatcher.',
     email: 'Email',
     password: 'Password',
     loginButton: 'Sign in',

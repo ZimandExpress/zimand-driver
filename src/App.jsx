@@ -1,6 +1,6 @@
 import { Component, useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import { createPortal } from 'react-dom'
-import { supabase } from './supabaseClient'
+import { supabase, MULTI_TENANT, codFirmaSalvat, alegeFirma } from './supabaseClient'
 import { t, getLang, setLang, availableLangs } from './i18n'
 import { Maximize2, ArrowLeft as ArrowLeftMap, Eye, Play, ClipboardList, Pause, SlidersHorizontal, Building2, StickyNote, Receipt, Package, Repeat, Hourglass, Camera, Image as ImageIcon, Mail, Ruler, ChevronDown, Lock, Phone, Truck, CheckCircle2, Wallet, User, LogOut, Menu, Bell, MapPin, FlagTriangleRight, Tag, XCircle, Download, X, Navigation, Trophy, ThumbsUp, ArrowUpFromLine, ArrowDownToLine, EyeOff, Layers, AlertTriangle, Clock, FileText, Signature, BookOpen, Info as InfoIcon } from 'lucide-react'
 import { GHID_TRADUCERI, GHID_UI } from './ghidTraduceri.js'
@@ -322,7 +322,11 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      // Platforma Zimand Software: firma aleasă la login se reconfirmă la fiecare pornire.
+      if (MULTI_TENANT && session && codFirmaSalvat()) {
+        await alegeFirma(codFirmaSalvat()).catch(() => {})
+      }
       setSession(session)
       setLoading(false)
     })
@@ -460,12 +464,14 @@ function SplashScreen({ lang }) {
 // Turnstile stă pe formular și produce un token pe care Supabase îl cere la
 // fiecare apel de auth când protecția e pornită. De unică folosință: se
 // resetează după fiecare încercare. Token la nivel de modul.
-const TURNSTILE_SITE_KEY = '0x4AAAAAAFBXTtZtIsw5o_vg'
+const TURNSTILE_SITE_KEY = MULTI_TENANT ? (import.meta.env.VITE_TURNSTILE_SITE_KEY || '') : '0x4AAAAAAFBXTtZtIsw5o_vg'
 const authCaptcha = { token: '', reset: () => {} }
 function AuthCaptchaBox() {
   const boxRef = useRef(null)
   const widgetRef = useRef(null)
   useEffect(() => {
+    // Fără cheie (platforma fără captcha configurat): nu afișăm nimic.
+    if (!TURNSTILE_SITE_KEY) return
     let cancelled = false
     const render = () => {
       if (cancelled || !boxRef.current || widgetRef.current != null || !window.turnstile) return
@@ -503,6 +509,7 @@ function AuthCaptchaBox() {
 function LoginScreen({ lang, onChangeLang }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [companyCode, setCompanyCode] = useState(() => (MULTI_TENANT ? codFirmaSalvat() : ''))
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [mode, setMode] = useState('login') // 'login' | 'forgot' | 'sent'
@@ -513,8 +520,23 @@ function LoginScreen({ lang, onChangeLang }) {
     setBusy(true)
     const { error } = await supabase.auth.signInWithPassword({ email, password, options: { captchaToken: authCaptcha.token } })
     authCaptcha.reset()
+    if (error) {
+      setBusy(false)
+      setError(t('loginError', lang))
+      return
+    }
+    // Platforma Zimand Software: după autentificare, alegem firma după cod.
+    // Dacă nu se poate (cod greșit / contul nu e al firmei), ieșim din cont și spunem de ce.
+    if (MULTI_TENANT) {
+      const problema = await alegeFirma(companyCode)
+      if (problema) {
+        await supabase.auth.signOut()
+        setBusy(false)
+        setError(t(problema === 'not_member' ? 'companyNotMember' : 'companyCodeInvalid', lang))
+        return
+      }
+    }
     setBusy(false)
-    if (error) setError(t('loginError', lang))
   }
 
   async function handleForgot(e) {
@@ -571,6 +593,13 @@ function LoginScreen({ lang, onChangeLang }) {
         <div className="brand-mark"><span className="live-dot" /> {t('appName', lang)}</div>
         <p className="login-sub">{t('loginSubtitle', lang)}</p>
         <form onSubmit={handleLogin}>
+          {MULTI_TENANT && (
+            <>
+              <label>{t('companyCode', lang)}</label>
+              <input value={companyCode} onChange={e => setCompanyCode(e.target.value.toUpperCase())} autoCapitalize="characters" autoComplete="organization" required />
+              <div className="login-sub" style={{ margin: '4px 0 10px', fontSize: 12 }}>{t('companyCodeHint', lang)}</div>
+            </>
+          )}
           <label>{t('email', lang)}</label>
           <input type="email" value={email} onChange={e => setEmail(e.target.value)} required />
           <label>{t('password', lang)}</label>

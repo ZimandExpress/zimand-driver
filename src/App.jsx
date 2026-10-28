@@ -4213,7 +4213,7 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
             între „Zurück" şi ceas (18.10.2026). Varianta lungă „+ Bote" nu
             încape pe rând — rămâne jos, ca până acum. */}
         {docSusLaRidicare && <TrimiteDocument order={order} lang={lang} compact />}
-        {frachtSus && (
+        {(frachtSus || (inConfirmStep && confirmFormOpen && !order.is_document_delivery)) && (
           <button
             type="button"
             onClick={() => setCargoOpen((v) => !v)}
@@ -4271,7 +4271,7 @@ function RideDetailScreen({ order: orderProp, isOwner, session, lang, onBack, on
       </div>
 
       {/* Bara de progres a urcat pe rândul cu „Zurück" (vezi mai sus). */}
-      {frachtSus && cargoOpen && (
+      {(frachtSus || (inConfirmStep && confirmFormOpen && !order.is_document_delivery)) && cargoOpen && (
         <div className="info-card" style={{ border: '1.5px solid #0F2240', marginTop: 0 }}>
           <div className="info-card-head" style={{ display: 'flex', justifyContent: 'space-between' }}>
             <span><Package size={13} strokeWidth={1.8} /> {t('cargoLabel', lang)}
@@ -7962,7 +7962,9 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
         {(() => {
           // Sus, lângă „Zurück", când rândul e liber: la livrare, sau la o
           // ridicare unde „Protokoll/CMR senden" nu a urcat deja acolo.
-          const susDispo = !!dispoSlot && (esteLivrareEtapa || (isDocumentDelivery && order.boten_confirmation === true))
+          // Dispo coboară ca buton mare jos (28.10.2026); sus îi ia locul Fracht.
+          // Excepție: livrarea de documente cu Botenbestätigung păstrează Dispo sus.
+          const susDispo = !!dispoSlot && (isDocumentDelivery && order.boten_confirmation === true)
           if (susDispo) {
             return createPortal(
               <a
@@ -7991,13 +7993,13 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
               target="_blank"
               rel="noreferrer"
               style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
-                color: '#33415A', border: '1px solid #D8DEE8', background: '#fff',
-                fontSize: 13.5, fontWeight: 600, padding: '10px 12px', borderRadius: 10,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 9,
+                color: '#0F2240', border: '1.5px solid #25D366', background: '#F6FEF9',
+                fontSize: 15, fontWeight: 700, padding: '14px 16px', borderRadius: 12,
                 textDecoration: 'none',
               }}
             >
-              <WhatsAppIcon size={15} />
+              <WhatsAppIcon size={18} />
               {t('dispatchWa', lang)}
             </a>
           )

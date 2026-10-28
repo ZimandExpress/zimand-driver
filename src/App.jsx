@@ -2820,6 +2820,9 @@ function RideCard({ order, isOwner, lang, onClick, compact }) {
             <span className="rc-num">{order.order_number || order.reference || order.id.slice(0, 8)}</span>
             {isRecentlyNew(order.created_at) && <span className="rc-tag rc-tag-new">{t('newBadge', lang)}</span>}
             {order.is_shuttle && <span className="rc-tag">Shuttle</span>}
+            {(order.vehicles || []).includes('stadtkurier') && (
+              <span className="rc-tag" style={{ background: '#0F2240', color: '#fff', borderColor: '#0F2240' }}>Stadtkurier</span>
+            )}
           </span>
         </div>
 
@@ -2856,6 +2859,23 @@ function RideCard({ order, isOwner, lang, onClick, compact }) {
                   : <>{fmtDate(order.delivery_date)}{order.delivery_from ? `, ${fmtTime(order.delivery_from)}${order.delivery_to ? `–${fmtTime(order.delivery_to)}` : ''}` : ''}</>}
               </span>
             </div>
+            {(order.vehicles || []).includes('stadtkurier') && (
+              // Termenul Stadtkurier, scris pe cardul comenzii: acelaşi zi până la
+              // ora din fereastră, sau a doua zi lucrătoare până la 12:00.
+              <div className="rc-row">
+                <Building2 size={14} strokeWidth={1.8} />
+                <span className="rc-row-label">Stadtkurier</span>
+                <span className="rc-row-text">
+                  {order.delivery_date && order.delivery_date === order.pickup_date
+                    ? (lang === 'en'
+                        ? `Same-day delivery by ${fmtTime(order.delivery_to || '16:00')}`
+                        : `Zustellung am selben Tag bis ${fmtTime(order.delivery_to || '16:00')} Uhr`)
+                    : (lang === 'en'
+                        ? `Delivery by ${fmtDate(order.delivery_date)} ${fmtTime(order.delivery_to || '12:00')} (next working day)`
+                        : `Zustellung bis ${fmtDate(order.delivery_date)} ${fmtTime(order.delivery_to || '12:00')} Uhr (nächster Werktag)`)}
+                </span>
+              </div>
+            )}
             {(order.vehicles || []).length > 0 && (
               // Semnele de serviciu trec pe rândul următor când nu mai încap lângă
               // vehicul (19.10.2026) — înainte se înghesuiau şi tăiau textul.

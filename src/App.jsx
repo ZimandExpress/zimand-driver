@@ -6749,6 +6749,46 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
   const distanta = useDistantaFataDe(tintaEtapei, isDocumentDelivery && !order.proximity_check_off)
   const [avertismentDistanta, setAvertismentDistanta] = useState(null)
   const [limbaDeparte, setLimbaDeparte] = useState(() => citesteLimba(lang))
+  // Avertismentul „prea departe", într-un singur loc (29.10.2026). Era
+  // desenat doar pe ecranul de dinainte de sosire; la finalizare butonul îl
+  // declanşa fără să-l arate nicăieri, iar şoferul vedea doar butonul clipind.
+  const randAvertismentDistanta = () => {
+    if (avertismentDistanta == null) return null
+
+          // În limba aleasă de şofer, cu un selector mic în colţ (18.10.2026).
+          const trD = DEPARTE_LIMBI[limbaDeparte] || DEPARTE_LIMBI.de
+          return (
+          <div style={{
+            marginTop: 8, padding: '10px 12px', borderRadius: 9,
+            background: '#FCEBE8', border: '1px solid #E4A296', color: '#B23A24',
+            fontSize: 13, lineHeight: 1.55,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+              <div style={{ fontWeight: 700, flex: 1 }}>
+                ⚠ {trD.titlu.replace('{m}', avertismentDistanta)}
+              </div>
+              <SelectorLimbaMic value={limbaDeparte} onChange={setLimbaDeparte} />
+            </div>
+            <div style={{ marginTop: 3 }}>{trD.text}</div>
+            {/* Singura ieşire când poziţia chiar e greşită: dispeceratul.
+                Aşa rămâne o urmă scrisă, în loc de o a doua atingere
+                despre care nimeni nu află niciodată. */}
+            <a
+              href={dispatchWaUrl(order, fapte)}
+              target="_blank"
+              rel="noreferrer"
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                marginTop: 10, background: '#25D366', color: '#fff', fontWeight: 700,
+                fontSize: 13.5, padding: '9px 12px', borderRadius: 8, textDecoration: 'none',
+              }}
+            >
+              <WhatsAppIcon size={14} color="#fff" />
+              {trD.buton}
+            </a>
+          </div>
+          )
+  }
   // Informarea despre Botenbestätigung: văzută o dată pe etapă (ţinută pe telefon).
   // O dată la fiecare sosire (cheia conţine ora sosirii): dacă sosirea e
   // anulată şi bifată din nou, informarea apare iar.
@@ -7449,41 +7489,7 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
                       .replace('{m}', distanta.marja != null ? `${distanta.marja}` : '?')}
           </div>
         )}
-        {avertismentDistanta != null && (() => {
-          // În limba aleasă de şofer, cu un selector mic în colţ (18.10.2026).
-          const trD = DEPARTE_LIMBI[limbaDeparte] || DEPARTE_LIMBI.de
-          return (
-          <div style={{
-            marginTop: 8, padding: '10px 12px', borderRadius: 9,
-            background: '#FCEBE8', border: '1px solid #E4A296', color: '#B23A24',
-            fontSize: 13, lineHeight: 1.55,
-          }}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-              <div style={{ fontWeight: 700, flex: 1 }}>
-                ⚠ {trD.titlu.replace('{m}', avertismentDistanta)}
-              </div>
-              <SelectorLimbaMic value={limbaDeparte} onChange={setLimbaDeparte} />
-            </div>
-            <div style={{ marginTop: 3 }}>{trD.text}</div>
-            {/* Singura ieşire când poziţia chiar e greşită: dispeceratul.
-                Aşa rămâne o urmă scrisă, în loc de o a doua atingere
-                despre care nimeni nu află niciodată. */}
-            <a
-              href={dispatchWaUrl(order, fapte)}
-              target="_blank"
-              rel="noreferrer"
-              style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
-                marginTop: 10, background: '#25D366', color: '#fff', fontWeight: 700,
-                fontSize: 13.5, padding: '9px 12px', borderRadius: 8, textDecoration: 'none',
-              }}
-            >
-              <WhatsAppIcon size={14} color="#fff" />
-              {trD.buton}
-            </a>
-          </div>
-          )
-        })()}
+        {randAvertismentDistanta()}
         {incidentBlock}
       </>
     )
@@ -7906,6 +7912,7 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
             ? t('waitingForUploads', lang)
             : esteLivrareEtapa ? t('confirmDelivery', lang) : t('confirmPickup', lang)}
       </button>
+      {randAvertismentDistanta()}
       {isDocumentDelivery && (
         <div style={{ fontSize: 13, color: '#4A5563', lineHeight: 1.45, marginTop: 8, textAlign: 'center' }}>
           <MapPin size={13} strokeWidth={1.8} style={{ verticalAlign: -2 }} /> {t('locationNoticePickup', lang)}

@@ -12,7 +12,7 @@ import { CMR_LIVRARE_LIMBI } from './cmrLivrareTraduceri.js'
 import { tn } from './notificariTraduceri.js'
 // Ghidurile pentru marfă (Ware, CMR, Unterschrift) — tradusele lor stau separat.
 Object.assign(GHID_TRADUCERI, GHID_TRADUCERI_MARFA)
-import { ZP_LIMBI, PLECARE_LIMBI, TRANSPORT_LIMBI, REGULI_LIMBI, RETUR_LIMBI, POSTA_LIMBI, ZUSTELLART_LIMBI, DEPARTE_LIMBI, PASI_ZUSTELLART } from './zpTraduceri.js'
+import { ZP_LIMBI, PLECARE_LIMBI, TRANSPORT_LIMBI, REGULI_LIMBI, RETUR_LIMBI, POSTA_LIMBI, ZUSTELLART_LIMBI, DEPARTE_LIMBI, PASI_ZUSTELLART, UNTERLAGEN_LIMBI } from './zpTraduceri.js'
 import './index.css'
 import PodFiles from './components/PodFiles'
 import DocumentCamera from './components/DocumentCamera'
@@ -6058,7 +6058,29 @@ function AltCapat({ order, lang, spreLivrare, inCard }) {
 // arată în aplicaţie (cerut de Andrei pe 17.10.2026): sunt pe Botenbestätigung,
 // iar conţinutul unei trimiteri confidenţiale nu are ce căuta pe telefonul
 // curierului. Rămân în comandă, pentru dispecerat şi formulare.
+// Caseta „Unterlagen zu diesem Auftrag" de pe cardul de licitaţie, cu
+// selectorul de limbă 🌐 (aceeaşi limbă ca restul instrucţiunilor).
+function UnterlagenInfo({ order, lang }) {
+  const [limba, setLimba] = useLimbaGhid(lang)
+  const u = UNTERLAGEN_LIMBI[limba] || UNTERLAGEN_LIMBI.de
+  return (
+    <div className="order-notes-box" style={{ borderColor: '#FFD2AE', background: '#FFF6ED' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+        <div className="order-notes-label" style={{ color: '#B35A12' }}>{u.titlu}</div>
+        <SelectorLimbaMic value={limba} onChange={setLimba} />
+      </div>
+      <div style={{ fontSize: 12.5, lineHeight: 1.55, color: '#8A5A16' }}>
+        <div>• {u.protokoll}</div>
+        {order.boten_confirmation === true && <div>• {u.boten}</div>}
+        <div>• {u.posta}</div>
+      </div>
+    </div>
+  )
+}
+
 function ZustellartInfo({ order, lang, compact }) {
+  const [limba] = useLimbaGhid(lang)
+  const zl = ZUSTELLART_LIMBI[limba] || ZUSTELLART_LIMBI.de
   const z = Number(order?.zustellart) || 0
   if (!z) return null
   const rosu = z === 3
@@ -6070,10 +6092,10 @@ function ZustellartInfo({ order, lang, compact }) {
       {z > 0 && (
         <>
           <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.4, textTransform: 'uppercase', color: '#6B7A90' }}>
-            {t('zustellartTitle', lang)}
+            {zl.titlu}
           </div>
           <div style={{ fontSize: 14.5, fontWeight: 800, color: rosu ? '#B23A24' : '#0F2240', marginTop: 2 }}>
-            {t(`zustellart${z}`, lang)}
+            {zl[`v${z}`] || t(`zustellart${z}`, lang)}
           </div>
           {!compact && (
             <div style={{ fontSize: 12.5, color: '#4A5563', lineHeight: 1.5, marginTop: 3 }}>{t(`zustellart${z}Note`, lang)}</div>
@@ -6165,6 +6187,21 @@ const BOTEN_INFO_LIMBI = [
 function citesteLimba(lang) {
   try { return localStorage.getItem('zd-boten-info-limba') || lang || 'de' } catch { return lang || 'de' }
 }
+// Limba instrucţiunilor, comună pentru toate casetele de pe ecran: schimbată
+// într-un loc, se schimbă peste tot (29.10.2026).
+function anuntaLimba(l) {
+  try { localStorage.setItem('zd-boten-info-limba', l) } catch { /* nimic */ }
+  try { window.dispatchEvent(new CustomEvent('zd-limba', { detail: l })) } catch { /* nimic */ }
+}
+function useLimbaGhid(lang) {
+  const [limba, setLimba] = useState(() => citesteLimba(lang))
+  useEffect(() => {
+    const f = (e) => { if (e?.detail) setLimba(e.detail) }
+    window.addEventListener('zd-limba', f)
+    return () => window.removeEventListener('zd-limba', f)
+  }, [])
+  return [limba, (l) => { setLimba(l); anuntaLimba(l) }]
+}
 // Varianta discretă: doar 🌐 şi codul limbii, ca un buton mic (18.10.2026).
 function SelectorLimbaMic({ value, onChange }) {
   return (
@@ -6174,7 +6211,7 @@ function SelectorLimbaMic({ value, onChange }) {
       🌐 {String(value || 'de').toUpperCase()}
       <select value={value} onChange={(e) => {
         onChange(e.target.value)
-        try { localStorage.setItem('zd-boten-info-limba', e.target.value) } catch { /* nimic */ }
+        anuntaLimba(e.target.value)
       }} aria-label="Sprache"
         style={{ position: 'absolute', inset: 0, opacity: 0, width: '100%', cursor: 'pointer' }}>
         {BOTEN_INFO_LIMBI.map(([cod, nume]) => <option key={cod} value={cod}>{nume}</option>)}
@@ -6189,7 +6226,7 @@ function SelectorLimba({ value, onChange }) {
       🌐
       <select value={value} onChange={(e) => {
         onChange(e.target.value)
-        try { localStorage.setItem('zd-boten-info-limba', e.target.value) } catch { /* nimic */ }
+        anuntaLimba(e.target.value)
       }}
         style={{ flex: 1, padding: '9px 10px', borderRadius: 8, border: '1px solid #C9D1DD', fontSize: 15, background: '#fff', color: '#0F2240' }}>
         {BOTEN_INFO_LIMBI.map(([cod, nume]) => <option key={cod} value={cod}>{nume}</option>)}
@@ -10405,16 +10442,7 @@ function BidCard({ order, lang, courierProfileId, open, onToggle, onBidPlaced, o
               La o cursă de documente actele semnate pleacă prin poştă la
               Zimand în 3 zile. E muncă şi un timbru, nu doar un drum — cine
               licitează trebuie să ştie în ce intră, nu să afle după. */}
-          {order.is_document_delivery && (
-            <div className="order-notes-box" style={{ borderColor: '#FFD2AE', background: '#FFF6ED' }}>
-              <div className="order-notes-label" style={{ color: '#B35A12' }}>{t('docPapersTitle', lang)}</div>
-              <div style={{ fontSize: 12.5, lineHeight: 1.55, color: '#8A5A16' }}>
-                <div>• {t('docPapersProtokoll', lang)}</div>
-                {order.boten_confirmation === true && <div>• {t('docPapersBoten', lang)}</div>}
-                <div>• {t('postOriginalsNote', lang)}</div>
-              </div>
-            </div>
-          )}
+          {order.is_document_delivery && <UnterlagenInfo order={order} lang={lang} />}
           {order.is_document_delivery && <ZustellartInfo order={order} lang={lang} compact />}
 
           {order.flexible_time_notes && (

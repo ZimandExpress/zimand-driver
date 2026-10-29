@@ -7802,7 +7802,7 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
       )}
 
       {/* Aceeaşi plasă la bifa de încărcare/predare: cât timp ştim sigur că
-          şoferul e la peste 70 m, butonul e în ceaţă şi explică la atingere. */}
+          şoferul e la peste 100 m, butonul e în ceaţă şi explică la atingere. */}
       {/* Ce îi lipseşte şoferului ca să poată închide etapa.
           Până acum butonul era doar stins, fără să spună de ce — iar la
           livrările de documente lipsa Zustellprotokoll-ului se descoperea
@@ -9603,7 +9603,7 @@ function EarningsScreen({ profile, lang }) {
 // subteran, hală, curte interioară — `accuracy` e mare, iar atunci măsura
 // e inutilă şi ar ţine şoferul captiv în faţa uşii. În cazul acela lăsăm
 // butonul să meargă şi consemnăm că poziţia era nesigură.
-const PRAG_METRI = 70
+const PRAG_METRI = 100  // ridicat de la 70 la 100 m pe 29.10.2026, la cererea lui Andrei
 
 // Siguranţa măsurătorii nu se judecă printr-o limită fixă: aceeaşi marjă
 // de eroare înseamnă altceva la 100 de metri faţă de 600. Blocăm doar când

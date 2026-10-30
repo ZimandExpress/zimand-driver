@@ -1713,8 +1713,10 @@ const SOUND_FILES = {
   // Ceva a intrat și merită privit: comandă nouă în licitație sau comandă
   // atribuită. Se aude la toate tipurile de cont — firmă sau angajat.
   incoming: '/sounds/neuer-auftrag.mp3',
-  // Ceva s-a câștigat sau s-a confirmat. Mai rar, deci poate fi mai apăsat.
-  success: '/sounds/auftrag-bestaetigt.mp3',
+  // Ceva s-a câștigat sau s-a confirmat. 30.10.2026: la cererea lui Andrei
+  // se aude tot sunetul de comandă nouă — vocea „Zimand Auftrag bestätigt"
+  // nu mai e folosită (fişierul rămâne în /sounds, dacă se revine).
+  success: '/sounds/neuer-auftrag.mp3',
 }
 
 const soundBuffers = {}

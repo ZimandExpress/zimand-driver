@@ -856,7 +856,9 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
         //
         // `winner_bid_id` rămâne ca a doua cale, pentru comenzile pe care
         // firma le vede oricum (are şofer atribuit, sau a creat-o ea).
-        pierduta: !!b.lost_at || (!!o.winner_bid_id && o.winner_bid_id !== b.id),
+        // 30.10.2026: o comandă PREDATĂ de dispecer altui curier nu e o
+        // cursă pierdută — firma a făcut partea ei şi e plătită pentru ea.
+        pierduta: !b.handed_over_at && (!!b.lost_at || (!!o.winner_bid_id && o.winner_bid_id !== b.id)),
       })
     }
 
@@ -8569,7 +8571,7 @@ function NichtAngenommenScreen({ profile, session, lang }) {
 
   if (loading) return <PlaceholderScreen title={t('menuNotAccepted', lang)} note={t('loadingRides', lang)} />
 
-  const lost = bids.filter((b) => b.orders && b.orders.status !== 'open' && b.orders.winner_bid_id !== b.id)
+  const lost = bids.filter((b) => b.orders && b.orders.status !== 'open' && b.orders.winner_bid_id !== b.id && !b.handed_over_at)
 
   if (lost.length === 0) {
     return <PlaceholderScreen title={t('menuNotAccepted', lang)} note={t('noLostBids', lang)} />

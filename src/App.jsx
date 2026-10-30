@@ -6748,13 +6748,14 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
         ? [order[`${slotCoord}_lat`], order[`${slotCoord}_lng`]]
         : null)
 
-  const tintaGeocodata = useGeocode(isDocumentDelivery && !coordSalvate ? adresaEtapei : null)
+  // 30.10.2026: ţinta se află la orice transport, nu doar la documente.
+  const tintaGeocodata = useGeocode(!coordSalvate ? adresaEtapei : null)
   const tintaEtapei = coordSalvate || tintaGeocodata
 
   useEffect(() => {
     // La o oprire nu scriem nimic: coordonatele ei le pune dispeceratul când
     // alege adresa, iar aici n-avem drept de scriere pe rândul opririi.
-    if (esteOprire || !isDocumentDelivery || coordSalvate || !tintaGeocodata) return
+    if (esteOprire || coordSalvate || !tintaGeocodata) return
     supabase.rpc('driver_set_address_coords', {
       p_order_id: order.id,
       // Trimitem etapa adevărată; funcţia de pe server alege slotul potrivit.
@@ -6762,11 +6763,11 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
       p_lat: tintaGeocodata[0],
       p_lng: tintaGeocodata[1],
     }).then(({ error }) => { if (error) console.error('coords save:', error.message) })
-  }, [isDocumentDelivery, coordSalvate, tintaGeocodata && tintaGeocodata[0], tintaGeocodata && tintaGeocodata[1]])
+  }, [coordSalvate, tintaGeocodata && tintaGeocodata[0], tintaGeocodata && tintaGeocodata[1]])
   // `proximity_check_off`: numai dispeceratul îl poate pune (o regulă din
   // bază o păzeşte) — pentru comenzile de test, ca să se poată bifa de la
   // distanţă. Poziţia se măsoară şi se salvează în continuare.
-  const distanta = useDistantaFataDe(tintaEtapei, isDocumentDelivery && !order.proximity_check_off)
+  const distanta = useDistantaFataDe(tintaEtapei, !order.proximity_check_off, isDocumentDelivery ? PRAG_METRI : PRAG_METRI_MARFA)
   const [avertismentDistanta, setAvertismentDistanta] = useState(null)
   const [limbaDeparte, setLimbaDeparte] = useState(() => citesteLimba(lang))
   // Avertismentul „prea departe", într-un singur loc (29.10.2026). Era
@@ -6789,7 +6790,7 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
               </div>
               <SelectorLimbaMic value={limbaDeparte} onChange={setLimbaDeparte} />
             </div>
-            <div style={{ marginTop: 3 }}>{trD.text}</div>
+            <div style={{ marginTop: 3 }}>{isDocumentDelivery ? trD.text : (() => { const tx = String(trD.text || ''); const i = tx.indexOf('. '); return i > 0 ? tx.slice(0, i + 1) : tx })()}</div>
             {/* Singura ieşire când poziţia chiar e greşită: dispeceratul.
                 Aşa rămâne o urmă scrisă, în loc de o a doua atingere
                 despre care nimeni nu află niciodată. */}
@@ -7496,7 +7497,7 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
         {/* Starea măsurătorii, scrisă. Un blocaj mut nu se poate verifica:
             dacă poziția nu e încă gata sau e nesigură, butonul arată normal
             și nimeni nu știe de ce. Acum se vede mereu pe ce ne bazăm. */}
-        {isDocumentDelivery && (
+        {!order.proximity_check_off && (
           <div style={{ fontSize: 11.5, color: 'var(--text-soft)', textAlign: 'center', marginTop: 6 }}>
             {!tintaEtapei
               ? t('distUnknownAddress', lang)
@@ -9630,7 +9631,10 @@ function EarningsScreen({ profile, lang }) {
 // subteran, hală, curte interioară — `accuracy` e mare, iar atunci măsura
 // e inutilă şi ar ţine şoferul captiv în faţa uşii. În cazul acela lăsăm
 // butonul să meargă şi consemnăm că poziţia era nesigură.
-const PRAG_METRI = 100  // ridicat de la 70 la 100 m pe 29.10.2026, la cererea lui Andrei
+const PRAG_METRI = 100  // documente — ridicat de la 70 la 100 m pe 29.10.2026, la cererea lui Andrei
+// Marfa (30.10.2026): aceeaşi verificare, cu prag mai larg — curţile şi
+// rampele de încărcare sunt adesea la o sută de metri de adresa din GPS.
+const PRAG_METRI_MARFA = 150
 
 // Siguranţa măsurătorii nu se judecă printr-o limită fixă: aceeaşi marjă
 // de eroare înseamnă altceva la 100 de metri faţă de 600. Blocăm doar când
@@ -9639,7 +9643,7 @@ const PRAG_METRI = 100  // ridicat de la 70 la 100 m pe 29.10.2026, la cererea l
 // telefonului, şoferul tot e departe.
 const FACTOR_SIGURANTA = 3
 
-function useDistantaFataDe(target, activ) {
+function useDistantaFataDe(target, activ, prag = PRAG_METRI) {
   const [stare, setStare] = useState({ metri: null, sigur: false })
 
   useEffect(() => {
@@ -9668,7 +9672,7 @@ function useDistantaFataDe(target, activ) {
   }, [activ, target && target[0], target && target[1]])
 
   // „prea departe" înseamnă: ştim sigur unde suntem ŞI suntem dincolo de prag.
-  const preaDeparte = stare.sigur && stare.metri != null && stare.metri > PRAG_METRI
+  const preaDeparte = stare.sigur && stare.metri != null && stare.metri > prag
   return { ...stare, preaDeparte }
 }
 

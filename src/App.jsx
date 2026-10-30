@@ -337,6 +337,22 @@ export default function App() {
   // cea confirmată de getSession sunt obiecte diferite pentru acelaşi cont,
   // iar profilul nu trebuie cerut de două ori.
   const userId = session?.user?.id || null
+
+  // Semn de viaţă „Driver" (30.10.2026): dispecerul vede la Subcontractori
+  // când a fost firma sau şoferul ei ultima dată în aplicaţie. La deschidere,
+  // la revenirea în aplicaţie şi la 5 minute cât e vizibilă. Serverul scrie
+  // cel mult o dată pe minut.
+  useEffect(() => {
+    if (!userId) return
+    const semn = () => {
+      if (document.visibilityState !== 'visible') return
+      supabase.rpc('touch_app_presence', { p_app: 'driver' }).then(() => {}, () => {})
+    }
+    semn()
+    const iv = setInterval(semn, 5 * 60000)
+    document.addEventListener('visibilitychange', semn)
+    return () => { clearInterval(iv); document.removeEventListener('visibilitychange', semn) }
+  }, [userId])
   useEffect(() => {
     if (!session) {
       setProfile(null)

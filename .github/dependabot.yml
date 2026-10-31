@@ -1,0 +1,34 @@
+# Dependabot — verifică automat bibliotecile npm pentru versiuni noi și,
+# când sunt activate „Dependabot alerts" pe repo, deschide PR-uri și pentru
+# vulnerabilitățile de securitate cunoscute.
+#
+# Minor + patch sunt grupate într-un singur PR săptămânal (mai puțin zgomot);
+# actualizările majore (care pot strica ceva) vin separat, ca să le poți
+# verifica pe rând.
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Berlin"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+    commit-message:
+      prefix: "deps"
+    groups:
+      minor-and-patch:
+        update-types:
+          - "minor"
+          - "patch"
+    # Nu propune salturi MAJORE de rutină (ex. plugin-react 4 -> 6, care ar cere
+    # și upgrade de Vite și ar sparge build-ul). Minor/patch vin normal, iar
+    # actualizările de SECURITATE trec oricum, inclusiv majore dacă e singura
+    # cale de remediere. Majorele le facem manual, deliberat, când vrem.
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - "version-update:semver-major"

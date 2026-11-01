@@ -1063,7 +1063,7 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
   return (
     <div className="phone-shell">
       <div className="brand-strip">
-        <span className="brand-strip-name"><span className="live-dot" /> Zimand Express</span>
+        <span className="brand-strip-name"><span className="live-dot" /> {MULTI_TENANT ? 'Zimand Driver' : 'Zimand Express'}</span>
         <button className="hbtn" aria-label="menu" onClick={() => setMenuOpen(true)}><Menu size={20} strokeWidth={2} /></button>
       </div>
 
@@ -1229,7 +1229,7 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
           <div className="menu-header">
             <span className="menu-avatar">{initialeMeniu(profile?.name || session?.user?.email)}</span>
             <span className="menu-who">
-              <span className="menu-who-name">{profile?.name || 'Zimand Express'}</span>
+              <span className="menu-who-name">{profile?.name || (MULTI_TENANT ? 'Zimand Driver' : 'Zimand Express')}</span>
               <span className="menu-who-sub"><span className="live-dot" /> {isOwner ? t('menuAccountCompany', lang) : t('menuAccountDriver', lang)}</span>
             </span>
             <button type="button" className="menu-close" aria-label="Schließen" onClick={() => setMenuOpen(false)}><X size={20} strokeWidth={2} /></button>

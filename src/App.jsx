@@ -9634,7 +9634,8 @@ function EarningsScreen({ profile, lang }) {
 const PRAG_METRI = 100  // documente — ridicat de la 70 la 100 m pe 29.10.2026, la cererea lui Andrei
 // Marfa (30.10.2026): aceeaşi verificare, cu prag mai larg — curţile şi
 // rampele de încărcare sunt adesea la o sută de metri de adresa din GPS.
-const PRAG_METRI_MARFA = 150
+// Ridicat de la 150 la 350 m pe 02.11.2026, la cererea lui Andrei.
+const PRAG_METRI_MARFA = 350
 
 // Siguranţa măsurătorii nu se judecă printr-o limită fixă: aceeaşi marjă
 // de eroare înseamnă altceva la 100 de metri faţă de 600. Blocăm doar când

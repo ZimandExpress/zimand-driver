@@ -6915,7 +6915,7 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
     ? (esteLivrareEtapa
         ? (deliveryMethod === 'briefkasten' ? MINIM_POZE_CUTIE : MINIM_POZE_PERSONAL)
         : 2)
-    : (esteLivrareEtapa ? 2 : 1)
+    : 1 // marfă: o poză şi la ridicare, şi la livrare (la livrare era 2; redus la 1 pe 03.11.2026, cerut de Andrei)
 
   // La ridicarea unei curse de documente pleacă două formulare: protocolul
   // și declaraţia de predare. La livrare doar protocolul — declaraţia a

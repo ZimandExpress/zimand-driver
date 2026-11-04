@@ -1,3 +1,4 @@
+import { SUPABASE_URL } from '../supabaseClient'
 // startCache.js — ce a văzut şoferul ultima dată, ţinut pe telefon.
 //
 // La deschidere aplicaţia întreba serverul pe rând: sesiunea, profilul,
@@ -48,7 +49,7 @@ export function golesteCache() {
 // întoarce null şi aplicaţia trece la login, exact ca înainte.
 export function sesiuneSalvata() {
   try {
-    const url = import.meta.env.VITE_SUPABASE_URL
+    const url = SUPABASE_URL
     if (!url) return null
     const ref = new URL(url).hostname.split('.')[0]
     const raw = localStorage.getItem(`sb-${ref}-auth-token`)

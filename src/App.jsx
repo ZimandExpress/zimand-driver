@@ -1,6 +1,6 @@
 import { Component, useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import { createPortal } from 'react-dom'
-import { supabase } from './supabaseClient'
+import { supabase, MULTI_TENANT, BACKEND, SUPABASE_URL, SUPABASE_ANON_KEY, VAPID_PUBLIC_KEY_PLATFORMA, codFirmaSalvat, codFirmaValid, alegeFirma, clientPentru, seteazaBackend, salveazaCodFirma } from './supabaseClient'
 import { t, getLang, setLang, availableLangs } from './i18n'
 import { Maximize2, ArrowLeft as ArrowLeftMap, Eye, Play, ClipboardList, Pause, SlidersHorizontal, Building2, StickyNote, Receipt, Package, Repeat, Hourglass, Camera, Image as ImageIcon, Mail, Ruler, ChevronDown, Lock, Phone, Truck, CheckCircle2, Wallet, User, LogOut, Menu, Bell, MapPin, FlagTriangleRight, Tag, XCircle, Download, X, Navigation, Trophy, ThumbsUp, ArrowUpFromLine, ArrowDownToLine, EyeOff, Layers, AlertTriangle, Clock, FileText, Signature, BookOpen, Info as InfoIcon } from 'lucide-react'
 import { GHID_TRADUCERI, GHID_UI } from './ghidTraduceri.js'
@@ -322,7 +322,12 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      // Platforma Zimand Software: firma aleasă la login se reconfirmă la fiecare pornire.
+      if (MULTI_TENANT && session) {
+        if (codFirmaSalvat()) await alegeFirma(codFirmaSalvat()).catch(() => {})
+        await incarcaDispeceratFirma()
+      }
       setSession(session)
       setLoading(false)
     })
@@ -522,23 +527,54 @@ function LoginScreen({ lang, onChangeLang }) {
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [mode, setMode] = useState('login') // 'login' | 'forgot' | 'sent'
+  // Cod de firmă: doar pentru șoferii firmelor de pe platforma Zimand Software. Gol = Zimand Express (ca până acum).
+  const [companyCode, setCompanyCode] = useState(() => (MULTI_TENANT ? codFirmaSalvat() : ''))
+  const [showCode, setShowCode] = useState(() => MULTI_TENANT && !!codFirmaSalvat())
+  const cod = showCode ? companyCode.trim().toUpperCase() : ''
 
   async function handleLogin(e) {
     e.preventDefault()
     setError('')
+    if (cod && !codFirmaValid(cod)) { setError(t('companyCodeInvalid', lang)); return }
     setBusy(true)
-    const { error } = await supabase.auth.signInWithPassword({ email, password, options: { captchaToken: authCaptcha.token } })
+    const tinta = cod ? 'zs' : 'ze'
+    const client = clientPentru(tinta)
+    const { error } = await client.auth.signInWithPassword({ email, password, options: { captchaToken: authCaptcha.token } })
     authCaptcha.reset()
+    if (error) {
+      setBusy(false)
+      setError(t('loginError', lang))
+      return
+    }
+    if (tinta === 'zs') {
+      // Firma după cod; dacă nu se poate (cod greșit / contul nu e al firmei), ieșim din cont și spunem de ce.
+      const problema = await alegeFirma(cod, client)
+      if (problema) {
+        await client.auth.signOut()
+        setBusy(false)
+        setError(t(problema === 'not_member' ? 'companyNotMember' : 'companyCodeInvalid', lang))
+        return
+      }
+    }
+    if (tinta !== BACKEND) {
+      // Altă bază decât cea cu care a pornit aplicația → comutăm și repornim (sesiunea e deja salvată).
+      seteazaBackend(tinta)
+      window.location.replace(window.location.origin + '/')
+      return
+    }
     setBusy(false)
-    if (error) setError(t('loginError', lang))
   }
 
   async function handleForgot(e) {
     e.preventDefault()
     setError('')
+    if (cod && !codFirmaValid(cod)) { setError(t('companyCodeInvalid', lang)); return }
     setBusy(true)
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: window.location.origin + '/?invite=1',
+    const tinta = cod ? 'zs' : 'ze'
+    if (tinta === 'zs') salveazaCodFirma(cod)
+    const { error } = await clientPentru(tinta).auth.resetPasswordForEmail(email, {
+      // Platforma: linkul din email aduce codul firmei, ca aplicația să deschidă baza corectă.
+      redirectTo: window.location.origin + '/?invite=1' + (tinta === 'zs' ? '&firmencode=' + encodeURIComponent(cod) : ''),
       captchaToken: authCaptcha.token,
     })
     authCaptcha.reset()
@@ -562,6 +598,7 @@ function LoginScreen({ lang, onChangeLang }) {
             <>
               <p className="login-sub">{t('forgotPasswordSub', lang)}</p>
               <form onSubmit={handleForgot}>
+                <CompanyCodeField lang={lang} show={showCode} setShow={setShowCode} value={companyCode} onChange={setCompanyCode} />
                 <label>{t('email', lang)}</label>
                 <input type="email" value={email} onChange={e => setEmail(e.target.value)} required />
                 <AuthCaptchaBox />
@@ -591,6 +628,7 @@ function LoginScreen({ lang, onChangeLang }) {
           <input type="email" value={email} onChange={e => setEmail(e.target.value)} required />
           <label>{t('password', lang)}</label>
           <input type="password" value={password} onChange={e => setPassword(e.target.value)} required />
+          <CompanyCodeField lang={lang} show={showCode} setShow={setShowCode} value={companyCode} onChange={setCompanyCode} />
           <AuthCaptchaBox />
           {error && <div className="login-error">{error}</div>}
           <button className="btn" type="submit" disabled={busy}>
@@ -602,6 +640,27 @@ function LoginScreen({ lang, onChangeLang }) {
         </button>
       </div>
     </div>
+  )
+}
+
+// Câmpul „Firmencode”: ascuns implicit (șoferii Zimand Express nu au nevoie de el).
+function CompanyCodeField({ lang, show, setShow, value, onChange }) {
+  if (!show) {
+    return (
+      <button type="button" className="link-btn" onClick={() => setShow(true)} style={{ margin: '2px 0 10px', fontSize: 13 }}>
+        {t('companyCodeOpen', lang)}
+      </button>
+    )
+  }
+  return (
+    <>
+      <label>{t('companyCode', lang)}</label>
+      <input value={value} onChange={e => onChange(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))} autoCapitalize="characters" autoComplete="organization" maxLength={12} placeholder="z. B. ABC123" />
+      <div className="login-sub" style={{ margin: '4px 0 10px', fontSize: 12 }}>
+        {t('companyCodeHint', lang)}{' '}
+        <button type="button" className="link-btn" onClick={() => { onChange(''); setShow(false) }} style={{ fontSize: 12, display: 'inline', padding: 0 }}>{t('companyCodeRemove', lang)}</button>
+      </div>
+    </>
   )
 }
 
@@ -1052,7 +1111,7 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
   return (
     <div className="phone-shell">
       <div className="brand-strip">
-        <span className="brand-strip-name"><span className="live-dot" /> Zimand Express</span>
+        <span className="brand-strip-name"><span className="live-dot" /> {MULTI_TENANT ? 'Zimand Driver' : 'Zimand Express'}</span>
         <button className="hbtn" aria-label="menu" onClick={() => setMenuOpen(true)}><Menu size={20} strokeWidth={2} /></button>
       </div>
 
@@ -1218,7 +1277,7 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
           <div className="menu-header">
             <span className="menu-avatar">{initialeMeniu(profile?.name || session?.user?.email)}</span>
             <span className="menu-who">
-              <span className="menu-who-name">{profile?.name || 'Zimand Express'}</span>
+              <span className="menu-who-name">{profile?.name || (MULTI_TENANT ? 'Zimand Driver' : 'Zimand Express')}</span>
               <span className="menu-who-sub"><span className="live-dot" /> {isOwner ? t('menuAccountCompany', lang) : t('menuAccountDriver', lang)}</span>
             </span>
             <button type="button" className="menu-close" aria-label="Schließen" onClick={() => setMenuOpen(false)}><X size={20} strokeWidth={2} /></button>
@@ -2023,7 +2082,7 @@ function anuntaAtribuire(comenzi, arata) {
 // cât timp aplicația e deschisă pe ecran). Cheia publică e sigură de expus
 // direct în cod — doar cheia PRIVATĂ (păstrată exclusiv pe server) permite
 // trimiterea efectivă de notificări.
-const VAPID_PUBLIC_KEY = 'BLthWKCmDxZ6A-TcmZgJoHh2BygVynBWng6u_9-NhSV1U52y2qlaCKvvy5rQD5cScBKUVsFb9NNeIGxLr8F5f84'
+const VAPID_PUBLIC_KEY = MULTI_TENANT ? VAPID_PUBLIC_KEY_PLATFORMA : 'BLthWKCmDxZ6A-TcmZgJoHh2BygVynBWng6u_9-NhSV1U52y2qlaCKvvy5rQD5cScBKUVsFb9NNeIGxLr8F5f84'
 
 // Cheia de dinainte: BEpxgH8YgPfWzEXVtiseNj-kw0TgE3fcj3MPOA2OncaqtAooQnWcMFJsfos9JWVrNd9lRZUkW88UC7XLbwU_RJ4
 //
@@ -3011,7 +3070,21 @@ function mapsNavUrl(address) {
 // Numărul de dispecerat Zimand Express, acelaşi din piciorul e-mailurilor
 // către firme. WhatsApp, nu telefon: şoferul e în stradă, adesea cu
 // mâinile ocupate, iar un mesaj lasă urmă scrisă.
-const DISPATCH_WA = '4915510062480'
+let DISPATCH_WA = MULTI_TENANT ? '' : '4915510062480'
+
+// Platforma Zimand Software: numărul de dispecerat e al firmei șoferului (setările firmei).
+// Fără număr, linkul deschide WhatsApp și șoferul alege singur contactul.
+async function incarcaDispeceratFirma() {
+  if (!MULTI_TENANT) return
+  try {
+    const { data } = await supabase.from('tenant_settings').select('contact_phone').limit(1).maybeSingle()
+    let d = String(data?.contact_phone || '').replace(/[^\d+]/g, '')
+    if (d.startsWith('+')) d = d.slice(1)
+    else if (d.startsWith('00')) d = d.slice(2)
+    else if (d.startsWith('0')) d = '49' + d.slice(1)
+    DISPATCH_WA = /^\d{8,15}$/.test(d) ? d : ''
+  } catch { /* rămâne gol */ }
+}
 
 // Silueta WhatsApp. Lucide nu conţine logo-uri de marcă, iar o bulă de chat
 // generică nu spune şoferului unde îl duce butonul.
@@ -10758,10 +10831,10 @@ function ProfileScreen({ session, profile, isOwner, lang, onChangeLang, onProfil
       // din el, ca nimeni să nu poată suprascrie poza altui șofer.
       const { data: sess } = await supabase.auth.getSession()
       const token = sess?.session?.access_token
-      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/upload-foto-privat`, {
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/upload-foto-privat`, {
         method: 'POST',
         headers: {
-          apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+          apikey: SUPABASE_ANON_KEY,
           Authorization: `Bearer ${token}`,
           'Content-Type': file.type && file.type.startsWith('image/') ? file.type : 'image/jpeg',
           'x-kind': 'driver',

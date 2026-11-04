@@ -1,3 +1,4 @@
+import { MULTI_TENANT } from '../supabaseClient'
 // db.js — stocare persistentă pentru dovezile șoferului.
 //
 // De ce IndexedDB și nu React state: pozele, documentele și semnătura trebuie
@@ -7,7 +8,8 @@
 //
 // Fără nicio dependință nouă (§43) — API-ul brut e suficient aici.
 
-const DB_NAME = 'zimand-driver'
+// Coadă separată pentru platforma Zimand Software (dovezile nu trec niciodată dintr-o bază în alta).
+const DB_NAME = MULTI_TENANT ? 'zimand-driver-zs' : 'zimand-driver'
 const DB_VERSION = 1
 export const STORE_FILES = 'pod_files'
 export const STORE_CONFIRMATIONS = 'pod_confirmations'

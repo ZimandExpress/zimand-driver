@@ -14,7 +14,7 @@
 // 'proof-of-delivery', aceleași căi `${orderId}/${leg}/...`, același format
 // jsonb `{type, name, path}` pentru documente, aceleași RPC-uri.
 
-import { supabase } from '../supabaseClient'
+import { supabase, SUPABASE_URL } from '../supabaseClient'
 import {
   STORE_FILES, STORE_CONFIRMATIONS,
   dbPut, dbGet, dbDelete, dbGetAll, dbGetByLeg, localId,
@@ -166,7 +166,7 @@ export async function retryFile(id) {
 // progresul încărcării, iar §17 cere procent per fișier.
 function uploadWithProgress(path, blob, token, onProgress) {
   return new Promise((resolve, reject) => {
-    const url = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/${BUCKET}/${path}`
+    const url = `${SUPABASE_URL}/storage/v1/object/${BUCKET}/${path}`
     const xhr = new XMLHttpRequest()
     xhr.open('POST', url, true)
     xhr.setRequestHeader('Authorization', `Bearer ${token}`)
@@ -631,7 +631,7 @@ async function asteaptaDovezile(orderId, leg, { timeoutMs = 25000, doarPoze = fa
 async function syncDeliveryDocuments(orderId, leg, attempt = 0) {
   try {
     const { data } = await supabase.auth.getSession()
-    const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sync-delivery-documents`, {
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/sync-delivery-documents`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${data?.session?.access_token}` },
       body: JSON.stringify({ order_id: orderId, leg }),

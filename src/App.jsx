@@ -6092,7 +6092,6 @@ function UnterlagenInfo({ order, lang }) {
       <div style={{ fontSize: 12.5, lineHeight: 1.55, color: '#8A5A16' }}>
         <div>• {u.protokoll}</div>
         {order.boten_confirmation === true && <div>• {u.boten}</div>}
-        <div>• {u.posta}</div>
       </div>
     </div>
   )
@@ -7903,11 +7902,8 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
             setZpIntrebare('ask')
             return
           }
-          // Livrare de documente (dus): întâi nota despre original.
-          if (isDocumentDeliveryLeg) {
-            setPostaInfo(true)
-            return
-          }
+          // Nota „trimiteţi originalul prin poştă în 3–5 zile" a fost scoasă
+          // (04.11.2026, cerut de Andrei): nu se mai aplică.
           confirmLeg()
         }}
         // Fără internet, dovezile rămân în coadă şi `allDone` nu devine
@@ -10470,10 +10466,7 @@ function BidCard({ order, lang, courierProfileId, open, onToggle, onBidPlaced, o
             </div>
           )}
 
-          {/* Obligaţia de după cursă, spusă ÎNAINTE de licitaţie.
-              La o cursă de documente actele semnate pleacă prin poştă la
-              Zimand în 3 zile. E muncă şi un timbru, nu doar un drum — cine
-              licitează trebuie să ştie în ce intră, nu să afle după. */}
+          {/* Ce hârtii cere cursa de documente, spus ÎNAINTE de licitaţie. */}
           {order.is_document_delivery && <UnterlagenInfo order={order} lang={lang} />}
           {order.is_document_delivery && <ZustellartInfo order={order} lang={lang} compact />}
 

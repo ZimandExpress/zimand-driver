@@ -7618,19 +7618,49 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
     // nu mai e nimic de spus despre ea (cerut de Andrei pe 18.10.2026).
     ? ['doc_standard', 'zustellprotokoll', ...(order.boten_confirmation === true && ghidFaza === 'start' ? ['boten'] : [])]
     // La plecare, anunţul CMR întâi (19.10.2026).
-    : (ghidFaza === 'start' && cereDocument ? ['cmr', 'ware'] : ['ware', ...(cereDocument ? ['cmr'] : cereSemnatura ? ['signatur'] : [])])
+    : (ghidFaza === 'start' && cereDocument ? ['cmr', 'ware']
+      // Livrare de marfă: fără instrucţiuni generale (05.11.2026, cerut de
+      // Andrei) — apare doar cardul cu ce se predă, şi numai dacă clientul a
+      // lăsat indicaţii pentru livrare.
+      : ghidFaza === 'delivery' ? []
+      : ['ware', ...(cereDocument ? ['cmr'] : cereSemnatura ? ['signatur'] : [])])
   const ghiduriFaza = ghidFaza
     ? ghidChei().map((k) => ghiduriToate.find((g) => g.key === k))
         .filter((g) => g && pasiGhid(g, ghidFaza, lang).length && !esteAscuns(g, ghidFaza))
     : []
+  // „Sarcina ta": ce se încarcă / predă, la cine, şi indicaţiile clientului.
+  // Doar la marfă (documentele au regulile lor). La livrare apare numai dacă
+  // clientul a lăsat indicaţii — altfel nu se deschide nicio fereastră.
+  const sarcinaGhid = (() => {
+    if (isDocumentDelivery || esteRetur) return null
+    if (ghidFaza !== 'pickup' && ghidFaza !== 'delivery') return null
+    const k = intrare.key
+    const contactBrut = esteOprire
+      ? [fapte?.company, fapte?.contactName].filter(Boolean).join(' · ')
+      : extractContact(order.notes, k === 'pickup' ? 'Kontakt Abholung: ' : 'Kontakt Zustellung: ')
+    const persoana = contactBrut ? contactBrut.split(/\s*·\s*Tel/i)[0].trim() || null : null
+    const nota = esteOprire
+      ? (fapte?.note || null)
+      : extractContact(order.notes, k === 'pickup' ? 'Notiz Abholung: ' : 'Notiz Zustellung: ')
+    if (ghidFaza === 'delivery' && !nota) return null
+    return {
+      faza: ghidFaza,
+      marfa: esteOprire ? null : cargoSummary(order),
+      kg: fapte?.weightKg ? Number(fapte.weightKg) : null,
+      desc: fapte?.cargo || null,
+      persoana,
+      adresa: fapte?.address || null,
+      nota,
+    }
+  })()
   const ghidSheet = (ghidFaza === 'retur_pickup' || ghidFaza === 'retur_transport') ? (
     <ReturSheet order={order} lang={lang} transport={ghidFaza === 'retur_transport'} onClose={() => setGhidFaza(null)} />
   ) : ghidFaza === 'cmr_delivery' ? (
     <CmrLivrareSheet lang={lang} onClose={() => setGhidFaza(null)} />
   ) : ghidFaza === 'transport' ? (
     <TransportSheet lang={lang} onClose={() => setGhidFaza(null)} />
-  ) : ghidFaza && ghiduriFaza.length ? (
-    <GhidSheet ghiduri={ghiduriFaza} faza={ghidFaza} lang={lang} cuBote={order.boten_confirmation === true} onClose={() => setGhidFaza(null)} />
+  ) : ghidFaza && (ghiduriFaza.length || sarcinaGhid) ? (
+    <GhidSheet ghiduri={ghiduriFaza} faza={ghidFaza} lang={lang} cuBote={order.boten_confirmation === true} sarcina={sarcinaGhid} onClose={() => setGhidFaza(null)} />
   ) : null
 
   if (!startedAt) {
@@ -9314,7 +9344,66 @@ function ghidInLimba(g, faza, limba) {
   return { titlu: l.title || titluGhid(g, 'de'), pasi: l[faza] || [], tradus: true }
 }
 
-function GhidSheet({ ghiduri, faza, lang, onClose, cuBote = true }) {
+// Cardul „Sarcina ta" din fereastra de la ridicare / livrare (05.11.2026,
+// cerut de Andrei): ce încarcă sau ce predă şoferul, de la / la cine, plus
+// indicaţiile clientului — scos din comandă, nu text general.
+// [titlu, încarci, predai, ridicare la, livrare la, indicaţii client]
+const SARCINA_UI = {
+  de: ['Deine Aufgabe', 'Laden', 'Übergeben', 'Abholung bei', 'Lieferung an', 'Hinweis vom Kunden'],
+  en: ['Your task', 'Load', 'Hand over', 'Pickup at', 'Delivery to', 'Note from the customer'],
+  ro: ['Sarcina ta', 'Încarci', 'Predai', 'Ridicare de la', 'Livrare la', 'Instrucțiuni de la client'],
+  pl: ['Twoje zadanie', 'Załaduj', 'Przekaż', 'Odbiór u', 'Dostawa do', 'Uwagi klienta'],
+  bg: ['Вашата задача', 'Натоварете', 'Предайте', 'Вземане от', 'Доставка до', 'Указания от клиента'],
+  hu: ['Az Ön feladata', 'Rakodás', 'Átadás', 'Felvétel', 'Szállítás', 'Az ügyfél utasításai'],
+  cs: ['Váš úkol', 'Naložit', 'Předat', 'Vyzvednutí u', 'Doručení pro', 'Pokyny zákazníka'],
+  sk: ['Vaša úloha', 'Naložiť', 'Odovzdať', 'Vyzdvihnutie u', 'Doručenie pre', 'Pokyny zákazníka'],
+  hr: ['Vaš zadatak', 'Utovar', 'Predaja', 'Preuzimanje kod', 'Dostava za', 'Upute kupca'],
+  sr: ['Vaš zadatak', 'Utovar', 'Predaja', 'Preuzimanje kod', 'Dostava za', 'Uputstva kupca'],
+  sl: ['Vaša naloga', 'Naložite', 'Predajte', 'Prevzem pri', 'Dostava za', 'Navodila stranke'],
+  sq: ['Detyra juaj', 'Ngarkoni', 'Dorëzoni', 'Marrja te', 'Dorëzimi te', 'Udhëzime nga klienti'],
+  uk: ['Ваше завдання', 'Завантажити', 'Передати', 'Забрати в', 'Доставка для', 'Вказівки клієнта'],
+  ru: ['Ваша задача', 'Загрузить', 'Передать', 'Забрать у', 'Доставка для', 'Указания клиента'],
+  tr: ['Göreviniz', 'Yükleyin', 'Teslim edin', 'Alım yeri', 'Teslimat yeri', 'Müşterinin talimatları'],
+  it: ['Il tuo compito', 'Da caricare', 'Da consegnare', 'Ritiro presso', 'Consegna a', 'Indicazioni del cliente'],
+  es: ['Tu tarea', 'Cargar', 'Entregar', 'Recogida en', 'Entrega a', 'Indicaciones del cliente'],
+  fr: ['Votre tâche', 'À charger', 'À remettre', 'Enlèvement chez', 'Livraison à', 'Consignes du client'],
+  pt: ['A sua tarefa', 'Carregar', 'Entregar', 'Recolha em', 'Entrega a', 'Indicações do cliente'],
+  nl: ['Jouw taak', 'Laden', 'Afleveren', 'Ophalen bij', 'Levering aan', 'Instructies van de klant'],
+  el: ['Η εργασία σας', 'Φόρτωση', 'Παράδοση', 'Παραλαβή από', 'Παράδοση σε', 'Οδηγίες πελάτη'],
+  lt: ['Jūsų užduotis', 'Pakrauti', 'Perduoti', 'Paėmimas iš', 'Pristatymas', 'Kliento nurodymai'],
+  lv: ['Jūsu uzdevums', 'Iekraut', 'Nodot', 'Saņemšana no', 'Piegāde', 'Klienta norādījumi'],
+}
+
+function SarcinaCard({ sarcina, limba }) {
+  if (!sarcina) return null
+  const u = SARCINA_UI[limba] || SARCINA_UI.de
+  const laIncarcare = sarcina.faza === 'pickup'
+  const ceLinie = [sarcina.marfa, sarcina.kg ? `${sarcina.kg} kg` : null, sarcina.desc && sarcina.desc !== '-' ? sarcina.desc : null]
+    .filter(Boolean).join(' · ')
+  return (
+    <div style={{ background: '#FFF6ED', border: '1px solid #F5C9A5', borderRadius: 12, padding: '12px 14px', marginBottom: 14 }}>
+      <div style={{ fontSize: 12.5, fontWeight: 700, color: '#C2551A', textTransform: 'uppercase', letterSpacing: '.03em', marginBottom: 6 }}>{u[0]}</div>
+      {ceLinie && (
+        <div style={{ fontSize: 16, color: '#0F2240', lineHeight: 1.45 }}>
+          <strong>{laIncarcare ? u[1] : u[2]}:</strong> {ceLinie}
+        </div>
+      )}
+      {(sarcina.persoana || sarcina.adresa) && (
+        <div style={{ fontSize: 14, color: '#16202E', lineHeight: 1.45, marginTop: 6 }}>
+          <strong>{laIncarcare ? u[3] : u[4]}:</strong> {[sarcina.persoana, sarcina.adresa].filter(Boolean).join(', ')}
+        </div>
+      )}
+      {sarcina.nota && (
+        <div style={{ marginTop: 8, padding: '8px 10px', background: '#fff', borderRadius: 8, border: '1px solid #F5C9A5', fontSize: 14, color: '#16202E', lineHeight: 1.45 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: '#C2551A', marginBottom: 2 }}>📝 {u[5]}</div>
+          {sarcina.nota}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function GhidSheet({ ghiduri, faza, lang, onClose, cuBote = true, sarcina = null }) {
   const [ascunde, setAscunde] = useState(false)
   const [video, setVideo] = useState(null)
   // Aceeaşi limbă ca la informarea Botenbestätigung — aleasă o dată, ţinută pe telefon.
@@ -9348,6 +9437,7 @@ function GhidSheet({ ghiduri, faza, lang, onClose, cuBote = true }) {
         </label>
         <div style={{ fontSize: 12.5, fontWeight: 600, color: '#5A6878', marginBottom: 2 }}>{titluFaza}</div>
         <div style={{ fontSize: 18, fontWeight: 700, color: '#0F2240', marginBottom: 10 }}>{ui('sheetTitle', 'guideSheetTitle')}</div>
+        <SarcinaCard sarcina={sarcina} limba={limba} />
         {netradus && (
           <div style={{ fontSize: 12.5, color: '#8A5A16', background: '#FFF6ED', borderRadius: 8, padding: '7px 10px', marginBottom: 10 }}>
             {ui('noTranslation', 'guideSheetTitle')}
@@ -9367,10 +9457,12 @@ function GhidSheet({ ghiduri, faza, lang, onClose, cuBote = true }) {
             )}
           </div>
         ))}
-        <label className="ghid-ascunde">
-          <input type="checkbox" checked={ascunde} onChange={(e) => setAscunde(e.target.checked)} />
-          {ui('dontShow', 'guideDontShow')}
-        </label>
+        {ghiduri.length > 0 && (
+          <label className="ghid-ascunde">
+            <input type="checkbox" checked={ascunde} onChange={(e) => setAscunde(e.target.checked)} />
+            {ui('dontShow', 'guideDontShow')}
+          </label>
+        )}
         <button type="button" className="btn" style={{ width: '100%', margin: '12px 0 0' }} onClick={inchide}>{ui('understood', 'guideUnderstood')}</button>
       </div>
     </div>

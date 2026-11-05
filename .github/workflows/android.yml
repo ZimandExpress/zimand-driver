@@ -1,6 +1,10 @@
 # Construiește aplicația Android Zimand Driver (com.zimandsoftware.driver) în cloud.
 # Rulează la fiecare push pe ramura `android` sau manual din tab-ul Actions.
-# Rezultatul (APK de test) se descarcă din pagina rulării, secțiunea „Artifacts".
+#
+# Rezultate (pagina rulării, secțiunea „Artifacts"):
+#   - zimand-driver-test-apk  — APK de test, de instalat direct pe telefon;
+#   - zimand-driver-play-aab  — pachetul semnat pentru Google Play (doar dacă
+#     secretele cu cheia de încărcare sunt setate în repository).
 name: Android build
 
 on:
@@ -11,6 +15,9 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      # Număr de versiune nou la fiecare construcție (Google Play îl cere crescător).
+      VERSION_CODE: ${{ github.run_number }}
     steps:
       - uses: actions/checkout@v4
 
@@ -45,3 +52,37 @@ jobs:
         with:
           name: zimand-driver-test-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
+
+      # --- Pachetul semnat pentru Google Play -------------------------------
+      - name: Cheia de încărcare
+        id: cheie
+        env:
+          KS_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$KS_B64" ]; then
+            echo "Secretele cu cheia nu sunt setate — sar peste pachetul pentru Play."
+            echo "are=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/upload.jks"
+            echo "are=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build AAB pentru Google Play
+        if: steps.cheie.outputs.are == 'true'
+        working-directory: android
+        env:
+          ANDROID_KEYSTORE_FILE: ${{ runner.temp }}/upload.jks
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: ./gradlew bundleRelease --no-daemon
+
+      - uses: actions/upload-artifact@v4
+        if: steps.cheie.outputs.are == 'true'
+        with:
+          name: zimand-driver-play-aab
+          path: android/app/build/outputs/bundle/release/app-release.aab
+
+      - name: Șterge cheia de pe server
+        if: always()
+        run: rm -f "$RUNNER_TEMP/upload.jks"

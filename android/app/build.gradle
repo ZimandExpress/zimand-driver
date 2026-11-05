@@ -7,8 +7,9 @@ android {
         applicationId "com.zimandsoftware.driver"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        // Fiecare construcție din GitHub primește un număr nou (cerut de Google Play).
+        versionCode (System.getenv("VERSION_CODE") ?: "1").toInteger()
+        versionName "1.0." + (System.getenv("VERSION_CODE") ?: "0")
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -16,8 +17,22 @@ android {
             ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    // Cheia de încărcare pentru Google Play vine din secretele GitHub
+    // (ANDROID_KEYSTORE_BASE64 etc.), niciodată din cod.
+    signingConfigs {
+        release {
+            def ks = System.getenv("ANDROID_KEYSTORE_FILE")
+            if (ks) {
+                storeFile file(ks)
+                storePassword System.getenv("ANDROID_KEYSTORE_PASSWORD")
+                keyAlias System.getenv("ANDROID_KEY_ALIAS")
+                keyPassword System.getenv("ANDROID_KEY_PASSWORD")
+            }
+        }
+    }
     buildTypes {
         release {
+            if (System.getenv("ANDROID_KEYSTORE_FILE")) signingConfig signingConfigs.release
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }

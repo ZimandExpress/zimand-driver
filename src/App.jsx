@@ -7626,7 +7626,10 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
       : ['ware', ...(cereDocument ? ['cmr'] : cereSemnatura ? ['signatur'] : [])])
   const ghiduriFaza = ghidFaza
     ? ghidChei().map((k) => ghiduriToate.find((g) => g.key === k))
-        .filter((g) => g && pasiGhid(g, ghidFaza, lang).length && !esteAscuns(g, ghidFaza))
+        // Fără „Nicht mehr anzeigen" (05.11.2026, cerut de Andrei): apar la
+        // fiecare comandă — durează câteva secunde și pot fi diferite de la o
+        // comandă la alta.
+        .filter((g) => g && pasiGhid(g, ghidFaza, lang).length)
     : []
   // „Sarcina ta": ce se încarcă / predă, la cine, şi indicaţiile clientului.
   // Doar la marfă (documentele au regulile lor). La livrare apare numai dacă
@@ -9292,10 +9295,6 @@ const pasiGhid = (g, faza, lang) => {
   return (lista && lista.length ? lista : g?.[`${faza}_de`]) || []
 }
 const titluGhid = (g, lang) => (lang === 'en' && g?.title_en) || g?.title_de || ''
-const cheieAscuns = (key, faza) => `zd-ghid-ascuns:${key}:${faza}`
-const esteAscuns = (g, faza) => {
-  try { return Number(localStorage.getItem(cheieAscuns(g.key, faza))) >= Number(g.version || 1) } catch { return false }
-}
 
 // Video-ul unei instrucţiuni: YouTube (link obişnuit sau „nelistat") sau un
 // fişier urcat de dispecerat. Fără video: un ecran gol cu „Video folgt",
@@ -9404,7 +9403,6 @@ function SarcinaCard({ sarcina, limba }) {
 }
 
 function GhidSheet({ ghiduri, faza, lang, onClose, cuBote = true, sarcina = null }) {
-  const [ascunde, setAscunde] = useState(false)
   const [video, setVideo] = useState(null)
   // Aceeaşi limbă ca la informarea Botenbestätigung — aleasă o dată, ţinută pe telefon.
   const [limba, setLimba] = useState(() => {
@@ -9415,12 +9413,7 @@ function GhidSheet({ ghiduri, faza, lang, onClose, cuBote = true, sarcina = null
     try { localStorage.setItem('zd-boten-info-limba', v) } catch { /* nimic */ }
   }
   const ui = (cheie, cheieT) => (GHID_UI[limba] && GHID_UI[limba][cheie]) || t(cheieT, limba === 'en' ? 'en' : (limba === 'de' ? 'de' : lang))
-  const inchide = () => {
-    if (ascunde) {
-      ghiduri.forEach((g) => { try { localStorage.setItem(cheieAscuns(g.key, faza), String(g.version || 1)) } catch { /* nimic */ } })
-    }
-    onClose()
-  }
+  const inchide = () => onClose()
   const titluFaza = ui(faza === 'start' ? 'phaseStart' : faza === 'pickup' ? 'phasePickup' : 'phaseDelivery',
     faza === 'start' ? 'guidePhaseStart' : faza === 'pickup' ? 'guidePhasePickup' : 'guidePhaseDelivery')
   const texte = ghiduri.map((g) => ({ g, ...ghidInLimba(g, faza, limba) })).filter((x) => x.pasi.length)
@@ -9457,12 +9450,6 @@ function GhidSheet({ ghiduri, faza, lang, onClose, cuBote = true, sarcina = null
             )}
           </div>
         ))}
-        {ghiduri.length > 0 && (
-          <label className="ghid-ascunde">
-            <input type="checkbox" checked={ascunde} onChange={(e) => setAscunde(e.target.checked)} />
-            {ui('dontShow', 'guideDontShow')}
-          </label>
-        )}
         <button type="button" className="btn" style={{ width: '100%', margin: '12px 0 0' }} onClick={inchide}>{ui('understood', 'guideUnderstood')}</button>
       </div>
     </div>

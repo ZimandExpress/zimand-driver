@@ -11113,7 +11113,9 @@ function BidCard({ order, lang, courierProfileId, open, onToggle, onBidPlaced, o
             <div className="existing-bid-box">
               <div className="existing-bid-price">{existingBid.price} €</div>
               <div className="existing-bid-actions">
-                <button className="btn secondary" onClick={(e) => { e.stopPropagation(); setEditing(true) }}>{t('editBid', lang)}</button>
+                {!order.fixed_price_only && (
+                  <button className="btn secondary" onClick={(e) => { e.stopPropagation(); setEditing(true) }}>{t('editBid', lang)}</button>
+                )}
                 <button className="btn danger" onClick={(e) => { e.stopPropagation(); withdrawBid() }} disabled={busy}>{t('withdrawBid', lang)}</button>
               </div>
             </div>
@@ -11121,11 +11123,21 @@ function BidCard({ order, lang, courierProfileId, open, onToggle, onBidPlaced, o
             <>
               {order.estimated_price != null && (
                 <div className="price-box">
-                  <div><div className="lbl">{t('priceLabel', lang)}</div><div className="val">{order.estimated_price} €</div></div>
+                  <div><div className="lbl">{t('priceLabel', lang)}{order.fixed_price_only ? ` · ${lang === 'en' ? 'Fixed price' : 'Festpreis'}` : ''}</div><div className="val">{order.estimated_price} €</div></div>
                   <button className="accept-btn" onClick={(e) => { e.stopPropagation(); submitBid(order.estimated_price) }} disabled={busy}>✓</button>
                 </div>
               )}
 
+              {/* Preţ fix (05.11.2026): firma poate doar accepta preţul de mai
+                  sus — fără ofertă proprie. Dispecerul alege apoi cui o dă. */}
+              {order.fixed_price_only ? (
+                <div style={{ fontSize: 13, color: '#5A6878', lineHeight: 1.5, marginTop: 8, textAlign: 'center' }}>
+                  {lang === 'en'
+                    ? 'Fixed price – tap ✓ to accept. Dispatch then decides who gets the order.'
+                    : 'Festpreis – mit ✓ annehmen. Die Disposition entscheidet danach, wer den Auftrag erhält.'}
+                </div>
+              ) : (
+              <>
               <div className="or-own">{t('orOwnOffer', lang)}</div>
               <label className="bid-field-label">{t('priceLabel', lang)} (€)</label>
               <input className="bid-input2" type="number" value={ownPrice} onChange={(e) => setOwnPrice(e.target.value)} />
@@ -11155,6 +11167,8 @@ function BidCard({ order, lang, courierProfileId, open, onToggle, onBidPlaced, o
               >
                 {busy ? '…' : t('submitBid', lang)}
               </button>
+              </>
+              )}
             </>
           )}
 

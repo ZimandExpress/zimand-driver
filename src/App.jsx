@@ -49,6 +49,8 @@ const ESTE_APP_NATIVA = Capacitor.isNativePlatform()
 const BackgroundGeolocation = registerPlugin('BackgroundGeolocation')
 // Id-ul urmăritorului nativ, ţinut pe telefon — vezi efectul de locaţie.
 const CHEIE_WATCHER_NATIV = 'zd-bg-watcher'
+// Serviciul nativ propriu (aplicaţia Android ≥ 1.0.14): trimite poziţia şi în fundal.
+const ZimandTracker = registerPlugin('ZimandTracker')
 const PushNotifications = registerPlugin('PushNotifications')
 
 // --- Comenzile, aşa cum le vede o firmă de transport ------------------------
@@ -992,6 +994,7 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
         watchIdRef.current = null
       }
       opresteWatcherNativ()
+      if (ESTE_APP_NATIVA) ZimandTracker.stop().catch(() => {})
       return
     }
 
@@ -1071,9 +1074,19 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
         })
     }
 
-    // Aplicația Android: modulul nativ trimite poziția și în fundal. Aceleași
-    // praguri de scriere (sendPosition), aceeași stare în `location_status`.
+    // Aplicația Android.
+    //
+    // 05.11.2026 (v2): poziţia o trimite serviciul NATIV ZimandTracker, direct
+    // la funcţia de server `driver-location`, cu cheia de urmărire a şoferului.
+    // Partea web e oprită de Android în fundal (navigaţie pe ecran, ecran stins),
+    // deci nu mai poate fi ea cea care trimite. Versiunile vechi ale aplicaţiei
+    // (fără plugin) folosesc mai departe modulul BackgroundGeolocation.
     if (ESTE_APP_NATIVA) {
+      let anulat = false
+      let curataVechi = null
+      let ceasNativ = null
+
+      const pornesteBgVechi = () => {
       // 05.11.2026: după o reîncărcare a paginii (versiune nouă), urmăritorul
       // pornit de pagina veche rămânea agăţat în telefon — notificarea
       // „Standort aktiv" se vedea, dar poziţiile nu mai ajungeau la pagina
@@ -1130,6 +1143,46 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
         }
       }, 60 * 1000)
       return () => { clearInterval(ceas); opresteWatcherNativ() }
+      }
+
+      const pornesteNativ = async () => {
+        const { data, error } = await supabase
+          .from('drivers').select('tracking_token').eq('id', profile.id).maybeSingle()
+        if (error || !data?.tracking_token) throw new Error('tracking_token lipsă')
+        await ZimandTracker.start({
+          url: `${SUPABASE_URL}/functions/v1/driver-location`,
+          token: data.tracking_token,
+        })
+      }
+
+      pornesteNativ().then(() => {
+        if (anulat) return
+        // Urmăritorul vechi (pornit de o versiune anterioară) nu mai trebuie:
+        // ar dubla notificarea „Standort aktiv".
+        try {
+          const vechi = localStorage.getItem(CHEIE_WATCHER_NATIV)
+          if (vechi) BackgroundGeolocation.removeWatcher({ id: vechi }).catch(() => {})
+          localStorage.removeItem(CHEIE_WATCHER_NATIV)
+        } catch { /* nimic */ }
+        scrieStare('granted')
+        // Plasă de siguranţă: dacă serviciul s-a oprit între timp, îl repornim.
+        ceasNativ = setInterval(() => {
+          ZimandTracker.status()
+            .then((r) => { if (!r?.activ) pornesteNativ().catch(() => {}) })
+            .catch(() => {})
+        }, 2 * 60 * 1000)
+      }).catch((e) => {
+        if (anulat) return
+        if (e?.code === 'DENIED') { scrieStare('denied'); return }
+        console.warn('ZimandTracker indisponibil, folosesc modulul vechi:', e?.message)
+        curataVechi = pornesteBgVechi()
+      })
+
+      return () => {
+        anulat = true
+        if (ceasNativ) clearInterval(ceasNativ)
+        if (curataVechi) curataVechi()
+      }
     }
 
     const MOTIVE = { 1: 'denied', 2: 'unavailable', 3: 'timeout' }

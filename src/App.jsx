@@ -9536,6 +9536,18 @@ const SARCINA_UI = {
   lv: ['Jūsu uzdevums', 'Iekraut', 'Nodot', 'Saņemšana no', 'Piegāde', 'Klienta norādījumi'],
 }
 
+// Titlul instrucţiunilor de marfă la ridicare (05.11.2026).
+const TITLU_INCARCARE = {
+  de: 'Beim Laden (Pakete, Paletten)', en: 'When loading (parcels, pallets)', ro: 'La încărcare (colete, paleți)',
+  pl: 'Przy załadunku (paczki, palety)', bg: 'При товарене (пакети, палети)', hu: 'Rakodáskor (csomagok, raklapok)',
+  cs: 'Při nakládce (balíky, palety)', sk: 'Pri nakládke (balíky, palety)', hr: 'Pri utovaru (paketi, palete)',
+  sr: 'Pri utovaru (paketi, palete)', sl: 'Pri nakladanju (paketi, palete)', sq: 'Gjatë ngarkimit (pako, paleta)',
+  uk: 'Під час завантаження (посилки, палети)', ru: 'При погрузке (посылки, паллеты)', tr: 'Yükleme sırasında (paketler, paletler)',
+  it: 'Al carico (colli, pallet)', es: 'Al cargar (paquetes, palés)', fr: 'Au chargement (colis, palettes)',
+  pt: 'No carregamento (volumes, paletes)', nl: 'Bij het laden (pakketten, pallets)', el: 'Κατά τη φόρτωση (δέματα, παλέτες)',
+  lt: 'Pakraunant (siuntiniai, padėklai)', lv: 'Iekraujot (paciņas, paletes)',
+}
+
 function SarcinaCard({ sarcina, limba }) {
   if (!sarcina) return null
   const u = SARCINA_UI[limba] || SARCINA_UI.de
@@ -9594,7 +9606,9 @@ function GhidSheet({ ghiduri, faza, lang, onClose, cuBote = true, sarcina = null
         )}
         {texte.map(({ g, titlu, pasi }) => (
           <div key={g.key} className="ghid-bloc">
-            <div className="ghid-titlu">{titlu}</div>
+            {/* „Livrare de marfă" la ridicare era greşit: la încărcare blocul
+                se numeşte după ce face şoferul acum (05.11.2026). */}
+            <div className="ghid-titlu">{g.key === 'ware' && faza === 'pickup' ? (TITLU_INCARCARE[limba] || TITLU_INCARCARE.de) : titlu}</div>
             {g.video_url && (video === g.key
               ? <VideoGhid url={g.video_url} lang={lang} />
               : <button type="button" className="ghid-video-btn" onClick={() => setVideo(g.key)}><Play size={15} strokeWidth={2.2} /> {t('guideWatchVideo', lang)}</button>)}

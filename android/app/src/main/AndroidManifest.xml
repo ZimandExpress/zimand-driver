@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8" ?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
@@ -33,10 +34,11 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
 
-    <!-- Locația șoferului (cât timp aplicația e deschisă) -->
+    <!-- Locația șoferului; în fundal prin serviciul nativ BackgroundGeolocation,
+         care adaugă singur FOREGROUND_SERVICE_LOCATION și POST_NOTIFICATIONS -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
-    <uses-feature android:name="android.hardware.location.gps" android:required="false" />
+    <uses-feature android:name="android.hardware.location.gps" android:required="false" tools:replace="android:required" />
 
     <!-- Camera pentru pozele de la ridicare/livrare și scanarea documentelor -->
     <uses-permission android:name="android.permission.CAMERA" />

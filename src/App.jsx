@@ -10999,9 +10999,10 @@ function BidCard({ order, lang, courierProfileId, open, onToggle, onBidPlaced, o
           )}
           {/* Câţi kilometri sunt până la ridicare: vine din tabelul de coduri
               poştale, nu din geocodări plătite, deci se poate afişa mereu. */}
-          {order.distance_km != null && (
-            <div className="bid-extra-row"><Navigation size={12} strokeWidth={1.8} /> {t('distanceLabel', lang)}: ca. {order.distance_km} km</div>
-          )}
+          {/* Rândul „Entfernung: ca. … km" nu se mai arată (05.11.2026, cerut de
+              Andrei): se calcula de la codul poştal salvat în filtru, nu de la
+              locul unde e şoferul, şi ducea în eroare. Filtrul de rază
+              foloseşte în continuare aceeaşi valoare. */}
 
           {extractServiceBadges(order.notes).length > 0 && (
             <div className="service-badges">

@@ -2038,6 +2038,8 @@ textarea.bid-input2 {
   width: 100%;
   border-radius: 20px 20px 0 0;
   padding: 18px 18px 22px;
+  /* deasupra barei de navigare în aplicația Android (pe tot ecranul) */
+  padding-bottom: calc(22px + env(safe-area-inset-bottom));
 }
 
 .filter-panel h4 {
@@ -3002,6 +3004,13 @@ body { -webkit-font-smoothing: antialiased; }
    Lăţime puţin mai mare, antet cu cine e conectat, rânduri cu evidenţiere
    rotunjită în loc de bara de pe margine, grupul de jos mai aerisit. */
 .menu-drawer { width: 296px; max-width: 86vw; padding: 14px 0 12px; }
+/* Aplicația Android (Android 15+) desenează pe tot ecranul: meniul trebuie
+   să înceapă sub bara de stare și să se termine deasupra barei de navigare.
+   În browser/PWA valorile sunt 0, deci nu se schimbă nimic. */
+.menu-drawer {
+  padding-top: calc(14px + env(safe-area-inset-top));
+  padding-bottom: calc(12px + env(safe-area-inset-bottom));
+}
 .menu-header { display: flex; align-items: center; gap: 12px; padding: 4px 14px 14px 18px; margin-bottom: 10px; border-bottom: 1px solid var(--line); }
 .menu-avatar { flex: 0 0 40px; width: 40px; height: 40px; border-radius: 50%; background: var(--navy, #0F2240); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 14.5px; font-weight: 700; letter-spacing: .02em; }
 .menu-who { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }

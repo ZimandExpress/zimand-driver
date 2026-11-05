@@ -2218,13 +2218,19 @@ async function creeazaCanaleNative() {
     lights: true,
     lightColor: '#FF7A29',
   })
+  // Statusul comenzii (atribuire, câştig, schimbări): acelaşi clopoţel ca la
+  // comenzile noi (05.11.2026, cerut de Andrei) — vocea „Auftrag bestätigt"
+  // nu se mai foloseşte nicăieri. Sunetul unui canal Android nu se poate
+  // schimba după creare, deci canalul vechi „auftrag_status" se şterge şi
+  // se foloseşte unul nou.
+  await PushNotifications.deleteChannel({ id: 'auftrag_status' }).catch(() => {})
   await PushNotifications.createChannel({
-    id: 'auftrag_status',
+    id: 'auftrag_info',
     name: 'Auftragsstatus',
     description: 'Zuschläge, Bestätigungen und Änderungen an Aufträgen',
     importance: 4,
     visibility: 1,
-    sound: 'auftrag_bestaetigt',
+    sound: 'neuer_auftrag',
     vibration: true,
   })
 }

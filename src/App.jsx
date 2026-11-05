@@ -1025,18 +1025,25 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
     // de câteva ori pe minut în mers, adică mii de scrieri pe zi și baterie
     // consumată pentru o precizie de care dispeceratul n-are nevoie.
     //
-    // Praguri: 150 de metri sau 60 de secunde de la ultima scriere. În mers,
-    // pragul de distanță se atinge oricum la fiecare 10–15 secunde, deci
-    // vizibilitatea în Disponent rămâne practic aceeași.
+    // Praguri (05.11.2026, pentru urmărirea live din Disponent): în mers o
+    // scriere la cel mult 10 secunde, doar dacă s-a deplasat cel puțin 30 m;
+    // altfel una la 60 de secunde. Pe loc, modulul de locație nu mai trimite
+    // nimic, deci bateria și baza de date nu sunt încărcate degeaba.
     let lastSent = { lat: null, lng: null, at: 0 }
-    const MIN_METERS = 150
+    const MIN_METERS = 30
+    const MIN_MS_IN_MERS = 10000
     const MIN_MS = 60000
+
+    // Viteza (m/s) și direcția (grade) pot lipsi — de ex. în browser, fără GPS.
+    const kmh = (v) => (Number.isFinite(v) && v >= 0 ? Math.round(v * 3.6) : null)
+    const grade = (h) => (Number.isFinite(h) && h >= 0 ? Math.round(h) % 360 : null)
 
     const sendPosition = (coords) => {
       const now = Date.now()
       if (lastSent.lat != null) {
         const movedMeters = haversineKm(lastSent.lat, lastSent.lng, coords.latitude, coords.longitude) * 1000
-        if (movedMeters < MIN_METERS && now - lastSent.at < MIN_MS) return
+        const dt = now - lastSent.at
+        if (dt < MIN_MS && (movedMeters < MIN_METERS || dt < MIN_MS_IN_MERS)) return
       }
       lastSent = { lat: coords.latitude, lng: coords.longitude, at: now }
       supabase
@@ -1045,6 +1052,8 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
           last_lat: coords.latitude,
           last_lng: coords.longitude,
           last_location_at: new Date().toISOString(),
+          last_speed_kmh: kmh(coords.speed),
+          last_heading: grade(coords.heading),
         })
         .eq('id', profile.id)
         .then(({ error }) => {
@@ -1062,7 +1071,8 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
           backgroundMessage: 'Standort aktiv – die Disposition sieht deine Position.',
           requestPermissions: true,
           stale: false,
-          distanceFilter: 50,
+          // 20 m: destul de des pentru urmărirea live, fără consum inutil pe loc.
+          distanceFilter: 20,
         },
         (location, error) => {
           if (error) {
@@ -1072,7 +1082,12 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
           }
           if (!location) return
           scrieStare('granted')
-          sendPosition({ latitude: location.latitude, longitude: location.longitude })
+          sendPosition({
+            latitude: location.latitude,
+            longitude: location.longitude,
+            speed: location.speed,
+            heading: location.bearing,
+          })
         }
       ).catch((e) => {
         console.error('background geolocation start error:', e?.message)

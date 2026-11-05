@@ -14,6 +14,11 @@ import { tn } from './notificariTraduceri.js'
 // Ghidurile pentru marfă (Ware, CMR, Unterschrift) — tradusele lor stau separat.
 Object.assign(GHID_TRADUCERI, GHID_TRADUCERI_MARFA)
 import { ZP_LIMBI, PLECARE_LIMBI, TRANSPORT_LIMBI, REGULI_LIMBI, RETUR_LIMBI, POSTA_LIMBI, ZUSTELLART_LIMBI, DEPARTE_LIMBI, PASI_ZUSTELLART, UNTERLAGEN_LIMBI } from './zpTraduceri.js'
+// Livrarea de documente, regulile noi (05.11.2026): cutia poştală numai cu
+// acelaşi nume de familie pe cutie şi pe plic, altfel dispeceratul. Înlocuiesc
+// paşii vechi în toate limbile, deci şi cardul comenzii arată la fel.
+import { PASI_ZUSTELLART_V2, ZP_PAGINA } from './livrareDocTraduceri.js'
+Object.assign(PASI_ZUSTELLART, PASI_ZUSTELLART_V2)
 import './index.css'
 import PodFiles from './components/PodFiles'
 import DocumentCamera from './components/DocumentCamera'
@@ -6614,7 +6619,8 @@ function PasiZustellart({ limba, z, mic }) {
         const k = p.search(/\s?:/)
         const cap = k > 0 ? p.slice(0, k) : ''
         const rest = k > 0 ? p.slice(k) : p
-        const interzis = v === 3 && i === 1
+        // Roşu: ce e interzis (ultimul rând) şi, la „doar personal", ce faci când nu e acasă.
+        const interzis = i === pasi.length - 1 || (v === 3 && i === 1)
         return (
           <li key={i} style={{ marginBottom: mic ? 6 : 11, color: interzis ? '#B23A24' : undefined }}>
             {cap && <strong>{cap}</strong>}{rest}
@@ -6625,9 +6631,64 @@ function PasiZustellart({ limba, z, mic }) {
   )
 }
 
-function ReguliZustellung({ lang, zustellart, ales, onAck }) {
+// Zustellprotokoll desenat: rubricile de completat, numerotate, ca la CMR.
+// Etichetele sunt cele de pe hârtie (în germană); explicaţia vine dedesubt,
+// în limba şoferului.
+function ZpIllustratie({ h }) {
+  const nr = (n) => (
+    <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 20, height: 20, borderRadius: '50%', background: '#D64532', color: '#fff', fontSize: 12, fontWeight: 800, flexShrink: 0 }}>{n}</span>
+  )
+  const camp = (w) => <span style={{ display: 'inline-block', width: w, borderBottom: '2px solid #D64532', margin: '0 4px', height: 14, verticalAlign: 'bottom' }} />
+  const cutie = <span style={{ display: 'inline-block', width: 13, height: 13, border: '2px solid #D64532', borderRadius: 2, marginRight: 6, verticalAlign: -2 }} />
+  const rand = { display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: '#0F2240', lineHeight: 1.4, marginTop: 8, flexWrap: 'wrap' }
+  const sectiune = (t) => <div style={{ fontSize: 11.5, fontWeight: 800, color: '#fff', background: '#0F2240', borderRadius: 4, padding: '3px 7px', marginTop: 4 }}>{t}</div>
+  return (
+    <div>
+      <div style={{ background: '#fff', border: '2px solid #0F2240', borderRadius: 10, padding: '10px 12px', boxShadow: '0 2px 8px rgba(15,34,64,.12)' }}>
+        <div style={{ fontSize: 14, fontWeight: 800, color: '#0F2240', borderBottom: '1px solid #DCE3EE', paddingBottom: 6 }}>Zustellprotokoll</div>
+        {sectiune('2 · Ergebnis der Zustellung')}
+        <div style={rand}>{nr(1)} Anzahl zugestellter Umschläge {camp(36)}</div>
+        <div style={rand}>{nr(2)} <span>{cutie}In den Briefkasten gelegt</span></div>
+        <div style={{ ...rand, marginTop: 4, paddingLeft: 26 }}><span>{cutie}Persönlich an den Empfänger übergeben</span></div>
+        <div style={rand}>{nr(3)} Name am Briefkasten {camp(70)}</div>
+        <div style={{ ...rand, marginTop: 4, paddingLeft: 26 }}>Name + Unterschrift des Empfängers {camp(60)}</div>
+        {sectiune('3 · Kurier')}
+        <div style={rand}>{nr(4)} am {camp(52)} um {camp(34)} Uhr</div>
+        <div style={rand}>{nr(5)} in (Ort) {camp(90)}</div>
+        <div style={rand}>{nr(6)} Name + Unterschrift des Kuriers {camp(70)}</div>
+      </div>
+      <ol style={{ listStyle: 'none', padding: 0, margin: '12px 0 0' }}>
+        {h.map((x, i) => (
+          <li key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 14.5, color: '#0F2240', lineHeight: 1.45, marginBottom: 7 }}>
+            {nr(i + 1)}<span>{x}</span>
+          </li>
+        ))}
+      </ol>
+    </div>
+  )
+}
+
+function ReguliZustellung({ lang, zustellart, ales, onAck, waUrl }) {
   const [limba, setLimba] = useState(() => citesteLimba(lang))
   const tr = REGULI_LIMBI[limba] || REGULI_LIMBI.de
+  // Două pagini (05.11.2026): 1 = cerinţa clientului şi regulile, 2 = ce se
+  // completează pe Zustellprotokoll. Abia după a doua se marchează sosirea.
+  const [pagina, setPagina] = useState(1)
+  const zp = ZP_PAGINA[limba] || ZP_PAGINA.de
+  if (pagina === 2) {
+    return (
+      <div style={{ maxWidth: 440, width: '100%' }}>
+        <SelectorLimba value={limba} onChange={setLimba} />
+        <div style={{ fontSize: 21, fontWeight: 800, color: '#0F2240', marginBottom: 6, lineHeight: 1.3 }}>
+          <FileText size={20} strokeWidth={2} style={{ verticalAlign: -3, marginRight: 6 }} />{zp.titlu}
+        </div>
+        <div style={{ fontSize: 14.5, color: '#28344A', marginBottom: 12, lineHeight: 1.45 }}>{zp.intro}</div>
+        <ZpIllustratie h={zp.h} />
+        <div style={{ fontSize: 14.5, fontWeight: 700, color: '#0F2240', marginTop: 6, lineHeight: 1.45, background: '#F4F7FC', borderRadius: 8, padding: '9px 11px' }}>📷 {zp.upload}</div>
+        <button className="btn" style={{ width: '100%', marginTop: 16 }} onClick={onAck}>{zp.ok}</button>
+      </div>
+    )
+  }
   return (
     <div style={{ maxWidth: 440, width: '100%' }}>
       <SelectorLimba value={limba} onChange={setLimba} />
@@ -6654,7 +6715,15 @@ function ReguliZustellung({ lang, zustellart, ales, onAck }) {
       {/* Doar paşii variantei alese; ultimul spune ce faci dacă nu merge
           (WhatsApp la dispecerat), deci caseta separată de contact a căzut. */}
       <PasiZustellart limba={limba} z={zustellart} />
-      <button className="btn" style={{ width: '100%', marginTop: 16 }} onClick={onAck}>{tr.buton}</button>
+      {waUrl && (
+        <a href={waUrl} target="_blank" rel="noreferrer" style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 6,
+          background: '#25D366', color: '#fff', fontWeight: 700, fontSize: 15, padding: '11px 12px', borderRadius: 10, textDecoration: 'none',
+        }}>
+          <WhatsAppIcon size={16} color="#fff" /> Zimand Express Dispo · WhatsApp
+        </a>
+      )}
+      <button className="btn" style={{ width: '100%', marginTop: 12 }} onClick={() => setPagina(2)}>{zp.next} →</button>
     </div>
   )
 }
@@ -7789,6 +7858,7 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
                 1 = cutia poştală întâi, 2 = întâi personal, 3 = doar personal. */}
             <ReguliZustellung lang={lang} zustellart={[1, 2, 3].includes(Number(order.zustellart)) ? Number(order.zustellart) : 1}
               ales={[1, 2, 3].includes(Number(order.zustellart))}
+              waUrl={dispatchWaUrl(order, fapte)}
               onAck={() => { setRegulileDeschise(false); callRpc(arriveFn) }} />
           </div>
         )}

@@ -17,7 +17,7 @@ import { ZP_LIMBI, PLECARE_LIMBI, TRANSPORT_LIMBI, REGULI_LIMBI, RETUR_LIMBI, PO
 // Livrarea de documente, regulile noi (05.11.2026): cutia poştală numai cu
 // acelaşi nume de familie pe cutie şi pe plic, altfel dispeceratul. Înlocuiesc
 // paşii vechi în toate limbile, deci şi cardul comenzii arată la fel.
-import { PASI_ZUSTELLART_V2, ZP_PAGINA, RIDICARE_DOC } from './livrareDocTraduceri.js'
+import { PASI_ZUSTELLART_V2, ZP_PAGINA, RIDICARE_DOC, PLECARE_DOC } from './livrareDocTraduceri.js'
 Object.assign(PASI_ZUSTELLART, PASI_ZUSTELLART_V2)
 import './index.css'
 import PodFiles from './components/PodFiles'
@@ -7836,7 +7836,9 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
     <DokRidicareSheet lang={lang} cuBoten={cereBoten}
       onClose={() => { setGhidFaza(null); if (cereBoten) inchideBotenInfo() }} />
   ) : ghidFaza && (ghiduriFaza.length || sarcinaGhid) ? (
-    <GhidSheet ghiduri={ghiduriFaza} faza={ghidFaza} lang={lang} cuBote={order.boten_confirmation === true} sarcina={sarcinaGhid} onClose={() => setGhidFaza(null)} />
+    <GhidSheet ghiduri={ghiduriFaza} faza={ghidFaza} lang={lang} cuBote={order.boten_confirmation === true} sarcina={sarcinaGhid}
+      maiMulteLivrari={tourLegSequence(order).filter((e) => e.kind === 'delivery').length > 1}
+      onClose={() => setGhidFaza(null)} />
   ) : null
 
   if (!startedAt) {
@@ -9607,7 +9609,7 @@ function SarcinaCard({ sarcina, limba }) {
   )
 }
 
-function GhidSheet({ ghiduri, faza, lang, onClose, cuBote = true, sarcina = null }) {
+function GhidSheet({ ghiduri, faza, lang, onClose, cuBote = true, sarcina = null, maiMulteLivrari = false }) {
   const [video, setVideo] = useState(null)
   // Aceeaşi limbă ca la informarea Botenbestätigung — aleasă o dată, ţinută pe telefon.
   const [limba, setLimba] = useState(() => {
@@ -9621,7 +9623,16 @@ function GhidSheet({ ghiduri, faza, lang, onClose, cuBote = true, sarcina = null
   const inchide = () => onClose()
   const titluFaza = ui(faza === 'start' ? 'phaseStart' : faza === 'pickup' ? 'phasePickup' : 'phaseDelivery',
     faza === 'start' ? 'guidePhaseStart' : faza === 'pickup' ? 'guidePhasePickup' : 'guidePhaseDelivery')
-  const texte = ghiduri.map((g) => ({ g, ...ghidInLimba(g, faza, limba) })).filter((x) => x.pasi.length)
+  const texte = ghiduri.map((g) => {
+    const x = { g, ...ghidInLimba(g, faza, limba) }
+    // Documente, înainte de plecare (05.11.2026): doar două puncte; „câte o
+    // foaie pentru fiecare destinatar" numai la comenzile cu mai multe livrări.
+    if (g.key === 'doc_standard' && faza === 'start') {
+      const p = PLECARE_DOC[limba] || PLECARE_DOC.de
+      return { ...x, pasi: [p[0], maiMulteLivrari ? `${p[1]} ${p[2]}` : p[1]], tradus: true }
+    }
+    return x
+  }).filter((x) => x.pasi.length)
   const netradus = texte.some((x) => !x.tradus)
   return (
     <div className="sig-fullscreen" style={{ justifyContent: 'flex-end', background: 'rgba(15,34,64,.55)', zIndex: 9990 }}>

@@ -47,6 +47,8 @@ import { processImage, PHOTO_PRESET } from './services/imageService'
 // cu notificarea permanentă cerută de Android.
 const ESTE_APP_NATIVA = Capacitor.isNativePlatform()
 const BackgroundGeolocation = registerPlugin('BackgroundGeolocation')
+// Id-ul urmăritorului nativ, ţinut pe telefon — vezi efectul de locaţie.
+const CHEIE_WATCHER_NATIV = 'zd-bg-watcher'
 const PushNotifications = registerPlugin('PushNotifications')
 
 // --- Comenzile, aşa cum le vede o firmă de transport ------------------------
@@ -975,7 +977,10 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
     const p = watcherNativRef.current
     if (!p) return
     watcherNativRef.current = null
-    p.then((id) => { if (id) BackgroundGeolocation.removeWatcher({ id }) }).catch(() => {})
+    p.then((id) => {
+      if (id) BackgroundGeolocation.removeWatcher({ id }).catch(() => {})
+      try { if (localStorage.getItem(CHEIE_WATCHER_NATIV) === id) localStorage.removeItem(CHEIE_WATCHER_NATIV) } catch { /* nimic */ }
+    }).catch(() => {})
   }
 
   // Send GPS position continuously while profile.is_online is true —
@@ -1069,6 +1074,16 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
     // Aplicația Android: modulul nativ trimite poziția și în fundal. Aceleași
     // praguri de scriere (sendPosition), aceeași stare în `location_status`.
     if (ESTE_APP_NATIVA) {
+      // 05.11.2026: după o reîncărcare a paginii (versiune nouă), urmăritorul
+      // pornit de pagina veche rămânea agăţat în telefon — notificarea
+      // „Standort aktiv" se vedea, dar poziţiile nu mai ajungeau la pagina
+      // nouă. Id-ul lui e ţinut pe telefon şi se opreşte întâi.
+      try {
+        const vechi = localStorage.getItem(CHEIE_WATCHER_NATIV)
+        if (vechi) BackgroundGeolocation.removeWatcher({ id: vechi }).catch(() => {})
+      } catch { /* nimic */ }
+      let ultimaPozitie = Date.now()
+      const porneste = () => {
       opresteWatcherNativ()
       watcherNativRef.current = BackgroundGeolocation.addWatcher(
         {
@@ -1086,6 +1101,7 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
             return
           }
           if (!location) return
+          ultimaPozitie = Date.now()
           scrieStare('granted')
           sendPosition({
             latitude: location.latitude,
@@ -1094,12 +1110,26 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
             heading: location.bearing,
           })
         }
-      ).catch((e) => {
+      ).then((id) => {
+        try { if (id) localStorage.setItem(CHEIE_WATCHER_NATIV, id) } catch { /* nimic */ }
+        return id
+      }).catch((e) => {
         console.error('background geolocation start error:', e?.message)
         scrieStare('unavailable')
         return null
       })
-      return () => { opresteWatcherNativ() }
+      }
+      porneste()
+      // Plasă de siguranţă: dacă 5 minute nu vine nicio poziţie, urmăritorul
+      // se reporneşte. Pe loc e normal să nu vină (pragul e de 20 m) — o
+      // repornire atunci nu strică nimic; în mers, repară o legătură ruptă.
+      const ceas = setInterval(() => {
+        if (Date.now() - ultimaPozitie > 5 * 60 * 1000) {
+          ultimaPozitie = Date.now()
+          porneste()
+        }
+      }, 60 * 1000)
+      return () => { clearInterval(ceas); opresteWatcherNativ() }
     }
 
     const MOTIVE = { 1: 'denied', 2: 'unavailable', 3: 'timeout' }

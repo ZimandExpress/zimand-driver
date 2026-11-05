@@ -1,0 +1,13 @@
+{
+  "appId": "com.zimandsoftware.driver",
+  "appName": "Zimand Driver",
+  "webDir": "dist",
+  "server": {
+    "url": "https://driver.zimandexpress.de",
+    "androidScheme": "https",
+    "allowNavigation": ["driver.zimandexpress.de", "*.zimandexpress.de", "*.supabase.co"]
+  },
+  "android": {
+    "backgroundColor": "#F6F4F0"
+  }
+}

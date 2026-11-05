@@ -9,6 +9,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@capacitor/android": "^7.6.10",
+    "@capacitor/core": "^7.6.10",
     "@supabase/supabase-js": "^2.45.0",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.400.0",
@@ -16,12 +18,13 @@
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@capacitor/cli": "^7.6.10",
     "@vitejs/plugin-react": "^4.3.1",
     "vite": "^5.4.0",
     "vite-plugin-pwa": "^0.20.5",
+    "workbox-expiration": "^7.1.0",
     "workbox-precaching": "^7.1.0",
     "workbox-routing": "^7.1.0",
-    "workbox-strategies": "^7.1.0",
-    "workbox-expiration": "^7.1.0"
+    "workbox-strategies": "^7.1.0"
   }
 }

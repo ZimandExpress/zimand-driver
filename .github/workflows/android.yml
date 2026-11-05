@@ -1,0 +1,47 @@
+# Construiește aplicația Android Zimand Driver (com.zimandsoftware.driver) în cloud.
+# Rulează la fiecare push pe ramura `android` sau manual din tab-ul Actions.
+# Rezultatul (APK de test) se descarcă din pagina rulării, secțiunea „Artifacts".
+name: Android build
+
+on:
+  push:
+    branches: [android]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Instalare dependințe
+        run: npm install
+
+      # Aplicația încarcă versiunea live de pe driver.zimandexpress.de;
+      # build-ul local servește doar ca rezervă la pornire.
+      - name: Build web
+        run: npm run build
+        env:
+          VITE_SUPABASE_URL: https://vayshseythlogtumefzq.supabase.co
+          VITE_SUPABASE_ANON_KEY: placeholder
+
+      - name: Sincronizare Capacitor
+        run: npx cap sync android
+
+      - name: Build APK de test
+        working-directory: android
+        run: chmod +x gradlew && ./gradlew assembleDebug --no-daemon
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: zimand-driver-test-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk

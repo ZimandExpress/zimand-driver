@@ -28,6 +28,13 @@
             android:grantUriPermissions="true">
             <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/file_paths" />
         </provider>
+        <!-- Urmărirea nativă a poziţiei (merge şi cu aplicaţia în fundal) -->
+        <service
+            android:name=".TrackerService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="location" />
+
         <!-- Notificări Firebase: iconița, culoarea și canalul implicit -->
         <meta-data android:name="com.google.firebase.messaging.default_notification_icon" android:resource="@drawable/ic_stat_zimand" />
         <meta-data android:name="com.google.firebase.messaging.default_notification_color" android:resource="@color/zimand_orange" />
@@ -43,6 +50,9 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-feature android:name="android.hardware.location.gps" android:required="false" tools:replace="android:required" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <!-- Camera pentru pozele de la ridicare/livrare și scanarea documentelor -->
     <uses-permission android:name="android.permission.CAMERA" />

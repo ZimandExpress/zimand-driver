@@ -11154,7 +11154,6 @@ function BidCard({ order, lang, courierProfileId, open, onToggle, onBidPlaced, o
             </>
           )}
 
-          <div className="bid-footnote">{t('bidFootnote', lang)}</div>
         </div>
       </div>
     </div>

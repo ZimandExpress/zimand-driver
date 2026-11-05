@@ -14,6 +14,11 @@ import { tn } from './notificariTraduceri.js'
 // Ghidurile pentru marfă (Ware, CMR, Unterschrift) — tradusele lor stau separat.
 Object.assign(GHID_TRADUCERI, GHID_TRADUCERI_MARFA)
 import { ZP_LIMBI, PLECARE_LIMBI, TRANSPORT_LIMBI, REGULI_LIMBI, RETUR_LIMBI, POSTA_LIMBI, ZUSTELLART_LIMBI, DEPARTE_LIMBI, PASI_ZUSTELLART, UNTERLAGEN_LIMBI } from './zpTraduceri.js'
+// Livrarea de documente, regulile noi (05.11.2026): cutia poştală numai cu
+// acelaşi nume de familie pe cutie şi pe plic, altfel dispeceratul. Înlocuiesc
+// paşii vechi în toate limbile, deci şi cardul comenzii arată la fel.
+import { PASI_ZUSTELLART_V2, ZP_PAGINA, RIDICARE_DOC, PLECARE_DOC } from './livrareDocTraduceri.js'
+Object.assign(PASI_ZUSTELLART, PASI_ZUSTELLART_V2)
 import './index.css'
 import PodFiles from './components/PodFiles'
 import DocumentCamera from './components/DocumentCamera'
@@ -42,6 +47,8 @@ import { processImage, PHOTO_PRESET } from './services/imageService'
 // cu notificarea permanentă cerută de Android.
 const ESTE_APP_NATIVA = Capacitor.isNativePlatform()
 const BackgroundGeolocation = registerPlugin('BackgroundGeolocation')
+// Id-ul urmăritorului nativ, ţinut pe telefon — vezi efectul de locaţie.
+const CHEIE_WATCHER_NATIV = 'zd-bg-watcher'
 const PushNotifications = registerPlugin('PushNotifications')
 
 // --- Comenzile, aşa cum le vede o firmă de transport ------------------------
@@ -970,7 +977,10 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
     const p = watcherNativRef.current
     if (!p) return
     watcherNativRef.current = null
-    p.then((id) => { if (id) BackgroundGeolocation.removeWatcher({ id }) }).catch(() => {})
+    p.then((id) => {
+      if (id) BackgroundGeolocation.removeWatcher({ id }).catch(() => {})
+      try { if (localStorage.getItem(CHEIE_WATCHER_NATIV) === id) localStorage.removeItem(CHEIE_WATCHER_NATIV) } catch { /* nimic */ }
+    }).catch(() => {})
   }
 
   // Send GPS position continuously while profile.is_online is true —
@@ -1025,18 +1035,25 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
     // de câteva ori pe minut în mers, adică mii de scrieri pe zi și baterie
     // consumată pentru o precizie de care dispeceratul n-are nevoie.
     //
-    // Praguri: 150 de metri sau 60 de secunde de la ultima scriere. În mers,
-    // pragul de distanță se atinge oricum la fiecare 10–15 secunde, deci
-    // vizibilitatea în Disponent rămâne practic aceeași.
+    // Praguri (05.11.2026, pentru urmărirea live din Disponent): în mers o
+    // scriere la cel mult 10 secunde, doar dacă s-a deplasat cel puțin 30 m;
+    // altfel una la 60 de secunde. Pe loc, modulul de locație nu mai trimite
+    // nimic, deci bateria și baza de date nu sunt încărcate degeaba.
     let lastSent = { lat: null, lng: null, at: 0 }
-    const MIN_METERS = 150
+    const MIN_METERS = 30
+    const MIN_MS_IN_MERS = 10000
     const MIN_MS = 60000
+
+    // Viteza (m/s) și direcția (grade) pot lipsi — de ex. în browser, fără GPS.
+    const kmh = (v) => (Number.isFinite(v) && v >= 0 ? Math.round(v * 3.6) : null)
+    const grade = (h) => (Number.isFinite(h) && h >= 0 ? Math.round(h) % 360 : null)
 
     const sendPosition = (coords) => {
       const now = Date.now()
       if (lastSent.lat != null) {
         const movedMeters = haversineKm(lastSent.lat, lastSent.lng, coords.latitude, coords.longitude) * 1000
-        if (movedMeters < MIN_METERS && now - lastSent.at < MIN_MS) return
+        const dt = now - lastSent.at
+        if (dt < MIN_MS && (movedMeters < MIN_METERS || dt < MIN_MS_IN_MERS)) return
       }
       lastSent = { lat: coords.latitude, lng: coords.longitude, at: now }
       supabase
@@ -1045,6 +1062,8 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
           last_lat: coords.latitude,
           last_lng: coords.longitude,
           last_location_at: new Date().toISOString(),
+          last_speed_kmh: kmh(coords.speed),
+          last_heading: grade(coords.heading),
         })
         .eq('id', profile.id)
         .then(({ error }) => {
@@ -1055,6 +1074,16 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
     // Aplicația Android: modulul nativ trimite poziția și în fundal. Aceleași
     // praguri de scriere (sendPosition), aceeași stare în `location_status`.
     if (ESTE_APP_NATIVA) {
+      // 05.11.2026: după o reîncărcare a paginii (versiune nouă), urmăritorul
+      // pornit de pagina veche rămânea agăţat în telefon — notificarea
+      // „Standort aktiv" se vedea, dar poziţiile nu mai ajungeau la pagina
+      // nouă. Id-ul lui e ţinut pe telefon şi se opreşte întâi.
+      try {
+        const vechi = localStorage.getItem(CHEIE_WATCHER_NATIV)
+        if (vechi) BackgroundGeolocation.removeWatcher({ id: vechi }).catch(() => {})
+      } catch { /* nimic */ }
+      let ultimaPozitie = Date.now()
+      const porneste = () => {
       opresteWatcherNativ()
       watcherNativRef.current = BackgroundGeolocation.addWatcher(
         {
@@ -1062,7 +1091,8 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
           backgroundMessage: 'Standort aktiv – die Disposition sieht deine Position.',
           requestPermissions: true,
           stale: false,
-          distanceFilter: 50,
+          // 20 m: destul de des pentru urmărirea live, fără consum inutil pe loc.
+          distanceFilter: 20,
         },
         (location, error) => {
           if (error) {
@@ -1071,15 +1101,35 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
             return
           }
           if (!location) return
+          ultimaPozitie = Date.now()
           scrieStare('granted')
-          sendPosition({ latitude: location.latitude, longitude: location.longitude })
+          sendPosition({
+            latitude: location.latitude,
+            longitude: location.longitude,
+            speed: location.speed,
+            heading: location.bearing,
+          })
         }
-      ).catch((e) => {
+      ).then((id) => {
+        try { if (id) localStorage.setItem(CHEIE_WATCHER_NATIV, id) } catch { /* nimic */ }
+        return id
+      }).catch((e) => {
         console.error('background geolocation start error:', e?.message)
         scrieStare('unavailable')
         return null
       })
-      return () => { opresteWatcherNativ() }
+      }
+      porneste()
+      // Plasă de siguranţă: dacă 5 minute nu vine nicio poziţie, urmăritorul
+      // se reporneşte. Pe loc e normal să nu vină (pragul e de 20 m) — o
+      // repornire atunci nu strică nimic; în mers, repară o legătură ruptă.
+      const ceas = setInterval(() => {
+        if (Date.now() - ultimaPozitie > 5 * 60 * 1000) {
+          ultimaPozitie = Date.now()
+          porneste()
+        }
+      }, 60 * 1000)
+      return () => { clearInterval(ceas); opresteWatcherNativ() }
     }
 
     const MOTIVE = { 1: 'denied', 2: 'unavailable', 3: 'timeout' }
@@ -2198,13 +2248,19 @@ async function creeazaCanaleNative() {
     lights: true,
     lightColor: '#FF7A29',
   })
+  // Statusul comenzii (atribuire, câştig, schimbări): acelaşi clopoţel ca la
+  // comenzile noi (05.11.2026, cerut de Andrei) — vocea „Auftrag bestätigt"
+  // nu se mai foloseşte nicăieri. Sunetul unui canal Android nu se poate
+  // schimba după creare, deci canalul vechi „auftrag_status" se şterge şi
+  // se foloseşte unul nou.
+  await PushNotifications.deleteChannel({ id: 'auftrag_status' }).catch(() => {})
   await PushNotifications.createChannel({
-    id: 'auftrag_status',
+    id: 'auftrag_info',
     name: 'Auftragsstatus',
     description: 'Zuschläge, Bestätigungen und Änderungen an Aufträgen',
     importance: 4,
     visibility: 1,
-    sound: 'auftrag_bestaetigt',
+    sound: 'neuer_auftrag',
     vibration: true,
   })
 }
@@ -4962,7 +5018,8 @@ function SignatureLine({ lang, signatureBlob, onChange, obligatoriu }) {
           <div className="sig-fullscreen-canvas">
             <SignaturePad onChange={onChange} initial={signatureBlob} />
           </div>
-          <button type="button" className="btn" style={{ margin: 16 }} onClick={() => setOpen(false)}>
+          {/* Deasupra barei de navigare Android (aplicația din Play desenează pe tot ecranul). */}
+          <button type="button" className="btn" style={{ margin: '16px 16px calc(16px + env(safe-area-inset-bottom, 0px))' }} onClick={() => setOpen(false)}>
             {t('doneLabel', lang)}
           </button>
         </div>
@@ -6451,6 +6508,9 @@ function useLimbaGhid(lang) {
 }
 // Varianta discretă: doar 🌐 şi codul limbii, ca un buton mic (18.10.2026).
 function SelectorLimbaMic({ value, onChange }) {
+  // Limba se alege acum o singură dată, în Profil (05.11.2026, cerut de
+  // Andrei): ferestrele nu mai au selector propriu, ca să fie mai aerisite.
+  if (!AFISEAZA_SELECTOR_IN_FERESTRE) return null
   return (
     <label style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: 3, flex: '0 0 auto',
       fontSize: 11.5, fontWeight: 700, color: '#8A3A2A', background: 'rgba(255,255,255,.7)', border: '1px solid #E4A296',
@@ -6467,7 +6527,9 @@ function SelectorLimbaMic({ value, onChange }) {
   )
 }
 
+const AFISEAZA_SELECTOR_IN_FERESTRE = false
 function SelectorLimba({ value, onChange }) {
+  if (!AFISEAZA_SELECTOR_IN_FERESTRE) return null
   return (
     <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#5A6878', marginBottom: 12 }}>
       🌐
@@ -6598,7 +6660,8 @@ function PasiZustellart({ limba, z, mic }) {
         const k = p.search(/\s?:/)
         const cap = k > 0 ? p.slice(0, k) : ''
         const rest = k > 0 ? p.slice(k) : p
-        const interzis = v === 3 && i === 1
+        // Roşu: ce e interzis (ultimul rând) şi, la „doar personal", ce faci când nu e acasă.
+        const interzis = i === pasi.length - 1 || (v === 3 && i === 1)
         return (
           <li key={i} style={{ marginBottom: mic ? 6 : 11, color: interzis ? '#B23A24' : undefined }}>
             {cap && <strong>{cap}</strong>}{rest}
@@ -6609,9 +6672,64 @@ function PasiZustellart({ limba, z, mic }) {
   )
 }
 
-function ReguliZustellung({ lang, zustellart, ales, onAck }) {
+// Zustellprotokoll desenat: rubricile de completat, numerotate, ca la CMR.
+// Etichetele sunt cele de pe hârtie (în germană); explicaţia vine dedesubt,
+// în limba şoferului.
+function ZpIllustratie({ h }) {
+  const nr = (n) => (
+    <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 20, height: 20, borderRadius: '50%', background: '#D64532', color: '#fff', fontSize: 12, fontWeight: 800, flexShrink: 0 }}>{n}</span>
+  )
+  const camp = (w) => <span style={{ display: 'inline-block', width: w, borderBottom: '2px solid #D64532', margin: '0 4px', height: 14, verticalAlign: 'bottom' }} />
+  const cutie = <span style={{ display: 'inline-block', width: 13, height: 13, border: '2px solid #D64532', borderRadius: 2, marginRight: 6, verticalAlign: -2 }} />
+  const rand = { display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: '#0F2240', lineHeight: 1.4, marginTop: 8, flexWrap: 'wrap' }
+  const sectiune = (t) => <div style={{ fontSize: 11.5, fontWeight: 800, color: '#fff', background: '#0F2240', borderRadius: 4, padding: '3px 7px', marginTop: 4 }}>{t}</div>
+  return (
+    <div>
+      <div style={{ background: '#fff', border: '2px solid #0F2240', borderRadius: 10, padding: '10px 12px', boxShadow: '0 2px 8px rgba(15,34,64,.12)' }}>
+        <div style={{ fontSize: 14, fontWeight: 800, color: '#0F2240', borderBottom: '1px solid #DCE3EE', paddingBottom: 6 }}>Zustellprotokoll</div>
+        {sectiune('2 · Ergebnis der Zustellung')}
+        <div style={rand}>{nr(1)} Anzahl zugestellter Umschläge {camp(36)}</div>
+        <div style={rand}>{nr(2)} <span>{cutie}In den Briefkasten gelegt</span></div>
+        <div style={{ ...rand, marginTop: 4, paddingLeft: 26 }}><span>{cutie}Persönlich an den Empfänger übergeben</span></div>
+        <div style={rand}>{nr(3)} Name am Briefkasten {camp(70)}</div>
+        <div style={{ ...rand, marginTop: 4, paddingLeft: 26 }}>Name + Unterschrift des Empfängers {camp(60)}</div>
+        {sectiune('3 · Kurier')}
+        <div style={rand}>{nr(4)} am {camp(52)} um {camp(34)} Uhr</div>
+        <div style={rand}>{nr(5)} in (Ort) {camp(90)}</div>
+        <div style={rand}>{nr(6)} Name + Unterschrift des Kuriers {camp(70)}</div>
+      </div>
+      <ol style={{ listStyle: 'none', padding: 0, margin: '12px 0 0' }}>
+        {h.map((x, i) => (
+          <li key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 14.5, color: '#0F2240', lineHeight: 1.45, marginBottom: 7 }}>
+            {nr(i + 1)}<span>{x}</span>
+          </li>
+        ))}
+      </ol>
+    </div>
+  )
+}
+
+function ReguliZustellung({ lang, zustellart, ales, onAck, waUrl }) {
   const [limba, setLimba] = useState(() => citesteLimba(lang))
   const tr = REGULI_LIMBI[limba] || REGULI_LIMBI.de
+  // Două pagini (05.11.2026): 1 = cerinţa clientului şi regulile, 2 = ce se
+  // completează pe Zustellprotokoll. Abia după a doua se marchează sosirea.
+  const [pagina, setPagina] = useState(1)
+  const zp = ZP_PAGINA[limba] || ZP_PAGINA.de
+  if (pagina === 2) {
+    return (
+      <div style={{ maxWidth: 440, width: '100%' }}>
+        <SelectorLimba value={limba} onChange={setLimba} />
+        <div style={{ fontSize: 21, fontWeight: 800, color: '#0F2240', marginBottom: 6, lineHeight: 1.3 }}>
+          <FileText size={20} strokeWidth={2} style={{ verticalAlign: -3, marginRight: 6 }} />{zp.titlu}
+        </div>
+        <div style={{ fontSize: 14.5, color: '#28344A', marginBottom: 12, lineHeight: 1.45 }}>{zp.intro}</div>
+        <ZpIllustratie h={zp.h} />
+        <div style={{ fontSize: 14.5, fontWeight: 700, color: '#0F2240', marginTop: 6, lineHeight: 1.45, background: '#F4F7FC', borderRadius: 8, padding: '9px 11px' }}>📷 {zp.upload}</div>
+        <button className="btn" style={{ width: '100%', marginTop: 16 }} onClick={onAck}>{zp.ok}</button>
+      </div>
+    )
+  }
   return (
     <div style={{ maxWidth: 440, width: '100%' }}>
       <SelectorLimba value={limba} onChange={setLimba} />
@@ -6638,7 +6756,60 @@ function ReguliZustellung({ lang, zustellart, ales, onAck }) {
       {/* Doar paşii variantei alese; ultimul spune ce faci dacă nu merge
           (WhatsApp la dispecerat), deci caseta separată de contact a căzut. */}
       <PasiZustellart limba={limba} z={zustellart} />
-      <button className="btn" style={{ width: '100%', marginTop: 16 }} onClick={onAck}>{tr.buton}</button>
+      {waUrl && (
+        <a href={waUrl} target="_blank" rel="noreferrer" style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 6,
+          background: '#25D366', color: '#fff', fontWeight: 700, fontSize: 15, padding: '11px 12px', borderRadius: 10, textDecoration: 'none',
+        }}>
+          <WhatsAppIcon size={16} color="#fff" /> Zimand Express Dispo · WhatsApp
+        </a>
+      )}
+      <button className="btn" style={{ width: '100%', marginTop: 12 }} onClick={() => setPagina(2)}>{zp.next} →</button>
+    </div>
+  )
+}
+
+// Ridicarea de documente, la sosire (05.11.2026): o singură fereastră clară —
+// Zustellprotokoll, pozele cu plicul şi, când e comandată, Botenbestätigung.
+// Partea dinainte de „:" se îngroaşă, ca la paşii de livrare.
+function DokRidicareSheet({ lang, cuBoten, onClose }) {
+  const [limba, setLimba] = useState(() => citesteLimba(lang))
+  const tr = RIDICARE_DOC[limba] || RIDICARE_DOC.de
+  const ingrosat = (x) => {
+    const k = x.indexOf(':')
+    return k > 0 ? <><strong>{x.slice(0, k)}</strong>{x.slice(k)}</> : x
+  }
+  const pas = (n, continut) => (
+    <li style={{ display: 'flex', gap: 10, alignItems: 'flex-start', fontSize: 15.5, lineHeight: 1.5, color: '#0F2240', marginBottom: 12 }}>
+      <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: '50%', background: '#0F2240', color: '#fff', fontSize: 13, fontWeight: 800, flexShrink: 0, marginTop: 1 }}>{n}</span>
+      <span>{continut}</span>
+    </li>
+  )
+  return (
+    <div className="sig-fullscreen" style={{ justifyContent: 'flex-end', background: 'rgba(15,34,64,.55)', zIndex: 9990 }}>
+      <div style={{ background: '#fff', borderRadius: '16px 16px 0 0', padding: '20px 20px calc(20px + env(safe-area-inset-bottom))', maxHeight: '88vh', overflowY: 'auto' }}>
+        <SelectorLimba value={limba} onChange={setLimba} />
+        <div style={{ fontSize: 19, fontWeight: 800, color: '#0F2240', marginBottom: 14 }}>
+          <FileText size={19} strokeWidth={2} style={{ verticalAlign: -3, marginRight: 6 }} />{tr.titlu}
+        </div>
+        <ol style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+          {pas(1, ingrosat(tr.zp))}
+          {pas(2, ingrosat(tr.foto))}
+        </ol>
+        {cuBoten && (
+          <div style={{ background: '#FFF1E6', border: '2px solid #F28C38', borderRadius: 12, padding: '11px 13px', marginTop: 4 }}>
+            <div style={{ fontSize: 15, fontWeight: 800, color: '#B4470F', marginBottom: 8, lineHeight: 1.35 }}>
+              <ClipboardList size={16} style={{ verticalAlign: -3, marginRight: 6 }} />{tr.botenTitlu}
+            </div>
+            <ol style={{ margin: 0, paddingLeft: 20, fontSize: 15, lineHeight: 1.5, color: '#0F2240' }}>
+              {tr.boten.map((x, i) => (
+                <li key={i} style={{ marginBottom: 6, fontWeight: i === 2 ? 700 : 400 }}>{x}</li>
+              ))}
+            </ol>
+          </div>
+        )}
+        <button type="button" className="btn" style={{ width: '100%', margin: '14px 0 0' }} onClick={onClose}>{tr.buton}</button>
+      </div>
     </div>
   )
 }
@@ -6656,13 +6827,6 @@ function BotenInfoSheet({ lang, onClose }) {
   return (
     <div className="sig-fullscreen" style={{ justifyContent: 'flex-end', background: 'rgba(15,34,64,.55)', zIndex: 9991 }}>
       <div style={{ background: '#fff', borderRadius: '16px 16px 0 0', padding: '20px 20px calc(20px + env(safe-area-inset-bottom))', maxHeight: '88vh', overflowY: 'auto' }}>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#5A6878', marginBottom: 12 }}>
-          🌐
-          <select value={rand[0]} onChange={(e) => alege(e.target.value)}
-            style={{ flex: 1, padding: '9px 10px', borderRadius: 8, border: '1px solid #C9D1DD', fontSize: 15, background: '#fff', color: '#0F2240' }}>
-            {BOTEN_INFO_LIMBI.map(([cod, nume]) => <option key={cod} value={cod}>{nume}</option>)}
-          </select>
-        </label>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 10 }}>
           <div style={{ fontSize: 18, fontWeight: 800, color: '#B35A12', lineHeight: 1.3 }}>
             <ClipboardList size={18} style={{ verticalAlign: -3, marginRight: 6 }} />{titlu}
@@ -6996,6 +7160,28 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
   // distanţă. Poziţia se măsoară şi se salvează în continuare.
   const distanta = useDistantaFataDe(tintaEtapei, !order.proximity_check_off, isDocumentDelivery ? PRAG_METRI : PRAG_METRI_MARFA)
   const [avertismentDistanta, setAvertismentDistanta] = useState(null)
+  // La fiecare atingere pe un buton blocat de distanță, pagina urcă singură la
+  // avertisment și îl evidențiază scurt (05.11.2026, cerut de Andrei): fără
+  // asta, avertismentul apărea sus, în afara ecranului, iar un șofer nou
+  // vedea doar că butonul „nu merge".
+  const refAvertismentDistanta = useRef(null)
+  const [atentieDistanta, setAtentieDistanta] = useState(0)
+  const arataAvertismentDistanta = (metri) => {
+    setAvertismentDistanta(metri)
+    setAtentieDistanta((n) => n + 1)
+  }
+  useEffect(() => {
+    if (!atentieDistanta) return
+    const id = requestAnimationFrame(() => {
+      const el = refAvertismentDistanta.current
+      if (!el) return
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      el.classList.remove('zd-atentie')
+      void el.offsetWidth // repornește animația și la a doua atingere
+      el.classList.add('zd-atentie')
+    })
+    return () => cancelAnimationFrame(id)
+  }, [atentieDistanta])
   const [limbaDeparte, setLimbaDeparte] = useState(() => citesteLimba(lang))
   // Avertismentul „prea departe", într-un singur loc (29.10.2026). Era
   // desenat doar pe ecranul de dinainte de sosire; la finalizare butonul îl
@@ -7006,7 +7192,7 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
           // În limba aleasă de şofer, cu un selector mic în colţ (18.10.2026).
           const trD = DEPARTE_LIMBI[limbaDeparte] || DEPARTE_LIMBI.de
           return (
-          <div style={{
+          <div ref={refAvertismentDistanta} style={{
             marginTop: 8, padding: '10px 12px', borderRadius: 9,
             background: '#FCEBE8', border: '1px solid #E4A296', color: '#B23A24',
             fontSize: 13, lineHeight: 1.55,
@@ -7119,6 +7305,8 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
   const modDoc = order.doc_mode || 'ask'
   const esteMarfa = !isDocumentDelivery
   const cereDocument = esteMarfa && modDoc === 'cmr'
+  // Marfă fără CMR: documentul e opţional — butonul lui stă jos, mic, sub semnătură.
+  const docOptionalJos = !isDocumentDelivery && !cereDocument
   const cereSemnatura = esteMarfa && modDoc === 'signature'
   // Comenzile vechi, fără dovadă aleasă ('ask'), nu mai întreabă nimic.
   //
@@ -7571,6 +7759,23 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
   // derula sau apăsa butoane), chiar și după revenirea la comandă.
   useEffect(() => {}, [arrivedAt])
 
+  // După „Angekommen", pagina urcă singură sus, la începutul confirmării
+  // (05.11.2026, cerut de Andrei): rămânea derulată jos, unde fusese butonul,
+  // iar şoferul vedea mijlocul formularului în loc de adresă şi poze.
+  // Doar la trecerea de la „neajuns" la „ajuns" — nu la fiecare deschidere.
+  const arrivedAnterior = useRef(arrivedAt)
+  useEffect(() => {
+    const acumAjuns = !!arrivedAt && !arrivedAnterior.current
+    arrivedAnterior.current = arrivedAt
+    if (!acumAjuns) return
+    const id = requestAnimationFrame(() => {
+      // Pe telefon derulează pagina; pe calculator (rama de telefon) derulează #root.
+      try { window.scrollTo({ top: 0, behavior: 'smooth' }) } catch { window.scrollTo(0, 0) }
+      try { document.getElementById('root')?.scrollTo({ top: 0, behavior: 'smooth' }) } catch { /* nimic */ }
+    })
+    return () => cancelAnimationFrame(id)
+  }, [arrivedAt])
+
   // Calculat aici, după ce sunt cunoscute tipul dovezii (CMR / semnătură),
   // nu sus: acelea se declară mai jos în componentă.
   const ghidChei = () => isDocumentDelivery
@@ -7580,19 +7785,60 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
     // nu mai e nimic de spus despre ea (cerut de Andrei pe 18.10.2026).
     ? ['doc_standard', 'zustellprotokoll', ...(order.boten_confirmation === true && ghidFaza === 'start' ? ['boten'] : [])]
     // La plecare, anunţul CMR întâi (19.10.2026).
-    : (ghidFaza === 'start' && cereDocument ? ['cmr', 'ware'] : ['ware', ...(cereDocument ? ['cmr'] : cereSemnatura ? ['signatur'] : [])])
+    : (ghidFaza === 'start' && cereDocument ? ['cmr', 'ware']
+      // Livrare de marfă: fără instrucţiuni generale (05.11.2026, cerut de
+      // Andrei) — apare doar cardul cu ce se predă, şi numai dacă clientul a
+      // lăsat indicaţii pentru livrare.
+      : ghidFaza === 'delivery' ? []
+      : ['ware', ...(cereDocument ? ['cmr'] : cereSemnatura ? ['signatur'] : [])])
   const ghiduriFaza = ghidFaza
     ? ghidChei().map((k) => ghiduriToate.find((g) => g.key === k))
-        .filter((g) => g && pasiGhid(g, ghidFaza, lang).length && !esteAscuns(g, ghidFaza))
+        // Fără „Nicht mehr anzeigen" (05.11.2026, cerut de Andrei): apar la
+        // fiecare comandă — durează câteva secunde și pot fi diferite de la o
+        // comandă la alta.
+        .filter((g) => g && pasiGhid(g, ghidFaza, lang).length)
     : []
+  // „Sarcina ta": ce se încarcă / predă, la cine, şi indicaţiile clientului.
+  // Doar la marfă (documentele au regulile lor). La livrare apare numai dacă
+  // clientul a lăsat indicaţii — altfel nu se deschide nicio fereastră.
+  const sarcinaGhid = (() => {
+    if (isDocumentDelivery || esteRetur) return null
+    if (ghidFaza !== 'pickup' && ghidFaza !== 'delivery') return null
+    const k = intrare.key
+    const contactBrut = esteOprire
+      ? [fapte?.company, fapte?.contactName].filter(Boolean).join(' · ')
+      : extractContact(order.notes, k === 'pickup' ? 'Kontakt Abholung: ' : 'Kontakt Zustellung: ')
+    const persoana = contactBrut ? contactBrut.split(/\s*·\s*Tel/i)[0].trim() || null : null
+    const nota = esteOprire
+      ? (fapte?.note || null)
+      : extractContact(order.notes, k === 'pickup' ? 'Notiz Abholung: ' : 'Notiz Zustellung: ')
+    if (ghidFaza === 'delivery' && !nota) return null
+    return {
+      faza: ghidFaza,
+      marfa: esteOprire ? null : cargoSummary(order),
+      kg: fapte?.weightKg ? Number(fapte.weightKg) : null,
+      desc: fapte?.cargo || null,
+      persoana,
+      adresa: fapte?.address || null,
+      nota,
+    }
+  })()
   const ghidSheet = (ghidFaza === 'retur_pickup' || ghidFaza === 'retur_transport') ? (
     <ReturSheet order={order} lang={lang} transport={ghidFaza === 'retur_transport'} onClose={() => setGhidFaza(null)} />
   ) : ghidFaza === 'cmr_delivery' ? (
     <CmrLivrareSheet lang={lang} onClose={() => setGhidFaza(null)} />
   ) : ghidFaza === 'transport' ? (
     <TransportSheet lang={lang} onClose={() => setGhidFaza(null)} />
-  ) : ghidFaza && ghiduriFaza.length ? (
-    <GhidSheet ghiduri={ghiduriFaza} faza={ghidFaza} lang={lang} cuBote={order.boten_confirmation === true} onClose={() => setGhidFaza(null)} />
+  ) : ghidFaza === 'pickup' && isDocumentDelivery && !esteRetur ? (
+    // Ridicarea de documente: fereastra ei, clară, în locul instrucţiunilor
+    // generale; dacă e cu Botenbestätigung, o include, deci informarea
+    // separată nu mai apare după ea.
+    <DokRidicareSheet lang={lang} cuBoten={cereBoten}
+      onClose={() => { setGhidFaza(null); if (cereBoten) inchideBotenInfo() }} />
+  ) : ghidFaza && (ghiduriFaza.length || sarcinaGhid) ? (
+    <GhidSheet ghiduri={ghiduriFaza} faza={ghidFaza} lang={lang} cuBote={order.boten_confirmation === true} sarcina={sarcinaGhid}
+      maiMulteLivrari={tourLegSequence(order).filter((e) => e.kind === 'delivery').length > 1}
+      onClose={() => setGhidFaza(null)} />
   ) : null
 
   if (!startedAt) {
@@ -7684,7 +7930,7 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
             // sau a trecut peste el. Cât timp telefonul ştie SIGUR unde e şi
             // e dincolo de prag, nu se marchează nimic.
             if (distanta.preaDeparte) {
-              setAvertismentDistanta(distanta.metri)
+              arataAvertismentDistanta(distanta.metri)
               return
             }
             // La livrarea de documente, regulile apar ÎNAINTE de marcarea
@@ -7718,6 +7964,7 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
                 1 = cutia poştală întâi, 2 = întâi personal, 3 = doar personal. */}
             <ReguliZustellung lang={lang} zustellart={[1, 2, 3].includes(Number(order.zustellart)) ? Number(order.zustellart) : 1}
               ales={[1, 2, 3].includes(Number(order.zustellart))}
+              waUrl={dispatchWaUrl(order, fapte)}
               onAck={() => { setRegulileDeschise(false); callRpc(arriveFn) }} />
           </div>
         )}
@@ -7977,7 +8224,7 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
       {/* La ridicarea de documente fără Botenbestätigung nu e nimic de urcat
           (Zustellprotokoll-ul e încă necompletat) — butonul nu mai apare
           (18.10.2026). */}
-      {!(isDocumentDelivery && !esteLivrareEtapa && !cereBoten) && (
+      {!(isDocumentDelivery && !esteLivrareEtapa && !cereBoten) && !docOptionalJos && (
       <>
       <div className="pod-label">
         {esteEtapaLivrareDoc ? `${t('docTypeProtocol', lang)} · ${t('requiredWord', lang)}` : t('documentsLabel', lang)}
@@ -8047,6 +8294,25 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
         </>
       )}
       </>
+      )}
+
+      {/* Marfă fără CMR (semnătură în aplicaţie sau fără dovadă cerută): un
+          document e doar opţional — mic, sub semnătură, chiar înainte de
+          confirmare (05.11.2026, cerut de Andrei). */}
+      {docOptionalJos && (
+        <div style={{ marginTop: 14 }}>
+          <div className="pod-label" style={{ fontSize: 12.5, opacity: 0.85 }}>
+            {t('documentsLabel', lang)} · <span style={{ fontWeight: 500 }}>optional</span>
+          </div>
+          <button
+            type="button"
+            className="link-btn"
+            style={{ width: '100%', padding: '8px 10px', border: '1px dashed #C9D1DD', borderRadius: 9, fontSize: 14, background: 'transparent', color: 'var(--navy)' }}
+            onClick={() => setDocCaptureOpen(true)}
+          >
+            + {t('addDocument', lang)}
+          </button>
+        </div>
       )}
 
       {uploadError && (
@@ -8122,7 +8388,7 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
             return
           }
           if (distanta.preaDeparte) {
-            setAvertismentDistanta(distanta.metri)
+            arataAvertismentDistanta(distanta.metri)
             return
           }
           // Ridicare de documente: întâi întrebarea despre Zustellprotokoll.
@@ -9224,10 +9490,6 @@ const pasiGhid = (g, faza, lang) => {
   return (lista && lista.length ? lista : g?.[`${faza}_de`]) || []
 }
 const titluGhid = (g, lang) => (lang === 'en' && g?.title_en) || g?.title_de || ''
-const cheieAscuns = (key, faza) => `zd-ghid-ascuns:${key}:${faza}`
-const esteAscuns = (g, faza) => {
-  try { return Number(localStorage.getItem(cheieAscuns(g.key, faza))) >= Number(g.version || 1) } catch { return false }
-}
 
 // Video-ul unei instrucţiuni: YouTube (link obişnuit sau „nelistat") sau un
 // fişier urcat de dispecerat. Fără video: un ecran gol cu „Video folgt",
@@ -9276,8 +9538,78 @@ function ghidInLimba(g, faza, limba) {
   return { titlu: l.title || titluGhid(g, 'de'), pasi: l[faza] || [], tradus: true }
 }
 
-function GhidSheet({ ghiduri, faza, lang, onClose, cuBote = true }) {
-  const [ascunde, setAscunde] = useState(false)
+// Cardul „Sarcina ta" din fereastra de la ridicare / livrare (05.11.2026,
+// cerut de Andrei): ce încarcă sau ce predă şoferul, de la / la cine, plus
+// indicaţiile clientului — scos din comandă, nu text general.
+// [titlu, încarci, predai, ridicare la, livrare la, indicaţii client]
+const SARCINA_UI = {
+  de: ['Deine Aufgabe', 'Laden', 'Übergeben', 'Abholung bei', 'Lieferung an', 'Hinweis vom Kunden'],
+  en: ['Your task', 'Load', 'Hand over', 'Pickup at', 'Delivery to', 'Note from the customer'],
+  ro: ['Sarcina ta', 'Încarci', 'Predai', 'Ridicare de la', 'Livrare la', 'Instrucțiuni de la client'],
+  pl: ['Twoje zadanie', 'Załaduj', 'Przekaż', 'Odbiór u', 'Dostawa do', 'Uwagi klienta'],
+  bg: ['Вашата задача', 'Натоварете', 'Предайте', 'Вземане от', 'Доставка до', 'Указания от клиента'],
+  hu: ['Az Ön feladata', 'Rakodás', 'Átadás', 'Felvétel', 'Szállítás', 'Az ügyfél utasításai'],
+  cs: ['Váš úkol', 'Naložit', 'Předat', 'Vyzvednutí u', 'Doručení pro', 'Pokyny zákazníka'],
+  sk: ['Vaša úloha', 'Naložiť', 'Odovzdať', 'Vyzdvihnutie u', 'Doručenie pre', 'Pokyny zákazníka'],
+  hr: ['Vaš zadatak', 'Utovar', 'Predaja', 'Preuzimanje kod', 'Dostava za', 'Upute kupca'],
+  sr: ['Vaš zadatak', 'Utovar', 'Predaja', 'Preuzimanje kod', 'Dostava za', 'Uputstva kupca'],
+  sl: ['Vaša naloga', 'Naložite', 'Predajte', 'Prevzem pri', 'Dostava za', 'Navodila stranke'],
+  sq: ['Detyra juaj', 'Ngarkoni', 'Dorëzoni', 'Marrja te', 'Dorëzimi te', 'Udhëzime nga klienti'],
+  uk: ['Ваше завдання', 'Завантажити', 'Передати', 'Забрати в', 'Доставка для', 'Вказівки клієнта'],
+  ru: ['Ваша задача', 'Загрузить', 'Передать', 'Забрать у', 'Доставка для', 'Указания клиента'],
+  tr: ['Göreviniz', 'Yükleyin', 'Teslim edin', 'Alım yeri', 'Teslimat yeri', 'Müşterinin talimatları'],
+  it: ['Il tuo compito', 'Da caricare', 'Da consegnare', 'Ritiro presso', 'Consegna a', 'Indicazioni del cliente'],
+  es: ['Tu tarea', 'Cargar', 'Entregar', 'Recogida en', 'Entrega a', 'Indicaciones del cliente'],
+  fr: ['Votre tâche', 'À charger', 'À remettre', 'Enlèvement chez', 'Livraison à', 'Consignes du client'],
+  pt: ['A sua tarefa', 'Carregar', 'Entregar', 'Recolha em', 'Entrega a', 'Indicações do cliente'],
+  nl: ['Jouw taak', 'Laden', 'Afleveren', 'Ophalen bij', 'Levering aan', 'Instructies van de klant'],
+  el: ['Η εργασία σας', 'Φόρτωση', 'Παράδοση', 'Παραλαβή από', 'Παράδοση σε', 'Οδηγίες πελάτη'],
+  lt: ['Jūsų užduotis', 'Pakrauti', 'Perduoti', 'Paėmimas iš', 'Pristatymas', 'Kliento nurodymai'],
+  lv: ['Jūsu uzdevums', 'Iekraut', 'Nodot', 'Saņemšana no', 'Piegāde', 'Klienta norādījumi'],
+}
+
+// Titlul instrucţiunilor de marfă la ridicare (05.11.2026).
+const TITLU_INCARCARE = {
+  de: 'Beim Laden (Pakete, Paletten)', en: 'When loading (parcels, pallets)', ro: 'La încărcare (colete, paleți)',
+  pl: 'Przy załadunku (paczki, palety)', bg: 'При товарене (пакети, палети)', hu: 'Rakodáskor (csomagok, raklapok)',
+  cs: 'Při nakládce (balíky, palety)', sk: 'Pri nakládke (balíky, palety)', hr: 'Pri utovaru (paketi, palete)',
+  sr: 'Pri utovaru (paketi, palete)', sl: 'Pri nakladanju (paketi, palete)', sq: 'Gjatë ngarkimit (pako, paleta)',
+  uk: 'Під час завантаження (посилки, палети)', ru: 'При погрузке (посылки, паллеты)', tr: 'Yükleme sırasında (paketler, paletler)',
+  it: 'Al carico (colli, pallet)', es: 'Al cargar (paquetes, palés)', fr: 'Au chargement (colis, palettes)',
+  pt: 'No carregamento (volumes, paletes)', nl: 'Bij het laden (pakketten, pallets)', el: 'Κατά τη φόρτωση (δέματα, παλέτες)',
+  lt: 'Pakraunant (siuntiniai, padėklai)', lv: 'Iekraujot (paciņas, paletes)',
+}
+
+function SarcinaCard({ sarcina, limba }) {
+  if (!sarcina) return null
+  const u = SARCINA_UI[limba] || SARCINA_UI.de
+  const laIncarcare = sarcina.faza === 'pickup'
+  const ceLinie = [sarcina.marfa, sarcina.kg ? `${sarcina.kg} kg` : null, sarcina.desc && sarcina.desc !== '-' ? sarcina.desc : null]
+    .filter(Boolean).join(' · ')
+  return (
+    <div style={{ background: '#FFF6ED', border: '1px solid #F5C9A5', borderRadius: 12, padding: '12px 14px', marginBottom: 14 }}>
+      <div style={{ fontSize: 12.5, fontWeight: 700, color: '#C2551A', textTransform: 'uppercase', letterSpacing: '.03em', marginBottom: 6 }}>{u[0]}</div>
+      {ceLinie && (
+        <div style={{ fontSize: 16, color: '#0F2240', lineHeight: 1.45 }}>
+          <strong>{laIncarcare ? u[1] : u[2]}:</strong> {ceLinie}
+        </div>
+      )}
+      {(sarcina.persoana || sarcina.adresa) && (
+        <div style={{ fontSize: 14, color: '#16202E', lineHeight: 1.45, marginTop: 6 }}>
+          <strong>{laIncarcare ? u[3] : u[4]}:</strong> {[sarcina.persoana, sarcina.adresa].filter(Boolean).join(', ')}
+        </div>
+      )}
+      {sarcina.nota && (
+        <div style={{ marginTop: 8, padding: '8px 10px', background: '#fff', borderRadius: 8, border: '1px solid #F5C9A5', fontSize: 14, color: '#16202E', lineHeight: 1.45 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: '#C2551A', marginBottom: 2 }}>📝 {u[5]}</div>
+          {sarcina.nota}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function GhidSheet({ ghiduri, faza, lang, onClose, cuBote = true, sarcina = null, maiMulteLivrari = false }) {
   const [video, setVideo] = useState(null)
   // Aceeaşi limbă ca la informarea Botenbestätigung — aleasă o dată, ţinută pe telefon.
   const [limba, setLimba] = useState(() => {
@@ -9288,28 +9620,26 @@ function GhidSheet({ ghiduri, faza, lang, onClose, cuBote = true }) {
     try { localStorage.setItem('zd-boten-info-limba', v) } catch { /* nimic */ }
   }
   const ui = (cheie, cheieT) => (GHID_UI[limba] && GHID_UI[limba][cheie]) || t(cheieT, limba === 'en' ? 'en' : (limba === 'de' ? 'de' : lang))
-  const inchide = () => {
-    if (ascunde) {
-      ghiduri.forEach((g) => { try { localStorage.setItem(cheieAscuns(g.key, faza), String(g.version || 1)) } catch { /* nimic */ } })
-    }
-    onClose()
-  }
+  const inchide = () => onClose()
   const titluFaza = ui(faza === 'start' ? 'phaseStart' : faza === 'pickup' ? 'phasePickup' : 'phaseDelivery',
     faza === 'start' ? 'guidePhaseStart' : faza === 'pickup' ? 'guidePhasePickup' : 'guidePhaseDelivery')
-  const texte = ghiduri.map((g) => ({ g, ...ghidInLimba(g, faza, limba) })).filter((x) => x.pasi.length)
+  const texte = ghiduri.map((g) => {
+    const x = { g, ...ghidInLimba(g, faza, limba) }
+    // Documente, înainte de plecare (05.11.2026): doar două puncte; „câte o
+    // foaie pentru fiecare destinatar" numai la comenzile cu mai multe livrări.
+    if (g.key === 'doc_standard' && faza === 'start') {
+      const p = PLECARE_DOC[limba] || PLECARE_DOC.de
+      return { ...x, pasi: [p[0], maiMulteLivrari ? `${p[1]} ${p[2]}` : p[1]], tradus: true }
+    }
+    return x
+  }).filter((x) => x.pasi.length)
   const netradus = texte.some((x) => !x.tradus)
   return (
     <div className="sig-fullscreen" style={{ justifyContent: 'flex-end', background: 'rgba(15,34,64,.55)', zIndex: 9990 }}>
       <div style={{ background: '#fff', borderRadius: '16px 16px 0 0', padding: '20px 20px calc(20px + env(safe-area-inset-bottom))', maxHeight: '88vh', overflowY: 'auto' }}>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#5A6878', marginBottom: 12 }}>
-          🌐
-          <select value={limba} onChange={(e) => alegeLimba(e.target.value)}
-            style={{ flex: 1, padding: '9px 10px', borderRadius: 8, border: '1px solid #C9D1DD', fontSize: 15, background: '#fff', color: '#0F2240' }}>
-            {BOTEN_INFO_LIMBI.map(([cod, nume]) => <option key={cod} value={cod}>{nume}</option>)}
-          </select>
-        </label>
         <div style={{ fontSize: 12.5, fontWeight: 600, color: '#5A6878', marginBottom: 2 }}>{titluFaza}</div>
         <div style={{ fontSize: 18, fontWeight: 700, color: '#0F2240', marginBottom: 10 }}>{ui('sheetTitle', 'guideSheetTitle')}</div>
+        <SarcinaCard sarcina={sarcina} limba={limba} />
         {netradus && (
           <div style={{ fontSize: 12.5, color: '#8A5A16', background: '#FFF6ED', borderRadius: 8, padding: '7px 10px', marginBottom: 10 }}>
             {ui('noTranslation', 'guideSheetTitle')}
@@ -9317,7 +9647,9 @@ function GhidSheet({ ghiduri, faza, lang, onClose, cuBote = true }) {
         )}
         {texte.map(({ g, titlu, pasi }) => (
           <div key={g.key} className="ghid-bloc">
-            <div className="ghid-titlu">{titlu}</div>
+            {/* „Livrare de marfă" la ridicare era greşit: la încărcare blocul
+                se numeşte după ce face şoferul acum (05.11.2026). */}
+            <div className="ghid-titlu">{g.key === 'ware' && faza === 'pickup' ? (TITLU_INCARCARE[limba] || TITLU_INCARCARE.de) : titlu}</div>
             {g.video_url && (video === g.key
               ? <VideoGhid url={g.video_url} lang={lang} />
               : <button type="button" className="ghid-video-btn" onClick={() => setVideo(g.key)}><Play size={15} strokeWidth={2.2} /> {t('guideWatchVideo', lang)}</button>)}
@@ -9329,10 +9661,6 @@ function GhidSheet({ ghiduri, faza, lang, onClose, cuBote = true }) {
             )}
           </div>
         ))}
-        <label className="ghid-ascunde">
-          <input type="checkbox" checked={ascunde} onChange={(e) => setAscunde(e.target.checked)} />
-          {ui('dontShow', 'guideDontShow')}
-        </label>
         <button type="button" className="btn" style={{ width: '100%', margin: '12px 0 0' }} onClick={inchide}>{ui('understood', 'guideUnderstood')}</button>
       </div>
     </div>
@@ -10650,7 +10978,10 @@ function BidCard({ order, lang, courierProfileId, open, onToggle, onBidPlaced, o
 
         <div className="bc-facts">
           <span className="bc-fact">
+            {/* Scris „Lieferung:", nu doar steguleţul (05.11.2026): simbolul
+                singur nu spunea că e intervalul de livrare. */}
             <FlagTriangleRight size={13} strokeWidth={1.8} />
+            <strong style={{ fontWeight: 600 }}>{t('delivery', lang)}:</strong>
             {order.delivery_fixed ? (
               <span className="fixed-time-badge">{fmtDate(order.delivery_date)}{order.delivery_time ? ` · ${fmtTime(order.delivery_time)}` : ''}</span>
             ) : (
@@ -10682,9 +11013,10 @@ function BidCard({ order, lang, courierProfileId, open, onToggle, onBidPlaced, o
           )}
           {/* Câţi kilometri sunt până la ridicare: vine din tabelul de coduri
               poştale, nu din geocodări plătite, deci se poate afişa mereu. */}
-          {order.distance_km != null && (
-            <div className="bid-extra-row"><Navigation size={12} strokeWidth={1.8} /> {t('distanceLabel', lang)}: ca. {order.distance_km} km</div>
-          )}
+          {/* Rândul „Entfernung: ca. … km" nu se mai arată (05.11.2026, cerut de
+              Andrei): se calcula de la codul poştal salvat în filtru, nu de la
+              locul unde e şoferul, şi ducea în eroare. Filtrul de rază
+              foloseşte în continuare aceeaşi valoare. */}
 
           {extractServiceBadges(order.notes).length > 0 && (
             <div className="service-badges">
@@ -10792,7 +11124,9 @@ function BidCard({ order, lang, courierProfileId, open, onToggle, onBidPlaced, o
             <div className="existing-bid-box">
               <div className="existing-bid-price">{existingBid.price} €</div>
               <div className="existing-bid-actions">
-                <button className="btn secondary" onClick={(e) => { e.stopPropagation(); setEditing(true) }}>{t('editBid', lang)}</button>
+                {!order.fixed_price_only && (
+                  <button className="btn secondary" onClick={(e) => { e.stopPropagation(); setEditing(true) }}>{t('editBid', lang)}</button>
+                )}
                 <button className="btn danger" onClick={(e) => { e.stopPropagation(); withdrawBid() }} disabled={busy}>{t('withdrawBid', lang)}</button>
               </div>
             </div>
@@ -10800,11 +11134,21 @@ function BidCard({ order, lang, courierProfileId, open, onToggle, onBidPlaced, o
             <>
               {order.estimated_price != null && (
                 <div className="price-box">
-                  <div><div className="lbl">{t('priceLabel', lang)}</div><div className="val">{order.estimated_price} €</div></div>
+                  <div><div className="lbl">{t('priceLabel', lang)}{order.fixed_price_only ? ` · ${lang === 'en' ? 'Fixed price' : 'Festpreis'}` : ''}</div><div className="val">{order.estimated_price} €</div></div>
                   <button className="accept-btn" onClick={(e) => { e.stopPropagation(); submitBid(order.estimated_price) }} disabled={busy}>✓</button>
                 </div>
               )}
 
+              {/* Preţ fix (05.11.2026): firma poate doar accepta preţul de mai
+                  sus — fără ofertă proprie. Dispecerul alege apoi cui o dă. */}
+              {order.fixed_price_only ? (
+                <div style={{ fontSize: 13, color: '#5A6878', lineHeight: 1.5, marginTop: 8, textAlign: 'center' }}>
+                  {lang === 'en'
+                    ? 'Fixed price – tap ✓ to accept. Dispatch then decides who gets the order.'
+                    : 'Festpreis – mit ✓ annehmen. Die Disposition entscheidet danach, wer den Auftrag erhält.'}
+                </div>
+              ) : (
+              <>
               <div className="or-own">{t('orOwnOffer', lang)}</div>
               <label className="bid-field-label">{t('priceLabel', lang)} (€)</label>
               <input className="bid-input2" type="number" value={ownPrice} onChange={(e) => setOwnPrice(e.target.value)} />
@@ -10834,13 +11178,29 @@ function BidCard({ order, lang, courierProfileId, open, onToggle, onBidPlaced, o
               >
                 {busy ? '…' : t('submitBid', lang)}
               </button>
+              </>
+              )}
             </>
           )}
 
-          <div className="bid-footnote">{t('bidFootnote', lang)}</div>
         </div>
       </div>
     </div>
+  )
+}
+
+function LimbaInstructiuni({ lang }) {
+  const [limba, setLimba] = useLimbaGhid(lang)
+  return (
+    <label style={{ display: 'block', margin: '14px 0 4px', textAlign: 'left' }}>
+      <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-soft)', marginBottom: 6 }}>
+        🌐 {lang === 'en' ? 'Language of instructions' : 'Sprache der Hinweise'}
+      </span>
+      <select value={limba} onChange={(e) => setLimba(e.target.value)}
+        style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid #C9D1DD', fontSize: 15, background: '#fff', color: '#0F2240' }}>
+        {BOTEN_INFO_LIMBI.map(([cod, nume]) => <option key={cod} value={cod}>{nume}</option>)}
+      </select>
+    </label>
   )
 }
 
@@ -11017,6 +11377,10 @@ function ProfileScreen({ session, profile, isOwner, lang, onChangeLang, onProfil
       <h2>{t('tabProfile', lang)}</h2>
 
       <LangSwitcher lang={lang} onChangeLang={onChangeLang} />
+
+      {/* Limba instrucţiunilor (ferestrele de la plecare, ridicare, livrare):
+          aleasă o singură dată aici şi folosită peste tot (05.11.2026). */}
+      <LimbaInstructiuni lang={lang} />
 
       <div className="profile-photo-row">
         {profile?.photo_url ? (

@@ -10967,7 +10967,10 @@ function BidCard({ order, lang, courierProfileId, open, onToggle, onBidPlaced, o
 
         <div className="bc-facts">
           <span className="bc-fact">
+            {/* Scris „Lieferung:", nu doar steguleţul (05.11.2026): simbolul
+                singur nu spunea că e intervalul de livrare. */}
             <FlagTriangleRight size={13} strokeWidth={1.8} />
+            <strong style={{ fontWeight: 600 }}>{t('delivery', lang)}:</strong>
             {order.delivery_fixed ? (
               <span className="fixed-time-badge">{fmtDate(order.delivery_date)}{order.delivery_time ? ` · ${fmtTime(order.delivery_time)}` : ''}</span>
             ) : (

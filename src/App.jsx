@@ -7269,6 +7269,8 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
   const modDoc = order.doc_mode || 'ask'
   const esteMarfa = !isDocumentDelivery
   const cereDocument = esteMarfa && modDoc === 'cmr'
+  // Marfă fără CMR: documentul e opţional — butonul lui stă jos, mic, sub semnătură.
+  const docOptionalJos = !isDocumentDelivery && !cereDocument
   const cereSemnatura = esteMarfa && modDoc === 'signature'
   // Comenzile vechi, fără dovadă aleasă ('ask'), nu mai întreabă nimic.
   //
@@ -8184,7 +8186,7 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
       {/* La ridicarea de documente fără Botenbestätigung nu e nimic de urcat
           (Zustellprotokoll-ul e încă necompletat) — butonul nu mai apare
           (18.10.2026). */}
-      {!(isDocumentDelivery && !esteLivrareEtapa && !cereBoten) && (
+      {!(isDocumentDelivery && !esteLivrareEtapa && !cereBoten) && !docOptionalJos && (
       <>
       <div className="pod-label">
         {esteEtapaLivrareDoc ? `${t('docTypeProtocol', lang)} · ${t('requiredWord', lang)}` : t('documentsLabel', lang)}
@@ -8254,6 +8256,25 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
         </>
       )}
       </>
+      )}
+
+      {/* Marfă fără CMR (semnătură în aplicaţie sau fără dovadă cerută): un
+          document e doar opţional — mic, sub semnătură, chiar înainte de
+          confirmare (05.11.2026, cerut de Andrei). */}
+      {docOptionalJos && (
+        <div style={{ marginTop: 14 }}>
+          <div className="pod-label" style={{ fontSize: 12.5, opacity: 0.85 }}>
+            {t('documentsLabel', lang)} · <span style={{ fontWeight: 500 }}>optional</span>
+          </div>
+          <button
+            type="button"
+            className="link-btn"
+            style={{ width: '100%', padding: '8px 10px', border: '1px dashed #C9D1DD', borderRadius: 9, fontSize: 14, background: 'transparent', color: 'var(--navy)' }}
+            onClick={() => setDocCaptureOpen(true)}
+          >
+            + {t('addDocument', lang)}
+          </button>
+        </div>
       )}
 
       {uploadError && (

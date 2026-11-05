@@ -306,6 +306,8 @@ const translations = {
     // --- Upload-Warteschlange / Offline (Batch 1) ---
     retryLabel: 'Erneut versuchen',
     retryAllLabel: 'Alle erneut senden',
+    removeBrokenLabel: 'Fehlerhafte Fotos löschen',
+    brokenPhotoNote: 'Dieses Foto ist beschädigt und kann nicht gesendet werden. Bitte löschen und neu aufnehmen.',
     requiredBeforeConfirm: 'Vor dem Abschluss erforderlich:',
     requiredWord: 'Pflicht',
     requireCmrTitle: 'CMR erforderlich',
@@ -943,6 +945,8 @@ const translations = {
     // --- Upload queue / offline (batch 1) ---
     retryLabel: 'Retry',
     retryAllLabel: 'Send all again',
+    removeBrokenLabel: 'Delete broken photos',
+    brokenPhotoNote: 'This photo is damaged and cannot be sent. Please delete it and take it again.',
     requiredBeforeConfirm: 'Required before finishing:',
     requiredWord: 'required',
     requireCmrTitle: 'CMR required',

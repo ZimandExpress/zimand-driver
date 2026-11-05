@@ -56,7 +56,10 @@ function PhotoTile({ file, lang, onRemove, onRetry, onOpen }) {
         // Atins pe poză ȘTERGEA, pe loc și fără întrebare. Șoferul care
         // voia doar să vadă ce-a ieșit rămânea fără poză și fără marfa în
         // faţă. Acum se deschide mare, iar ștersul e un buton acolo.
-        if (file.status === 'failed') onRetry(file.id)
+        // 05.11.2026: o poză căzută LA PRELUCRARE (fără conţinut) nu se poate
+        // retrimite — atinsă, doar „reîncerca" degeaba şi nu se putea şterge,
+        // iar livrarea rămânea blocată. Acum se deschide, cu butonul de şters.
+        if (file.status === 'failed' && file.blob) onRetry(file.id)
         else if (!busy) onOpen(file)
       }}
     >
@@ -109,7 +112,9 @@ function PhotoPreview({ file, lang, onClose, onDelete }) {
     >
       {url
         ? <img src={url} alt="" style={{ maxWidth: '100%', maxHeight: '75vh', objectFit: 'contain', borderRadius: 10, background: '#fff' }} />
-        : <div style={{ color: '#fff', fontSize: 14 }}>{t('photoOpenLabel', lang)}</div>}
+        : <div style={{ color: '#fff', fontSize: 14, textAlign: 'center', lineHeight: 1.5, maxWidth: 420 }}>
+            {file.status === 'failed' && !file.blob ? t('brokenPhotoNote', lang) : t('photoOpenLabel', lang)}
+          </div>}
       <div style={{ display: 'flex', gap: 10, marginTop: 18, width: '100%', maxWidth: 420 }}>
         <button
           type="button"
@@ -325,6 +330,20 @@ export default function PodFiles({ orderId, leg, lang, maxPhotos = 6, minPhotos 
               >
                 ↻ {t('retryAllLabel', lang)}
               </button>
+              {/* Fişierele fără conţinut (prelucrarea a eşuat) nu pleacă
+                  niciodată: se pot doar şterge, ca livrarea să nu rămână blocată. */}
+              {files.some((f) => f.status === 'failed' && !f.blob) && (
+                <button
+                  onClick={() => { files.filter((f) => f.status === 'failed' && !f.blob).forEach((f) => { void removeFile(f.id) }) }}
+                  style={{
+                    marginTop: 7, width: '100%', padding: '9px 12px', borderRadius: 8,
+                    border: `1px solid ${RED}`, background: '#fff', color: RED,
+                    fontSize: 13.5, fontWeight: 700, cursor: 'pointer',
+                  }}
+                >
+                  🗑 {t('removeBrokenLabel', lang)}
+                </button>
+              )}
             </>
           )}
           <div style={{ marginTop: 4, opacity: .75, color: NAVY }}>

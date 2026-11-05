@@ -10743,8 +10743,15 @@ function BiddingScreen({ profile, session, lang, embedded }) {
           „Meine Angebote". Mutarea se facea deja, dar fara niciun cuvant:
           omul apasa, cardul se evapora, si nu stia daca oferta a plecat
           sau s-a pierdut. Acum i se spune unde s-a dus, cinci secunde. */}
+      {/* Fix pe ecran, sus (05.11.2026): în listă, anunţul stătea deasupra
+          primei comenzi — cine licita pe o comandă de mai jos avea lista
+          derulată şi nu-l vedea deloc. */}
       {mutata && (
-        <div className="new-order-toast" style={{ background: '#1F7A50' }}>
+        <div className="new-order-toast" style={{
+          background: '#1F7A50', position: 'fixed', zIndex: 9000, left: 12, right: 12,
+          top: 'calc(12px + env(safe-area-inset-top, 0px))', margin: 0,
+          boxShadow: '0 6px 20px rgba(15,34,64,.3)', maxWidth: 520, marginInline: 'auto',
+        }} onClick={() => setMutata(false)}>
           <CheckCircle2 size={16} strokeWidth={2} /> {tn('bidMovedToOffers', citesteLimba(lang))}
         </div>
       )}

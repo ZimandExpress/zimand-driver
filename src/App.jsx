@@ -4977,7 +4977,8 @@ function SignatureLine({ lang, signatureBlob, onChange, obligatoriu }) {
           <div className="sig-fullscreen-canvas">
             <SignaturePad onChange={onChange} initial={signatureBlob} />
           </div>
-          <button type="button" className="btn" style={{ margin: 16 }} onClick={() => setOpen(false)}>
+          {/* Deasupra barei de navigare Android (aplicația din Play desenează pe tot ecranul). */}
+          <button type="button" className="btn" style={{ margin: '16px 16px calc(16px + env(safe-area-inset-bottom, 0px))' }} onClick={() => setOpen(false)}>
             {t('doneLabel', lang)}
           </button>
         </div>

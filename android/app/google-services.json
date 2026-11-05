@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "538492651640",
+    "project_id": "zimand-driver",
+    "storage_bucket": "zimand-driver.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:538492651640:android:0a9fe43f36928f1ff1c58d",
+        "android_client_info": {
+          "package_name": "com.zimandsoftware.driver"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBgL9wU_5YZHSWb-i-pk5p3NwUXm9cnfUc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

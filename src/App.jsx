@@ -1,5 +1,6 @@
 import { Component, useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import { createPortal } from 'react-dom'
+import { Capacitor, registerPlugin } from '@capacitor/core'
 import { supabase, MULTI_TENANT, BACKEND, SUPABASE_URL, SUPABASE_ANON_KEY, VAPID_PUBLIC_KEY_PLATFORMA, codFirmaSalvat, codFirmaValid, alegeFirma, clientPentru, seteazaBackend, salveazaCodFirma } from './supabaseClient'
 import { t, getLang, setLang, availableLangs } from './i18n'
 import { Maximize2, ArrowLeft as ArrowLeftMap, Eye, Play, ClipboardList, Pause, SlidersHorizontal, Building2, StickyNote, Receipt, Package, Repeat, Hourglass, Camera, Image as ImageIcon, Mail, Ruler, ChevronDown, Lock, Phone, Truck, CheckCircle2, Wallet, User, LogOut, Menu, Bell, MapPin, FlagTriangleRight, Tag, XCircle, Download, X, Navigation, Trophy, ThumbsUp, ArrowUpFromLine, ArrowDownToLine, EyeOff, Layers, AlertTriangle, Clock, FileText, Signature, BookOpen, Info as InfoIcon } from 'lucide-react'
@@ -32,6 +33,15 @@ import { analyzeDocumentPhoto } from './services/imageQuality'
 // prinsă în tăcere, deci raportul se salva — doar că fără nicio poză, iar
 // nici șoferul, nici dispecerul nu aflau.
 import { processImage, PHOTO_PRESET } from './services/imageService'
+
+// --- Locația în fundal (doar în aplicația Android din Google Play) ----------
+//
+// În browser (PWA) totul rămâne ca înainte: navigator.geolocation, doar cât
+// aplicația e deschisă. În aplicația Android, modulul nativ BackgroundGeolocation
+// continuă să trimită poziția și cu ecranul stins sau cu navigația deschisă,
+// cu notificarea permanentă cerută de Android.
+const ESTE_APP_NATIVA = Capacitor.isNativePlatform()
+const BackgroundGeolocation = registerPlugin('BackgroundGeolocation')
 
 // --- Comenzile, aşa cum le vede o firmă de transport ------------------------
 //
@@ -811,6 +821,8 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
   const [menuOpen, setMenuOpen] = useState(false)
   const isOwner = profile?.account_type === 'owner_operator'
   const watchIdRef = useRef(null)
+  // Id-ul (promisiunea id-ului) urmăritorului nativ din aplicația Android.
+  const watcherNativRef = useRef(null)
   // Starea permisiunii de locaţie: și pe ecranul șoferului, și în bază,
   // pentru dispecerat. Un refuz scris doar în consolă nu-l citește nimeni.
   const [stareLocatie, setStareLocatie] = useState(null)
@@ -952,6 +964,14 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
     }
   }, [menuBids, isOwner])
 
+  // Oprește urmăritorul nativ de locație (doar în aplicația Android).
+  const opresteWatcherNativ = () => {
+    const p = watcherNativRef.current
+    if (!p) return
+    watcherNativRef.current = null
+    p.then((id) => { if (id) BackgroundGeolocation.removeWatcher({ id }) }).catch(() => {})
+  }
+
   // Send GPS position continuously while profile.is_online is true —
   // starts/stops automatically whenever the toggle in Profile changes it.
   useEffect(() => {
@@ -960,6 +980,7 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
         navigator.geolocation.clearWatch(watchIdRef.current)
         watchIdRef.current = null
       }
+      opresteWatcherNativ()
       return
     }
 
@@ -984,7 +1005,7 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
     // știe deja răspunsul — și se poate afla când șoferul schimbă setarea cu
     // aplicaţia deschisă, fără să o repornească.
     let opresteAscultarea = null
-    if (navigator.permissions?.query) {
+    if (!ESTE_APP_NATIVA && navigator.permissions?.query) {
       navigator.permissions.query({ name: 'geolocation' })
         .then((p) => {
           if (p.state === 'denied') scrieStare('denied')
@@ -1028,6 +1049,36 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
         .then(({ error }) => {
           if (error) console.error('location update error:', error.message)
         })
+    }
+
+    // Aplicația Android: modulul nativ trimite poziția și în fundal. Aceleași
+    // praguri de scriere (sendPosition), aceeași stare în `location_status`.
+    if (ESTE_APP_NATIVA) {
+      opresteWatcherNativ()
+      watcherNativRef.current = BackgroundGeolocation.addWatcher(
+        {
+          backgroundTitle: 'Zimand Driver',
+          backgroundMessage: 'Standort aktiv – die Disposition sieht deine Position.',
+          requestPermissions: true,
+          stale: false,
+          distanceFilter: 50,
+        },
+        (location, error) => {
+          if (error) {
+            console.error('background geolocation error:', error.message)
+            scrieStare(error.code === 'NOT_AUTHORIZED' ? 'denied' : 'unavailable')
+            return
+          }
+          if (!location) return
+          scrieStare('granted')
+          sendPosition({ latitude: location.latitude, longitude: location.longitude })
+        }
+      ).catch((e) => {
+        console.error('background geolocation start error:', e?.message)
+        scrieStare('unavailable')
+        return null
+      })
+      return () => { opresteWatcherNativ() }
     }
 
     const MOTIVE = { 1: 'denied', 2: 'unavailable', 3: 'timeout' }

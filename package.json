@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@capacitor/core": "^7.6.10",
     "@supabase/supabase-js": "^2.45.0",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.400.0",

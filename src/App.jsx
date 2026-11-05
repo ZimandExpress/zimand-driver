@@ -7012,6 +7012,28 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
   // distanţă. Poziţia se măsoară şi se salvează în continuare.
   const distanta = useDistantaFataDe(tintaEtapei, !order.proximity_check_off, isDocumentDelivery ? PRAG_METRI : PRAG_METRI_MARFA)
   const [avertismentDistanta, setAvertismentDistanta] = useState(null)
+  // La fiecare atingere pe un buton blocat de distanță, pagina urcă singură la
+  // avertisment și îl evidențiază scurt (05.11.2026, cerut de Andrei): fără
+  // asta, avertismentul apărea sus, în afara ecranului, iar un șofer nou
+  // vedea doar că butonul „nu merge".
+  const refAvertismentDistanta = useRef(null)
+  const [atentieDistanta, setAtentieDistanta] = useState(0)
+  const arataAvertismentDistanta = (metri) => {
+    setAvertismentDistanta(metri)
+    setAtentieDistanta((n) => n + 1)
+  }
+  useEffect(() => {
+    if (!atentieDistanta) return
+    const id = requestAnimationFrame(() => {
+      const el = refAvertismentDistanta.current
+      if (!el) return
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      el.classList.remove('zd-atentie')
+      void el.offsetWidth // repornește animația și la a doua atingere
+      el.classList.add('zd-atentie')
+    })
+    return () => cancelAnimationFrame(id)
+  }, [atentieDistanta])
   const [limbaDeparte, setLimbaDeparte] = useState(() => citesteLimba(lang))
   // Avertismentul „prea departe", într-un singur loc (29.10.2026). Era
   // desenat doar pe ecranul de dinainte de sosire; la finalizare butonul îl
@@ -7022,7 +7044,7 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
           // În limba aleasă de şofer, cu un selector mic în colţ (18.10.2026).
           const trD = DEPARTE_LIMBI[limbaDeparte] || DEPARTE_LIMBI.de
           return (
-          <div style={{
+          <div ref={refAvertismentDistanta} style={{
             marginTop: 8, padding: '10px 12px', borderRadius: 9,
             background: '#FCEBE8', border: '1px solid #E4A296', color: '#B23A24',
             fontSize: 13, lineHeight: 1.55,
@@ -7700,7 +7722,7 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
             // sau a trecut peste el. Cât timp telefonul ştie SIGUR unde e şi
             // e dincolo de prag, nu se marchează nimic.
             if (distanta.preaDeparte) {
-              setAvertismentDistanta(distanta.metri)
+              arataAvertismentDistanta(distanta.metri)
               return
             }
             // La livrarea de documente, regulile apar ÎNAINTE de marcarea
@@ -8138,7 +8160,7 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
             return
           }
           if (distanta.preaDeparte) {
-            setAvertismentDistanta(distanta.metri)
+            arataAvertismentDistanta(distanta.metri)
             return
           }
           // Ridicare de documente: întâi întrebarea despre Zustellprotokoll.

@@ -7723,6 +7723,23 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
   // derula sau apăsa butoane), chiar și după revenirea la comandă.
   useEffect(() => {}, [arrivedAt])
 
+  // După „Angekommen", pagina urcă singură sus, la începutul confirmării
+  // (05.11.2026, cerut de Andrei): rămânea derulată jos, unde fusese butonul,
+  // iar şoferul vedea mijlocul formularului în loc de adresă şi poze.
+  // Doar la trecerea de la „neajuns" la „ajuns" — nu la fiecare deschidere.
+  const arrivedAnterior = useRef(arrivedAt)
+  useEffect(() => {
+    const acumAjuns = !!arrivedAt && !arrivedAnterior.current
+    arrivedAnterior.current = arrivedAt
+    if (!acumAjuns) return
+    const id = requestAnimationFrame(() => {
+      // Pe telefon derulează pagina; pe calculator (rama de telefon) derulează #root.
+      try { window.scrollTo({ top: 0, behavior: 'smooth' }) } catch { window.scrollTo(0, 0) }
+      try { document.getElementById('root')?.scrollTo({ top: 0, behavior: 'smooth' }) } catch { /* nimic */ }
+    })
+    return () => cancelAnimationFrame(id)
+  }, [arrivedAt])
+
   // Calculat aici, după ce sunt cunoscute tipul dovezii (CMR / semnătură),
   // nu sus: acelea se declară mai jos în componentă.
   const ghidChei = () => isDocumentDelivery

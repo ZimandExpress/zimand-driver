@@ -42,6 +42,7 @@ import { processImage, PHOTO_PRESET } from './services/imageService'
 // cu notificarea permanentă cerută de Android.
 const ESTE_APP_NATIVA = Capacitor.isNativePlatform()
 const BackgroundGeolocation = registerPlugin('BackgroundGeolocation')
+const PushNotifications = registerPlugin('PushNotifications')
 
 // --- Comenzile, aşa cum le vede o firmă de transport ------------------------
 //
@@ -1110,6 +1111,24 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
     getPushSubscriptionStatus().then(setStareNotificari).catch(() => setStareNotificari('unsupported'))
   }, [tab])
 
+  // Aplicația Android: la fiecare pornire reîmprospătăm tokenul FCM (Google
+  // îl poate schimba), iar apăsarea pe o notificare deschide pagina din ea.
+  useEffect(() => {
+    if (!ESTE_APP_NATIVA || !profile?.id) return
+    if (fcmTokenSalvat()) {
+      PushNotifications.checkPermissions()
+        .then((p) => { if (p.receive === 'granted') return inregistreazaFcm(profile.id) })
+        .catch((e) => console.error('FCM refresh error:', e?.message))
+    }
+    const h = PushNotifications.addListener('pushNotificationActionPerformed', (a) => {
+      const url = a?.notification?.data?.url
+      if (url && url.startsWith('/') && url !== window.location.pathname + window.location.search) {
+        window.location.href = url
+      }
+    })
+    return () => { h.then((x) => x.remove()).catch(() => {}) }
+  }, [profile?.id])
+
   const lipsesteOnline = !profile?.is_online
   const lipsescNotificarile = stareNotificari === 'unsubscribed'
 
@@ -2152,7 +2171,79 @@ function urlBase64ToUint8Array(base64String) {
   return Uint8Array.from([...rawData].map((c) => c.charCodeAt(0)))
 }
 
+// --- Notificări native (doar în aplicația Android din Google Play) ----------
+//
+// În aplicația Android notificările nu merg prin browser (WebView-ul nu are
+// Web Push), ci prin Firebase Cloud Messaging. Tokenul FCM se salvează în
+// același tabel push_subscriptions, cu endpoint „fcm:<token>", ca funcțiile
+// de trimitere să știe pe ce cale îl trimit. În browser nu se schimbă nimic.
+const FCM_TOKEN_KEY = 'zd_fcm_token'
+
+function fcmTokenSalvat() {
+  try { return localStorage.getItem(FCM_TOKEN_KEY) } catch { return null }
+}
+
+// Canalele de notificare Android, cu sunetele aplicației (res/raw).
+// Sunetul unui canal nu se mai poate schimba după creare — de aceea au
+// id-uri fixe; un sunet nou ar cere un canal nou.
+async function creeazaCanaleNative() {
+  await PushNotifications.createChannel({
+    id: 'neue_auftraege',
+    name: 'Neue Aufträge',
+    description: 'Neue Aufträge und Ausschreibungen',
+    importance: 5,
+    visibility: 1,
+    sound: 'neuer_auftrag',
+    vibration: true,
+    lights: true,
+    lightColor: '#FF7A29',
+  })
+  await PushNotifications.createChannel({
+    id: 'auftrag_status',
+    name: 'Auftragsstatus',
+    description: 'Zuschläge, Bestätigungen und Änderungen an Aufträgen',
+    importance: 4,
+    visibility: 1,
+    sound: 'auftrag_bestaetigt',
+    vibration: true,
+  })
+}
+
+// Cere tokenul FCM și îl salvează pentru șofer. Folosit la abonare și la
+// fiecare pornire (Google poate schimba tokenul oricând).
+async function inregistreazaFcm(driverId) {
+  await creeazaCanaleNative()
+  const token = await new Promise((resolve, reject) => {
+    let gata = false
+    const handles = []
+    const termina = (fn, v) => {
+      if (gata) return
+      gata = true
+      handles.forEach((h) => h.then((x) => x.remove()).catch(() => {}))
+      fn(v)
+    }
+    handles.push(PushNotifications.addListener('registration', (t) => termina(resolve, t.value)))
+    handles.push(PushNotifications.addListener('registrationError', (e) => termina(reject, new Error(e?.error || 'FCM registration failed'))))
+    setTimeout(() => termina(reject, new Error('FCM registration timeout')), 20000)
+    PushNotifications.register().catch((e) => termina(reject, e))
+  })
+  const vechi = fcmTokenSalvat()
+  if (vechi && vechi !== token) {
+    await supabase.from('push_subscriptions').delete().eq('endpoint', 'fcm:' + vechi)
+  }
+  const { error } = await supabase.from('push_subscriptions').upsert(
+    { driver_id: driverId, endpoint: 'fcm:' + token, p256dh: 'fcm', auth: 'fcm' },
+    { onConflict: 'endpoint' }
+  )
+  if (error) throw error
+  try { localStorage.setItem(FCM_TOKEN_KEY, token) } catch {}
+}
+
 async function getPushSubscriptionStatus() {
+  if (ESTE_APP_NATIVA) {
+    const perm = await PushNotifications.checkPermissions()
+    return perm.receive === 'granted' && fcmTokenSalvat() ? 'subscribed' : 'unsubscribed'
+  }
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) return 'unsupported'
   const reg = await navigator.serviceWorker.ready
   const sub = await reg.pushManager.getSubscription()
@@ -2178,6 +2269,12 @@ function subscriptionUsesCurrentKey(sub) {
 }
 
 async function subscribePush(driverId) {
+  if (ESTE_APP_NATIVA) {
+    const perm = await PushNotifications.requestPermissions()
+    if (perm.receive !== 'granted') throw new Error('Berechtigung für Benachrichtigungen wurde nicht erteilt.')
+    await inregistreazaFcm(driverId)
+    return
+  }
   const reg = await navigator.serviceWorker.ready
   const permission = await Notification.requestPermission()
   if (permission !== 'granted') throw new Error('Berechtigung für Benachrichtigungen wurde nicht erteilt.')
@@ -2203,6 +2300,13 @@ async function subscribePush(driverId) {
 }
 
 async function unsubscribePush(driverId) {
+  if (ESTE_APP_NATIVA) {
+    const token = fcmTokenSalvat()
+    if (token) await supabase.from('push_subscriptions').delete().eq('endpoint', 'fcm:' + token)
+    try { localStorage.removeItem(FCM_TOKEN_KEY) } catch {}
+    await PushNotifications.unregister().catch(() => {})
+    return
+  }
   const reg = await navigator.serviceWorker.ready
   const sub = await reg.pushManager.getSubscription()
   if (sub) {

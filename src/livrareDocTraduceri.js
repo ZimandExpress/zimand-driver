@@ -268,3 +268,32 @@ export const PLECARE_DOC = {
   lt: ['Dokumentų pristatymas: be Zustellprotokoll pristatyti negalima.', 'Zustellprotokoll paėmimo metu jums duoda užsakovas – atspausdintą. Jei jo nėra: paėmimo neužbaikite, paprašykite jo užsakovo.', 'Keli gavėjai: po vieną lapą kiekvienam.'],
   lv: ['Dokumentu piegāde: bez Zustellprotokoll piegāde nav iespējama.', 'Zustellprotokoll saņemšanas laikā jums iedod pasūtītājs – izdrukātu. Ja tā nav: nepabeidziet saņemšanu, palūdziet to pasūtītājam.', 'Vairāki saņēmēji: viena lapa katram.'],
 }
+
+// BOTE_FORMULAR (05.11.2026): legenda imaginii cu Übergabe- und
+// Botenbestätigung de la ridicare — [portocaliu = expeditorul, verde = curierul,
+// regula variantelor din secţiunea 4].
+export const BOTE_FORMULAR = {
+  de: ['Orange: füllt der Absender aus (Abschnitt 3).', 'Grün: füllen Sie aus (Abschnitt 4).', 'Nur EINE Variante ankreuzen: 1 = Dokument offen gesehen, 2 = verschlossener Umschlag.'],
+  en: ['Orange: filled in by the sender (section 3).', 'Green: filled in by you (section 4).', 'Tick only ONE option: 1 = you saw the document open, 2 = sealed envelope.'],
+  ro: ['Portocaliu: completează expeditorul (secțiunea 3).', 'Verde: completați dumneavoastră (secțiunea 4).', 'Bifați o SINGURĂ variantă: 1 = ați văzut documentul deschis, 2 = plic închis.'],
+  pl: ['Pomarańczowe: wypełnia nadawca (sekcja 3).', 'Zielone: wypełnia Pan/Pani (sekcja 4).', 'Zaznacz tylko JEDNĄ opcję: 1 = dokument widziany otwarty, 2 = zamknięta koperta.'],
+  bg: ['Оранжево: попълва подателят (раздел 3).', 'Зелено: попълвате Вие (раздел 4).', 'Отбележете само ЕДИН вариант: 1 = видян отворен документ, 2 = затворен плик.'],
+  hu: ['Narancs: a feladó tölti ki (3. szakasz).', 'Zöld: Ön tölti ki (4. szakasz).', 'Csak EGY változatot jelöljön: 1 = nyitott dokumentumot látott, 2 = lezárt boríték.'],
+  cs: ['Oranžová: vyplní odesílatel (oddíl 3).', 'Zelená: vyplníte vy (oddíl 4).', 'Zaškrtněte jen JEDNU variantu: 1 = dokument viděn otevřený, 2 = zalepená obálka.'],
+  sk: ['Oranžová: vyplní odosielateľ (oddiel 3).', 'Zelená: vyplníte vy (oddiel 4).', 'Zaškrtnite len JEDNU variantu: 1 = dokument videný otvorený, 2 = zalepená obálka.'],
+  hr: ['Narančasto: ispunjava pošiljatelj (odjeljak 3).', 'Zeleno: ispunjavate vi (odjeljak 4).', 'Označite samo JEDNU varijantu: 1 = dokument viđen otvoren, 2 = zatvorena omotnica.'],
+  sr: ['Narandžasto: popunjava pošiljalac (odeljak 3).', 'Zeleno: popunjavate vi (odeljak 4).', 'Označite samo JEDNU varijantu: 1 = dokument viđen otvoren, 2 = zatvorena koverta.'],
+  sl: ['Oranžno: izpolni pošiljatelj (razdelek 3).', 'Zeleno: izpolnite vi (razdelek 4).', 'Označite samo ENO možnost: 1 = dokument viden odprt, 2 = zaprta ovojnica.'],
+  sq: ['Portokalli: e plotëson dërguesi (seksioni 3).', 'Jeshile: e plotësoni ju (seksioni 4).', 'Shënoni vetëm NJË variant: 1 = dokumenti u pa i hapur, 2 = zarf i mbyllur.'],
+  uk: ['Помаранчеве: заповнює відправник (розділ 3).', 'Зелене: заповнюєте ви (розділ 4).', 'Позначте лише ОДИН варіант: 1 = документ бачили відкритим, 2 = закритий конверт.'],
+  ru: ['Оранжевое: заполняет отправитель (раздел 3).', 'Зелёное: заполняете вы (раздел 4).', 'Отметьте только ОДИН вариант: 1 = документ видели открытым, 2 = закрытый конверт.'],
+  tr: ['Turuncu: gönderen doldurur (bölüm 3).', 'Yeşil: siz doldurursunuz (bölüm 4).', 'Yalnızca BİR seçeneği işaretleyin: 1 = belge açık görüldü, 2 = kapalı zarf.'],
+  it: ['Arancione: lo compila il mittente (sezione 3).', 'Verde: lo compila lei (sezione 4).', 'Barrare UNA sola variante: 1 = documento visto aperto, 2 = busta chiusa.'],
+  es: ['Naranja: lo rellena el remitente (sección 3).', 'Verde: lo rellena usted (sección 4).', 'Marque UNA sola opción: 1 = documento visto abierto, 2 = sobre cerrado.'],
+  fr: ['Orange : rempli par l’expéditeur (section 3).', 'Vert : rempli par vous (section 4).', 'Cochez UNE seule variante : 1 = document vu ouvert, 2 = enveloppe fermée.'],
+  pt: ['Laranja: preenchido pelo remetente (secção 3).', 'Verde: preenchido por si (secção 4).', 'Assinale só UMA opção: 1 = documento visto aberto, 2 = envelope fechado.'],
+  nl: ['Oranje: vult de afzender in (deel 3).', 'Groen: vult u in (deel 4).', 'Kruis slechts ÉÉN variant aan: 1 = document open gezien, 2 = gesloten envelop.'],
+  el: ['Πορτοκαλί: συμπληρώνει ο αποστολέας (ενότητα 3).', 'Πράσινο: συμπληρώνετε εσείς (ενότητα 4).', 'Σημειώστε μόνο ΜΙΑ επιλογή: 1 = είδατε το έγγραφο ανοιχτό, 2 = κλειστός φάκελος.'],
+  lt: ['Oranžinė: pildo siuntėjas (3 skyrius).', 'Žalia: pildote jūs (4 skyrius).', 'Pažymėkite tik VIENĄ variantą: 1 = dokumentas matytas atviras, 2 = užklijuotas vokas.'],
+  lv: ['Oranžs: aizpilda sūtītājs (3. sadaļa).', 'Zaļš: aizpildāt jūs (4. sadaļa).', 'Atzīmējiet tikai VIENU variantu: 1 = dokuments redzēts atvērts, 2 = aizlīmēta aploksne.'],
+}

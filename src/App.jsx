@@ -17,7 +17,7 @@ import { ZP_LIMBI, PLECARE_LIMBI, TRANSPORT_LIMBI, REGULI_LIMBI, RETUR_LIMBI, PO
 // Livrarea de documente, regulile noi (05.11.2026): cutia poştală numai cu
 // acelaşi nume de familie pe cutie şi pe plic, altfel dispeceratul. Înlocuiesc
 // paşii vechi în toate limbile, deci şi cardul comenzii arată la fel.
-import { PASI_ZUSTELLART_V2, ZP_PAGINA, RIDICARE_DOC, PLECARE_DOC } from './livrareDocTraduceri.js'
+import { PASI_ZUSTELLART_V2, ZP_PAGINA, RIDICARE_DOC, PLECARE_DOC, BOTE_FORMULAR } from './livrareDocTraduceri.js'
 Object.assign(PASI_ZUSTELLART, PASI_ZUSTELLART_V2)
 import './index.css'
 import PodFiles from './components/PodFiles'
@@ -6833,6 +6833,43 @@ function ReguliZustellung({ lang, zustellart, ales, onAck, waUrl }) {
   )
 }
 
+// Übergabe- und Botenbestätigung ADEVĂRATĂ (secţiunile 3 şi 4), cu rubricile
+// marcate: portocaliu = expeditorul, verde = curierul (cerut de Andrei pe
+// 05.11.2026, ca la Zustellprotokoll). [cine, stânga %, sus %, lăţime %, înălţime %]
+const BOTE_CAMPURI = [
+  ['a', 28.0, 15.9, 20.2, 3.7], ['a', 59.4, 15.9, 11.6, 3.7], ['a', 1.5, 21.0, 46.7, 4.2], ['a', 49.7, 21.0, 48.8, 4.2],
+  ['k', 1.9, 39.5, 2.1, 2.6], ['k', 1.9, 73.1, 2.1, 2.6], ['k', 6.0, 54.9, 2.2, 2.8], ['k', 6.0, 58.2, 2.2, 2.8], ['k', 4.1, 62.4, 2.2, 2.8],
+  ['k', 23.9, 67.1, 8.8, 3.5], ['k', 67.9, 67.1, 8.8, 3.5], ['k', 10.5, 76.6, 6.9, 2.8],
+  ['k', 30.7, 88.3, 17.6, 3.5], ['k', 59.4, 88.3, 11.6, 3.5], ['k', 1.5, 92.8, 46.7, 4.9], ['k', 49.7, 92.8, 48.8, 4.9],
+]
+
+function BoteFormular({ limba }) {
+  const tr = BOTE_FORMULAR[limba] || BOTE_FORMULAR.de
+  const culoare = { a: ['rgba(242,140,56,.22)', '#F28C38'], k: ['rgba(47,191,113,.22)', '#2FBF71'] }
+  const semn = (c) => <span style={{ display: 'inline-block', width: 14, height: 14, borderRadius: 3, background: culoare[c][0], border: `2px solid ${culoare[c][1]}`, flexShrink: 0, marginTop: 3 }} />
+  return (
+    <div style={{ marginBottom: 10 }}>
+      <div style={{ background: '#fff', border: '2px solid #0F2240', borderRadius: 10, padding: 8 }}>
+        <div style={{ position: 'relative', lineHeight: 0 }}>
+          <img src="/botenbestaetigung-felder.webp" alt="Übergabe- und Botenbestätigung" width={1080} height={864}
+               style={{ width: '100%', height: 'auto', display: 'block' }} />
+          {BOTE_CAMPURI.map(([c, x, y, w, h], i) => (
+            <div key={i} style={{
+              position: 'absolute', left: `${x}%`, top: `${y}%`, width: `${w}%`, height: `${h}%`,
+              background: culoare[c][0], border: `1.5px solid ${culoare[c][1]}`, borderRadius: 2,
+            }} />
+          ))}
+        </div>
+      </div>
+      <div style={{ fontSize: 14, color: '#0F2240', lineHeight: 1.45, marginTop: 9 }}>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 5 }}>{semn('a')}<span>{tr[0]}</span></div>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 5 }}>{semn('k')}<span>{tr[1]}</span></div>
+        <div style={{ fontWeight: 700, marginTop: 6 }}>{tr[2]}</div>
+      </div>
+    </div>
+  )
+}
+
 // Ridicarea de documente, la sosire (05.11.2026): o singură fereastră clară —
 // Zustellprotokoll, pozele cu plicul şi, când e comandată, Botenbestätigung.
 // Partea dinainte de „:" se îngroaşă, ca la paşii de livrare.
@@ -6865,6 +6902,7 @@ function DokRidicareSheet({ lang, cuBoten, onClose }) {
             <div style={{ fontSize: 15, fontWeight: 800, color: '#B4470F', marginBottom: 8, lineHeight: 1.35 }}>
               <ClipboardList size={16} style={{ verticalAlign: -3, marginRight: 6 }} />{tr.botenTitlu}
             </div>
+            <BoteFormular limba={limba} />
             <ol style={{ margin: 0, paddingLeft: 20, fontSize: 15, lineHeight: 1.5, color: '#0F2240' }}>
               {tr.boten.map((x, i) => (
                 <li key={i} style={{ marginBottom: 6, fontWeight: i === 2 ? 700 : 400 }}>{x}</li>

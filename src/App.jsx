@@ -17,7 +17,7 @@ import { ZP_LIMBI, PLECARE_LIMBI, TRANSPORT_LIMBI, REGULI_LIMBI, RETUR_LIMBI, PO
 // Livrarea de documente, regulile noi (05.11.2026): cutia poştală numai cu
 // acelaşi nume de familie pe cutie şi pe plic, altfel dispeceratul. Înlocuiesc
 // paşii vechi în toate limbile, deci şi cardul comenzii arată la fel.
-import { PASI_ZUSTELLART_V2, ZP_PAGINA } from './livrareDocTraduceri.js'
+import { PASI_ZUSTELLART_V2, ZP_PAGINA, RIDICARE_DOC } from './livrareDocTraduceri.js'
 Object.assign(PASI_ZUSTELLART, PASI_ZUSTELLART_V2)
 import './index.css'
 import PodFiles from './components/PodFiles'
@@ -6728,6 +6728,51 @@ function ReguliZustellung({ lang, zustellart, ales, onAck, waUrl }) {
   )
 }
 
+// Ridicarea de documente, la sosire (05.11.2026): o singură fereastră clară —
+// Zustellprotokoll, pozele cu plicul şi, când e comandată, Botenbestätigung.
+// Partea dinainte de „:" se îngroaşă, ca la paşii de livrare.
+function DokRidicareSheet({ lang, cuBoten, onClose }) {
+  const [limba, setLimba] = useState(() => citesteLimba(lang))
+  const tr = RIDICARE_DOC[limba] || RIDICARE_DOC.de
+  const ingrosat = (x) => {
+    const k = x.indexOf(':')
+    return k > 0 ? <><strong>{x.slice(0, k)}</strong>{x.slice(k)}</> : x
+  }
+  const pas = (n, continut) => (
+    <li style={{ display: 'flex', gap: 10, alignItems: 'flex-start', fontSize: 15.5, lineHeight: 1.5, color: '#0F2240', marginBottom: 12 }}>
+      <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: '50%', background: '#0F2240', color: '#fff', fontSize: 13, fontWeight: 800, flexShrink: 0, marginTop: 1 }}>{n}</span>
+      <span>{continut}</span>
+    </li>
+  )
+  return (
+    <div className="sig-fullscreen" style={{ justifyContent: 'flex-end', background: 'rgba(15,34,64,.55)', zIndex: 9990 }}>
+      <div style={{ background: '#fff', borderRadius: '16px 16px 0 0', padding: '20px 20px calc(20px + env(safe-area-inset-bottom))', maxHeight: '88vh', overflowY: 'auto' }}>
+        <SelectorLimba value={limba} onChange={setLimba} />
+        <div style={{ fontSize: 19, fontWeight: 800, color: '#0F2240', marginBottom: 14 }}>
+          <FileText size={19} strokeWidth={2} style={{ verticalAlign: -3, marginRight: 6 }} />{tr.titlu}
+        </div>
+        <ol style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+          {pas(1, ingrosat(tr.zp))}
+          {pas(2, ingrosat(tr.foto))}
+        </ol>
+        {cuBoten && (
+          <div style={{ background: '#FFF1E6', border: '2px solid #F28C38', borderRadius: 12, padding: '11px 13px', marginTop: 4 }}>
+            <div style={{ fontSize: 15, fontWeight: 800, color: '#B4470F', marginBottom: 8, lineHeight: 1.35 }}>
+              <ClipboardList size={16} style={{ verticalAlign: -3, marginRight: 6 }} />{tr.botenTitlu}
+            </div>
+            <ol style={{ margin: 0, paddingLeft: 20, fontSize: 15, lineHeight: 1.5, color: '#0F2240' }}>
+              {tr.boten.map((x, i) => (
+                <li key={i} style={{ marginBottom: 6, fontWeight: i === 2 ? 700 : 400 }}>{x}</li>
+              ))}
+            </ol>
+          </div>
+        )}
+        <button type="button" className="btn" style={{ width: '100%', margin: '14px 0 0' }} onClick={onClose}>{tr.buton}</button>
+      </div>
+    </div>
+  )
+}
+
 function BotenInfoSheet({ lang, onClose }) {
   const [limba, setLimba] = useState(() => {
     try { return localStorage.getItem('zd-boten-info-limba') || lang || 'de' } catch { return lang || 'de' }
@@ -7731,6 +7776,12 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
     <CmrLivrareSheet lang={lang} onClose={() => setGhidFaza(null)} />
   ) : ghidFaza === 'transport' ? (
     <TransportSheet lang={lang} onClose={() => setGhidFaza(null)} />
+  ) : ghidFaza === 'pickup' && isDocumentDelivery && !esteRetur ? (
+    // Ridicarea de documente: fereastra ei, clară, în locul instrucţiunilor
+    // generale; dacă e cu Botenbestätigung, o include, deci informarea
+    // separată nu mai apare după ea.
+    <DokRidicareSheet lang={lang} cuBoten={cereBoten}
+      onClose={() => { setGhidFaza(null); if (cereBoten) inchideBotenInfo() }} />
   ) : ghidFaza && (ghiduriFaza.length || sarcinaGhid) ? (
     <GhidSheet ghiduri={ghiduriFaza} faza={ghidFaza} lang={lang} cuBote={order.boten_confirmation === true} sarcina={sarcinaGhid} onClose={() => setGhidFaza(null)} />
   ) : null

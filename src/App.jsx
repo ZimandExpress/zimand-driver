@@ -6725,31 +6725,42 @@ function PasiZustellart({ limba, z, mic }) {
   )
 }
 
-// Zustellprotokoll desenat: rubricile de completat, numerotate, ca la CMR.
-// Etichetele sunt cele de pe hârtie (în germană); explicaţia vine dedesubt,
-// în limba şoferului.
+// Zustellprotokoll-ul ADEVĂRAT (secţiunile 2 şi 3, randate din formularul
+// tipărit), cu rubricile de completat de curier marcate în verde şi numerotate
+// în portocaliu (cerut de Andrei pe 05.11.2026 — desenul schematic de dinainte
+// era derutant). Poziţiile sunt în procente din imagine, deci se potrivesc pe
+// orice ecran. Explicaţia fiecărui număr vine dedesubt, în limba şoferului.
+// [număr, stânga %, sus %, lăţime %, înălţime %]
+const ZP_CAMPURI = [
+  [1, 88.0, 1.4, 9.8, 4.2],
+  [2, 0.9, 6.2, 3.1, 3.9], [2, 0.9, 27.1, 3.1, 3.9],
+  [3, 54.1, 16.2, 43.7, 4.6], [3, 3.7, 33.2, 43.7, 5.4], [3, 48.9, 33.2, 48.9, 5.4],
+  [4, 30.4, 76.4, 17.0, 3.9], [4, 52.2, 76.4, 10.0, 3.9],
+  [5, 67.6, 76.4, 30.2, 3.9],
+  [6, 1.9, 88.0, 45.6, 6.2], [6, 48.9, 88.0, 48.9, 6.2],
+]
+
 function ZpIllustratie({ h }) {
-  const nr = (n) => (
-    <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 20, height: 20, borderRadius: '50%', background: '#D64532', color: '#fff', fontSize: 12, fontWeight: 800, flexShrink: 0 }}>{n}</span>
+  const nr = (n, extra) => (
+    <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 20, height: 20, borderRadius: '50%', background: '#F28C38', color: '#fff', fontSize: 12, fontWeight: 800, flexShrink: 0, boxShadow: '0 1px 3px rgba(0,0,0,.3)', ...extra }}>{n}</span>
   )
-  const camp = (w) => <span style={{ display: 'inline-block', width: w, borderBottom: '2px solid #D64532', margin: '0 4px', height: 14, verticalAlign: 'bottom' }} />
-  const cutie = <span style={{ display: 'inline-block', width: 13, height: 13, border: '2px solid #D64532', borderRadius: 2, marginRight: 6, verticalAlign: -2 }} />
-  const rand = { display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: '#0F2240', lineHeight: 1.4, marginTop: 8, flexWrap: 'wrap' }
-  const sectiune = (t) => <div style={{ fontSize: 11.5, fontWeight: 800, color: '#fff', background: '#0F2240', borderRadius: 4, padding: '3px 7px', marginTop: 4 }}>{t}</div>
   return (
     <div>
-      <div style={{ background: '#fff', border: '2px solid #0F2240', borderRadius: 10, padding: '10px 12px', boxShadow: '0 2px 8px rgba(15,34,64,.12)' }}>
-        <div style={{ fontSize: 14, fontWeight: 800, color: '#0F2240', borderBottom: '1px solid #DCE3EE', paddingBottom: 6 }}>Zustellprotokoll</div>
-        {sectiune('2 · Ergebnis der Zustellung')}
-        <div style={rand}>{nr(1)} Anzahl zugestellter Umschläge {camp(36)}</div>
-        <div style={rand}>{nr(2)} <span>{cutie}In den Briefkasten gelegt</span></div>
-        <div style={{ ...rand, marginTop: 4, paddingLeft: 26 }}><span>{cutie}Persönlich an den Empfänger übergeben</span></div>
-        <div style={rand}>{nr(3)} Name am Briefkasten {camp(70)}</div>
-        <div style={{ ...rand, marginTop: 4, paddingLeft: 26 }}>Name + Unterschrift des Empfängers {camp(60)}</div>
-        {sectiune('3 · Kurier')}
-        <div style={rand}>{nr(4)} am {camp(52)} um {camp(34)} Uhr</div>
-        <div style={rand}>{nr(5)} in (Ort) {camp(90)}</div>
-        <div style={rand}>{nr(6)} Name + Unterschrift des Kuriers {camp(70)}</div>
+      <div style={{ background: '#fff', border: '2px solid #0F2240', borderRadius: 10, padding: '10px 10px 10px 24px', boxShadow: '0 2px 8px rgba(15,34,64,.12)' }}>
+        <div style={{ position: 'relative', lineHeight: 0 }}>
+          <img src="/zustellprotokoll-felder.webp" alt="Zustellprotokoll" width={1080} height={864}
+               style={{ width: '100%', height: 'auto', display: 'block' }} />
+          {ZP_CAMPURI.map(([n, x, y, w, hh], i) => (
+            <div key={i} style={{
+              position: 'absolute', left: `${x}%`, top: `${y}%`, width: `${w}%`, height: `${hh}%`,
+              background: 'rgba(47,191,113,.22)', border: '1.5px solid #2FBF71', borderRadius: 3,
+            }}>
+              {/* Numărul stă ÎN chenar, pe stânga, ca să nu acopere scrisul
+                  formularului; la căsuţele de bifat, mici, stă în stânga lor. */}
+              {nr(n, { position: 'absolute', left: w < 5 ? -21 : 3, top: '50%', transform: 'translateY(-50%)', width: 16, height: 16, fontSize: 10.5 })}
+            </div>
+          ))}
+        </div>
       </div>
       <ol style={{ listStyle: 'none', padding: 0, margin: '12px 0 0' }}>
         {h.map((x, i) => (

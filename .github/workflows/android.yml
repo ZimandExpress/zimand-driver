@@ -63,7 +63,8 @@ jobs:
             echo "Secretele cu cheia nu sunt setate — sar peste pachetul pentru Play."
             echo "are=false" >> "$GITHUB_OUTPUT"
           else
-            echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/upload.jks"
+            printf '%s' "$KS_B64" | tr -d '[:space:]' | base64 -d > "$RUNNER_TEMP/upload.jks"
+            echo "Mărime cheie: $(wc -c < "$RUNNER_TEMP/upload.jks") octeți"
             echo "are=true" >> "$GITHUB_OUTPUT"
           fi
 
@@ -72,10 +73,18 @@ jobs:
         working-directory: android
         env:
           ANDROID_KEYSTORE_FILE: ${{ runner.temp }}/upload.jks
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-        run: ./gradlew bundleRelease --no-daemon
+          PW_STORE: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          PW_KEY: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          # Spațiile sau rândurile goale copiate din greșeală în secrete strică parola.
+          curata() { printf '%s' "$1" | tr -d '\r\n' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'; }
+          export ANDROID_KEYSTORE_PASSWORD="$(curata "$PW_STORE")"
+          export ANDROID_KEY_PASSWORD="$(curata "$PW_KEY")"
+          export ANDROID_KEY_ALIAS="$(curata "$ALIAS")"
+          # Doar lungimile, nu valorile — ca să vedem dacă un secret e greșit copiat.
+          echo "Lungimi: parola fișier=${#ANDROID_KEYSTORE_PASSWORD}, parola cheie=${#ANDROID_KEY_PASSWORD}, alias=${#ANDROID_KEY_ALIAS}"
+          ./gradlew bundleRelease --no-daemon
 
       - uses: actions/upload-artifact@v4
         if: steps.cheie.outputs.are == 'true'

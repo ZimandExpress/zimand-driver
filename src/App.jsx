@@ -6472,6 +6472,9 @@ function useLimbaGhid(lang) {
 }
 // Varianta discretă: doar 🌐 şi codul limbii, ca un buton mic (18.10.2026).
 function SelectorLimbaMic({ value, onChange }) {
+  // Limba se alege acum o singură dată, în Profil (05.11.2026, cerut de
+  // Andrei): ferestrele nu mai au selector propriu, ca să fie mai aerisite.
+  if (!AFISEAZA_SELECTOR_IN_FERESTRE) return null
   return (
     <label style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: 3, flex: '0 0 auto',
       fontSize: 11.5, fontWeight: 700, color: '#8A3A2A', background: 'rgba(255,255,255,.7)', border: '1px solid #E4A296',
@@ -6488,7 +6491,9 @@ function SelectorLimbaMic({ value, onChange }) {
   )
 }
 
+const AFISEAZA_SELECTOR_IN_FERESTRE = false
 function SelectorLimba({ value, onChange }) {
+  if (!AFISEAZA_SELECTOR_IN_FERESTRE) return null
   return (
     <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#5A6878', marginBottom: 12 }}>
       🌐
@@ -6786,13 +6791,6 @@ function BotenInfoSheet({ lang, onClose }) {
   return (
     <div className="sig-fullscreen" style={{ justifyContent: 'flex-end', background: 'rgba(15,34,64,.55)', zIndex: 9991 }}>
       <div style={{ background: '#fff', borderRadius: '16px 16px 0 0', padding: '20px 20px calc(20px + env(safe-area-inset-bottom))', maxHeight: '88vh', overflowY: 'auto' }}>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#5A6878', marginBottom: 12 }}>
-          🌐
-          <select value={rand[0]} onChange={(e) => alege(e.target.value)}
-            style={{ flex: 1, padding: '9px 10px', borderRadius: 8, border: '1px solid #C9D1DD', fontSize: 15, background: '#fff', color: '#0F2240' }}>
-            {BOTEN_INFO_LIMBI.map(([cod, nume]) => <option key={cod} value={cod}>{nume}</option>)}
-          </select>
-        </label>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 10 }}>
           <div style={{ fontSize: 18, fontWeight: 800, color: '#B35A12', lineHeight: 1.3 }}>
             <ClipboardList size={18} style={{ verticalAlign: -3, marginRight: 6 }} />{titlu}
@@ -9559,13 +9557,6 @@ function GhidSheet({ ghiduri, faza, lang, onClose, cuBote = true, sarcina = null
   return (
     <div className="sig-fullscreen" style={{ justifyContent: 'flex-end', background: 'rgba(15,34,64,.55)', zIndex: 9990 }}>
       <div style={{ background: '#fff', borderRadius: '16px 16px 0 0', padding: '20px 20px calc(20px + env(safe-area-inset-bottom))', maxHeight: '88vh', overflowY: 'auto' }}>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#5A6878', marginBottom: 12 }}>
-          🌐
-          <select value={limba} onChange={(e) => alegeLimba(e.target.value)}
-            style={{ flex: 1, padding: '9px 10px', borderRadius: 8, border: '1px solid #C9D1DD', fontSize: 15, background: '#fff', color: '#0F2240' }}>
-            {BOTEN_INFO_LIMBI.map(([cod, nume]) => <option key={cod} value={cod}>{nume}</option>)}
-          </select>
-        </label>
         <div style={{ fontSize: 12.5, fontWeight: 600, color: '#5A6878', marginBottom: 2 }}>{titluFaza}</div>
         <div style={{ fontSize: 18, fontWeight: 700, color: '#0F2240', marginBottom: 10 }}>{ui('sheetTitle', 'guideSheetTitle')}</div>
         <SarcinaCard sarcina={sarcina} limba={limba} />
@@ -11099,6 +11090,21 @@ function BidCard({ order, lang, courierProfileId, open, onToggle, onBidPlaced, o
   )
 }
 
+function LimbaInstructiuni({ lang }) {
+  const [limba, setLimba] = useLimbaGhid(lang)
+  return (
+    <label style={{ display: 'block', margin: '14px 0 4px', textAlign: 'left' }}>
+      <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-soft)', marginBottom: 6 }}>
+        🌐 {lang === 'en' ? 'Language of instructions' : 'Sprache der Hinweise'}
+      </span>
+      <select value={limba} onChange={(e) => setLimba(e.target.value)}
+        style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid #C9D1DD', fontSize: 15, background: '#fff', color: '#0F2240' }}>
+        {BOTEN_INFO_LIMBI.map(([cod, nume]) => <option key={cod} value={cod}>{nume}</option>)}
+      </select>
+    </label>
+  )
+}
+
 function ProfileScreen({ session, profile, isOwner, lang, onChangeLang, onProfileChange }) {
   const [busy, setBusy] = useState(false)
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
@@ -11272,6 +11278,10 @@ function ProfileScreen({ session, profile, isOwner, lang, onChangeLang, onProfil
       <h2>{t('tabProfile', lang)}</h2>
 
       <LangSwitcher lang={lang} onChangeLang={onChangeLang} />
+
+      {/* Limba instrucţiunilor (ferestrele de la plecare, ridicare, livrare):
+          aleasă o singură dată aici şi folosită peste tot (05.11.2026). */}
+      <LimbaInstructiuni lang={lang} />
 
       <div className="profile-photo-row">
         {profile?.photo_url ? (

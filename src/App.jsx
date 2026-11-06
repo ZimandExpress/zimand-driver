@@ -1175,6 +1175,9 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
         if (anulat) return
         if (e?.code === 'DENIED') { scrieStare('denied'); return }
         console.warn('ZimandTracker indisponibil, folosesc modulul vechi:', e?.message)
+        // Raportat (06.11.2026): altfel nu aflăm de ce serviciul nativ nu
+        // porneşte pe un telefon (aplicaţie veche, cheie lipsă, refuz...).
+        try { window.__zdRaport && window.__zdRaport('tracker-nativ', `${e?.code || ''} ${e?.message || e}`.trim()) } catch { /* nimic */ }
         curataVechi = pornesteBgVechi()
       })
 

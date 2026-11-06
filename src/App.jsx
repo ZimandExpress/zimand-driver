@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { Capacitor, registerPlugin } from '@capacitor/core'
 import { supabase, MULTI_TENANT, BACKEND, SUPABASE_URL, SUPABASE_ANON_KEY, VAPID_PUBLIC_KEY_PLATFORMA, codFirmaSalvat, codFirmaValid, alegeFirma, clientPentru, seteazaBackend, salveazaCodFirma } from './supabaseClient'
 import { t, getLang, setLang, availableLangs } from './i18n'
-import { Maximize2, ArrowLeft as ArrowLeftMap, Eye, Play, ClipboardList, Pause, SlidersHorizontal, Building2, StickyNote, Receipt, Package, Repeat, Hourglass, Camera, Image as ImageIcon, Mail, Ruler, ChevronDown, Lock, Phone, Truck, CheckCircle2, Wallet, User, LogOut, Menu, Bell, MapPin, FlagTriangleRight, Tag, XCircle, Download, X, Navigation, Trophy, ThumbsUp, ArrowUpFromLine, ArrowDownToLine, EyeOff, Layers, AlertTriangle, Clock, FileText, Signature, BookOpen, Info as InfoIcon } from 'lucide-react'
+import { RefreshCw, Maximize2, ArrowLeft as ArrowLeftMap, Eye, Play, ClipboardList, Pause, SlidersHorizontal, Building2, StickyNote, Receipt, Package, Repeat, Hourglass, Camera, Image as ImageIcon, Mail, Ruler, ChevronDown, Lock, Phone, Truck, CheckCircle2, Wallet, User, LogOut, Menu, Bell, MapPin, FlagTriangleRight, Tag, XCircle, Download, X, Navigation, Trophy, ThumbsUp, ArrowUpFromLine, ArrowDownToLine, EyeOff, Layers, AlertTriangle, Clock, FileText, Signature, BookOpen, Info as InfoIcon } from 'lucide-react'
 import { GHID_TRADUCERI, GHID_UI } from './ghidTraduceri.js'
 import { GHID_TRADUCERI_MARFA } from './ghidTraduceriMarfa.js'
 import { CMR_LIVRARE_LIMBI } from './cmrLivrareTraduceri.js'
@@ -2495,6 +2495,79 @@ function VehiclesScreen({ session, isOwner, lang }) {
   )
 }
 
+// Tras cu degetul în jos, din capul listei → reîmprospătare (06.11.2026).
+// În aplicaţia Android nu există gestul ăsta de la sine (e o pagină web în
+// interior). Nu reîncarcă pagina: trimite semnalul „focus", la care listele
+// (licitaţii, cursele mele, numărul de licitaţii) se reîncarcă deja singure.
+// Nu porneşte din ferestrele deschise peste ecran şi nici dacă lista nu e sus.
+const PRAG_TRAGERE = 70
+function useTragePentruReimprospatare(activ) {
+  const [tras, setTras] = useState(0)
+  const [lucreaza, setLucreaza] = useState(false)
+  useEffect(() => {
+    if (!activ) return
+    let y0 = null
+    let dist = 0
+    const blocat = (el) => {
+      for (let n = el; n && n !== document.body; n = n.parentElement) {
+        const st = getComputedStyle(n)
+        if (st.position === 'fixed') return true
+        if (/(auto|scroll)/.test(st.overflowY) && n.scrollTop > 0) return true
+      }
+      return false
+    }
+    const start = (e) => {
+      y0 = null; dist = 0
+      if (e.touches.length !== 1) return
+      if ((document.scrollingElement?.scrollTop || window.scrollY) > 0) return
+      if (blocat(e.target)) return
+      y0 = e.touches[0].clientY
+    }
+    const misca = (e) => {
+      if (y0 == null) return
+      const d = e.touches[0].clientY - y0
+      if (d <= 0 || window.scrollY > 0) { dist = 0; setTras(0); return }
+      dist = Math.min(d * 0.5, 110)
+      setTras(dist)
+    }
+    const gata = () => {
+      if (y0 != null && dist >= PRAG_TRAGERE) {
+        setLucreaza(true)
+        window.dispatchEvent(new Event('focus'))
+        setTimeout(() => setLucreaza(false), 900)
+      }
+      y0 = null; dist = 0
+      setTras(0)
+    }
+    window.addEventListener('touchstart', start, { passive: true })
+    window.addEventListener('touchmove', misca, { passive: true })
+    window.addEventListener('touchend', gata)
+    window.addEventListener('touchcancel', gata)
+    return () => {
+      window.removeEventListener('touchstart', start)
+      window.removeEventListener('touchmove', misca)
+      window.removeEventListener('touchend', gata)
+      window.removeEventListener('touchcancel', gata)
+    }
+  }, [activ])
+  if (!tras && !lucreaza) return null
+  const gataDeDat = lucreaza || tras >= PRAG_TRAGERE
+  return (
+    <div style={{
+      position: 'fixed', left: '50%', zIndex: 8000, pointerEvents: 'none',
+      top: `calc(env(safe-area-inset-top, 0px) + ${lucreaza ? 16 : Math.max(0, tras - 30)}px)`,
+      transform: 'translateX(-50%)', width: 40, height: 40, borderRadius: '50%',
+      background: '#fff', boxShadow: '0 3px 12px rgba(15,34,64,.25)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      transition: lucreaza ? 'top .2s' : 'none',
+    }}>
+      <RefreshCw size={20} color={gataDeDat ? '#F28C38' : '#7A8699'}
+        className={lucreaza ? 'zd-roteste' : undefined}
+        style={lucreaza ? undefined : { transform: `rotate(${tras * 3}deg)` }} />
+    </div>
+  )
+}
+
 function RidesScreen({ profile, isOwner, session, lang }) {
   // Ultima listă de curse văzută pe telefonul ăsta — apare imediat, iar
   // interogarea de mai jos o înlocuieşte în câteva clipe.
@@ -2507,6 +2580,8 @@ function RidesScreen({ profile, isOwner, session, lang }) {
   const [openCount, setOpenCount] = useState(0)
   const [newOrderToast, setNewOrderToast] = useState(false)
   const [fetchError, setFetchError] = useState(null)
+  // Reîmprospătarea prin tragere, doar pe liste (nu într-o comandă deschisă).
+  const indicatorTragere = useTragePentruReimprospatare(!selectedId)
   const [directAwardToast, setDirectAwardToast] = useState(null)
   // Un singur loc care arată mesajul de comandă primită — îl cheamă şi
   // evenimentul în timp real, şi reîncărcarea listei la revenirea în
@@ -2940,6 +3015,7 @@ function RidesScreen({ profile, isOwner, session, lang }) {
 
   return (
     <>
+      {indicatorTragere}
       <div className="rides-list">
         {newOrderToast && (
           <div className="new-order-toast">

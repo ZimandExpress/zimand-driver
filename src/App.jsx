@@ -17,7 +17,7 @@ import { ZP_LIMBI, PLECARE_LIMBI, TRANSPORT_LIMBI, REGULI_LIMBI, RETUR_LIMBI, PO
 // Livrarea de documente, regulile noi (05.11.2026): cutia poştală numai cu
 // acelaşi nume de familie pe cutie şi pe plic, altfel dispeceratul. Înlocuiesc
 // paşii vechi în toate limbile, deci şi cardul comenzii arată la fel.
-import { PASI_ZUSTELLART_V2, ZP_PAGINA, RIDICARE_DOC, PLECARE_DOC, BOTE_FORMULAR } from './livrareDocTraduceri.js'
+import { PASI_ZUSTELLART_V2, ZP_PAGINA, RIDICARE_DOC, PLECARE_DOC, BOTE_FORMULAR, PLECARE_MARFA } from './livrareDocTraduceri.js'
 Object.assign(PASI_ZUSTELLART, PASI_ZUSTELLART_V2)
 import './index.css'
 import PodFiles from './components/PodFiles'
@@ -9808,6 +9808,11 @@ function GhidSheet({ ghiduri, faza, lang, onClose, cuBote = true, sarcina = null
     if (g.key === 'doc_standard' && faza === 'start') {
       const p = PLECARE_DOC[limba] || PLECARE_DOC.de
       return { ...x, pasi: [p[0], maiMulteLivrari ? `${p[1]} ${p[2]}` : p[1]], tradus: true }
+    }
+    // Marfă, înainte de plecare (06.11.2026): ETA către client; la întârziere
+    // NU clientul — WhatsApp la dispecerat (butonul din meniu).
+    if (g.key === 'ware' && faza === 'start') {
+      return { ...x, pasi: PLECARE_MARFA[limba] || PLECARE_MARFA.de, tradus: true }
     }
     return x
   }).filter((x) => x.pasi.length)

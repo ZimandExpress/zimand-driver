@@ -297,3 +297,33 @@ export const BOTE_FORMULAR = {
   lt: ['Oranžinė: pildo siuntėjas (3 skyrius).', 'Žalia: pildote jūs (4 skyrius).', 'Pažymėkite tik VIENĄ variantą: 1 = dokumentas matytas atviras, 2 = užklijuotas vokas.'],
   lv: ['Oranžs: aizpilda sūtītājs (3. sadaļa).', 'Zaļš: aizpildāt jūs (4. sadaļa).', 'Atzīmējiet tikai VIENU variantu: 1 = dokuments redzēts atvērts, 2 = aizlīmēta aploksne.'],
 }
+
+// PLECARE_MARFA (06.11.2026, cerut de Andrei): la plecare, la marfă, doar
+// ETA către client; la întârziere NU clientul — mesaj pe WhatsApp la
+// dispecerat (butonul din meniu), clientul îl informăm noi.
+const WA = '„Dispo Zimand · WhatsApp“'
+export const PLECARE_MARFA = {
+  de: ['Senden Sie dem Kunden vor der Abfahrt die Ankunftszeit (ETA) aus der App.', `Bei Verspätung: den Kunden NICHT kontaktieren. Schreiben Sie uns per WhatsApp – Menü ☰ oben rechts › ${WA}. Den Kunden informieren wir.`],
+  en: ['Before departure, send the customer the arrival time (ETA) from the app.', `If you are running late: do NOT contact the customer. Message us on WhatsApp – menu ☰ top right › “Dispatch Zimand · WhatsApp”. We will inform the customer.`],
+  ro: ['Înainte de plecare, trimiteți clientului din aplicație ora de sosire (ETA).', `Dacă întârziați: NU contactați clientul. Scrieți-ne pe WhatsApp – meniul ☰ dreapta sus › ${WA}. Clientul îl informăm noi.`],
+  pl: ['Przed wyjazdem wyślij klientowi z aplikacji godzinę przyjazdu (ETA).', `W razie opóźnienia: NIE kontaktuj się z klientem. Napisz do nas na WhatsApp – menu ☰ w prawym górnym rogu › ${WA}. Klienta poinformujemy my.`],
+  bg: ['Преди тръгване изпратете на клиента от приложението часа на пристигане (ETA).', `При закъснение: НЕ се свързвайте с клиента. Пишете ни в WhatsApp – меню ☰ горе вдясно › ${WA}. Ние ще информираме клиента.`],
+  hu: ['Indulás előtt küldje el az ügyfélnek az alkalmazásból az érkezési időt (ETA).', `Késés esetén: NE keresse az ügyfelet. Írjon nekünk WhatsAppon – ☰ menü jobbra fent › ${WA}. Az ügyfelet mi tájékoztatjuk.`],
+  cs: ['Před odjezdem pošlete zákazníkovi z aplikace čas příjezdu (ETA).', `Při zpoždění: zákazníka NEKONTAKTUJTE. Napište nám přes WhatsApp – menu ☰ vpravo nahoře › ${WA}. Zákazníka informujeme my.`],
+  sk: ['Pred odchodom pošlite zákazníkovi z aplikácie čas príchodu (ETA).', `Pri meškaní: zákazníka NEKONTAKTUJTE. Napíšte nám cez WhatsApp – menu ☰ vpravo hore › ${WA}. Zákazníka informujeme my.`],
+  hr: ['Prije polaska pošaljite klijentu iz aplikacije vrijeme dolaska (ETA).', `Ako kasnite: NE kontaktirajte klijenta. Pišite nam na WhatsApp – izbornik ☰ gore desno › ${WA}. Klijenta obavještavamo mi.`],
+  sr: ['Pre polaska pošaljite klijentu iz aplikacije vreme dolaska (ETA).', `Ako kasnite: NE kontaktirajte klijenta. Pišite nam na WhatsApp – meni ☰ gore desno › ${WA}. Klijenta obaveštavamo mi.`],
+  sl: ['Pred odhodom stranki iz aplikacije pošljite čas prihoda (ETA).', `Ob zamudi: stranke NE kontaktirajte. Pišite nam na WhatsApp – meni ☰ zgoraj desno › ${WA}. Stranko obvestimo mi.`],
+  sq: ['Para nisjes, dërgojini klientit nga aplikacioni orën e mbërritjes (ETA).', `Nëse vonoheni: MOS e kontaktoni klientin. Na shkruani në WhatsApp – menyja ☰ lart djathtas › ${WA}. Klientin e informojmë ne.`],
+  uk: ['Перед виїздом надішліть клієнту з додатка час прибуття (ETA).', `Якщо запізнюєтеся: НЕ зв’язуйтеся з клієнтом. Напишіть нам у WhatsApp – меню ☰ угорі праворуч › ${WA}. Клієнта повідомимо ми.`],
+  ru: ['Перед выездом отправьте клиенту из приложения время прибытия (ETA).', `Если опаздываете: НЕ связывайтесь с клиентом. Напишите нам в WhatsApp – меню ☰ вверху справа › ${WA}. Клиента предупредим мы.`],
+  tr: ['Yola çıkmadan önce müşteriye uygulamadan varış saatini (ETA) gönderin.', `Gecikirseniz: müşteriyle iletişime GEÇMEYİN. Bize WhatsApp’tan yazın – sağ üstteki ☰ menü › ${WA}. Müşteriyi biz bilgilendiririz.`],
+  it: ['Prima della partenza inviate al cliente dall’app l’orario di arrivo (ETA).', `In caso di ritardo: NON contattate il cliente. Scriveteci su WhatsApp – menu ☰ in alto a destra › ${WA}. Il cliente lo informiamo noi.`],
+  es: ['Antes de salir, envíe al cliente desde la app la hora de llegada (ETA).', `Si se retrasa: NO contacte con el cliente. Escríbanos por WhatsApp – menú ☰ arriba a la derecha › ${WA}. Al cliente le informamos nosotros.`],
+  fr: ['Avant le départ, envoyez au client depuis l’appli l’heure d’arrivée (ETA).', `En cas de retard : ne contactez PAS le client. Écrivez-nous sur WhatsApp – menu ☰ en haut à droite › ${WA}. Nous informons le client.`],
+  pt: ['Antes de partir, envie ao cliente pela app a hora de chegada (ETA).', `Em caso de atraso: NÃO contacte o cliente. Escreva-nos no WhatsApp – menu ☰ no canto superior direito › ${WA}. Nós informamos o cliente.`],
+  nl: ['Stuur de klant vóór vertrek via de app de aankomsttijd (ETA).', `Bij vertraging: neem GEEN contact op met de klant. Stuur ons een WhatsApp – menu ☰ rechtsboven › ${WA}. Wij informeren de klant.`],
+  el: ['Πριν ξεκινήσετε, στείλτε στον πελάτη από την εφαρμογή την ώρα άφιξης (ETA).', `Αν καθυστερείτε: ΜΗΝ επικοινωνήσετε με τον πελάτη. Γράψτε μας στο WhatsApp – μενού ☰ πάνω δεξιά › ${WA}. Τον πελάτη τον ενημερώνουμε εμείς.`],
+  lt: ['Prieš išvykdami iš programėlės išsiųskite klientui atvykimo laiką (ETA).', `Jei vėluojate: NESIKREIPKITE į klientą. Parašykite mums per WhatsApp – meniu ☰ viršuje dešinėje › ${WA}. Klientą informuosime mes.`],
+  lv: ['Pirms izbraukšanas nosūtiet klientam no lietotnes ierašanās laiku (ETA).', `Ja kavējaties: NESAZINIETIES ar klientu. Rakstiet mums WhatsApp – izvēlne ☰ augšā pa labi › ${WA}. Klientu informēsim mēs.`],
+}

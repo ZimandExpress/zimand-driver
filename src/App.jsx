@@ -541,6 +541,59 @@ function AuthCaptchaBox() {
   return <div ref={boxRef} style={{ margin: '12px 0', display: 'flex', justifyContent: 'center' }} />
 }
 
+// Ecranul de intrare, refăcut (06.11.2026): sus o bandă bleumarin cu numele
+// aplicaţiei şi un traseu desenat, jos o foaie albă cu câmpuri mari, cu
+// pictograme, ochi pentru parolă şi butonul portocaliu pe toată lăţimea.
+// Aceeaşi ramă pentru intrare, „Parolă uitată" şi setarea parolei.
+function AuthShell({ lang, onChangeLang, children }) {
+  return (
+    <div className="auth-shell">
+      <div className="auth-hero">
+        <svg className="auth-hero-art" viewBox="0 0 400 260" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+          <path d="M-20 120 C 60 150, 110 250, 220 235 S 340 190, 430 215" fill="none" stroke="rgba(255,255,255,.07)" strokeWidth="34" strokeLinecap="round" />
+          <path d="M-20 120 C 60 150, 110 250, 220 235 S 340 190, 430 215" fill="none" stroke="rgba(255,255,255,.22)" strokeWidth="2" strokeDasharray="10 12" />
+          <circle cx="338" cy="196" r="5" fill="#FF7A29" />
+          <circle cx="338" cy="196" r="14" fill="none" stroke="rgba(255,122,41,.45)" strokeWidth="2" />
+        </svg>
+        {onChangeLang && <div className="auth-lang"><LangSwitcher lang={lang} onChangeLang={onChangeLang} dark /></div>}
+        <div className="auth-logo">
+          <span className="auth-logo-1">ZIMAND</span>
+          <span className="auth-logo-2">DRIVER</span>
+        </div>
+        <div className="auth-tagline">{t('loginTagline', lang)}</div>
+      </div>
+      <div className="auth-sheet login-card">
+        {children}
+        <div className="auth-legal">
+          {t('privacyNote', lang)}{' '}
+          <a href="/datenschutz.html" target="_blank" rel="noopener noreferrer">{t('privacyLink', lang)}</a>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function AuthField({ icon: Icon, type = 'text', value, onChange, placeholder, required, minLength, autoComplete, lang }) {
+  const [vizibil, setVizibil] = useState(false)
+  const esteParola = type === 'password'
+  return (
+    <div className="auth-field">
+      <Icon size={19} className="auth-field-icon" aria-hidden="true" />
+      <input
+        type={esteParola && vizibil ? 'text' : type}
+        value={value} onChange={onChange} placeholder={placeholder} aria-label={placeholder}
+        required={required} minLength={minLength} autoComplete={autoComplete}
+      />
+      {esteParola && (
+        <button type="button" className="auth-eye" onClick={() => setVizibil((v) => !v)}
+          aria-label={t(vizibil ? 'hidePassword' : 'showPassword', lang)}>
+          {vizibil ? <EyeOff size={19} /> : <Eye size={19} />}
+        </button>
+      )}
+    </div>
+  )
+}
+
 function LoginScreen({ lang, onChangeLang }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -608,58 +661,49 @@ function LoginScreen({ lang, onChangeLang }) {
 
   if (mode === 'forgot' || mode === 'sent') {
     return (
-      <div className="phone-shell center-content">
-        <LangSwitcher lang={lang} onChangeLang={onChangeLang} />
-        <div className="login-card">
-          <div className="brand-mark"><span className="live-dot" /> {t('appName', lang)}</div>
-          {mode === 'sent' ? (
-            <p className="login-sub">{t('resetLinkSent', lang)}</p>
-          ) : (
-            <>
-              <p className="login-sub">{t('forgotPasswordSub', lang)}</p>
-              <form onSubmit={handleForgot}>
-                <CompanyCodeField lang={lang} show={showCode} setShow={setShowCode} value={companyCode} onChange={setCompanyCode} />
-                <label>{t('email', lang)}</label>
-                <input type="email" value={email} onChange={e => setEmail(e.target.value)} required />
-                <AuthCaptchaBox />
-                {error && <div className="login-error">{error}</div>}
-                <button className="btn" type="submit" disabled={busy}>
-                  {busy ? '…' : t('sendResetLink', lang)}
-                </button>
-              </form>
-            </>
-          )}
-          <button className="link-btn" onClick={() => setMode('login')} style={{ marginTop: 14 }}>
-            {t('backToLogin', lang)}
-          </button>
-        </div>
-      </div>
+      <AuthShell lang={lang} onChangeLang={onChangeLang}>
+        <h1 className="auth-title">{t('forgotPassword', lang)}</h1>
+        {mode === 'sent' ? (
+          <p className="login-sub">{t('resetLinkSent', lang)}</p>
+        ) : (
+          <>
+            <p className="login-sub">{t('forgotPasswordSub', lang)}</p>
+            <form onSubmit={handleForgot}>
+              <CompanyCodeField lang={lang} show={showCode} setShow={setShowCode} value={companyCode} onChange={setCompanyCode} />
+              <AuthField icon={Mail} type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder={t('email', lang)} required autoComplete="email" lang={lang} />
+              <AuthCaptchaBox />
+              {error && <div className="login-error">{error}</div>}
+              <button className="btn auth-btn" type="submit" disabled={busy}>
+                {busy ? '…' : t('sendResetLink', lang)}
+              </button>
+            </form>
+          </>
+        )}
+        <button className="link-btn auth-link" onClick={() => setMode('login')}>
+          {t('backToLogin', lang)}
+        </button>
+      </AuthShell>
     )
   }
 
   return (
-    <div className="phone-shell center-content">
-      <LangSwitcher lang={lang} onChangeLang={onChangeLang} />
-      <div className="login-card">
-        <div className="brand-mark"><span className="live-dot" /> {t('appName', lang)}</div>
-        <p className="login-sub">{t('loginSubtitle', lang)}</p>
-        <form onSubmit={handleLogin}>
-          <label>{t('email', lang)}</label>
-          <input type="email" value={email} onChange={e => setEmail(e.target.value)} required />
-          <label>{t('password', lang)}</label>
-          <input type="password" value={password} onChange={e => setPassword(e.target.value)} required />
-          <CompanyCodeField lang={lang} show={showCode} setShow={setShowCode} value={companyCode} onChange={setCompanyCode} />
-          <AuthCaptchaBox />
-          {error && <div className="login-error">{error}</div>}
-          <button className="btn" type="submit" disabled={busy}>
-            {busy ? t('loggingIn', lang) : t('loginButton', lang)}
-          </button>
-        </form>
-        <button className="link-btn" onClick={() => setMode('forgot')} style={{ marginTop: 12 }}>
-          {t('forgotPassword', lang)}
+    <AuthShell lang={lang} onChangeLang={onChangeLang}>
+      <h1 className="auth-title">{t('loginButton', lang)}</h1>
+      <p className="login-sub">{t('loginSubtitle', lang)}</p>
+      <form onSubmit={handleLogin}>
+        <AuthField icon={Mail} type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder={t('email', lang)} required autoComplete="email" lang={lang} />
+        <AuthField icon={Lock} type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder={t('password', lang)} required autoComplete="current-password" lang={lang} />
+        <CompanyCodeField lang={lang} show={showCode} setShow={setShowCode} value={companyCode} onChange={setCompanyCode} />
+        <AuthCaptchaBox />
+        {error && <div className="login-error">{error}</div>}
+        <button className="btn auth-btn" type="submit" disabled={busy}>
+          {busy ? t('loggingIn', lang) : t('loginButton', lang)}
         </button>
-      </div>
-    </div>
+      </form>
+      <button className="link-btn auth-link" onClick={() => setMode('forgot')}>
+        {t('forgotPassword', lang)}
+      </button>
+    </AuthShell>
   )
 }
 
@@ -712,22 +756,18 @@ function SetPasswordScreen({ lang, onDone }) {
   }
 
   return (
-    <div className="phone-shell center-content">
-      <div className="login-card">
-        <div className="brand-mark"><span className="live-dot" /> {t('appName', lang)}</div>
-        <p className="login-sub">{t('welcomeSetPassword', lang)}</p>
-        <form onSubmit={handleSubmit}>
-          <label>{t('newPassword', lang)}</label>
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} />
-          <label>{t('confirmPassword', lang)}</label>
-          <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required minLength={8} />
-          {error && <div className="login-error">{error}</div>}
-          <button className="btn" type="submit" disabled={busy}>
-            {busy ? '…' : t('setPasswordButton', lang)}
-          </button>
-        </form>
-      </div>
-    </div>
+    <AuthShell lang={lang}>
+      <h1 className="auth-title">{t('setPasswordButton', lang)}</h1>
+      <p className="login-sub">{t('welcomeSetPassword', lang)}</p>
+      <form onSubmit={handleSubmit}>
+        <AuthField icon={Lock} type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={t('newPassword', lang)} required minLength={8} autoComplete="new-password" lang={lang} />
+        <AuthField icon={Lock} type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder={t('confirmPassword', lang)} required minLength={8} autoComplete="new-password" lang={lang} />
+        {error && <div className="login-error">{error}</div>}
+        <button className="btn auth-btn" type="submit" disabled={busy}>
+          {busy ? '…' : t('setPasswordButton', lang)}
+        </button>
+      </form>
+    </AuthShell>
   )
 }
 

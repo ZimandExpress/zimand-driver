@@ -10025,6 +10025,12 @@ function extractServiceBadges(notesText) {
     else if (line.startsWith('Stapelbar: Nein')) badges.push({ Icon: Layers, key: null, text: 'Nicht stapelbar', warn: true })
     else if (line.includes('frühere Abholung')) badges.push({ Icon: Clock, key: null, text: 'Frühere Abholung ggf. möglich', warn: false, ok: true, etapa: 'pickup' })
     else if (line.includes('frühere Zustellung')) badges.push({ Icon: Clock, key: null, text: 'Frühere Zustellung ggf. möglich', warn: false, ok: true, etapa: 'delivery' })
+    // Wartezeit rezervată şi plătită de client (06.11.2026): semn pe capătul
+    // respectiv, cu numărul de ore.
+    else if (line.startsWith('Wartezeit Abholung gebucht:') || line.startsWith('Wartezeit Zustellung gebucht:')) {
+      const h = (line.match(/(\d+)\s*Std/) || [])[1] || '?'
+      badges.push({ Icon: Hourglass, key: null, text: `Wartezeit gebucht: ${h} Std.`, warn: false, etapa: line.startsWith('Wartezeit Abholung') ? 'pickup' : 'delivery' })
+    }
   }
   return badges
 }
@@ -10044,6 +10050,8 @@ function driverSafeNotesWithoutContacts(notesText) {
       !line.startsWith('Stapelbar: ') &&
       !line.includes('frühere Abholung') &&
       !line.includes('frühere Zustellung') &&
+      !line.startsWith('Wartezeit Abholung gebucht:') &&
+      !line.startsWith('Wartezeit Zustellung gebucht:') &&
       !SERVICE_BADGE_PREFIXES.some(({ prefix }) => line.startsWith(prefix))
     )
     .join('\n')
@@ -10076,6 +10084,8 @@ function preWinSafeNotes(notesText) {
       !line.startsWith('Stapelbar: ') &&
       !line.includes('frühere Abholung') &&
       !line.includes('frühere Zustellung') &&
+      !line.startsWith('Wartezeit Abholung gebucht:') &&
+      !line.startsWith('Wartezeit Zustellung gebucht:') &&
       !SERVICE_BADGE_PREFIXES.some(({ prefix }) => line.startsWith(prefix))
     )
     .join('\n')

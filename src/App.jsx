@@ -1,7 +1,7 @@
 import { Component, useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { Capacitor, registerPlugin } from '@capacitor/core'
-import { supabase, MULTI_TENANT, BACKEND, SUPABASE_URL, SUPABASE_ANON_KEY, VAPID_PUBLIC_KEY_PLATFORMA, codFirmaSalvat, codFirmaValid, alegeFirma, clientPentru, seteazaBackend, salveazaCodFirma } from './supabaseClient'
+import { supabase, MULTI_TENANT, BACKEND, SUPABASE_URL, SUPABASE_ANON_KEY, VAPID_PUBLIC_KEY_PLATFORMA, codFirmaSalvat, codFirmaValid, alegeFirma, clientPentru, seteazaBackend, salveazaCodFirma, brandFirmaSalvat, incarcaBrandFirma } from './supabaseClient'
 import { t, getLang, setLang, availableLangs } from './i18n'
 import { RefreshCw, Maximize2, ArrowLeft as ArrowLeftMap, Eye, Play, ClipboardList, Pause, SlidersHorizontal, Building2, StickyNote, Receipt, Package, Repeat, Hourglass, Camera, Image as ImageIcon, Mail, Ruler, ChevronDown, Lock, Phone, Truck, CheckCircle2, Wallet, User, LogOut, Menu, Bell, MapPin, FlagTriangleRight, Tag, XCircle, Download, X, Navigation, Trophy, ThumbsUp, ArrowUpFromLine, ArrowDownToLine, EyeOff, Layers, AlertTriangle, Clock, FileText, Signature, BookOpen, Info as InfoIcon } from 'lucide-react'
 import { GHID_TRADUCERI, GHID_UI } from './ghidTraduceri.js'
@@ -545,9 +545,17 @@ function AuthCaptchaBox() {
 // aplicaţiei şi un traseu desenat, jos o foaie albă cu câmpuri mari, cu
 // pictograme, ochi pentru parolă şi butonul portocaliu pe toată lăţimea.
 // Aceeaşi ramă pentru intrare, „Parolă uitată" şi setarea parolei.
-function AuthShell({ lang, onChangeLang, children }) {
+//
+// Platforma Zimand Software (cod de firmă cunoscut): în bandă apar logo-ul şi
+// numele firmei, iar culoarea ei principală colorează butonul, ochiul,
+// chenarul câmpului activ şi linkul. Fără firmă: exact aspectul Zimand Express.
+function AuthShell({ lang, onChangeLang, children, brand = null }) {
+  const [logoStricat, setLogoStricat] = useState(false)
+  useEffect(() => { setLogoStricat(false) }, [brand?.logo_url])
+  const culoare = brand?.primary_color || null
+  const stil = culoare ? { '--firma': culoare, '--firma-text': textPeCuloare(culoare), '--firma-umbra': umbraCuloare(culoare) } : undefined
   return (
-    <div className="auth-shell">
+    <div className={'auth-shell' + (brand ? ' auth-shell--firma' : '') + (culoare ? ' auth-shell--culoare' : '')} style={stil}>
       <div className="auth-hero">
         <svg className="auth-hero-art" viewBox="0 0 400 260" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
           <path d="M-20 120 C 60 150, 110 250, 220 235 S 340 190, 430 215" fill="none" stroke="rgba(255,255,255,.07)" strokeWidth="34" strokeLinecap="round" />
@@ -556,10 +564,21 @@ function AuthShell({ lang, onChangeLang, children }) {
           <circle cx="338" cy="196" r="14" fill="none" stroke="rgba(255,122,41,.45)" strokeWidth="2" />
         </svg>
         {onChangeLang && <div className="auth-lang"><LangSwitcher lang={lang} onChangeLang={onChangeLang} dark /></div>}
-        <div className="auth-logo">
-          <span className="auth-logo-1">ZIMAND</span>
-          <span className="auth-logo-2">DRIVER</span>
-        </div>
+        {brand ? (
+          <div className="auth-firma">
+            {brand.logo_url && !logoStricat && (
+              <span className="auth-firma-logo">
+                <img src={brand.logo_url} alt="" onError={() => setLogoStricat(true)} />
+              </span>
+            )}
+            <span className="auth-firma-name">{brand.name}</span>
+          </div>
+        ) : (
+          <div className="auth-logo">
+            <span className="auth-logo-1">ZIMAND</span>
+            <span className="auth-logo-2">DRIVER</span>
+          </div>
+        )}
         <div className="auth-tagline">{t('loginTagline', lang)}</div>
       </div>
       <div className="auth-sheet login-card">
@@ -571,6 +590,33 @@ function AuthShell({ lang, onChangeLang, children }) {
       </div>
     </div>
   )
+}
+
+// Textul de pe butonul în culoarea firmei: alb pe culori închise, bleumarin pe cele deschise.
+function textPeCuloare(hex) {
+  const n = parseInt(String(hex).slice(1), 16)
+  const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255
+  const lum = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255
+  return lum > 0.62 ? '#0F2240' : '#FFFFFF'
+}
+function umbraCuloare(hex) {
+  const n = parseInt(String(hex).slice(1), 16)
+  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, .30)`
+}
+
+// Brandingul firmei pentru un cod (platforma Zimand Software): întâi din
+// memoria telefonului, apoi reîmprospătat de pe server. Fără cod → null.
+function useBrandFirma(cod) {
+  const c = String(cod || '').trim().toUpperCase()
+  const [st, setSt] = useState(() => ({ cod: c, brand: c && codFirmaValid(c) ? brandFirmaSalvat(c) : null }))
+  useEffect(() => {
+    if (!c || !codFirmaValid(c)) return
+    let viu = true
+    setSt({ cod: c, brand: brandFirmaSalvat(c) })
+    incarcaBrandFirma(c).then((b) => { if (viu) setSt({ cod: c, brand: b }) }, () => {})
+    return () => { viu = false }
+  }, [c])
+  return st.cod === c ? st.brand : null
 }
 
 function AuthField({ icon: Icon, type = 'text', value, onChange, placeholder, required, minLength, autoComplete, lang }) {
@@ -604,6 +650,11 @@ function LoginScreen({ lang, onChangeLang }) {
   const [companyCode, setCompanyCode] = useState(() => (MULTI_TENANT ? codFirmaSalvat() : ''))
   const [showCode, setShowCode] = useState(() => MULTI_TENANT && !!codFirmaSalvat())
   const cod = showCode ? companyCode.trim().toUpperCase() : ''
+  // Brandingul firmei: pentru codul salvat de la început, pentru unul tastat
+  // abia după ce şoferul iese din câmp (nu la fiecare literă).
+  const [codBrand, setCodBrand] = useState(() => cod)
+  const brandGasit = useBrandFirma(codBrand && codBrand === cod ? codBrand : '')
+  const brand = cod && codBrand === cod ? brandGasit : null
 
   // Fără cod de firmă (06.11.2026): contul se caută singur — întâi în Zimand
   // Express, apoi în platforma Zimand Software. Acolo firma se alege din
@@ -724,7 +775,7 @@ function LoginScreen({ lang, onChangeLang }) {
 
   if (mode === 'forgot' || mode === 'sent') {
     return (
-      <AuthShell lang={lang} onChangeLang={onChangeLang}>
+      <AuthShell lang={lang} onChangeLang={onChangeLang} brand={brand}>
         <h1 className="auth-title">{t('forgotPassword', lang)}</h1>
         {mode === 'sent' ? (
           <p className="login-sub">{t('resetLinkSent', lang)}</p>
@@ -732,7 +783,7 @@ function LoginScreen({ lang, onChangeLang }) {
           <>
             <p className="login-sub">{t('forgotPasswordSub', lang)}</p>
             <form onSubmit={handleForgot}>
-              <CompanyCodeField lang={lang} show={showCode} setShow={setShowCode} value={companyCode} onChange={setCompanyCode} />
+              <CompanyCodeField lang={lang} show={showCode} setShow={setShowCode} value={companyCode} onChange={setCompanyCode} onBlur={() => setCodBrand(cod)} />
               <AuthField icon={Mail} type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder={t('email', lang)} required autoComplete="email" lang={lang} />
               <AuthCaptchaBox />
               {error && <div className="login-error">{error}</div>}
@@ -751,7 +802,7 @@ function LoginScreen({ lang, onChangeLang }) {
 
   if (firmeDeAles) {
     return (
-      <AuthShell lang={lang} onChangeLang={onChangeLang}>
+      <AuthShell lang={lang} onChangeLang={onChangeLang} brand={brand}>
         <h1 className="auth-title">{t('chooseCompanyTitle', lang)}</h1>
         <p className="login-sub">{t('chooseCompanySub', lang)}</p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -772,13 +823,13 @@ function LoginScreen({ lang, onChangeLang }) {
   }
 
   return (
-    <AuthShell lang={lang} onChangeLang={onChangeLang}>
+    <AuthShell lang={lang} onChangeLang={onChangeLang} brand={brand}>
       <h1 className="auth-title">{t('loginButton', lang)}</h1>
       <p className="login-sub">{t('loginSubtitle', lang)}</p>
       <form onSubmit={handleLogin}>
         <AuthField icon={Mail} type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder={t('email', lang)} required autoComplete="email" lang={lang} />
         <AuthField icon={Lock} type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder={t('password', lang)} required autoComplete="current-password" lang={lang} />
-        <CompanyCodeField lang={lang} show={showCode} setShow={setShowCode} value={companyCode} onChange={setCompanyCode} />
+        <CompanyCodeField lang={lang} show={showCode} setShow={setShowCode} value={companyCode} onChange={setCompanyCode} onBlur={() => setCodBrand(cod)} />
         <AuthCaptchaBox />
         {error && <div className="login-error">{error}</div>}
         <button className="btn auth-btn" type="submit" disabled={busy}>
@@ -793,7 +844,7 @@ function LoginScreen({ lang, onChangeLang }) {
 }
 
 // Câmpul „Firmencode”: ascuns implicit (șoferii Zimand Express nu au nevoie de el).
-function CompanyCodeField({ lang, show, setShow, value, onChange }) {
+function CompanyCodeField({ lang, show, setShow, value, onChange, onBlur }) {
   if (!show) {
     return (
       <button type="button" className="link-btn" onClick={() => setShow(true)} style={{ margin: '2px 0 10px', fontSize: 13 }}>
@@ -804,7 +855,7 @@ function CompanyCodeField({ lang, show, setShow, value, onChange }) {
   return (
     <>
       <label>{t('companyCode', lang)}</label>
-      <input value={value} onChange={e => onChange(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))} autoCapitalize="characters" autoComplete="organization" maxLength={12} placeholder="z. B. ABC123" />
+      <input value={value} onChange={e => onChange(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))} onBlur={onBlur} autoCapitalize="characters" autoComplete="organization" maxLength={12} placeholder="z. B. ABC123" />
       <div className="login-sub" style={{ margin: '4px 0 10px', fontSize: 12 }}>
         {t('companyCodeHint', lang)}{' '}
         <button type="button" className="link-btn" onClick={() => { onChange(''); setShow(false) }} style={{ fontSize: 12, display: 'inline', padding: 0 }}>{t('companyCodeRemove', lang)}</button>
@@ -814,6 +865,8 @@ function CompanyCodeField({ lang, show, setShow, value, onChange }) {
 }
 
 function SetPasswordScreen({ lang, onDone }) {
+  // Platforma: linkul de invitaţie aduce codul firmei (?firmencode=) → brandingul ei.
+  const brand = useBrandFirma(MULTI_TENANT ? codFirmaSalvat() : '')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [error, setError] = useState('')
@@ -841,7 +894,7 @@ function SetPasswordScreen({ lang, onDone }) {
   }
 
   return (
-    <AuthShell lang={lang}>
+    <AuthShell lang={lang} brand={brand}>
       <h1 className="auth-title">{t('setPasswordButton', lang)}</h1>
       <p className="login-sub">{t('welcomeSetPassword', lang)}</p>
       <form onSubmit={handleSubmit}>
@@ -952,6 +1005,9 @@ function initialeMeniu(nume) {
 }
 
 function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) {
+  // Platforma Zimand Software: în antet numele firmei şoferului (nu „Zimand Driver”).
+  const brandFirma = useBrandFirma(MULTI_TENANT ? codFirmaSalvat() : '')
+  const numeAplicatie = MULTI_TENANT ? (brandFirma?.name || 'Zimand Driver') : 'Zimand Express'
   const [tab, setTab] = useState('curse')
   const [menuOpen, setMenuOpen] = useState(false)
   const isOwner = profile?.account_type === 'owner_operator'
@@ -1412,7 +1468,7 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
   return (
     <div className="phone-shell">
       <div className="brand-strip">
-        <span className="brand-strip-name"><span className="live-dot" /> {MULTI_TENANT ? 'Zimand Driver' : 'Zimand Express'}</span>
+        <span className="brand-strip-name"><span className="live-dot" /> {numeAplicatie}</span>
         <button className="hbtn" aria-label="menu" onClick={() => setMenuOpen(true)}><Menu size={20} strokeWidth={2} /></button>
       </div>
 
@@ -1578,7 +1634,7 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
           <div className="menu-header">
             <span className="menu-avatar">{initialeMeniu(profile?.name || session?.user?.email)}</span>
             <span className="menu-who">
-              <span className="menu-who-name">{profile?.name || (MULTI_TENANT ? 'Zimand Driver' : 'Zimand Express')}</span>
+              <span className="menu-who-name">{profile?.name || numeAplicatie}</span>
               <span className="menu-who-sub"><span className="live-dot" /> {isOwner ? t('menuAccountCompany', lang) : t('menuAccountDriver', lang)}</span>
             </span>
             <button type="button" className="menu-close" aria-label="Schließen" onClick={() => setMenuOpen(false)}><X size={20} strokeWidth={2} /></button>

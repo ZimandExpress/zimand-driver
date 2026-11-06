@@ -75,3 +75,35 @@ export async function alegeFirma(cod, client = supabase) {
 
 // Cheia publică pentru notificări push — fiecare bază are perechea ei de chei.
 export const VAPID_PUBLIC_KEY_PLATFORMA = import.meta.env.VITE_ZS_VAPID_PUBLIC_KEY || 'BBR905Tmony7cgnzrREyLjbMt4sIFDcUnlFBdgmURV5JBrVlY_skDu2eu88-RagRDNA2pfLfpf1Kkvg1OrpXSGA'
+
+// Brandingul firmei (nume, logo, culoare principală) pentru ecranul de intrare și antet — platforma
+// Zimand Software, prin RPC-ul public driver_branding_by_code. Ținut pe telefon ('zs_brand_<COD>'),
+// ca ecranul să apară imediat, chiar fără rețea. Fără cod de firmă: nimic (aspectul Zimand Express).
+const PREFIX_BRAND = 'zs_brand_'
+const CULOARE_RE = /^#[0-9A-Fa-f]{6}$/
+
+export function brandFirmaSalvat(cod) {
+  const c = String(cod || '').trim().toUpperCase()
+  if (!CODE_RE.test(c)) return null
+  try {
+    const v = JSON.parse(citeste(PREFIX_BRAND + c) || 'null')
+    return v && v.name ? v : null
+  } catch { return null }
+}
+
+export async function incarcaBrandFirma(cod) {
+  const c = String(cod || '').trim().toUpperCase()
+  if (!CODE_RE.test(c)) return null
+  try {
+    const { data, error } = await clientPentru('zs').rpc('driver_branding_by_code', { p_code: c })
+    if (error) return brandFirmaSalvat(c) // fără rețea / eroare: rămâne ce știm
+    if (!data || !data.name) { scrie(PREFIX_BRAND + c, ''); return null } // cod necunoscut
+    const b = {
+      name: String(data.name).slice(0, 80),
+      logo_url: typeof data.logo_url === 'string' && /^https:\/\//i.test(data.logo_url) ? data.logo_url : null,
+      primary_color: CULOARE_RE.test(data.primary_color || '') ? data.primary_color : null,
+    }
+    scrie(PREFIX_BRAND + c, JSON.stringify(b))
+    return b
+  } catch { return brandFirmaSalvat(c) }
+}

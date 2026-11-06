@@ -11126,6 +11126,25 @@ function BidCard({ order, lang, courierProfileId, open, onToggle, onBidPlaced, o
     }
   }
 
+  // Ridicare în aceeaşi zi: firma bifează dacă prinde intervalul sau scrie
+  // când poate încărca. La preţ fix apare deasupra lui ✓ (06.11.2026).
+  const fereastraAzi = today ? (
+                <div className="interval-note">
+                  <div className="txt">{t('pickupWindowNote', lang)}: {fmtTime(order.pickup_from)}{order.pickup_to ? `–${fmtTime(order.pickup_to)}` : ''}</div>
+                  <label>
+                    <input type="checkbox" checked={respectInterval} onChange={(e) => setRespectInterval(e.target.checked)} />
+                    {' '}{t('canRespectInterval', lang)}
+                  </label>
+                  {!respectInterval && (
+                    <div className="custom-interval-row">
+                      <input className="bid-input2" type="time" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} placeholder={t('fromLabel', lang)} />
+                      <input className="bid-input2" type="time" value={customTo} onChange={(e) => setCustomTo(e.target.value)} placeholder={t('toLabel', lang)} />
+                    </div>
+                  )}
+                </div>
+  ) : null
+  const lipsaOreAzi = today && !respectInterval && !customFrom
+
   return (
     <div className={`bid-card2 ${open ? 'open' : ''}`}>
       <div className="bid-card2-head" onClick={onToggle}>
@@ -11349,10 +11368,11 @@ function BidCard({ order, lang, courierProfileId, open, onToggle, onBidPlaced, o
             </div>
           ) : (
             <>
+              {order.fixed_price_only && fereastraAzi}
               {order.estimated_price != null && (
                 <div className="price-box">
                   <div><div className="lbl">{t('priceLabel', lang)}{order.fixed_price_only ? ` · ${lang === 'en' ? 'Fixed price' : 'Festpreis'}` : ''}</div><div className="val">{order.estimated_price} €</div></div>
-                  <button className="accept-btn" onClick={(e) => { e.stopPropagation(); submitBid(order.estimated_price) }} disabled={busy}>✓</button>
+                  <button className="accept-btn" onClick={(e) => { e.stopPropagation(); submitBid(order.estimated_price) }} disabled={busy || lipsaOreAzi} style={lipsaOreAzi ? { opacity: 0.5 } : undefined}>✓</button>
                 </div>
               )}
 
@@ -11370,21 +11390,7 @@ function BidCard({ order, lang, courierProfileId, open, onToggle, onBidPlaced, o
               <label className="bid-field-label">{t('priceLabel', lang)} (€)</label>
               <input className="bid-input2" type="number" value={ownPrice} onChange={(e) => setOwnPrice(e.target.value)} />
 
-              {today && (
-                <div className="interval-note">
-                  <div className="txt">{t('pickupWindowNote', lang)}: {fmtTime(order.pickup_from)}{order.pickup_to ? `–${fmtTime(order.pickup_to)}` : ''}</div>
-                  <label>
-                    <input type="checkbox" checked={respectInterval} onChange={(e) => setRespectInterval(e.target.checked)} />
-                    {' '}{t('canRespectInterval', lang)}
-                  </label>
-                  {!respectInterval && (
-                    <div className="custom-interval-row">
-                      <input className="bid-input2" type="time" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} placeholder={t('fromLabel', lang)} />
-                      <input className="bid-input2" type="time" value={customTo} onChange={(e) => setCustomTo(e.target.value)} placeholder={t('toLabel', lang)} />
-                    </div>
-                  )}
-                </div>
-              )}
+              {fereastraAzi}
 
               <textarea className="bid-input2" value={message} onChange={(e) => setMessage(e.target.value)} placeholder={t('messageToDispatcher', lang)} />
 

@@ -43,8 +43,11 @@ import java.util.concurrent.Executors;
  * trimite poziţia direct la funcţia de server `driver-location`, cu cheia de
  * urmărire a şoferului. Nu depinde deloc de partea web.
  *
- * Praguri: o trimitere la cel mult 10 s în mers (după minim 30 m), altfel una
- * pe minut. Se opreşte singur când serverul răspunde că şoferul e offline.
+ * Ritm (06.11.2026, v16):
+ *  - normal: o poziţie la 30 s, şi pe loc (ca Disponent să vadă că merge);
+ *  - rapid, cât cineva îl urmăreşte live în Disponent (serverul răspunde
+ *    "rapid":true): la ~3 s, după minim 5 m — harta se mişcă fluent.
+ * Se opreşte singur când serverul răspunde că şoferul e offline.
  */
 public class TrackerService extends Service {
     static final String PREFS = "zimand_tracker";
@@ -57,6 +60,8 @@ public class TrackerService extends Service {
 
     private Location ultimaTrimisa = null;
     private long ultimaTrimisaLa = 0;
+    private volatile boolean rapid = false;
+    private boolean cerereRapida = false;
 
     static void porneste(Context ctx, String url, String token) {
         ctx.getSharedPreferences(PREFS, MODE_PRIVATE).edit()
@@ -120,19 +125,25 @@ public class TrackerService extends Service {
     }
 
     private void cereLocatii() {
-        client = LocationServices.getFusedLocationProviderClient(this);
-        LocationRequest req = new LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 10000)
-            .setMinUpdateIntervalMillis(5000)
-            .setMinUpdateDistanceMeters(20)
-            .setMaxUpdateDelayMillis(15000)
+        if (client == null) client = LocationServices.getFusedLocationProviderClient(this);
+        if (callback == null) {
+            callback = new LocationCallback() {
+                @Override
+                public void onLocationResult(LocationResult r) {
+                    Location l = r.getLastLocation();
+                    if (l != null) poateTrimite(l);
+                }
+            };
+        } else {
+            client.removeLocationUpdates(callback);
+        }
+        cerereRapida = rapid;
+        // Fără prag de distanţă şi fără grupare (batching): poziţiile vin la timp,
+        // iar pragurile le aplicăm noi în poateTrimite().
+        LocationRequest req = new LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, rapid ? 2000 : 10000)
+            .setMinUpdateIntervalMillis(rapid ? 1000 : 5000)
+            .setMinUpdateDistanceMeters(0)
             .build();
-        callback = new LocationCallback() {
-            @Override
-            public void onLocationResult(LocationResult r) {
-                Location l = r.getLastLocation();
-                if (l != null) poateTrimite(l);
-            }
-        };
         try {
             client.requestLocationUpdates(req, callback, Looper.getMainLooper());
         } catch (SecurityException e) {
@@ -146,7 +157,10 @@ public class TrackerService extends Service {
         if (ultimaTrimisa != null) {
             long dt = acum - ultimaTrimisaLa;
             float dist = ultimaTrimisa.distanceTo(l);
-            if (dt < 60000 && (dist < 30 || dt < 10000)) return;
+            boolean trimite = rapid
+                ? (dt >= 2500 && dist >= 5) || dt >= 30000
+                : dt >= 30000;
+            if (!trimite) return;
         }
         ultimaTrimisa = l;
         ultimaTrimisaLa = acum;
@@ -184,7 +198,15 @@ public class TrackerService extends Service {
                 try (InputStream is = c.getInputStream(); Scanner s = new Scanner(is, "UTF-8").useDelimiter("\\A")) {
                     String raspuns = s.hasNext() ? s.next() : "";
                     // Şoferul a trecut pe offline (sau cheia nu mai e valabilă): ne oprim.
-                    if (raspuns.contains("\"stop\":true")) opreste(this);
+                    if (raspuns.contains("\"stop\":true")) { opreste(this); return; }
+                    // Cineva îl urmăreşte live? Schimbăm ritmul (pe firul principal).
+                    boolean nou = raspuns.contains("\"rapid\":true");
+                    if (nou != rapid) {
+                        rapid = nou;
+                        new android.os.Handler(Looper.getMainLooper()).post(() -> {
+                            if (callback != null && cerereRapida != rapid) cereLocatii();
+                        });
+                    }
                 }
             }
         } catch (Exception e) {

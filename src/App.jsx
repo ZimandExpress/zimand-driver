@@ -9747,6 +9747,19 @@ const SARCINA_UI = {
 }
 
 // Titlul instrucţiunilor de marfă la ridicare (05.11.2026).
+// La plecare (spre ridicare) blocul de marfă se numea „Livrare de marfă" —
+// derutant, şoferul merge întâi la încărcare (06.11.2026).
+const TITLU_SPRE_RIDICARE = {
+  de: 'Fahrt zur Abholung (Pakete, Paletten)', en: 'On the way to pickup (parcels, pallets)', ro: 'Drumul spre ridicare (colete, paleți)',
+  pl: 'Dojazd do odbioru (paczki, palety)', bg: 'Път към вземането (пакети, палети)', hu: 'Úton az átvételhez (csomagok, raklapok)',
+  cs: 'Cesta k vyzvednutí (balíky, palety)', sk: 'Cesta k vyzdvihnutiu (balíky, palety)', hr: 'Put do preuzimanja (paketi, palete)',
+  sr: 'Put do preuzimanja (paketi, palete)', sl: 'Pot do prevzema (paketi, palete)', sq: 'Rruga për te marrja (pako, paleta)',
+  uk: 'Дорога до завантаження (посилки, палети)', ru: 'Дорога к загрузке (посылки, паллеты)', tr: 'Yükleme yerine yolda (koliler, paletler)',
+  it: 'Verso il ritiro (colli, pallet)', es: 'Camino a la recogida (paquetes, palés)', fr: 'Vers l’enlèvement (colis, palettes)',
+  pt: 'A caminho da recolha (volumes, paletes)', nl: 'Onderweg naar ophalen (pakketten, pallets)', el: 'Προς την παραλαβή (δέματα, παλέτες)',
+  lt: 'Kelyje į pasikrovimą (siuntiniai, padėklai)', lv: 'Ceļā uz iekraušanu (sūtījumi, paletes)',
+}
+
 const TITLU_INCARCARE = {
   de: 'Beim Laden (Pakete, Paletten)', en: 'When loading (parcels, pallets)', ro: 'La încărcare (colete, paleți)',
   pl: 'Przy załadunku (paczki, palety)', bg: 'При товарене (пакети, палети)', hu: 'Rakodáskor (csomagok, raklapok)',
@@ -9832,7 +9845,8 @@ function GhidSheet({ ghiduri, faza, lang, onClose, cuBote = true, sarcina = null
           <div key={g.key} className="ghid-bloc">
             {/* „Livrare de marfă" la ridicare era greşit: la încărcare blocul
                 se numeşte după ce face şoferul acum (05.11.2026). */}
-            <div className="ghid-titlu">{g.key === 'ware' && faza === 'pickup' ? (TITLU_INCARCARE[limba] || TITLU_INCARCARE.de) : titlu}</div>
+            <div className="ghid-titlu">{g.key === 'ware' && faza === 'pickup' ? (TITLU_INCARCARE[limba] || TITLU_INCARCARE.de)
+              : g.key === 'ware' && faza === 'start' ? (TITLU_SPRE_RIDICARE[limba] || TITLU_SPRE_RIDICARE.de) : titlu}</div>
             {g.video_url && (video === g.key
               ? <VideoGhid url={g.video_url} lang={lang} />
               : <button type="button" className="ghid-video-btn" onClick={() => setVideo(g.key)}><Play size={15} strokeWidth={2.2} /> {t('guideWatchVideo', lang)}</button>)}

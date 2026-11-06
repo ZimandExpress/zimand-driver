@@ -11381,8 +11381,8 @@ function BidCard({ order, lang, courierProfileId, open, onToggle, onBidPlaced, o
               {order.fixed_price_only ? (
                 <div style={{ fontSize: 13, color: '#5A6878', lineHeight: 1.5, marginTop: 8, textAlign: 'center' }}>
                   {lang === 'en'
-                    ? 'Fixed price – tap ✓ to accept. Dispatch then decides who gets the order.'
-                    : 'Festpreis – mit ✓ annehmen. Die Disposition entscheidet danach, wer den Auftrag erhält.'}
+                    ? 'Fixed price – tap ✓ to accept. We will get back to you with the confirmation as soon as possible.'
+                    : 'Festpreis – mit ✓ annehmen. Wir melden uns schnellstmöglich mit der Bestätigung.'}
                 </div>
               ) : (
               <>

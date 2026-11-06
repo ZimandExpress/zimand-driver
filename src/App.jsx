@@ -659,7 +659,9 @@ function LoginScreen({ lang, onChangeLang }) {
       authCaptcha.reset()
       if (r2.error) { setBusy(false); setError(t('loginError', lang)); return }
       const { data: firme, error: eF } = await zs.rpc('my_tenants')
-      const lista = (firme || []).filter((f) => f.company_code)
+      // Doar firmele unde contul e ŞOFER (invitat de firma respectivă), nu
+      // cele unde e proprietar/dispecer/client.
+      const lista = (firme || []).filter((f) => f.company_code && (f.role === 'driver' || f.role === 'courier'))
       if (eF || lista.length === 0) {
         await zs.auth.signOut()
         setBusy(false)

@@ -605,11 +605,72 @@ function LoginScreen({ lang, onChangeLang }) {
   const [showCode, setShowCode] = useState(() => MULTI_TENANT && !!codFirmaSalvat())
   const cod = showCode ? companyCode.trim().toUpperCase() : ''
 
+  // Fără cod de firmă (06.11.2026): contul se caută singur — întâi în Zimand
+  // Express, apoi în platforma Zimand Software. Acolo firma se alege din
+  // apartenenţa contului: una → direct; mai multe → şoferul alege din listă.
+  // Codul rămâne opţional (ascuns), pentru cazuri speciale.
+  const [firmeDeAles, setFirmeDeAles] = useState(null)
+
+  async function asteaptaCaptcha(ms = 9000) {
+    const t0 = Date.now()
+    while (!authCaptcha.token && Date.now() - t0 < ms) await new Promise((r) => setTimeout(r, 250))
+    return authCaptcha.token
+  }
+
+  async function intraInFirma(codFirma, client) {
+    const problema = await alegeFirma(codFirma, client)
+    if (problema) {
+      await client.auth.signOut()
+      setBusy(false)
+      setFirmeDeAles(null)
+      setError(t(problema === 'not_member' ? 'companyNotMember' : 'companyCodeInvalid', lang))
+      return
+    }
+    if (BACKEND !== 'zs') {
+      seteazaBackend('zs')
+      window.location.replace(window.location.origin + '/')
+      return
+    }
+    setBusy(false)
+  }
+
   async function handleLogin(e) {
     e.preventDefault()
     setError('')
     if (cod && !codFirmaValid(cod)) { setError(t('companyCodeInvalid', lang)); return }
     setBusy(true)
+    if (!cod) {
+      const ze = clientPentru('ze')
+      const r1 = await ze.auth.signInWithPassword({ email, password, options: { captchaToken: authCaptcha.token } })
+      authCaptcha.reset()
+      if (!r1.error) {
+        if (BACKEND !== 'ze') {
+          seteazaBackend('ze')
+          window.location.replace(window.location.origin + '/')
+          return
+        }
+        setBusy(false)
+        return
+      }
+      // Nu e cont Zimand Express → încercăm platforma (cu un token anti-robot nou).
+      await asteaptaCaptcha()
+      const zs = clientPentru('zs')
+      const r2 = await zs.auth.signInWithPassword({ email, password, options: { captchaToken: authCaptcha.token } })
+      authCaptcha.reset()
+      if (r2.error) { setBusy(false); setError(t('loginError', lang)); return }
+      const { data: firme, error: eF } = await zs.rpc('my_tenants')
+      const lista = (firme || []).filter((f) => f.company_code)
+      if (eF || lista.length === 0) {
+        await zs.auth.signOut()
+        setBusy(false)
+        setError(t('companyNotMember', lang))
+        return
+      }
+      if (lista.length === 1) { await intraInFirma(lista[0].company_code, zs); return }
+      setBusy(false)
+      setFirmeDeAles(lista)
+      return
+    }
     const tinta = cod ? 'zs' : 'ze'
     const client = clientPentru(tinta)
     const { error } = await client.auth.signInWithPassword({ email, password, options: { captchaToken: authCaptcha.token } })
@@ -680,6 +741,28 @@ function LoginScreen({ lang, onChangeLang }) {
           </>
         )}
         <button className="link-btn auth-link" onClick={() => setMode('login')}>
+          {t('backToLogin', lang)}
+        </button>
+      </AuthShell>
+    )
+  }
+
+  if (firmeDeAles) {
+    return (
+      <AuthShell lang={lang} onChangeLang={onChangeLang}>
+        <h1 className="auth-title">{t('chooseCompanyTitle', lang)}</h1>
+        <p className="login-sub">{t('chooseCompanySub', lang)}</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {firmeDeAles.map((f) => (
+            <button key={f.tenant_id} className="btn auth-btn" type="button" disabled={busy}
+              style={{ textTransform: 'none', letterSpacing: 0 }}
+              onClick={() => { setBusy(true); intraInFirma(f.company_code, clientPentru('zs')) }}>
+              {f.name}
+            </button>
+          ))}
+        </div>
+        {error && <div className="login-error">{error}</div>}
+        <button className="link-btn auth-link" onClick={async () => { await clientPentru('zs').auth.signOut(); setFirmeDeAles(null) }}>
           {t('backToLogin', lang)}
         </button>
       </AuthShell>

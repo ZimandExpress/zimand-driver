@@ -3061,3 +3061,88 @@ body { -webkit-font-smoothing: antialiased; }
   80% { box-shadow: 0 0 0 6px rgba(178,58,36,.25); }
 }
 .zd-atentie { animation: zd-atentie-puls 1.4s ease-out 1; }
+
+/* Indicatorul de reîmprospătare prin tragere (06.11.2026) */
+@keyframes zdRoteste { to { transform: rotate(360deg); } }
+.zd-roteste { animation: zdRoteste .8s linear infinite; }
+
+/* ── Ecranul de intrare (06.11.2026) ─────────────────────────────────── */
+.auth-shell {
+  min-height: 100vh; min-height: 100dvh;
+  display: flex; flex-direction: column;
+  background: #0F2240;
+}
+.auth-hero {
+  position: relative; overflow: hidden;
+  flex: 0 0 auto; min-height: 36vh;
+  padding: calc(18px + env(safe-area-inset-top, 0px)) 24px 46px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: radial-gradient(120% 90% at 85% 0%, #1D3A66 0%, #0F2240 60%);
+  color: #fff; text-align: center;
+}
+.auth-hero-art { position: absolute; inset: 0; width: 100%; height: 100%; }
+.auth-lang { position: absolute; top: calc(14px + env(safe-area-inset-top, 0px)); right: 16px; z-index: 2; }
+.auth-logo { position: relative; z-index: 1; display: flex; flex-direction: column; line-height: .95; }
+.auth-logo-1, .auth-logo-2 { font-family: 'Oswald', sans-serif; font-weight: 600; font-size: 50px; letter-spacing: .04em; }
+.auth-logo-1 { color: #fff; }
+.auth-logo-2 { color: #FF7A29; }
+.auth-tagline { position: relative; z-index: 1; margin-top: 12px; font-size: 14.5px; color: #B9C5D8; letter-spacing: .02em; }
+
+.login-card.auth-sheet {
+  flex: 1 0 auto;
+  width: 100%; max-width: none;
+  margin-top: -26px; position: relative; z-index: 2;
+  border: none; border-radius: 26px 26px 0 0;
+  box-shadow: 0 -8px 30px rgba(0, 0, 0, .18);
+  padding: 30px 24px calc(22px + env(safe-area-inset-bottom, 0px));
+  display: flex; flex-direction: column;
+}
+.auth-sheet > * { width: 100%; max-width: 440px; margin-left: auto; margin-right: auto; }
+.auth-title { font-family: 'Oswald', sans-serif; font-weight: 600; font-size: 27px; color: var(--navy); margin: 0; }
+.auth-sheet .login-sub { margin: 6px auto 22px; font-size: 15px; }
+.auth-sheet form { gap: 12px; }
+
+.auth-field { position: relative; display: flex; align-items: center; }
+.auth-field-icon { position: absolute; left: 16px; color: #8A96A8; pointer-events: none; }
+.login-card .auth-field input {
+  width: 100%; height: 56px;
+  padding: 0 50px 0 48px;
+  border: 1.5px solid transparent; border-radius: 14px;
+  background: #F2F4F8; font-size: 16px; color: var(--navy);
+}
+.login-card .auth-field input::placeholder { color: #7C889B; }
+.login-card .auth-field input:focus { background: #fff; border-color: var(--orange); box-shadow: 0 0 0 4px rgba(255, 122, 41, .14); }
+.auth-field:focus-within .auth-field-icon { color: var(--orange); }
+.auth-eye {
+  position: absolute; right: 8px; width: 40px; height: 40px;
+  display: flex; align-items: center; justify-content: center;
+  border: none; background: none; color: #FF7A29; cursor: pointer; border-radius: 10px;
+}
+.btn.auth-btn {
+  height: 56px; margin-top: 6px; border-radius: 14px;
+  font-family: 'Oswald', sans-serif; font-size: 19px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
+  box-shadow: 0 8px 20px rgba(255, 122, 41, .32);
+}
+.link-btn.auth-link { margin-top: 18px; font-size: 15px; text-decoration: underline; text-underline-offset: 3px; color: var(--navy); }
+.auth-legal { margin-top: auto !important; padding-top: 28px; text-align: center; font-size: 13.5px; color: var(--text-soft); line-height: 1.5; }
+.auth-legal a { color: #E2621B; font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }
+
+/* Ecranul de intrare cu brandingul firmei (platforma Zimand Software, cod de firmă). */
+.auth-firma { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 14px; max-width: 100%; }
+.auth-firma-logo {
+  display: flex; align-items: center; justify-content: center;
+  max-width: 240px; min-width: 72px; height: 84px; padding: 12px 18px;
+  background: #fff; border-radius: 18px; box-shadow: 0 8px 24px rgba(0, 0, 0, .25);
+}
+.auth-firma-logo img { max-width: 100%; max-height: 100%; object-fit: contain; display: block; }
+.auth-firma-name {
+  font-family: 'Oswald', sans-serif; font-weight: 600; font-size: 30px; line-height: 1.1; letter-spacing: .02em;
+  color: #fff; overflow-wrap: anywhere; padding: 0 8px;
+}
+.auth-shell--culoare .btn.auth-btn { background: var(--firma); color: var(--firma-text); box-shadow: 0 8px 20px var(--firma-umbra); }
+.auth-shell--culoare .auth-eye { color: var(--firma); }
+.auth-shell--culoare .login-card .auth-field input:focus { border-color: var(--firma); box-shadow: 0 0 0 4px var(--firma-umbra); }
+.auth-shell--culoare .auth-field:focus-within .auth-field-icon { color: var(--firma); }
+.auth-shell--culoare .auth-legal a { color: var(--firma); }
+
+

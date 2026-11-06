@@ -268,3 +268,62 @@ export const PLECARE_DOC = {
   lt: ['Dokumentų pristatymas: be Zustellprotokoll pristatyti negalima.', 'Zustellprotokoll paėmimo metu jums duoda užsakovas – atspausdintą. Jei jo nėra: paėmimo neužbaikite, paprašykite jo užsakovo.', 'Keli gavėjai: po vieną lapą kiekvienam.'],
   lv: ['Dokumentu piegāde: bez Zustellprotokoll piegāde nav iespējama.', 'Zustellprotokoll saņemšanas laikā jums iedod pasūtītājs – izdrukātu. Ja tā nav: nepabeidziet saņemšanu, palūdziet to pasūtītājam.', 'Vairāki saņēmēji: viena lapa katram.'],
 }
+
+// BOTE_FORMULAR (05.11.2026): legenda imaginii cu Übergabe- und
+// Botenbestätigung de la ridicare — [portocaliu = expeditorul, verde = curierul,
+// regula variantelor din secţiunea 4].
+export const BOTE_FORMULAR = {
+  de: ['Orange: füllt der Absender aus (Abschnitt 3).', 'Grün: füllen Sie aus (Abschnitt 4).', 'Nur EINE Variante ankreuzen: 1 = Dokument offen gesehen, 2 = verschlossener Umschlag.'],
+  en: ['Orange: filled in by the sender (section 3).', 'Green: filled in by you (section 4).', 'Tick only ONE option: 1 = you saw the document open, 2 = sealed envelope.'],
+  ro: ['Portocaliu: completează expeditorul (secțiunea 3).', 'Verde: completați dumneavoastră (secțiunea 4).', 'Bifați o SINGURĂ variantă: 1 = ați văzut documentul deschis, 2 = plic închis.'],
+  pl: ['Pomarańczowe: wypełnia nadawca (sekcja 3).', 'Zielone: wypełnia Pan/Pani (sekcja 4).', 'Zaznacz tylko JEDNĄ opcję: 1 = dokument widziany otwarty, 2 = zamknięta koperta.'],
+  bg: ['Оранжево: попълва подателят (раздел 3).', 'Зелено: попълвате Вие (раздел 4).', 'Отбележете само ЕДИН вариант: 1 = видян отворен документ, 2 = затворен плик.'],
+  hu: ['Narancs: a feladó tölti ki (3. szakasz).', 'Zöld: Ön tölti ki (4. szakasz).', 'Csak EGY változatot jelöljön: 1 = nyitott dokumentumot látott, 2 = lezárt boríték.'],
+  cs: ['Oranžová: vyplní odesílatel (oddíl 3).', 'Zelená: vyplníte vy (oddíl 4).', 'Zaškrtněte jen JEDNU variantu: 1 = dokument viděn otevřený, 2 = zalepená obálka.'],
+  sk: ['Oranžová: vyplní odosielateľ (oddiel 3).', 'Zelená: vyplníte vy (oddiel 4).', 'Zaškrtnite len JEDNU variantu: 1 = dokument videný otvorený, 2 = zalepená obálka.'],
+  hr: ['Narančasto: ispunjava pošiljatelj (odjeljak 3).', 'Zeleno: ispunjavate vi (odjeljak 4).', 'Označite samo JEDNU varijantu: 1 = dokument viđen otvoren, 2 = zatvorena omotnica.'],
+  sr: ['Narandžasto: popunjava pošiljalac (odeljak 3).', 'Zeleno: popunjavate vi (odeljak 4).', 'Označite samo JEDNU varijantu: 1 = dokument viđen otvoren, 2 = zatvorena koverta.'],
+  sl: ['Oranžno: izpolni pošiljatelj (razdelek 3).', 'Zeleno: izpolnite vi (razdelek 4).', 'Označite samo ENO možnost: 1 = dokument viden odprt, 2 = zaprta ovojnica.'],
+  sq: ['Portokalli: e plotëson dërguesi (seksioni 3).', 'Jeshile: e plotësoni ju (seksioni 4).', 'Shënoni vetëm NJË variant: 1 = dokumenti u pa i hapur, 2 = zarf i mbyllur.'],
+  uk: ['Помаранчеве: заповнює відправник (розділ 3).', 'Зелене: заповнюєте ви (розділ 4).', 'Позначте лише ОДИН варіант: 1 = документ бачили відкритим, 2 = закритий конверт.'],
+  ru: ['Оранжевое: заполняет отправитель (раздел 3).', 'Зелёное: заполняете вы (раздел 4).', 'Отметьте только ОДИН вариант: 1 = документ видели открытым, 2 = закрытый конверт.'],
+  tr: ['Turuncu: gönderen doldurur (bölüm 3).', 'Yeşil: siz doldurursunuz (bölüm 4).', 'Yalnızca BİR seçeneği işaretleyin: 1 = belge açık görüldü, 2 = kapalı zarf.'],
+  it: ['Arancione: lo compila il mittente (sezione 3).', 'Verde: lo compila lei (sezione 4).', 'Barrare UNA sola variante: 1 = documento visto aperto, 2 = busta chiusa.'],
+  es: ['Naranja: lo rellena el remitente (sección 3).', 'Verde: lo rellena usted (sección 4).', 'Marque UNA sola opción: 1 = documento visto abierto, 2 = sobre cerrado.'],
+  fr: ['Orange : rempli par l’expéditeur (section 3).', 'Vert : rempli par vous (section 4).', 'Cochez UNE seule variante : 1 = document vu ouvert, 2 = enveloppe fermée.'],
+  pt: ['Laranja: preenchido pelo remetente (secção 3).', 'Verde: preenchido por si (secção 4).', 'Assinale só UMA opção: 1 = documento visto aberto, 2 = envelope fechado.'],
+  nl: ['Oranje: vult de afzender in (deel 3).', 'Groen: vult u in (deel 4).', 'Kruis slechts ÉÉN variant aan: 1 = document open gezien, 2 = gesloten envelop.'],
+  el: ['Πορτοκαλί: συμπληρώνει ο αποστολέας (ενότητα 3).', 'Πράσινο: συμπληρώνετε εσείς (ενότητα 4).', 'Σημειώστε μόνο ΜΙΑ επιλογή: 1 = είδατε το έγγραφο ανοιχτό, 2 = κλειστός φάκελος.'],
+  lt: ['Oranžinė: pildo siuntėjas (3 skyrius).', 'Žalia: pildote jūs (4 skyrius).', 'Pažymėkite tik VIENĄ variantą: 1 = dokumentas matytas atviras, 2 = užklijuotas vokas.'],
+  lv: ['Oranžs: aizpilda sūtītājs (3. sadaļa).', 'Zaļš: aizpildāt jūs (4. sadaļa).', 'Atzīmējiet tikai VIENU variantu: 1 = dokuments redzēts atvērts, 2 = aizlīmēta aploksne.'],
+}
+
+// PLECARE_MARFA (06.11.2026, cerut de Andrei): la plecare, la marfă, doar
+// ETA către client; la întârziere NU clientul — mesaj pe WhatsApp la
+// dispecerat (butonul din meniu), clientul îl informăm noi.
+const WA = '„Dispo Zimand · WhatsApp“'
+export const PLECARE_MARFA = {
+  de: ['Senden Sie dem Kunden vor der Abfahrt die Ankunftszeit (ETA) aus der App.', `Bei Verspätung: den Kunden NICHT kontaktieren. Schreiben Sie uns per WhatsApp – Menü ☰ oben rechts › ${WA}. Den Kunden informieren wir.`],
+  en: ['Before departure, send the customer the arrival time (ETA) from the app.', `If you are running late: do NOT contact the customer. Message us on WhatsApp – menu ☰ top right › “Dispatch Zimand · WhatsApp”. We will inform the customer.`],
+  ro: ['Înainte de plecare, trimiteți clientului din aplicație ora de sosire (ETA).', `Dacă întârziați: NU contactați clientul. Scrieți-ne pe WhatsApp – meniul ☰ dreapta sus › ${WA}. Clientul îl informăm noi.`],
+  pl: ['Przed wyjazdem wyślij klientowi z aplikacji godzinę przyjazdu (ETA).', `W razie opóźnienia: NIE kontaktuj się z klientem. Napisz do nas na WhatsApp – menu ☰ w prawym górnym rogu › ${WA}. Klienta poinformujemy my.`],
+  bg: ['Преди тръгване изпратете на клиента от приложението часа на пристигане (ETA).', `При закъснение: НЕ се свързвайте с клиента. Пишете ни в WhatsApp – меню ☰ горе вдясно › ${WA}. Ние ще информираме клиента.`],
+  hu: ['Indulás előtt küldje el az ügyfélnek az alkalmazásból az érkezési időt (ETA).', `Késés esetén: NE keresse az ügyfelet. Írjon nekünk WhatsAppon – ☰ menü jobbra fent › ${WA}. Az ügyfelet mi tájékoztatjuk.`],
+  cs: ['Před odjezdem pošlete zákazníkovi z aplikace čas příjezdu (ETA).', `Při zpoždění: zákazníka NEKONTAKTUJTE. Napište nám přes WhatsApp – menu ☰ vpravo nahoře › ${WA}. Zákazníka informujeme my.`],
+  sk: ['Pred odchodom pošlite zákazníkovi z aplikácie čas príchodu (ETA).', `Pri meškaní: zákazníka NEKONTAKTUJTE. Napíšte nám cez WhatsApp – menu ☰ vpravo hore › ${WA}. Zákazníka informujeme my.`],
+  hr: ['Prije polaska pošaljite klijentu iz aplikacije vrijeme dolaska (ETA).', `Ako kasnite: NE kontaktirajte klijenta. Pišite nam na WhatsApp – izbornik ☰ gore desno › ${WA}. Klijenta obavještavamo mi.`],
+  sr: ['Pre polaska pošaljite klijentu iz aplikacije vreme dolaska (ETA).', `Ako kasnite: NE kontaktirajte klijenta. Pišite nam na WhatsApp – meni ☰ gore desno › ${WA}. Klijenta obaveštavamo mi.`],
+  sl: ['Pred odhodom stranki iz aplikacije pošljite čas prihoda (ETA).', `Ob zamudi: stranke NE kontaktirajte. Pišite nam na WhatsApp – meni ☰ zgoraj desno › ${WA}. Stranko obvestimo mi.`],
+  sq: ['Para nisjes, dërgojini klientit nga aplikacioni orën e mbërritjes (ETA).', `Nëse vonoheni: MOS e kontaktoni klientin. Na shkruani në WhatsApp – menyja ☰ lart djathtas › ${WA}. Klientin e informojmë ne.`],
+  uk: ['Перед виїздом надішліть клієнту з додатка час прибуття (ETA).', `Якщо запізнюєтеся: НЕ зв’язуйтеся з клієнтом. Напишіть нам у WhatsApp – меню ☰ угорі праворуч › ${WA}. Клієнта повідомимо ми.`],
+  ru: ['Перед выездом отправьте клиенту из приложения время прибытия (ETA).', `Если опаздываете: НЕ связывайтесь с клиентом. Напишите нам в WhatsApp – меню ☰ вверху справа › ${WA}. Клиента предупредим мы.`],
+  tr: ['Yola çıkmadan önce müşteriye uygulamadan varış saatini (ETA) gönderin.', `Gecikirseniz: müşteriyle iletişime GEÇMEYİN. Bize WhatsApp’tan yazın – sağ üstteki ☰ menü › ${WA}. Müşteriyi biz bilgilendiririz.`],
+  it: ['Prima della partenza inviate al cliente dall’app l’orario di arrivo (ETA).', `In caso di ritardo: NON contattate il cliente. Scriveteci su WhatsApp – menu ☰ in alto a destra › ${WA}. Il cliente lo informiamo noi.`],
+  es: ['Antes de salir, envíe al cliente desde la app la hora de llegada (ETA).', `Si se retrasa: NO contacte con el cliente. Escríbanos por WhatsApp – menú ☰ arriba a la derecha › ${WA}. Al cliente le informamos nosotros.`],
+  fr: ['Avant le départ, envoyez au client depuis l’appli l’heure d’arrivée (ETA).', `En cas de retard : ne contactez PAS le client. Écrivez-nous sur WhatsApp – menu ☰ en haut à droite › ${WA}. Nous informons le client.`],
+  pt: ['Antes de partir, envie ao cliente pela app a hora de chegada (ETA).', `Em caso de atraso: NÃO contacte o cliente. Escreva-nos no WhatsApp – menu ☰ no canto superior direito › ${WA}. Nós informamos o cliente.`],
+  nl: ['Stuur de klant vóór vertrek via de app de aankomsttijd (ETA).', `Bij vertraging: neem GEEN contact op met de klant. Stuur ons een WhatsApp – menu ☰ rechtsboven › ${WA}. Wij informeren de klant.`],
+  el: ['Πριν ξεκινήσετε, στείλτε στον πελάτη από την εφαρμογή την ώρα άφιξης (ETA).', `Αν καθυστερείτε: ΜΗΝ επικοινωνήσετε με τον πελάτη. Γράψτε μας στο WhatsApp – μενού ☰ πάνω δεξιά › ${WA}. Τον πελάτη τον ενημερώνουμε εμείς.`],
+  lt: ['Prieš išvykdami iš programėlės išsiųskite klientui atvykimo laiką (ETA).', `Jei vėluojate: NESIKREIPKITE į klientą. Parašykite mums per WhatsApp – meniu ☰ viršuje dešinėje › ${WA}. Klientą informuosime mes.`],
+  lv: ['Pirms izbraukšanas nosūtiet klientam no lietotnes ierašanās laiku (ETA).', `Ja kavējaties: NESAZINIETIES ar klientu. Rakstiet mums WhatsApp – izvēlne ☰ augšā pa labi › ${WA}. Klientu informēsim mēs.`],
+}

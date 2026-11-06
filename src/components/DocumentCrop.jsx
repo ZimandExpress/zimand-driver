@@ -311,7 +311,21 @@ export default function DocumentCrop({ file, lang, titlu, onDone, onRetake }) {
   const [previz, setPreviz] = useState(null)
   const mareRef = useRef(null)
   const zonaRef = useRef(null)
+  const mijlocRef = useRef(null)
   const tras = useRef(null)
+  // Înălţimea reală rămasă pentru poză, măsurată (05.11.2026). Înainte era o
+  // estimare fixă (100dvh − 370px), prea mare pe unele telefoane: poza ieşea
+  // peste barele de jos, iar colţurile de jos nu se puteau trage până la
+  // marginea foii — cadrul se oprea mai sus decât poza.
+  const [hMax, setHMax] = useState(null)
+
+  useEffect(() => {
+    const el = mijlocRef.current
+    if (!el || typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(() => setHMax(Math.max(160, el.clientHeight - 12)))
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
 
   useEffect(() => {
     let viu = true
@@ -397,12 +411,12 @@ export default function DocumentCrop({ file, lang, titlu, onDone, onRetake }) {
         </div>
       </div>
 
-      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '6px 14px', minHeight: 0 }}>
+      <div ref={mijlocRef} style={{ flex: '1 1 0', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '6px 14px', minHeight: 180 }}>
         {url && (
-          <div ref={zonaRef} style={{ position: 'relative', maxWidth: '100%', maxHeight: '100%', touchAction: 'none' }}
+          <div ref={zonaRef} style={{ position: 'relative', maxWidth: '100%', touchAction: 'none', lineHeight: 0 }}
                onPointerMove={misca} onPointerUp={ridica} onPointerCancel={ridica}>
             <img src={previz || url} alt="" draggable={false}
-                 style={{ display: 'block', maxWidth: '100%', maxHeight: 'calc(100dvh - 370px)', minHeight: 160, userSelect: 'none',
+                 style={{ display: 'block', maxWidth: '100%', maxHeight: hMax || 'calc(100dvh - 440px)', userSelect: 'none',
                           filter: `brightness(${1 + lum / 100}) contrast(${1 + con / 100})` }} />
             <svg viewBox="0 0 100 100" preserveAspectRatio="none"
                  style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }}>

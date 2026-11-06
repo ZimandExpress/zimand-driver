@@ -1,9 +1,9 @@
 import { Component, useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { Capacitor, registerPlugin } from '@capacitor/core'
-import { supabase, MULTI_TENANT, BACKEND, SUPABASE_URL, SUPABASE_ANON_KEY, VAPID_PUBLIC_KEY_PLATFORMA, codFirmaSalvat, codFirmaValid, alegeFirma, clientPentru, seteazaBackend, salveazaCodFirma } from './supabaseClient'
+import { supabase, MULTI_TENANT, BACKEND, SUPABASE_URL, SUPABASE_ANON_KEY, VAPID_PUBLIC_KEY_PLATFORMA, codFirmaSalvat, codFirmaValid, alegeFirma, clientPentru, seteazaBackend, salveazaCodFirma, brandFirmaSalvat, incarcaBrandFirma } from './supabaseClient'
 import { t, getLang, setLang, availableLangs } from './i18n'
-import { Maximize2, ArrowLeft as ArrowLeftMap, Eye, Play, ClipboardList, Pause, SlidersHorizontal, Building2, StickyNote, Receipt, Package, Repeat, Hourglass, Camera, Image as ImageIcon, Mail, Ruler, ChevronDown, Lock, Phone, Truck, CheckCircle2, Wallet, User, LogOut, Menu, Bell, MapPin, FlagTriangleRight, Tag, XCircle, Download, X, Navigation, Trophy, ThumbsUp, ArrowUpFromLine, ArrowDownToLine, EyeOff, Layers, AlertTriangle, Clock, FileText, Signature, BookOpen, Info as InfoIcon } from 'lucide-react'
+import { RefreshCw, Maximize2, ArrowLeft as ArrowLeftMap, Eye, Play, ClipboardList, Pause, SlidersHorizontal, Building2, StickyNote, Receipt, Package, Repeat, Hourglass, Camera, Image as ImageIcon, Mail, Ruler, ChevronDown, Lock, Phone, Truck, CheckCircle2, Wallet, User, LogOut, Menu, Bell, MapPin, FlagTriangleRight, Tag, XCircle, Download, X, Navigation, Trophy, ThumbsUp, ArrowUpFromLine, ArrowDownToLine, EyeOff, Layers, AlertTriangle, Clock, FileText, Signature, BookOpen, Info as InfoIcon } from 'lucide-react'
 import { GHID_TRADUCERI, GHID_UI } from './ghidTraduceri.js'
 import { GHID_TRADUCERI_MARFA } from './ghidTraduceriMarfa.js'
 import { CMR_LIVRARE_LIMBI } from './cmrLivrareTraduceri.js'
@@ -17,7 +17,7 @@ import { ZP_LIMBI, PLECARE_LIMBI, TRANSPORT_LIMBI, REGULI_LIMBI, RETUR_LIMBI, PO
 // Livrarea de documente, regulile noi (05.11.2026): cutia poştală numai cu
 // acelaşi nume de familie pe cutie şi pe plic, altfel dispeceratul. Înlocuiesc
 // paşii vechi în toate limbile, deci şi cardul comenzii arată la fel.
-import { PASI_ZUSTELLART_V2, ZP_PAGINA, RIDICARE_DOC, PLECARE_DOC } from './livrareDocTraduceri.js'
+import { PASI_ZUSTELLART_V2, ZP_PAGINA, RIDICARE_DOC, PLECARE_DOC, BOTE_FORMULAR, PLECARE_MARFA } from './livrareDocTraduceri.js'
 Object.assign(PASI_ZUSTELLART, PASI_ZUSTELLART_V2)
 import './index.css'
 import PodFiles from './components/PodFiles'
@@ -49,6 +49,8 @@ const ESTE_APP_NATIVA = Capacitor.isNativePlatform()
 const BackgroundGeolocation = registerPlugin('BackgroundGeolocation')
 // Id-ul urmăritorului nativ, ţinut pe telefon — vezi efectul de locaţie.
 const CHEIE_WATCHER_NATIV = 'zd-bg-watcher'
+// Serviciul nativ propriu (aplicaţia Android ≥ 1.0.14): trimite poziţia şi în fundal.
+const ZimandTracker = registerPlugin('ZimandTracker')
 const PushNotifications = registerPlugin('PushNotifications')
 
 // --- Comenzile, aşa cum le vede o firmă de transport ------------------------
@@ -539,6 +541,105 @@ function AuthCaptchaBox() {
   return <div ref={boxRef} style={{ margin: '12px 0', display: 'flex', justifyContent: 'center' }} />
 }
 
+// Ecranul de intrare, refăcut (06.11.2026): sus o bandă bleumarin cu numele
+// aplicaţiei şi un traseu desenat, jos o foaie albă cu câmpuri mari, cu
+// pictograme, ochi pentru parolă şi butonul portocaliu pe toată lăţimea.
+// Aceeaşi ramă pentru intrare, „Parolă uitată" şi setarea parolei.
+//
+// Platforma Zimand Software (cod de firmă cunoscut): în bandă apar logo-ul şi
+// numele firmei, iar culoarea ei principală colorează butonul, ochiul,
+// chenarul câmpului activ şi linkul. Fără firmă: exact aspectul Zimand Express.
+function AuthShell({ lang, onChangeLang, children, brand = null }) {
+  const [logoStricat, setLogoStricat] = useState(false)
+  useEffect(() => { setLogoStricat(false) }, [brand?.logo_url])
+  const culoare = brand?.primary_color || null
+  const stil = culoare ? { '--firma': culoare, '--firma-text': textPeCuloare(culoare), '--firma-umbra': umbraCuloare(culoare) } : undefined
+  return (
+    <div className={'auth-shell' + (brand ? ' auth-shell--firma' : '') + (culoare ? ' auth-shell--culoare' : '')} style={stil}>
+      <div className="auth-hero">
+        <svg className="auth-hero-art" viewBox="0 0 400 260" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+          <path d="M-20 120 C 60 150, 110 250, 220 235 S 340 190, 430 215" fill="none" stroke="rgba(255,255,255,.07)" strokeWidth="34" strokeLinecap="round" />
+          <path d="M-20 120 C 60 150, 110 250, 220 235 S 340 190, 430 215" fill="none" stroke="rgba(255,255,255,.22)" strokeWidth="2" strokeDasharray="10 12" />
+          <circle cx="338" cy="196" r="5" fill="#FF7A29" />
+          <circle cx="338" cy="196" r="14" fill="none" stroke="rgba(255,122,41,.45)" strokeWidth="2" />
+        </svg>
+        {onChangeLang && <div className="auth-lang"><LangSwitcher lang={lang} onChangeLang={onChangeLang} dark /></div>}
+        {brand ? (
+          <div className="auth-firma">
+            {brand.logo_url && !logoStricat && (
+              <span className="auth-firma-logo">
+                <img src={brand.logo_url} alt="" onError={() => setLogoStricat(true)} />
+              </span>
+            )}
+            <span className="auth-firma-name">{brand.name}</span>
+          </div>
+        ) : (
+          <div className="auth-logo">
+            <span className="auth-logo-1">ZIMAND</span>
+            <span className="auth-logo-2">DRIVER</span>
+          </div>
+        )}
+        <div className="auth-tagline">{t('loginTagline', lang)}</div>
+      </div>
+      <div className="auth-sheet login-card">
+        {children}
+        <div className="auth-legal">
+          {t('privacyNote', lang)}{' '}
+          <a href="/datenschutz.html" target="_blank" rel="noopener noreferrer">{t('privacyLink', lang)}</a>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Textul de pe butonul în culoarea firmei: alb pe culori închise, bleumarin pe cele deschise.
+function textPeCuloare(hex) {
+  const n = parseInt(String(hex).slice(1), 16)
+  const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255
+  const lum = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255
+  return lum > 0.62 ? '#0F2240' : '#FFFFFF'
+}
+function umbraCuloare(hex) {
+  const n = parseInt(String(hex).slice(1), 16)
+  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, .30)`
+}
+
+// Brandingul firmei pentru un cod (platforma Zimand Software): întâi din
+// memoria telefonului, apoi reîmprospătat de pe server. Fără cod → null.
+function useBrandFirma(cod) {
+  const c = String(cod || '').trim().toUpperCase()
+  const [st, setSt] = useState(() => ({ cod: c, brand: c && codFirmaValid(c) ? brandFirmaSalvat(c) : null }))
+  useEffect(() => {
+    if (!c || !codFirmaValid(c)) return
+    let viu = true
+    setSt({ cod: c, brand: brandFirmaSalvat(c) })
+    incarcaBrandFirma(c).then((b) => { if (viu) setSt({ cod: c, brand: b }) }, () => {})
+    return () => { viu = false }
+  }, [c])
+  return st.cod === c ? st.brand : null
+}
+
+function AuthField({ icon: Icon, type = 'text', value, onChange, placeholder, required, minLength, autoComplete, lang }) {
+  const [vizibil, setVizibil] = useState(false)
+  const esteParola = type === 'password'
+  return (
+    <div className="auth-field">
+      <Icon size={19} className="auth-field-icon" aria-hidden="true" />
+      <input
+        type={esteParola && vizibil ? 'text' : type}
+        value={value} onChange={onChange} placeholder={placeholder} aria-label={placeholder}
+        required={required} minLength={minLength} autoComplete={autoComplete}
+      />
+      {esteParola && (
+        <button type="button" className="auth-eye" onClick={() => setVizibil((v) => !v)}
+          aria-label={t(vizibil ? 'hidePassword' : 'showPassword', lang)}>
+          {vizibil ? <EyeOff size={19} /> : <Eye size={19} />}
+        </button>
+      )}
+    </div>
+  )
+}
+
 function LoginScreen({ lang, onChangeLang }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -549,12 +650,80 @@ function LoginScreen({ lang, onChangeLang }) {
   const [companyCode, setCompanyCode] = useState(() => (MULTI_TENANT ? codFirmaSalvat() : ''))
   const [showCode, setShowCode] = useState(() => MULTI_TENANT && !!codFirmaSalvat())
   const cod = showCode ? companyCode.trim().toUpperCase() : ''
+  // Brandingul firmei: pentru codul salvat de la început, pentru unul tastat
+  // abia după ce şoferul iese din câmp (nu la fiecare literă).
+  const [codBrand, setCodBrand] = useState(() => cod)
+  const brandGasit = useBrandFirma(codBrand && codBrand === cod ? codBrand : '')
+  const brand = cod && codBrand === cod ? brandGasit : null
+
+  // Fără cod de firmă (06.11.2026): contul se caută singur — întâi în Zimand
+  // Express, apoi în platforma Zimand Software. Acolo firma se alege din
+  // apartenenţa contului: una → direct; mai multe → şoferul alege din listă.
+  // Codul rămâne opţional (ascuns), pentru cazuri speciale.
+  const [firmeDeAles, setFirmeDeAles] = useState(null)
+
+  async function asteaptaCaptcha(ms = 9000) {
+    const t0 = Date.now()
+    while (!authCaptcha.token && Date.now() - t0 < ms) await new Promise((r) => setTimeout(r, 250))
+    return authCaptcha.token
+  }
+
+  async function intraInFirma(codFirma, client) {
+    const problema = await alegeFirma(codFirma, client)
+    if (problema) {
+      await client.auth.signOut()
+      setBusy(false)
+      setFirmeDeAles(null)
+      setError(t(problema === 'not_member' ? 'companyNotMember' : 'companyCodeInvalid', lang))
+      return
+    }
+    if (BACKEND !== 'zs') {
+      seteazaBackend('zs')
+      window.location.replace(window.location.origin + '/')
+      return
+    }
+    setBusy(false)
+  }
 
   async function handleLogin(e) {
     e.preventDefault()
     setError('')
     if (cod && !codFirmaValid(cod)) { setError(t('companyCodeInvalid', lang)); return }
     setBusy(true)
+    if (!cod) {
+      const ze = clientPentru('ze')
+      const r1 = await ze.auth.signInWithPassword({ email, password, options: { captchaToken: authCaptcha.token } })
+      authCaptcha.reset()
+      if (!r1.error) {
+        if (BACKEND !== 'ze') {
+          seteazaBackend('ze')
+          window.location.replace(window.location.origin + '/')
+          return
+        }
+        setBusy(false)
+        return
+      }
+      // Nu e cont Zimand Express → încercăm platforma (cu un token anti-robot nou).
+      await asteaptaCaptcha()
+      const zs = clientPentru('zs')
+      const r2 = await zs.auth.signInWithPassword({ email, password, options: { captchaToken: authCaptcha.token } })
+      authCaptcha.reset()
+      if (r2.error) { setBusy(false); setError(t('loginError', lang)); return }
+      const { data: firme, error: eF } = await zs.rpc('my_tenants')
+      // Doar firmele unde contul e ŞOFER (invitat de firma respectivă), nu
+      // cele unde e proprietar/dispecer/client.
+      const lista = (firme || []).filter((f) => f.company_code && (f.role === 'driver' || f.role === 'courier'))
+      if (eF || lista.length === 0) {
+        await zs.auth.signOut()
+        setBusy(false)
+        setError(t('companyNotMember', lang))
+        return
+      }
+      if (lista.length === 1) { await intraInFirma(lista[0].company_code, zs); return }
+      setBusy(false)
+      setFirmeDeAles(lista)
+      return
+    }
     const tinta = cod ? 'zs' : 'ze'
     const client = clientPentru(tinta)
     const { error } = await client.auth.signInWithPassword({ email, password, options: { captchaToken: authCaptcha.token } })
@@ -606,63 +775,76 @@ function LoginScreen({ lang, onChangeLang }) {
 
   if (mode === 'forgot' || mode === 'sent') {
     return (
-      <div className="phone-shell center-content">
-        <LangSwitcher lang={lang} onChangeLang={onChangeLang} />
-        <div className="login-card">
-          <div className="brand-mark"><span className="live-dot" /> {t('appName', lang)}</div>
-          {mode === 'sent' ? (
-            <p className="login-sub">{t('resetLinkSent', lang)}</p>
-          ) : (
-            <>
-              <p className="login-sub">{t('forgotPasswordSub', lang)}</p>
-              <form onSubmit={handleForgot}>
-                <CompanyCodeField lang={lang} show={showCode} setShow={setShowCode} value={companyCode} onChange={setCompanyCode} />
-                <label>{t('email', lang)}</label>
-                <input type="email" value={email} onChange={e => setEmail(e.target.value)} required />
-                <AuthCaptchaBox />
-                {error && <div className="login-error">{error}</div>}
-                <button className="btn" type="submit" disabled={busy}>
-                  {busy ? '…' : t('sendResetLink', lang)}
-                </button>
-              </form>
-            </>
-          )}
-          <button className="link-btn" onClick={() => setMode('login')} style={{ marginTop: 14 }}>
-            {t('backToLogin', lang)}
-          </button>
+      <AuthShell lang={lang} onChangeLang={onChangeLang} brand={brand}>
+        <h1 className="auth-title">{t('forgotPassword', lang)}</h1>
+        {mode === 'sent' ? (
+          <p className="login-sub">{t('resetLinkSent', lang)}</p>
+        ) : (
+          <>
+            <p className="login-sub">{t('forgotPasswordSub', lang)}</p>
+            <form onSubmit={handleForgot}>
+              <CompanyCodeField lang={lang} show={showCode} setShow={setShowCode} value={companyCode} onChange={setCompanyCode} onBlur={() => setCodBrand(cod)} />
+              <AuthField icon={Mail} type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder={t('email', lang)} required autoComplete="email" lang={lang} />
+              <AuthCaptchaBox />
+              {error && <div className="login-error">{error}</div>}
+              <button className="btn auth-btn" type="submit" disabled={busy}>
+                {busy ? '…' : t('sendResetLink', lang)}
+              </button>
+            </form>
+          </>
+        )}
+        <button className="link-btn auth-link" onClick={() => setMode('login')}>
+          {t('backToLogin', lang)}
+        </button>
+      </AuthShell>
+    )
+  }
+
+  if (firmeDeAles) {
+    return (
+      <AuthShell lang={lang} onChangeLang={onChangeLang} brand={brand}>
+        <h1 className="auth-title">{t('chooseCompanyTitle', lang)}</h1>
+        <p className="login-sub">{t('chooseCompanySub', lang)}</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {firmeDeAles.map((f) => (
+            <button key={f.tenant_id} className="btn auth-btn" type="button" disabled={busy}
+              style={{ textTransform: 'none', letterSpacing: 0 }}
+              onClick={() => { setBusy(true); intraInFirma(f.company_code, clientPentru('zs')) }}>
+              {f.name}
+            </button>
+          ))}
         </div>
-      </div>
+        {error && <div className="login-error">{error}</div>}
+        <button className="link-btn auth-link" onClick={async () => { await clientPentru('zs').auth.signOut(); setFirmeDeAles(null) }}>
+          {t('backToLogin', lang)}
+        </button>
+      </AuthShell>
     )
   }
 
   return (
-    <div className="phone-shell center-content">
-      <LangSwitcher lang={lang} onChangeLang={onChangeLang} />
-      <div className="login-card">
-        <div className="brand-mark"><span className="live-dot" /> {t('appName', lang)}</div>
-        <p className="login-sub">{t('loginSubtitle', lang)}</p>
-        <form onSubmit={handleLogin}>
-          <label>{t('email', lang)}</label>
-          <input type="email" value={email} onChange={e => setEmail(e.target.value)} required />
-          <label>{t('password', lang)}</label>
-          <input type="password" value={password} onChange={e => setPassword(e.target.value)} required />
-          <CompanyCodeField lang={lang} show={showCode} setShow={setShowCode} value={companyCode} onChange={setCompanyCode} />
-          <AuthCaptchaBox />
-          {error && <div className="login-error">{error}</div>}
-          <button className="btn" type="submit" disabled={busy}>
-            {busy ? t('loggingIn', lang) : t('loginButton', lang)}
-          </button>
-        </form>
-        <button className="link-btn" onClick={() => setMode('forgot')} style={{ marginTop: 12 }}>
-          {t('forgotPassword', lang)}
+    <AuthShell lang={lang} onChangeLang={onChangeLang} brand={brand}>
+      <h1 className="auth-title">{t('loginButton', lang)}</h1>
+      <p className="login-sub">{t('loginSubtitle', lang)}</p>
+      <form onSubmit={handleLogin}>
+        <AuthField icon={Mail} type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder={t('email', lang)} required autoComplete="email" lang={lang} />
+        <AuthField icon={Lock} type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder={t('password', lang)} required autoComplete="current-password" lang={lang} />
+        <CompanyCodeField lang={lang} show={showCode} setShow={setShowCode} value={companyCode} onChange={setCompanyCode} onBlur={() => setCodBrand(cod)} />
+        <AuthCaptchaBox />
+        {error && <div className="login-error">{error}</div>}
+        <button className="btn auth-btn" type="submit" disabled={busy}>
+          {busy ? t('loggingIn', lang) : t('loginButton', lang)}
         </button>
-      </div>
-    </div>
+      </form>
+      <button className="link-btn auth-link" onClick={() => setMode('forgot')}>
+        {t('forgotPassword', lang)}
+      </button>
+    </AuthShell>
   )
 }
 
 // Câmpul „Firmencode”: ascuns implicit (șoferii Zimand Express nu au nevoie de el).
-function CompanyCodeField({ lang, show, setShow, value, onChange }) {
+function CompanyCodeField({ lang, show, setShow, value, onChange, onBlur }) {
   if (!show) {
     return (
       <button type="button" className="link-btn" onClick={() => setShow(true)} style={{ margin: '2px 0 10px', fontSize: 13 }}>
@@ -673,7 +855,7 @@ function CompanyCodeField({ lang, show, setShow, value, onChange }) {
   return (
     <>
       <label>{t('companyCode', lang)}</label>
-      <input value={value} onChange={e => onChange(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))} autoCapitalize="characters" autoComplete="organization" maxLength={12} placeholder="z. B. ABC123" />
+      <input value={value} onChange={e => onChange(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))} onBlur={onBlur} autoCapitalize="characters" autoComplete="organization" maxLength={12} placeholder="z. B. ABC123" />
       <div className="login-sub" style={{ margin: '4px 0 10px', fontSize: 12 }}>
         {t('companyCodeHint', lang)}{' '}
         <button type="button" className="link-btn" onClick={() => { onChange(''); setShow(false) }} style={{ fontSize: 12, display: 'inline', padding: 0 }}>{t('companyCodeRemove', lang)}</button>
@@ -683,6 +865,8 @@ function CompanyCodeField({ lang, show, setShow, value, onChange }) {
 }
 
 function SetPasswordScreen({ lang, onDone }) {
+  // Platforma: linkul de invitaţie aduce codul firmei (?firmencode=) → brandingul ei.
+  const brand = useBrandFirma(MULTI_TENANT ? codFirmaSalvat() : '')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [error, setError] = useState('')
@@ -710,22 +894,18 @@ function SetPasswordScreen({ lang, onDone }) {
   }
 
   return (
-    <div className="phone-shell center-content">
-      <div className="login-card">
-        <div className="brand-mark"><span className="live-dot" /> {t('appName', lang)}</div>
-        <p className="login-sub">{t('welcomeSetPassword', lang)}</p>
-        <form onSubmit={handleSubmit}>
-          <label>{t('newPassword', lang)}</label>
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} />
-          <label>{t('confirmPassword', lang)}</label>
-          <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required minLength={8} />
-          {error && <div className="login-error">{error}</div>}
-          <button className="btn" type="submit" disabled={busy}>
-            {busy ? '…' : t('setPasswordButton', lang)}
-          </button>
-        </form>
-      </div>
-    </div>
+    <AuthShell lang={lang} brand={brand}>
+      <h1 className="auth-title">{t('setPasswordButton', lang)}</h1>
+      <p className="login-sub">{t('welcomeSetPassword', lang)}</p>
+      <form onSubmit={handleSubmit}>
+        <AuthField icon={Lock} type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={t('newPassword', lang)} required minLength={8} autoComplete="new-password" lang={lang} />
+        <AuthField icon={Lock} type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder={t('confirmPassword', lang)} required minLength={8} autoComplete="new-password" lang={lang} />
+        {error && <div className="login-error">{error}</div>}
+        <button className="btn auth-btn" type="submit" disabled={busy}>
+          {busy ? '…' : t('setPasswordButton', lang)}
+        </button>
+      </form>
+    </AuthShell>
   )
 }
 
@@ -825,6 +1005,9 @@ function initialeMeniu(nume) {
 }
 
 function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) {
+  // Platforma Zimand Software: în antet numele firmei şoferului (nu „Zimand Driver”).
+  const brandFirma = useBrandFirma(MULTI_TENANT ? codFirmaSalvat() : '')
+  const numeAplicatie = MULTI_TENANT ? (brandFirma?.name || 'Zimand Driver') : 'Zimand Express'
   const [tab, setTab] = useState('curse')
   const [menuOpen, setMenuOpen] = useState(false)
   const isOwner = profile?.account_type === 'owner_operator'
@@ -992,6 +1175,7 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
         watchIdRef.current = null
       }
       opresteWatcherNativ()
+      if (ESTE_APP_NATIVA) ZimandTracker.stop().catch(() => {})
       return
     }
 
@@ -1071,9 +1255,19 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
         })
     }
 
-    // Aplicația Android: modulul nativ trimite poziția și în fundal. Aceleași
-    // praguri de scriere (sendPosition), aceeași stare în `location_status`.
+    // Aplicația Android.
+    //
+    // 05.11.2026 (v2): poziţia o trimite serviciul NATIV ZimandTracker, direct
+    // la funcţia de server `driver-location`, cu cheia de urmărire a şoferului.
+    // Partea web e oprită de Android în fundal (navigaţie pe ecran, ecran stins),
+    // deci nu mai poate fi ea cea care trimite. Versiunile vechi ale aplicaţiei
+    // (fără plugin) folosesc mai departe modulul BackgroundGeolocation.
     if (ESTE_APP_NATIVA) {
+      let anulat = false
+      let curataVechi = null
+      let ceasNativ = null
+
+      const pornesteBgVechi = () => {
       // 05.11.2026: după o reîncărcare a paginii (versiune nouă), urmăritorul
       // pornit de pagina veche rămânea agăţat în telefon — notificarea
       // „Standort aktiv" se vedea, dar poziţiile nu mai ajungeau la pagina
@@ -1130,6 +1324,49 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
         }
       }, 60 * 1000)
       return () => { clearInterval(ceas); opresteWatcherNativ() }
+      }
+
+      const pornesteNativ = async () => {
+        const { data, error } = await supabase
+          .from('drivers').select('tracking_token').eq('id', profile.id).maybeSingle()
+        if (error || !data?.tracking_token) throw new Error('tracking_token lipsă')
+        await ZimandTracker.start({
+          url: `${SUPABASE_URL}/functions/v1/driver-location`,
+          token: data.tracking_token,
+        })
+      }
+
+      pornesteNativ().then(() => {
+        if (anulat) return
+        // Urmăritorul vechi (pornit de o versiune anterioară) nu mai trebuie:
+        // ar dubla notificarea „Standort aktiv".
+        try {
+          const vechi = localStorage.getItem(CHEIE_WATCHER_NATIV)
+          if (vechi) BackgroundGeolocation.removeWatcher({ id: vechi }).catch(() => {})
+          localStorage.removeItem(CHEIE_WATCHER_NATIV)
+        } catch { /* nimic */ }
+        scrieStare('granted')
+        // Plasă de siguranţă: dacă serviciul s-a oprit între timp, îl repornim.
+        ceasNativ = setInterval(() => {
+          ZimandTracker.status()
+            .then((r) => { if (!r?.activ) pornesteNativ().catch(() => {}) })
+            .catch(() => {})
+        }, 2 * 60 * 1000)
+      }).catch((e) => {
+        if (anulat) return
+        if (e?.code === 'DENIED') { scrieStare('denied'); return }
+        console.warn('ZimandTracker indisponibil, folosesc modulul vechi:', e?.message)
+        // Raportat (06.11.2026): altfel nu aflăm de ce serviciul nativ nu
+        // porneşte pe un telefon (aplicaţie veche, cheie lipsă, refuz...).
+        try { window.__zdRaport && window.__zdRaport('tracker-nativ', `${e?.code || ''} ${e?.message || e}`.trim()) } catch { /* nimic */ }
+        curataVechi = pornesteBgVechi()
+      })
+
+      return () => {
+        anulat = true
+        if (ceasNativ) clearInterval(ceasNativ)
+        if (curataVechi) curataVechi()
+      }
     }
 
     const MOTIVE = { 1: 'denied', 2: 'unavailable', 3: 'timeout' }
@@ -1231,7 +1468,7 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
   return (
     <div className="phone-shell">
       <div className="brand-strip">
-        <span className="brand-strip-name"><span className="live-dot" /> {MULTI_TENANT ? 'Zimand Driver' : 'Zimand Express'}</span>
+        <span className="brand-strip-name"><span className="live-dot" /> {numeAplicatie}</span>
         <button className="hbtn" aria-label="menu" onClick={() => setMenuOpen(true)}><Menu size={20} strokeWidth={2} /></button>
       </div>
 
@@ -1397,7 +1634,7 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
           <div className="menu-header">
             <span className="menu-avatar">{initialeMeniu(profile?.name || session?.user?.email)}</span>
             <span className="menu-who">
-              <span className="menu-who-name">{profile?.name || (MULTI_TENANT ? 'Zimand Driver' : 'Zimand Express')}</span>
+              <span className="menu-who-name">{profile?.name || numeAplicatie}</span>
               <span className="menu-who-sub"><span className="live-dot" /> {isOwner ? t('menuAccountCompany', lang) : t('menuAccountDriver', lang)}</span>
             </span>
             <button type="button" className="menu-close" aria-label="Schließen" onClick={() => setMenuOpen(false)}><X size={20} strokeWidth={2} /></button>
@@ -2442,6 +2679,79 @@ function VehiclesScreen({ session, isOwner, lang }) {
   )
 }
 
+// Tras cu degetul în jos, din capul listei → reîmprospătare (06.11.2026).
+// În aplicaţia Android nu există gestul ăsta de la sine (e o pagină web în
+// interior). Nu reîncarcă pagina: trimite semnalul „focus", la care listele
+// (licitaţii, cursele mele, numărul de licitaţii) se reîncarcă deja singure.
+// Nu porneşte din ferestrele deschise peste ecran şi nici dacă lista nu e sus.
+const PRAG_TRAGERE = 70
+function useTragePentruReimprospatare(activ) {
+  const [tras, setTras] = useState(0)
+  const [lucreaza, setLucreaza] = useState(false)
+  useEffect(() => {
+    if (!activ) return
+    let y0 = null
+    let dist = 0
+    const blocat = (el) => {
+      for (let n = el; n && n !== document.body; n = n.parentElement) {
+        const st = getComputedStyle(n)
+        if (st.position === 'fixed') return true
+        if (/(auto|scroll)/.test(st.overflowY) && n.scrollTop > 0) return true
+      }
+      return false
+    }
+    const start = (e) => {
+      y0 = null; dist = 0
+      if (e.touches.length !== 1) return
+      if ((document.scrollingElement?.scrollTop || window.scrollY) > 0) return
+      if (blocat(e.target)) return
+      y0 = e.touches[0].clientY
+    }
+    const misca = (e) => {
+      if (y0 == null) return
+      const d = e.touches[0].clientY - y0
+      if (d <= 0 || window.scrollY > 0) { dist = 0; setTras(0); return }
+      dist = Math.min(d * 0.5, 110)
+      setTras(dist)
+    }
+    const gata = () => {
+      if (y0 != null && dist >= PRAG_TRAGERE) {
+        setLucreaza(true)
+        window.dispatchEvent(new Event('focus'))
+        setTimeout(() => setLucreaza(false), 900)
+      }
+      y0 = null; dist = 0
+      setTras(0)
+    }
+    window.addEventListener('touchstart', start, { passive: true })
+    window.addEventListener('touchmove', misca, { passive: true })
+    window.addEventListener('touchend', gata)
+    window.addEventListener('touchcancel', gata)
+    return () => {
+      window.removeEventListener('touchstart', start)
+      window.removeEventListener('touchmove', misca)
+      window.removeEventListener('touchend', gata)
+      window.removeEventListener('touchcancel', gata)
+    }
+  }, [activ])
+  if (!tras && !lucreaza) return null
+  const gataDeDat = lucreaza || tras >= PRAG_TRAGERE
+  return (
+    <div style={{
+      position: 'fixed', left: '50%', zIndex: 8000, pointerEvents: 'none',
+      top: `calc(env(safe-area-inset-top, 0px) + ${lucreaza ? 16 : Math.max(0, tras - 30)}px)`,
+      transform: 'translateX(-50%)', width: 40, height: 40, borderRadius: '50%',
+      background: '#fff', boxShadow: '0 3px 12px rgba(15,34,64,.25)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      transition: lucreaza ? 'top .2s' : 'none',
+    }}>
+      <RefreshCw size={20} color={gataDeDat ? '#F28C38' : '#7A8699'}
+        className={lucreaza ? 'zd-roteste' : undefined}
+        style={lucreaza ? undefined : { transform: `rotate(${tras * 3}deg)` }} />
+    </div>
+  )
+}
+
 function RidesScreen({ profile, isOwner, session, lang }) {
   // Ultima listă de curse văzută pe telefonul ăsta — apare imediat, iar
   // interogarea de mai jos o înlocuieşte în câteva clipe.
@@ -2454,6 +2764,8 @@ function RidesScreen({ profile, isOwner, session, lang }) {
   const [openCount, setOpenCount] = useState(0)
   const [newOrderToast, setNewOrderToast] = useState(false)
   const [fetchError, setFetchError] = useState(null)
+  // Reîmprospătarea prin tragere, doar pe liste (nu într-o comandă deschisă).
+  const indicatorTragere = useTragePentruReimprospatare(!selectedId)
   const [directAwardToast, setDirectAwardToast] = useState(null)
   // Un singur loc care arată mesajul de comandă primită — îl cheamă şi
   // evenimentul în timp real, şi reîncărcarea listei la revenirea în
@@ -2887,6 +3199,7 @@ function RidesScreen({ profile, isOwner, session, lang }) {
 
   return (
     <>
+      {indicatorTragere}
       <div className="rides-list">
         {newOrderToast && (
           <div className="new-order-toast">
@@ -6672,31 +6985,42 @@ function PasiZustellart({ limba, z, mic }) {
   )
 }
 
-// Zustellprotokoll desenat: rubricile de completat, numerotate, ca la CMR.
-// Etichetele sunt cele de pe hârtie (în germană); explicaţia vine dedesubt,
-// în limba şoferului.
+// Zustellprotokoll-ul ADEVĂRAT (secţiunile 2 şi 3, randate din formularul
+// tipărit), cu rubricile de completat de curier marcate în verde şi numerotate
+// în portocaliu (cerut de Andrei pe 05.11.2026 — desenul schematic de dinainte
+// era derutant). Poziţiile sunt în procente din imagine, deci se potrivesc pe
+// orice ecran. Explicaţia fiecărui număr vine dedesubt, în limba şoferului.
+// [număr, stânga %, sus %, lăţime %, înălţime %]
+const ZP_CAMPURI = [
+  [1, 88.0, 1.4, 9.8, 4.2],
+  [2, 0.9, 6.2, 3.1, 3.9], [2, 0.9, 27.1, 3.1, 3.9],
+  [3, 54.1, 16.2, 43.7, 4.6], [3, 3.7, 33.2, 43.7, 5.4], [3, 48.9, 33.2, 48.9, 5.4],
+  [4, 30.4, 76.4, 17.0, 3.9], [4, 52.2, 76.4, 10.0, 3.9],
+  [5, 67.6, 76.4, 30.2, 3.9],
+  [6, 1.9, 88.0, 45.6, 6.2], [6, 48.9, 88.0, 48.9, 6.2],
+]
+
 function ZpIllustratie({ h }) {
-  const nr = (n) => (
-    <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 20, height: 20, borderRadius: '50%', background: '#D64532', color: '#fff', fontSize: 12, fontWeight: 800, flexShrink: 0 }}>{n}</span>
+  const nr = (n, extra) => (
+    <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 20, height: 20, borderRadius: '50%', background: '#F28C38', color: '#fff', fontSize: 12, fontWeight: 800, flexShrink: 0, boxShadow: '0 1px 3px rgba(0,0,0,.3)', ...extra }}>{n}</span>
   )
-  const camp = (w) => <span style={{ display: 'inline-block', width: w, borderBottom: '2px solid #D64532', margin: '0 4px', height: 14, verticalAlign: 'bottom' }} />
-  const cutie = <span style={{ display: 'inline-block', width: 13, height: 13, border: '2px solid #D64532', borderRadius: 2, marginRight: 6, verticalAlign: -2 }} />
-  const rand = { display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: '#0F2240', lineHeight: 1.4, marginTop: 8, flexWrap: 'wrap' }
-  const sectiune = (t) => <div style={{ fontSize: 11.5, fontWeight: 800, color: '#fff', background: '#0F2240', borderRadius: 4, padding: '3px 7px', marginTop: 4 }}>{t}</div>
   return (
     <div>
-      <div style={{ background: '#fff', border: '2px solid #0F2240', borderRadius: 10, padding: '10px 12px', boxShadow: '0 2px 8px rgba(15,34,64,.12)' }}>
-        <div style={{ fontSize: 14, fontWeight: 800, color: '#0F2240', borderBottom: '1px solid #DCE3EE', paddingBottom: 6 }}>Zustellprotokoll</div>
-        {sectiune('2 · Ergebnis der Zustellung')}
-        <div style={rand}>{nr(1)} Anzahl zugestellter Umschläge {camp(36)}</div>
-        <div style={rand}>{nr(2)} <span>{cutie}In den Briefkasten gelegt</span></div>
-        <div style={{ ...rand, marginTop: 4, paddingLeft: 26 }}><span>{cutie}Persönlich an den Empfänger übergeben</span></div>
-        <div style={rand}>{nr(3)} Name am Briefkasten {camp(70)}</div>
-        <div style={{ ...rand, marginTop: 4, paddingLeft: 26 }}>Name + Unterschrift des Empfängers {camp(60)}</div>
-        {sectiune('3 · Kurier')}
-        <div style={rand}>{nr(4)} am {camp(52)} um {camp(34)} Uhr</div>
-        <div style={rand}>{nr(5)} in (Ort) {camp(90)}</div>
-        <div style={rand}>{nr(6)} Name + Unterschrift des Kuriers {camp(70)}</div>
+      <div style={{ background: '#fff', border: '2px solid #0F2240', borderRadius: 10, padding: '10px 10px 10px 24px', boxShadow: '0 2px 8px rgba(15,34,64,.12)' }}>
+        <div style={{ position: 'relative', lineHeight: 0 }}>
+          <img src="/zustellprotokoll-felder.webp" alt="Zustellprotokoll" width={1080} height={864}
+               style={{ width: '100%', height: 'auto', display: 'block' }} />
+          {ZP_CAMPURI.map(([n, x, y, w, hh], i) => (
+            <div key={i} style={{
+              position: 'absolute', left: `${x}%`, top: `${y}%`, width: `${w}%`, height: `${hh}%`,
+              background: 'rgba(47,191,113,.22)', border: '1.5px solid #2FBF71', borderRadius: 3,
+            }}>
+              {/* Numărul stă ÎN chenar, pe stânga, ca să nu acopere scrisul
+                  formularului; la căsuţele de bifat, mici, stă în stânga lor. */}
+              {nr(n, { position: 'absolute', left: w < 5 ? -21 : 3, top: '50%', transform: 'translateY(-50%)', width: 16, height: 16, fontSize: 10.5 })}
+            </div>
+          ))}
+        </div>
       </div>
       <ol style={{ listStyle: 'none', padding: 0, margin: '12px 0 0' }}>
         {h.map((x, i) => (
@@ -6769,6 +7093,43 @@ function ReguliZustellung({ lang, zustellart, ales, onAck, waUrl }) {
   )
 }
 
+// Übergabe- und Botenbestätigung ADEVĂRATĂ (secţiunile 3 şi 4), cu rubricile
+// marcate: portocaliu = expeditorul, verde = curierul (cerut de Andrei pe
+// 05.11.2026, ca la Zustellprotokoll). [cine, stânga %, sus %, lăţime %, înălţime %]
+const BOTE_CAMPURI = [
+  ['a', 28.0, 15.9, 20.2, 3.7], ['a', 59.4, 15.9, 11.6, 3.7], ['a', 1.5, 21.0, 46.7, 4.2], ['a', 49.7, 21.0, 48.8, 4.2],
+  ['k', 1.9, 39.5, 2.1, 2.6], ['k', 1.9, 73.1, 2.1, 2.6], ['k', 6.0, 54.9, 2.2, 2.8], ['k', 6.0, 58.2, 2.2, 2.8], ['k', 4.1, 62.4, 2.2, 2.8],
+  ['k', 23.9, 67.1, 8.8, 3.5], ['k', 67.9, 67.1, 8.8, 3.5], ['k', 10.5, 76.6, 6.9, 2.8],
+  ['k', 30.7, 88.3, 17.6, 3.5], ['k', 59.4, 88.3, 11.6, 3.5], ['k', 1.5, 92.8, 46.7, 4.9], ['k', 49.7, 92.8, 48.8, 4.9],
+]
+
+function BoteFormular({ limba }) {
+  const tr = BOTE_FORMULAR[limba] || BOTE_FORMULAR.de
+  const culoare = { a: ['rgba(242,140,56,.22)', '#F28C38'], k: ['rgba(47,191,113,.22)', '#2FBF71'] }
+  const semn = (c) => <span style={{ display: 'inline-block', width: 14, height: 14, borderRadius: 3, background: culoare[c][0], border: `2px solid ${culoare[c][1]}`, flexShrink: 0, marginTop: 3 }} />
+  return (
+    <div style={{ marginBottom: 10 }}>
+      <div style={{ background: '#fff', border: '2px solid #0F2240', borderRadius: 10, padding: 8 }}>
+        <div style={{ position: 'relative', lineHeight: 0 }}>
+          <img src="/botenbestaetigung-felder.webp" alt="Übergabe- und Botenbestätigung" width={1080} height={864}
+               style={{ width: '100%', height: 'auto', display: 'block' }} />
+          {BOTE_CAMPURI.map(([c, x, y, w, h], i) => (
+            <div key={i} style={{
+              position: 'absolute', left: `${x}%`, top: `${y}%`, width: `${w}%`, height: `${h}%`,
+              background: culoare[c][0], border: `1.5px solid ${culoare[c][1]}`, borderRadius: 2,
+            }} />
+          ))}
+        </div>
+      </div>
+      <div style={{ fontSize: 14, color: '#0F2240', lineHeight: 1.45, marginTop: 9 }}>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 5 }}>{semn('a')}<span>{tr[0]}</span></div>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 5 }}>{semn('k')}<span>{tr[1]}</span></div>
+        <div style={{ fontWeight: 700, marginTop: 6 }}>{tr[2]}</div>
+      </div>
+    </div>
+  )
+}
+
 // Ridicarea de documente, la sosire (05.11.2026): o singură fereastră clară —
 // Zustellprotokoll, pozele cu plicul şi, când e comandată, Botenbestätigung.
 // Partea dinainte de „:" se îngroaşă, ca la paşii de livrare.
@@ -6801,6 +7162,7 @@ function DokRidicareSheet({ lang, cuBoten, onClose }) {
             <div style={{ fontSize: 15, fontWeight: 800, color: '#B4470F', marginBottom: 8, lineHeight: 1.35 }}>
               <ClipboardList size={16} style={{ verticalAlign: -3, marginRight: 6 }} />{tr.botenTitlu}
             </div>
+            <BoteFormular limba={limba} />
             <ol style={{ margin: 0, paddingLeft: 20, fontSize: 15, lineHeight: 1.5, color: '#0F2240' }}>
               {tr.boten.map((x, i) => (
                 <li key={i} style={{ marginBottom: 6, fontWeight: i === 2 ? 700 : 400 }}>{x}</li>
@@ -9569,6 +9931,19 @@ const SARCINA_UI = {
 }
 
 // Titlul instrucţiunilor de marfă la ridicare (05.11.2026).
+// La plecare (spre ridicare) blocul de marfă se numea „Livrare de marfă" —
+// derutant, şoferul merge întâi la încărcare (06.11.2026).
+const TITLU_SPRE_RIDICARE = {
+  de: 'Fahrt zur Abholung (Pakete, Paletten)', en: 'On the way to pickup (parcels, pallets)', ro: 'Drumul spre ridicare (colete, paleți)',
+  pl: 'Dojazd do odbioru (paczki, palety)', bg: 'Път към вземането (пакети, палети)', hu: 'Úton az átvételhez (csomagok, raklapok)',
+  cs: 'Cesta k vyzvednutí (balíky, palety)', sk: 'Cesta k vyzdvihnutiu (balíky, palety)', hr: 'Put do preuzimanja (paketi, palete)',
+  sr: 'Put do preuzimanja (paketi, palete)', sl: 'Pot do prevzema (paketi, palete)', sq: 'Rruga për te marrja (pako, paleta)',
+  uk: 'Дорога до завантаження (посилки, палети)', ru: 'Дорога к загрузке (посылки, паллеты)', tr: 'Yükleme yerine yolda (koliler, paletler)',
+  it: 'Verso il ritiro (colli, pallet)', es: 'Camino a la recogida (paquetes, palés)', fr: 'Vers l’enlèvement (colis, palettes)',
+  pt: 'A caminho da recolha (volumes, paletes)', nl: 'Onderweg naar ophalen (pakketten, pallets)', el: 'Προς την παραλαβή (δέματα, παλέτες)',
+  lt: 'Kelyje į pasikrovimą (siuntiniai, padėklai)', lv: 'Ceļā uz iekraušanu (sūtījumi, paletes)',
+}
+
 const TITLU_INCARCARE = {
   de: 'Beim Laden (Pakete, Paletten)', en: 'When loading (parcels, pallets)', ro: 'La încărcare (colete, paleți)',
   pl: 'Przy załadunku (paczki, palety)', bg: 'При товарене (пакети, палети)', hu: 'Rakodáskor (csomagok, raklapok)',
@@ -9631,6 +10006,11 @@ function GhidSheet({ ghiduri, faza, lang, onClose, cuBote = true, sarcina = null
       const p = PLECARE_DOC[limba] || PLECARE_DOC.de
       return { ...x, pasi: [p[0], maiMulteLivrari ? `${p[1]} ${p[2]}` : p[1]], tradus: true }
     }
+    // Marfă, înainte de plecare (06.11.2026): ETA către client; la întârziere
+    // NU clientul — WhatsApp la dispecerat (butonul din meniu).
+    if (g.key === 'ware' && faza === 'start') {
+      return { ...x, pasi: PLECARE_MARFA[limba] || PLECARE_MARFA.de, tradus: true }
+    }
     return x
   }).filter((x) => x.pasi.length)
   const netradus = texte.some((x) => !x.tradus)
@@ -9649,7 +10029,8 @@ function GhidSheet({ ghiduri, faza, lang, onClose, cuBote = true, sarcina = null
           <div key={g.key} className="ghid-bloc">
             {/* „Livrare de marfă" la ridicare era greşit: la încărcare blocul
                 se numeşte după ce face şoferul acum (05.11.2026). */}
-            <div className="ghid-titlu">{g.key === 'ware' && faza === 'pickup' ? (TITLU_INCARCARE[limba] || TITLU_INCARCARE.de) : titlu}</div>
+            <div className="ghid-titlu">{g.key === 'ware' && faza === 'pickup' ? (TITLU_INCARCARE[limba] || TITLU_INCARCARE.de)
+              : g.key === 'ware' && faza === 'start' ? (TITLU_SPRE_RIDICARE[limba] || TITLU_SPRE_RIDICARE.de) : titlu}</div>
             {g.video_url && (video === g.key
               ? <VideoGhid url={g.video_url} lang={lang} />
               : <button type="button" className="ghid-video-btn" onClick={() => setVideo(g.key)}><Play size={15} strokeWidth={2.2} /> {t('guideWatchVideo', lang)}</button>)}
@@ -9825,6 +10206,12 @@ function extractServiceBadges(notesText) {
     else if (line.startsWith('Stapelbar: Nein')) badges.push({ Icon: Layers, key: null, text: 'Nicht stapelbar', warn: true })
     else if (line.includes('frühere Abholung')) badges.push({ Icon: Clock, key: null, text: 'Frühere Abholung ggf. möglich', warn: false, ok: true, etapa: 'pickup' })
     else if (line.includes('frühere Zustellung')) badges.push({ Icon: Clock, key: null, text: 'Frühere Zustellung ggf. möglich', warn: false, ok: true, etapa: 'delivery' })
+    // Wartezeit rezervată şi plătită de client (06.11.2026): semn pe capătul
+    // respectiv, cu numărul de ore.
+    else if (line.startsWith('Wartezeit Abholung gebucht:') || line.startsWith('Wartezeit Zustellung gebucht:')) {
+      const h = (line.match(/(\d+)\s*Std/) || [])[1] || '?'
+      badges.push({ Icon: Hourglass, key: null, text: `Wartezeit gebucht: ${h} Std.`, warn: false, etapa: line.startsWith('Wartezeit Abholung') ? 'pickup' : 'delivery' })
+    }
   }
   return badges
 }
@@ -9844,6 +10231,8 @@ function driverSafeNotesWithoutContacts(notesText) {
       !line.startsWith('Stapelbar: ') &&
       !line.includes('frühere Abholung') &&
       !line.includes('frühere Zustellung') &&
+      !line.startsWith('Wartezeit Abholung gebucht:') &&
+      !line.startsWith('Wartezeit Zustellung gebucht:') &&
       !SERVICE_BADGE_PREFIXES.some(({ prefix }) => line.startsWith(prefix))
     )
     .join('\n')
@@ -9876,6 +10265,8 @@ function preWinSafeNotes(notesText) {
       !line.startsWith('Stapelbar: ') &&
       !line.includes('frühere Abholung') &&
       !line.includes('frühere Zustellung') &&
+      !line.startsWith('Wartezeit Abholung gebucht:') &&
+      !line.startsWith('Wartezeit Zustellung gebucht:') &&
       !SERVICE_BADGE_PREFIXES.some(({ prefix }) => line.startsWith(prefix))
     )
     .join('\n')
@@ -10641,8 +11032,15 @@ function BiddingScreen({ profile, session, lang, embedded }) {
           „Meine Angebote". Mutarea se facea deja, dar fara niciun cuvant:
           omul apasa, cardul se evapora, si nu stia daca oferta a plecat
           sau s-a pierdut. Acum i se spune unde s-a dus, cinci secunde. */}
+      {/* Fix pe ecran, sus (05.11.2026): în listă, anunţul stătea deasupra
+          primei comenzi — cine licita pe o comandă de mai jos avea lista
+          derulată şi nu-l vedea deloc. */}
       {mutata && (
-        <div className="new-order-toast" style={{ background: '#1F7A50' }}>
+        <div className="new-order-toast" style={{
+          background: '#1F7A50', position: 'fixed', zIndex: 9000, left: 12, right: 12,
+          top: 'calc(12px + env(safe-area-inset-top, 0px))', margin: 0,
+          boxShadow: '0 6px 20px rgba(15,34,64,.3)', maxWidth: 520, marginInline: 'auto',
+        }} onClick={() => setMutata(false)}>
           <CheckCircle2 size={16} strokeWidth={2} /> {tn('bidMovedToOffers', citesteLimba(lang))}
         </div>
       )}
@@ -10909,6 +11307,25 @@ function BidCard({ order, lang, courierProfileId, open, onToggle, onBidPlaced, o
     }
   }
 
+  // Ridicare în aceeaşi zi: firma bifează dacă prinde intervalul sau scrie
+  // când poate încărca. La preţ fix apare deasupra lui ✓ (06.11.2026).
+  const fereastraAzi = today ? (
+                <div className="interval-note">
+                  <div className="txt">{t('pickupWindowNote', lang)}: {fmtTime(order.pickup_from)}{order.pickup_to ? `–${fmtTime(order.pickup_to)}` : ''}</div>
+                  <label>
+                    <input type="checkbox" checked={respectInterval} onChange={(e) => setRespectInterval(e.target.checked)} />
+                    {' '}{t('canRespectInterval', lang)}
+                  </label>
+                  {!respectInterval && (
+                    <div className="custom-interval-row">
+                      <input className="bid-input2" type="time" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} placeholder={t('fromLabel', lang)} />
+                      <input className="bid-input2" type="time" value={customTo} onChange={(e) => setCustomTo(e.target.value)} placeholder={t('toLabel', lang)} />
+                    </div>
+                  )}
+                </div>
+  ) : null
+  const lipsaOreAzi = today && !respectInterval && !customFrom
+
   return (
     <div className={`bid-card2 ${open ? 'open' : ''}`}>
       <div className="bid-card2-head" onClick={onToggle}>
@@ -11132,10 +11549,11 @@ function BidCard({ order, lang, courierProfileId, open, onToggle, onBidPlaced, o
             </div>
           ) : (
             <>
+              {order.fixed_price_only && fereastraAzi}
               {order.estimated_price != null && (
                 <div className="price-box">
                   <div><div className="lbl">{t('priceLabel', lang)}{order.fixed_price_only ? ` · ${lang === 'en' ? 'Fixed price' : 'Festpreis'}` : ''}</div><div className="val">{order.estimated_price} €</div></div>
-                  <button className="accept-btn" onClick={(e) => { e.stopPropagation(); submitBid(order.estimated_price) }} disabled={busy}>✓</button>
+                  <button className="accept-btn" onClick={(e) => { e.stopPropagation(); submitBid(order.estimated_price) }} disabled={busy || lipsaOreAzi} style={lipsaOreAzi ? { opacity: 0.5 } : undefined}>✓</button>
                 </div>
               )}
 
@@ -11144,8 +11562,8 @@ function BidCard({ order, lang, courierProfileId, open, onToggle, onBidPlaced, o
               {order.fixed_price_only ? (
                 <div style={{ fontSize: 13, color: '#5A6878', lineHeight: 1.5, marginTop: 8, textAlign: 'center' }}>
                   {lang === 'en'
-                    ? 'Fixed price – tap ✓ to accept. Dispatch then decides who gets the order.'
-                    : 'Festpreis – mit ✓ annehmen. Die Disposition entscheidet danach, wer den Auftrag erhält.'}
+                    ? 'Fixed price – tap ✓ to accept. We will get back to you with the confirmation as soon as possible.'
+                    : 'Festpreis – mit ✓ annehmen. Wir melden uns schnellstmöglich mit der Bestätigung.'}
                 </div>
               ) : (
               <>
@@ -11153,21 +11571,7 @@ function BidCard({ order, lang, courierProfileId, open, onToggle, onBidPlaced, o
               <label className="bid-field-label">{t('priceLabel', lang)} (€)</label>
               <input className="bid-input2" type="number" value={ownPrice} onChange={(e) => setOwnPrice(e.target.value)} />
 
-              {today && (
-                <div className="interval-note">
-                  <div className="txt">{t('pickupWindowNote', lang)}: {fmtTime(order.pickup_from)}{order.pickup_to ? `–${fmtTime(order.pickup_to)}` : ''}</div>
-                  <label>
-                    <input type="checkbox" checked={respectInterval} onChange={(e) => setRespectInterval(e.target.checked)} />
-                    {' '}{t('canRespectInterval', lang)}
-                  </label>
-                  {!respectInterval && (
-                    <div className="custom-interval-row">
-                      <input className="bid-input2" type="time" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} placeholder={t('fromLabel', lang)} />
-                      <input className="bid-input2" type="time" value={customTo} onChange={(e) => setCustomTo(e.target.value)} placeholder={t('toLabel', lang)} />
-                    </div>
-                  )}
-                </div>
-              )}
+              {fereastraAzi}
 
               <textarea className="bid-input2" value={message} onChange={(e) => setMessage(e.target.value)} placeholder={t('messageToDispatcher', lang)} />
 

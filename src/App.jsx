@@ -1707,7 +1707,7 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
 
           {/* Dispeceratul, la îndemână din orice ecran — nu doar din fişa
               unei curse. Şoferul are întrebări şi între curse. */}
-          <a
+          {DISPATCH_WA && <a
             className="menu-item mic"
             href={`https://wa.me/${DISPATCH_WA}`}
             target="_blank"
@@ -1715,8 +1715,8 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
             onClick={() => setMenuOpen(false)}
             style={{ color: '#1B9E50', textDecoration: 'none' }}
           >
-            <span className="ic"><WhatsAppIcon size={17} /></span>{mt(limbaMeniu, 'dispo')}
-          </a>
+            <span className="ic"><WhatsAppIcon size={17} /></span>{mt(limbaMeniu, 'dispo').replace('Zimand', DISPATCH_NUME)}
+          </a>}
           {/* Firmele de pe platforma Zimand Software nu au deocamdată
               „Anleitungen” (07.11.2026). */}
           {!MULTI_TENANT && (
@@ -3621,14 +3621,18 @@ function mapsNavUrl(address) {
 // către firme. WhatsApp, nu telefon: şoferul e în stradă, adesea cu
 // mâinile ocupate, iar un mesaj lasă urmă scrisă.
 let DISPATCH_WA = MULTI_TENANT ? '' : '4915510062480'
+// Numele firmei în eticheta „Dispecerat … · WhatsApp" (platforma).
+let DISPATCH_NUME = 'Zimand'
 
-// Platforma Zimand Software: numărul de dispecerat e al firmei șoferului (setările firmei).
-// Fără număr, linkul deschide WhatsApp și șoferul alege singur contactul.
+// Platforma Zimand Software: numărul de dispecerat e al firmei șoferului (setările firmei):
+// întâi „WhatsApp Disposition" (dispatch_whatsapp, 07.11.2026), altfel telefonul de contact.
+// Fără număr, butonul de dispecerat din meniu nu apare.
 async function incarcaDispeceratFirma() {
   if (!MULTI_TENANT) return
   try {
-    const { data } = await supabase.from('tenant_settings').select('contact_phone').limit(1).maybeSingle()
-    let d = String(data?.contact_phone || '').replace(/[^\d+]/g, '')
+    const { data } = await supabase.from('tenant_settings').select('contact_phone, dispatch_whatsapp, display_name').limit(1).maybeSingle()
+    if (data?.display_name) DISPATCH_NUME = String(data.display_name).slice(0, 40)
+    let d = String(data?.dispatch_whatsapp || data?.contact_phone || '').replace(/[^\d+]/g, '')
     if (d.startsWith('+')) d = d.slice(1)
     else if (d.startsWith('00')) d = d.slice(2)
     else if (d.startsWith('0')) d = '49' + d.slice(1)

@@ -1617,6 +1617,7 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
             </button>
           </div>
         )}
+        <AlegeLimbaObligatoriu lang={lang} />
         {tab === 'curse' && <RidesScreen profile={profile} isOwner={isOwner} session={session} lang={lang} />}
         {tab === 'angebote' && isOwner && <MeineAngeboteScreen profile={profile} session={session} lang={lang} />}
         {tab === 'abgeschlossen' && <CompletedOrdersListScreen profile={profile} isOwner={isOwner} lang={lang} />}
@@ -11608,6 +11609,51 @@ function BidCard({ order, lang, courierProfileId, open, onToggle, onBidPlaced, o
   )
 }
 
+// Limba instrucţiunilor, OBLIGATORIE (07.11.2026): până nu e aleasă o dată,
+// peste aplicaţie stă o fereastră care nu se poate închide altfel decât
+// alegând o limbă. Se poate schimba oricând în Profil › Sprache.
+function AlegeLimbaObligatoriu({ lang }) {
+  const [aleasa, setAleasa] = useState(() => {
+    try { return !!localStorage.getItem('zd-boten-info-limba') } catch { return true }
+  })
+  if (aleasa) return null
+  const alege = (cod) => {
+    try { localStorage.setItem('zd-boten-info-limba', cod) } catch { /* nimic */ }
+    setAleasa(true)
+  }
+  return (
+    <div role="dialog" aria-modal="true" style={{
+      position: 'fixed', inset: 0, zIndex: 9600, background: 'rgba(15,34,64,.6)',
+      display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+    }}>
+      <div style={{
+        background: '#fff', width: '100%', maxWidth: 520, maxHeight: '88dvh', overflow: 'auto',
+        borderRadius: '20px 20px 0 0', padding: '22px 18px calc(18px + env(safe-area-inset-bottom, 0px))',
+      }}>
+        <div style={{ fontSize: 34, textAlign: 'center' }}>🌐</div>
+        <h2 style={{ fontFamily: 'Oswald, sans-serif', fontSize: 23, color: '#0F2240', textAlign: 'center', margin: '4px 0 6px' }}>
+          {lang === 'en' ? 'Language of instructions' : 'Sprache der Hinweise'}
+        </h2>
+        <p style={{ fontSize: 14, color: '#5B6578', textAlign: 'center', margin: '0 0 14px', lineHeight: 1.5 }}>
+          {lang === 'en'
+            ? 'In which language do you want to read the pickup and delivery instructions? You can change it later in Profile.'
+            : 'In welcher Sprache möchten Sie die Hinweise zu Abholung und Zustellung lesen? Sie können sie später im Profil ändern.'}
+        </p>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+          {BOTEN_INFO_LIMBI.map(([cod, nume]) => (
+            <button key={cod} type="button" onClick={() => alege(cod)} style={{
+              padding: '12px 10px', borderRadius: 11, border: '1.5px solid #D8DEE8', background: '#F7F9FC',
+              fontSize: 15, fontWeight: 600, color: '#0F2240', cursor: 'pointer', textAlign: 'left',
+            }}>
+              {nume}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function LimbaInstructiuni({ lang }) {
   const [limba, setLimba] = useLimbaGhid(lang)
   return (
@@ -11795,12 +11841,8 @@ function ProfileScreen({ session, profile, isOwner, lang, onChangeLang, onProfil
     <div className="placeholder-screen">
       <h2>{t('tabProfile', lang)}</h2>
 
-      <LangSwitcher lang={lang} onChangeLang={onChangeLang} />
-
-      {/* Limba instrucţiunilor (ferestrele de la plecare, ridicare, livrare):
-          aleasă o singură dată aici şi folosită peste tot (05.11.2026). */}
-      <LimbaInstructiuni lang={lang} />
-
+      {/* Ordinea Profilului (07.11.2026): 1) cine eşti, 2) ce trebuie să fie
+          pornit ca să lucrezi, 3) contact, 4) limbă, 5) setări de firmă. */}
       <div className="profile-photo-row">
         {profile?.photo_url ? (
           <img src={profile.photo_url} alt="" className="profile-photo" onClick={() => photoInputRef.current?.click()} />
@@ -11823,36 +11865,7 @@ function ProfileScreen({ session, profile, isOwner, lang, onChangeLang, onProfil
         <Mail size={14} strokeWidth={1.8} /> {session.user.email}
       </p>
 
-      <div style={{ margin: '10px 0 14px' }}>
-        <label style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-soft)', display: 'block', marginBottom: 5 }}>
-          <Phone size={14} strokeWidth={1.8} /> {t('phoneLabel', lang)}
-        </label>
-        <div style={{ display: 'flex', gap: 7 }}>
-          <input
-            className="bid-input2"
-            type="tel"
-            inputMode="tel"
-            value={telefon}
-            onChange={(e) => setTelefon(e.target.value)}
-            placeholder="+49 …"
-            style={{ flex: 1, margin: 0 }}
-          />
-          <button
-            className="btn"
-            onClick={salveazaTelefon}
-            disabled={telefonStare?.busy || (telefon || '') === (profile?.phone || '')}
-            style={{ width: 'auto', padding: '0 16px' }}
-          >
-            {telefonStare?.busy ? '…' : t('saveLabel', lang)}
-          </button>
-        </div>
-        {telefonStare && !telefonStare.busy && (
-          <div style={{ fontSize: 11.5, marginTop: 4, color: telefonStare.ok ? '#1B6E43' : '#B23A24' }}>
-            {telefonStare.msg}
-          </div>
-        )}
-      </div>
-
+      <h3 className="settings-subheading">{t('profSecWork', lang)}</h3>
       <div className="toggle-row">
         <div className="txt">
           {t('onlineToggle', lang)}
@@ -11898,6 +11911,44 @@ function ProfileScreen({ session, profile, isOwner, lang, onChangeLang, onProfil
           </select>
         </div>
       )}
+
+      <h3 className="settings-subheading">{t('profSecContact', lang)}</h3>
+      <div style={{ margin: '10px 0 14px' }}>
+        <label style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-soft)', display: 'block', marginBottom: 5 }}>
+          <Phone size={14} strokeWidth={1.8} /> {t('phoneLabel', lang)}
+        </label>
+        <div style={{ display: 'flex', gap: 7 }}>
+          <input
+            className="bid-input2"
+            type="tel"
+            inputMode="tel"
+            value={telefon}
+            onChange={(e) => setTelefon(e.target.value)}
+            placeholder="+49 …"
+            style={{ flex: 1, margin: 0 }}
+          />
+          <button
+            className="btn"
+            onClick={salveazaTelefon}
+            disabled={telefonStare?.busy || (telefon || '') === (profile?.phone || '')}
+            style={{ width: 'auto', padding: '0 16px' }}
+          >
+            {telefonStare?.busy ? '…' : t('saveLabel', lang)}
+          </button>
+        </div>
+        {telefonStare && !telefonStare.busy && (
+          <div style={{ fontSize: 11.5, marginTop: 4, color: telefonStare.ok ? '#1B6E43' : '#B23A24' }}>
+            {telefonStare.msg}
+          </div>
+        )}
+      </div>
+
+      <h3 className="settings-subheading">{t('profSecLang', lang)}</h3>
+      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-soft)', margin: '2px 0 6px' }}>{t('profAppLang', lang)}</div>
+      <LangSwitcher lang={lang} onChangeLang={onChangeLang} />
+
+      {/* Limba instrucţiunilor: aleasă o dată (obligatoriu la prima pornire), folosită peste tot. */}
+      <LimbaInstructiuni lang={lang} />
 
       {isOwner && companyDrivers.length > 0 && (
         <>

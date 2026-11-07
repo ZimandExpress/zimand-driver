@@ -757,6 +757,23 @@ function LoginScreen({ lang, onChangeLang }) {
     setError('')
     if (cod && !codFirmaValid(cod)) { setError(t('companyCodeInvalid', lang)); return }
     setBusy(true)
+    if (!cod) {
+      // Fără cod: cererea pleacă în ambele sisteme; e-mailul vine doar de unde
+      // există contul (pentru o adresă necunoscută nu se trimite nimic).
+      const r1 = await clientPentru('ze').auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.origin + '/?invite=1', captchaToken: authCaptcha.token,
+      })
+      authCaptcha.reset()
+      await asteaptaCaptcha()
+      const r2 = await clientPentru('zs').auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.origin + '/?invite=1&platforma=1', captchaToken: authCaptcha.token,
+      }).catch((e) => ({ error: e }))
+      authCaptcha.reset()
+      setBusy(false)
+      if (r1.error && r2?.error) { setError(r1.error.message); return }
+      setMode('sent')
+      return
+    }
     const tinta = cod ? 'zs' : 'ze'
     if (tinta === 'zs') salveazaCodFirma(cod)
     const { error } = await clientPentru(tinta).auth.resetPasswordForEmail(email, {
@@ -845,13 +862,11 @@ function LoginScreen({ lang, onChangeLang }) {
 
 // Câmpul „Firmencode”: ascuns implicit (șoferii Zimand Express nu au nevoie de el).
 function CompanyCodeField({ lang, show, setShow, value, onChange, onBlur }) {
-  if (!show) {
-    return (
-      <button type="button" className="link-btn" onClick={() => setShow(true)} style={{ margin: '2px 0 10px', fontSize: 13 }}>
-        {t('companyCodeOpen', lang)}
-      </button>
-    )
-  }
+  // 07.11.2026: fără linkul „Ich fahre für eine andere Firma” — contul se
+  // găseşte singur (Zimand Express sau firma din platformă). Câmpul apare doar
+  // când există deja un cod (salvat sau venit din linkul de invitaţie ?firmencode=),
+  // pentru brandingul firmei.
+  if (!show) return null
   return (
     <>
       <label>{t('companyCode', lang)}</label>

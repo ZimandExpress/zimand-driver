@@ -28,6 +28,9 @@ function scrie(k, v) { try { if (v) localStorage.setItem(k, v); else localStorag
     const q = new URLSearchParams(window.location.search)
     const c = String(q.get('firmencode') || '').trim().toUpperCase()
     if (CODE_RE.test(c)) { scrie(CHEIE_BACKEND, 'zs'); scrie(CHEIE_COD_FIRMA, c) }
+    // Resetare parolă cerută fără cod de firmă (07.11.2026): linkul trimis de
+    // platformă are ?platforma=1 → se deschide baza Zimand Software.
+    else if (q.get('platforma') === '1') scrie(CHEIE_BACKEND, 'zs')
   } catch { /* */ }
 })()
 

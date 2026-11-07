@@ -185,3 +185,38 @@ const ANL = {
   lv: ['Instrukcijas', 'Kā pareizi norit katrs pasūtījums – no izbraukšanas līdz piegādei. Atbilstošie soļi parādās arī automātiski, izbraucot un ierodoties.', 'Atvērt detalizētu instrukciju', 'Instrukcijas vēl nav ielādētas. Atveriet vēlreiz ar internetu.'],
 }
 export function anl(limba, i) { return (ANL[limba] || ANL.de)[i] }
+
+// Meniul lateral (☰) în limba instrucţiunilor (07.11.2026). Ordinea:
+// [firmenkonto, fahrer, auftraege, angebote, abgeschlossen, nichtAngenommen,
+//  kontoHilfe, fahrzeuge, legende, dispo, abmelden, woche, monat, heute, einnahmen]
+const MENIU_CHEI = ['firmenkonto', 'fahrer', 'auftraege', 'angebote', 'abgeschlossen', 'nichtAngenommen',
+  'kontoHilfe', 'fahrzeuge', 'legende', 'dispo', 'abmelden', 'woche', 'monat', 'heute', 'einnahmen']
+const MENIU = {
+  de: ['Firmenkonto', 'Fahrer', 'Aufträge', 'Meine Angebote', 'Abgeschlossen', 'Nicht angenommen', 'Konto & Hilfe', 'Meine Fahrzeuge', 'Legende', 'Dispo Zimand · WhatsApp', 'Abmelden', 'Diese Woche', 'Diesen Monat', 'Heute', 'Einnahmen'],
+  en: ['Company account', 'Driver', 'Orders', 'My offers', 'Completed', 'Not accepted', 'Account & help', 'My vehicles', 'Legend', 'Dispatch Zimand · WhatsApp', 'Log out', 'This week', 'This month', 'Today', 'Earnings'],
+  ro: ['Cont de firmă', 'Șofer', 'Comenzi', 'Ofertele mele', 'Finalizate', 'Neacceptate', 'Cont și ajutor', 'Vehiculele mele', 'Legendă', 'Dispecerat Zimand · WhatsApp', 'Deconectare', 'Săptămâna aceasta', 'Luna aceasta', 'Azi', 'Câștiguri'],
+  pl: ['Konto firmowe', 'Kierowca', 'Zlecenia', 'Moje oferty', 'Zakończone', 'Nieprzyjęte', 'Konto i pomoc', 'Moje pojazdy', 'Legenda', 'Dyspozycja Zimand · WhatsApp', 'Wyloguj', 'Ten tydzień', 'Ten miesiąc', 'Dziś', 'Zarobki'],
+  bg: ['Фирмен акаунт', 'Шофьор', 'Поръчки', 'Моите оферти', 'Завършени', 'Неприети', 'Акаунт и помощ', 'Моите превозни средства', 'Легенда', 'Диспечер Zimand · WhatsApp', 'Изход', 'Тази седмица', 'Този месец', 'Днес', 'Приходи'],
+  hu: ['Céges fiók', 'Sofőr', 'Megbízások', 'Ajánlataim', 'Lezárt', 'Nem elfogadott', 'Fiók és súgó', 'Járműveim', 'Jelmagyarázat', 'Diszpécser Zimand · WhatsApp', 'Kijelentkezés', 'Ez a hét', 'Ez a hónap', 'Ma', 'Bevételek'],
+  cs: ['Firemní účet', 'Řidič', 'Zakázky', 'Moje nabídky', 'Dokončené', 'Nepřijaté', 'Účet a nápověda', 'Moje vozidla', 'Legenda', 'Dispečink Zimand · WhatsApp', 'Odhlásit', 'Tento týden', 'Tento měsíc', 'Dnes', 'Výdělky'],
+  sk: ['Firemný účet', 'Vodič', 'Zákazky', 'Moje ponuky', 'Dokončené', 'Neprijaté', 'Účet a pomoc', 'Moje vozidlá', 'Legenda', 'Dispečing Zimand · WhatsApp', 'Odhlásiť', 'Tento týždeň', 'Tento mesiac', 'Dnes', 'Zárobky'],
+  hr: ['Račun tvrtke', 'Vozač', 'Nalozi', 'Moje ponude', 'Završeni', 'Neprihvaćeni', 'Račun i pomoć', 'Moja vozila', 'Legenda', 'Dispečer Zimand · WhatsApp', 'Odjava', 'Ovaj tjedan', 'Ovaj mjesec', 'Danas', 'Zarada'],
+  sr: ['Nalog firme', 'Vozač', 'Nalozi', 'Moje ponude', 'Završeni', 'Neprihvaćeni', 'Nalog i pomoć', 'Moja vozila', 'Legenda', 'Dispečer Zimand · WhatsApp', 'Odjava', 'Ove nedelje', 'Ovog meseca', 'Danas', 'Zarada'],
+  sl: ['Račun podjetja', 'Voznik', 'Naročila', 'Moje ponudbe', 'Zaključena', 'Nesprejeta', 'Račun in pomoč', 'Moja vozila', 'Legenda', 'Dispečer Zimand · WhatsApp', 'Odjava', 'Ta teden', 'Ta mesec', 'Danes', 'Zaslužek'],
+  sq: ['Llogaria e firmës', 'Shofer', 'Porositë', 'Ofertat e mia', 'Të përfunduara', 'Të papranuara', 'Llogaria dhe ndihma', 'Automjetet e mia', 'Legjenda', 'Dispeçeri Zimand · WhatsApp', 'Dil', 'Këtë javë', 'Këtë muaj', 'Sot', 'Fitimet'],
+  uk: ['Обліковий запис фірми', 'Водій', 'Замовлення', 'Мої пропозиції', 'Завершені', 'Неприйняті', 'Акаунт і допомога', 'Мої транспортні засоби', 'Легенда', 'Диспетчер Zimand · WhatsApp', 'Вийти', 'Цей тиждень', 'Цей місяць', 'Сьогодні', 'Заробіток'],
+  ru: ['Аккаунт фирмы', 'Водитель', 'Заказы', 'Мои предложения', 'Завершённые', 'Непринятые', 'Аккаунт и помощь', 'Мои транспортные средства', 'Легенда', 'Диспетчер Zimand · WhatsApp', 'Выйти', 'Эта неделя', 'Этот месяц', 'Сегодня', 'Заработок'],
+  tr: ['Firma hesabı', 'Sürücü', 'Siparişler', 'Tekliflerim', 'Tamamlanan', 'Kabul edilmeyen', 'Hesap ve yardım', 'Araçlarım', 'Açıklamalar', 'Dispeçer Zimand · WhatsApp', 'Çıkış yap', 'Bu hafta', 'Bu ay', 'Bugün', 'Kazançlar'],
+  it: ['Account aziendale', 'Autista', 'Ordini', 'Le mie offerte', 'Completati', 'Non accettati', 'Account e aiuto', 'I miei veicoli', 'Legenda', 'Dispatcher Zimand · WhatsApp', 'Esci', 'Questa settimana', 'Questo mese', 'Oggi', 'Guadagni'],
+  es: ['Cuenta de empresa', 'Conductor', 'Pedidos', 'Mis ofertas', 'Completados', 'No aceptados', 'Cuenta y ayuda', 'Mis vehículos', 'Leyenda', 'Despacho Zimand · WhatsApp', 'Cerrar sesión', 'Esta semana', 'Este mes', 'Hoy', 'Ganancias'],
+  fr: ['Compte entreprise', 'Chauffeur', 'Commandes', 'Mes offres', 'Terminées', 'Non acceptées', 'Compte et aide', 'Mes véhicules', 'Légende', 'Dispatching Zimand · WhatsApp', 'Se déconnecter', 'Cette semaine', 'Ce mois-ci', 'Aujourd’hui', 'Gains'],
+  pt: ['Conta da empresa', 'Motorista', 'Encomendas', 'As minhas ofertas', 'Concluídas', 'Não aceites', 'Conta e ajuda', 'Os meus veículos', 'Legenda', 'Despacho Zimand · WhatsApp', 'Terminar sessão', 'Esta semana', 'Este mês', 'Hoje', 'Ganhos'],
+  nl: ['Bedrijfsaccount', 'Chauffeur', 'Opdrachten', 'Mijn aanbiedingen', 'Afgerond', 'Niet aangenomen', 'Account en hulp', 'Mijn voertuigen', 'Legenda', 'Planning Zimand · WhatsApp', 'Afmelden', 'Deze week', 'Deze maand', 'Vandaag', 'Inkomsten'],
+  el: ['Εταιρικός λογαριασμός', 'Οδηγός', 'Παραγγελίες', 'Οι προσφορές μου', 'Ολοκληρωμένες', 'Μη αποδεκτές', 'Λογαριασμός και βοήθεια', 'Τα οχήματά μου', 'Υπόμνημα', 'Διεκπεραίωση Zimand · WhatsApp', 'Αποσύνδεση', 'Αυτή την εβδομάδα', 'Αυτόν τον μήνα', 'Σήμερα', 'Έσοδα'],
+  lt: ['Įmonės paskyra', 'Vairuotojas', 'Užsakymai', 'Mano pasiūlymai', 'Užbaigti', 'Nepriimti', 'Paskyra ir pagalba', 'Mano transporto priemonės', 'Legenda', 'Dispečeris Zimand · WhatsApp', 'Atsijungti', 'Ši savaitė', 'Šis mėnuo', 'Šiandien', 'Uždarbis'],
+  lv: ['Uzņēmuma konts', 'Vadītājs', 'Pasūtījumi', 'Mani piedāvājumi', 'Pabeigti', 'Nepieņemti', 'Konts un palīdzība', 'Mani transportlīdzekļi', 'Leģenda', 'Dispečers Zimand · WhatsApp', 'Iziet', 'Šonedēļ', 'Šomēnes', 'Šodien', 'Ienākumi'],
+}
+export function mt(limba, cheie) {
+  const i = MENIU_CHEI.indexOf(cheie)
+  return ((MENIU[limba] || MENIU.de)[i]) || MENIU.de[i] || cheie
+}

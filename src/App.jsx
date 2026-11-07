@@ -17,7 +17,7 @@ import { ZP_LIMBI, PLECARE_LIMBI, TRANSPORT_LIMBI, REGULI_LIMBI, RETUR_LIMBI, PO
 // Livrarea de documente, regulile noi (05.11.2026): cutia poştală numai cu
 // acelaşi nume de familie pe cutie şi pe plic, altfel dispeceratul. Înlocuiesc
 // paşii vechi în toate limbile, deci şi cardul comenzii arată la fel.
-import { pt, anl } from './profilTraduceri.js'
+import { pt, anl, mt } from './profilTraduceri.js'
 import { PASI_ZUSTELLART_V2, ZP_PAGINA, RIDICARE_DOC, PLECARE_DOC, BOTE_FORMULAR, PLECARE_MARFA, NUME_CLIENT } from './livrareDocTraduceri.js'
 Object.assign(PASI_ZUSTELLART, PASI_ZUSTELLART_V2)
 import './index.css'
@@ -1653,7 +1653,7 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
             <span className="menu-avatar">{initialeMeniu(profile?.name || session?.user?.email)}</span>
             <span className="menu-who">
               <span className="menu-who-name">{profile?.name || numeAplicatie}</span>
-              <span className="menu-who-sub"><span className="live-dot" /> {isOwner ? t('menuAccountCompany', lang) : t('menuAccountDriver', lang)}</span>
+              <span className="menu-who-sub"><span className="live-dot" /> {isOwner ? mt(limbaMeniu, 'firmenkonto') : mt(limbaMeniu, 'fahrer')}</span>
             </span>
             <button type="button" className="menu-close" aria-label="Schließen" onClick={() => setMenuOpen(false)}><X size={20} strokeWidth={2} /></button>
           </div>
@@ -1670,20 +1670,20 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
 
           {/* Cele patru ecrane de lucru, mari şi la vedere. */}
           <button className={`menu-item ${tab === 'curse' ? 'active' : ''}`} onClick={() => navTo('curse')}>
-            <span className="ic"><Truck size={19} strokeWidth={1.75} /></span>{t('tabRides', lang)}
+            <span className="ic"><Truck size={19} strokeWidth={1.75} /></span>{mt(limbaMeniu, 'auftraege')}
           </button>
           {isOwner && (
             <button className={`menu-item ${tab === 'angebote' ? 'active' : ''}`} onClick={() => navTo('angebote')}>
-              <span className="ic"><Tag size={19} strokeWidth={1.75} /></span>{t('menuOffers', lang)}
+              <span className="ic"><Tag size={19} strokeWidth={1.75} /></span>{mt(limbaMeniu, 'angebote')}
               {pendingOffersCount > 0 && <span className="count-pill" style={{ marginLeft: 'auto' }}>{pendingOffersCount}</span>}
             </button>
           )}
           <button className={`menu-item ${tab === 'abgeschlossen' ? 'active' : ''}`} onClick={() => navTo('abgeschlossen')}>
-            <span className="ic"><CheckCircle2 size={19} strokeWidth={1.75} /></span>{t('menuCompleted', lang)}
+            <span className="ic"><CheckCircle2 size={19} strokeWidth={1.75} /></span>{mt(limbaMeniu, 'abgeschlossen')}
           </button>
           {isOwner && (
             <button className={`menu-item ${tab === 'nichtangenommen' ? 'active' : ''}`} onClick={() => navTo('nichtangenommen')}>
-              <span className="ic"><XCircle size={19} strokeWidth={1.75} /></span>{t('menuNotAccepted', lang)}
+              <span className="ic"><XCircle size={19} strokeWidth={1.75} /></span>{mt(limbaMeniu, 'nichtAngenommen')}
             </button>
           )}
 
@@ -1693,7 +1693,7 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
           {/* Grupul de jos: contul şi ajutorul, lipite de baza panoului —
               sus rămân numai cele patru ecrane de lucru. */}
           <div style={{ marginTop: 'auto' }}>
-          <div className="menu-group-title">{t('menuGroupAccountHelp', lang)}</div>
+          <div className="menu-group-title">{mt(limbaMeniu, 'kontoHilfe')}</div>
           {/* Firmele de pe platforma Zimand Software nu au deocamdată
               „Anleitungen” (07.11.2026). */}
           {!MULTI_TENANT && (
@@ -1702,14 +1702,14 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
             </button>
           )}
           <button className={`menu-item mic ${tab === 'fahrzeuge' ? 'active' : ''}`} onClick={() => navTo('fahrzeuge')}>
-            <span className="ic"><Truck size={17} strokeWidth={1.75} /></span>{t('menuVehicles', lang)}
+            <span className="ic"><Truck size={17} strokeWidth={1.75} /></span>{mt(limbaMeniu, 'fahrzeuge')}
           </button>
           <button className={`menu-item mic ${tab === 'profil' ? 'active' : ''}`} onClick={() => navTo('profil')}>
-            <span className="ic"><User size={17} strokeWidth={1.75} /></span>{t('tabProfile', lang)}
+            <span className="ic"><User size={17} strokeWidth={1.75} /></span>{pt(limbaMeniu, 'profil')}
           </button>
 
           <button className={`menu-item mic ${tab === 'legenda' ? 'active' : ''}`} onClick={() => navTo('legenda')}>
-            <span className="ic"><BookOpen size={17} strokeWidth={1.75} /></span>{t('menuLegend', lang)}
+            <span className="ic"><BookOpen size={17} strokeWidth={1.75} /></span>{mt(limbaMeniu, 'legende')}
           </button>
           {/* Dispeceratul, la îndemână din orice ecran — nu doar din fişa
               unei curse. Şoferul are întrebări şi între curse. */}
@@ -1721,13 +1721,13 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
             onClick={() => setMenuOpen(false)}
             style={{ color: '#1B9E50', textDecoration: 'none' }}
           >
-            <span className="ic"><WhatsAppIcon size={17} /></span>{t('menuDispatch', lang)}
+            <span className="ic"><WhatsAppIcon size={17} /></span>{mt(limbaMeniu, 'dispo')}
           </a>
 
           <div className="menu-divider" />
 
           <button className="menu-item mic logout" onClick={() => supabase.auth.signOut()}>
-            <span className="ic"><LogOut size={17} strokeWidth={1.75} /></span>{t('logout', lang)}
+            <span className="ic"><LogOut size={17} strokeWidth={1.75} /></span>{mt(limbaMeniu, 'abmelden')}
           </button>
 
           {/* Din ce build vine ecranul. Discret, dar citibil la telefon: când
@@ -10483,6 +10483,7 @@ function useEarningsSummary(profile, enabled, cycle) {
 const euroDe = (n) => `${Number(n || 0).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`
 
 function EarningsMenuCard({ profile, open, lang, onClick, active }) {
+  const [limbaM] = useLimbaGhid(lang)
   const cycle = useBillingCycle(open)
   const totals = useEarningsSummary(profile, open && !!cycle, cycle)
   // Sumele sunt ascunse până la o atingere pe ochi — cine se uită peste
@@ -10496,7 +10497,7 @@ function EarningsMenuCard({ profile, open, lang, onClick, active }) {
   if (!totals || !cycle) {
     return (
       <button className={`menu-item ${active ? 'active' : ''}`} onClick={onClick}>
-        <span className="ic"><Wallet size={19} strokeWidth={1.75} /></span>{t('tabEarnings', lang)}
+        <span className="ic"><Wallet size={19} strokeWidth={1.75} /></span>{mt(limbaM, 'einnahmen')}
       </button>
     )
   }
@@ -10506,9 +10507,9 @@ function EarningsMenuCard({ profile, open, lang, onClick, active }) {
     <div className={`earn-mini${active ? ' active' : ''}`} onClick={onClick} role="button" tabIndex={0}>
       <span className="earn-mini-ic"><Wallet size={18} strokeWidth={1.75} /></span>
       <span className="earn-mini-text">
-        <span className="earn-mini-sub">{t(cycle === 'weekly' ? 'earningsWeekLabel' : 'earningsMonthLabel', lang)}</span>
+        <span className="earn-mini-sub">{mt(limbaM, cycle === 'weekly' ? 'woche' : 'monat')}</span>
         <strong className="earn-mini-sum">{suma(totals.month)}</strong>
-        <span className="earn-mini-sub">{t('earningsTodayLabel', lang)} {suma(totals.today)}</span>
+        <span className="earn-mini-sub">{mt(limbaM, 'heute')} {suma(totals.today)}</span>
       </span>
       <button
         type="button"

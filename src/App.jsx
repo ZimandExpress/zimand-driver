@@ -1694,23 +1694,17 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
               sus rămân numai cele patru ecrane de lucru. */}
           <div style={{ marginTop: 'auto' }}>
           <div className="menu-group-title">{mt(limbaMeniu, 'kontoHilfe')}</div>
-          {/* Firmele de pe platforma Zimand Software nu au deocamdată
-              „Anleitungen” (07.11.2026). */}
-          {!MULTI_TENANT && (
-            <button className={`menu-item mic ${tab === 'anleitungen' ? 'active' : ''}`} onClick={() => navTo('anleitungen')}>
-              <span className="ic"><ClipboardList size={17} strokeWidth={1.75} /></span>{anl(limbaMeniu, 0)}
-            </button>
-          )}
-          <button className={`menu-item mic ${tab === 'fahrzeuge' ? 'active' : ''}`} onClick={() => navTo('fahrzeuge')}>
-            <span className="ic"><Truck size={17} strokeWidth={1.75} /></span>{mt(limbaMeniu, 'fahrzeuge')}
-          </button>
+          {/* Ordinea (07.11.2026): întâi contul (Profil, Vehicule), apoi
+              ajutorul (Dispecerat, Instrucţiuni, Legendă). */}
           <button className={`menu-item mic ${tab === 'profil' ? 'active' : ''}`} onClick={() => navTo('profil')}>
             <span className="ic"><User size={17} strokeWidth={1.75} /></span>{pt(limbaMeniu, 'profil')}
           </button>
-
-          <button className={`menu-item mic ${tab === 'legenda' ? 'active' : ''}`} onClick={() => navTo('legenda')}>
-            <span className="ic"><BookOpen size={17} strokeWidth={1.75} /></span>{mt(limbaMeniu, 'legende')}
+          <button className={`menu-item mic ${tab === 'fahrzeuge' ? 'active' : ''}`} onClick={() => navTo('fahrzeuge')}>
+            <span className="ic"><Truck size={17} strokeWidth={1.75} /></span>{mt(limbaMeniu, 'fahrzeuge')}
           </button>
+
+          <div style={{ height: 1, background: 'var(--line, #E6EAF0)', margin: '6px 16px' }} />
+
           {/* Dispeceratul, la îndemână din orice ecran — nu doar din fişa
               unei curse. Şoferul are întrebări şi între curse. */}
           <a
@@ -1723,6 +1717,16 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
           >
             <span className="ic"><WhatsAppIcon size={17} /></span>{mt(limbaMeniu, 'dispo')}
           </a>
+          {/* Firmele de pe platforma Zimand Software nu au deocamdată
+              „Anleitungen” (07.11.2026). */}
+          {!MULTI_TENANT && (
+            <button className={`menu-item mic ${tab === 'anleitungen' ? 'active' : ''}`} onClick={() => navTo('anleitungen')}>
+              <span className="ic"><ClipboardList size={17} strokeWidth={1.75} /></span>{anl(limbaMeniu, 0)}
+            </button>
+          )}
+          <button className={`menu-item mic ${tab === 'legenda' ? 'active' : ''}`} onClick={() => navTo('legenda')}>
+            <span className="ic"><BookOpen size={17} strokeWidth={1.75} /></span>{mt(limbaMeniu, 'legende')}
+          </button>
 
           <div className="menu-divider" />
 

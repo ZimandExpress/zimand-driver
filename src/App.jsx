@@ -6032,7 +6032,7 @@ function IncidentSheet({ order, leg, lang, driverId, blocking, onClose, onSaved 
 // din Google Directions — un apel de rute la fiecare deschidere ar readuce
 // exact problema de consum pe care încercăm s-o reducem. Prepopulăm din
 // fereastra programată a comenzii, iar șoferul ajustează.
-function EtaSheet({ order, leg, entry, lang, driverPhone, onClose, onSent }) {
+function EtaSheet({ order, leg, entry, lang, driverPhone, driverName, onClose, onSent }) {
   // La o oprire de tur, intervalul programat, numărătoarea şi textul vin din
   // rândul opririi, nu din coloanele comenzii. `leg` e acolo id-ul opririi,
   // deci comparaţiile cu 'pickup' nu mai spun nimic despre felul etapei.
@@ -6151,6 +6151,14 @@ function EtaSheet({ order, leg, entry, lang, driverPhone, onClose, onSent }) {
           {!intervalOk && <div style={{ color: '#B35A12', fontWeight: 600 }}>{t('etaPickTime', lang)}</div>}
           {programat && <div>{t('etaScheduled', lang)}: {programat} Uhr</div>}
         </div>
+
+        {/* Ce nume vede clientul (07.11.2026) — se schimbă în Profil › Kontakt. */}
+        {driverName && (
+          <div style={{ fontSize: 13, color: '#0F2240', margin: '-6px 0 12px', lineHeight: 1.45 }}>
+            {t('etaNameShown', lang)}: <b>{driverName}</b>
+            <div style={{ fontSize: 11.5, color: '#6B7A90' }}>{t('etaNameChange', lang)}</div>
+          </div>
+        )}
 
         <div style={{ background: '#F6F8FA', borderRadius: 10, padding: '12px 14px', marginBottom: 16 }}>
           <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer' }}>
@@ -7866,6 +7874,7 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
           entry={intrare}
           lang={lang}
           driverPhone={profile?.phone}
+          driverName={(profile?.display_name || '').trim() || profile?.name}
           onClose={() => setEtaOpen(false)}
           onSent={(count) => {
             setEtaOpen(false)
@@ -11685,6 +11694,23 @@ function ProfileScreen({ session, profile, isOwner, lang, onChangeLang, onProfil
   // rămâne fără cale de a-l suna când ceva se blochează la faţa locului.
   const [telefon, setTelefon] = useState(profile?.phone || '')
   const [telefonStare, setTelefonStare] = useState(null)
+  // Numele afişat clientului în e-mailul cu ora de sosire (07.11.2026).
+  // Gol → se foloseşte numele contului.
+  const [numeClient, setNumeClient] = useState(profile?.display_name || '')
+  const [numeStare, setNumeStare] = useState(null)
+
+  async function salveazaNumeClient() {
+    setNumeStare({ busy: true })
+    const { error } = await supabase.from('drivers')
+      .update({ display_name: numeClient.trim() || null })
+      .eq('id', profile.id)
+    if (error) {
+      setNumeStare({ ok: false, msg: error.message })
+    } else {
+      setNumeStare({ ok: true, msg: t('displayNameSaved', lang) })
+      onProfileChange?.({ ...profile, display_name: numeClient.trim() || null })
+    }
+  }
 
   async function salveazaTelefon() {
     setTelefonStare({ busy: true })
@@ -11913,6 +11939,33 @@ function ProfileScreen({ session, profile, isOwner, lang, onChangeLang, onProfil
       )}
 
       <h3 className="settings-subheading">{t('profSecContact', lang)}</h3>
+      <div style={{ margin: '10px 0 14px' }}>
+        <label style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-soft)', display: 'block', marginBottom: 5 }}>
+          <User size={14} strokeWidth={1.8} /> {t('displayNameLabel', lang)}
+        </label>
+        <div style={{ display: 'flex', gap: 7 }}>
+          <input
+            className="bid-input2"
+            value={numeClient}
+            onChange={(e) => setNumeClient(e.target.value)}
+            placeholder={profile?.name || ''}
+            maxLength={40}
+            autoComplete="name"
+            style={{ flex: 1, margin: 0 }}
+          />
+          <button
+            className="btn"
+            onClick={salveazaNumeClient}
+            disabled={numeStare?.busy || (numeClient.trim()) === (profile?.display_name || '')}
+            style={{ width: 'auto', padding: '0 16px' }}
+          >
+            {numeStare?.busy ? '…' : t('saveLabel', lang)}
+          </button>
+        </div>
+        <div style={{ fontSize: 11.5, marginTop: 4, color: numeStare && !numeStare.busy ? (numeStare.ok ? '#1B6E43' : '#B23A24') : 'var(--text-soft)', lineHeight: 1.45 }}>
+          {numeStare && !numeStare.busy ? numeStare.msg : t('displayNameHint', lang)}
+        </div>
+      </div>
       <div style={{ margin: '10px 0 14px' }}>
         <label style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-soft)', display: 'block', marginBottom: 5 }}>
           <Phone size={14} strokeWidth={1.8} /> {t('phoneLabel', lang)}

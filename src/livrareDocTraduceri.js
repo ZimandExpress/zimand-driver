@@ -327,3 +327,31 @@ export const PLECARE_MARFA = {
   lt: ['Prieš išvykdami iš programėlės išsiųskite klientui atvykimo laiką (ETA).', `Jei vėluojate: NESIKREIPKITE į klientą. Parašykite mums per WhatsApp – meniu ☰ viršuje dešinėje › ${WA}. Klientą informuosime mes.`],
   lv: ['Pirms izbraukšanas nosūtiet klientam no lietotnes ierašanās laiku (ETA).', `Ja kavējaties: NESAZINIETIES ar klientu. Rakstiet mums WhatsApp – izvēlne ☰ augšā pa labi › ${WA}. Klientu informēsim mēs.`],
 }
+
+// NUME_CLIENT (07.11.2026): numele afişat clientului în mesajul cu ora de
+// sosire — [explicaţie sub câmp, mesaj când lipseşte]. Câmpul e obligatoriu.
+export const NUME_CLIENT = {
+  de: ['Wird dem Kunden in der Nachricht mit der Ankunftszeit angezeigt, z. B. „Markus W.“. Pflichtfeld.', 'Bitte zuerst den Namen eingeben, den der Kunde sehen soll.'],
+  en: ['Shown to the customer in the arrival-time message, e.g. “Markus W.”. Required.', 'Please enter the name the customer should see first.'],
+  ro: ['Apare la client în mesajul cu ora de sosire, de ex. „Markus W.”. Obligatoriu.', 'Introduceți mai întâi numele pe care îl vede clientul.'],
+  pl: ['Wyświetlane klientowi w wiadomości z godziną przyjazdu, np. „Markus W.”. Wymagane.', 'Najpierw wpisz imię, które ma zobaczyć klient.'],
+  bg: ['Показва се на клиента в съобщението с часа на пристигане, напр. „Markus W.“. Задължително.', 'Първо въведете името, което клиентът ще вижда.'],
+  hu: ['Az ügyfél látja az érkezési időről szóló üzenetben, pl. „Markus W.”. Kötelező.', 'Először adja meg a nevet, amelyet az ügyfél látni fog.'],
+  cs: ['Zobrazí se zákazníkovi ve zprávě s časem příjezdu, např. „Markus W.“. Povinné.', 'Nejprve zadejte jméno, které má zákazník vidět.'],
+  sk: ['Zobrazí sa zákazníkovi v správe s časom príchodu, napr. „Markus W.“. Povinné.', 'Najprv zadajte meno, ktoré má zákazník vidieť.'],
+  hr: ['Prikazuje se klijentu u poruci s vremenom dolaska, npr. „Markus W.”. Obavezno.', 'Najprije unesite ime koje će klijent vidjeti.'],
+  sr: ['Prikazuje se klijentu u poruci sa vremenom dolaska, npr. „Markus W.”. Obavezno.', 'Prvo unesite ime koje će klijent videti.'],
+  sl: ['Stranka ga vidi v sporočilu s časom prihoda, npr. »Markus W.«. Obvezno.', 'Najprej vnesite ime, ki ga bo videla stranka.'],
+  sq: ['I shfaqet klientit në mesazhin me orën e mbërritjes, p.sh. „Markus W.”. I detyrueshëm.', 'Së pari shkruani emrin që do të shohë klienti.'],
+  uk: ['Показується клієнту в повідомленні з часом прибуття, напр. «Markus W.». Обовʼязково.', 'Спочатку введіть імʼя, яке побачить клієнт.'],
+  ru: ['Показывается клиенту в сообщении со временем прибытия, напр. «Markus W.». Обязательно.', 'Сначала введите имя, которое увидит клиент.'],
+  tr: ['Varış saati mesajında müşteriye gösterilir, örn. „Markus W.”. Zorunlu.', 'Önce müşterinin göreceği adı girin.'],
+  it: ['Viene mostrato al cliente nel messaggio con l’orario di arrivo, ad es. «Markus W.». Obbligatorio.', 'Inserire prima il nome che vedrà il cliente.'],
+  es: ['Se muestra al cliente en el mensaje con la hora de llegada, p. ej. «Markus W.». Obligatorio.', 'Introduzca primero el nombre que verá el cliente.'],
+  fr: ['Affiché au client dans le message avec l’heure d’arrivée, p. ex. « Markus W. ». Obligatoire.', 'Saisissez d’abord le nom que verra le client.'],
+  pt: ['Mostrado ao cliente na mensagem com a hora de chegada, p. ex. «Markus W.». Obrigatório.', 'Introduza primeiro o nome que o cliente vai ver.'],
+  nl: ['Wordt aan de klant getoond in het bericht met de aankomsttijd, bv. „Markus W.”. Verplicht.', 'Vul eerst de naam in die de klant ziet.'],
+  el: ['Εμφανίζεται στον πελάτη στο μήνυμα με την ώρα άφιξης, π.χ. «Markus W.». Υποχρεωτικό.', 'Εισάγετε πρώτα το όνομα που θα βλέπει ο πελάτης.'],
+  lt: ['Rodomas klientui žinutėje su atvykimo laiku, pvz., „Markus W.“. Privaloma.', 'Pirmiausia įveskite vardą, kurį matys klientas.'],
+  lv: ['Tiek parādīts klientam ziņā ar ierašanās laiku, piem., “Markus W.”. Obligāti.', 'Vispirms ievadiet vārdu, ko redzēs klients.'],
+}

@@ -17,7 +17,7 @@ import { ZP_LIMBI, PLECARE_LIMBI, TRANSPORT_LIMBI, REGULI_LIMBI, RETUR_LIMBI, PO
 // Livrarea de documente, regulile noi (05.11.2026): cutia poştală numai cu
 // acelaşi nume de familie pe cutie şi pe plic, altfel dispeceratul. Înlocuiesc
 // paşii vechi în toate limbile, deci şi cardul comenzii arată la fel.
-import { PASI_ZUSTELLART_V2, ZP_PAGINA, RIDICARE_DOC, PLECARE_DOC, BOTE_FORMULAR, PLECARE_MARFA } from './livrareDocTraduceri.js'
+import { PASI_ZUSTELLART_V2, ZP_PAGINA, RIDICARE_DOC, PLECARE_DOC, BOTE_FORMULAR, PLECARE_MARFA, NUME_CLIENT } from './livrareDocTraduceri.js'
 Object.assign(PASI_ZUSTELLART, PASI_ZUSTELLART_V2)
 import './index.css'
 import PodFiles from './components/PodFiles'
@@ -6032,7 +6032,14 @@ function IncidentSheet({ order, leg, lang, driverId, blocking, onClose, onSaved 
 // din Google Directions — un apel de rute la fiecare deschidere ar readuce
 // exact problema de consum pe care încercăm s-o reducem. Prepopulăm din
 // fereastra programată a comenzii, iar șoferul ajustează.
-function EtaSheet({ order, leg, entry, lang, driverPhone, driverName, onClose, onSent }) {
+function EtaSheet({ order, leg, entry, lang, driverPhone, driverName, driverId, onClose, onSent }) {
+  // Numele pentru client e obligatoriu (07.11.2026): se completează aici dacă
+  // lipseşte şi se salvează în profil (drivers.display_name).
+  const [numeClient, setNumeClient] = useState(() => {
+    if (driverName) return driverName
+    try { return localStorage.getItem('zd-nume-client') || '' } catch { return '' }
+  })
+  const [limbaGhidEta] = useLimbaGhid(lang)
   // La o oprire de tur, intervalul programat, numărătoarea şi textul vin din
   // rândul opririi, nu din coloanele comenzii. `leg` e acolo id-ul opririi,
   // deci comparaţiile cu 'pickup' nu mai spun nimic despre felul etapei.
@@ -6089,7 +6096,17 @@ function EtaSheet({ order, leg, entry, lang, driverPhone, driverName, onClose, o
       setError(t('etaBadWindow', lang))
       return
     }
+    const nume = numeClient.trim()
+    if (!nume) {
+      setError((NUME_CLIENT[limbaGhidEta] || NUME_CLIENT.de)[1])
+      return
+    }
     setBusy(true)
+    if (nume !== (driverName || '') && driverId) {
+      const { error: eNume } = await supabase.from('drivers').update({ display_name: nume }).eq('id', driverId)
+      if (eNume) { setBusy(false); setError(eNume.message); return }
+      try { localStorage.setItem('zd-nume-client', nume) } catch { /* nimic */ }
+    }
     const { data, error: rpcErr } = await supabase.rpc('driver_send_eta', {
       p_order_id: order.id,
       p_leg: leg,
@@ -6153,12 +6170,16 @@ function EtaSheet({ order, leg, entry, lang, driverPhone, driverName, onClose, o
         </div>
 
         {/* Ce nume vede clientul (07.11.2026) — se schimbă în Profil › Kontakt. */}
-        {driverName && (
-          <div style={{ fontSize: 13, color: '#0F2240', margin: '-6px 0 12px', lineHeight: 1.45 }}>
-            {t('etaNameShown', lang)}: <b>{driverName}</b>
-            <div style={{ fontSize: 11.5, color: '#6B7A90' }}>{t('etaNameChange', lang)}</div>
+        <div style={{ margin: '-4px 0 14px' }}>
+          <label style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-soft)', display: 'block', marginBottom: 5 }}>
+            {t('displayNameLabel', lang)} <span style={{ color: '#B23A24' }}>*</span>
+          </label>
+          <input className="bid-input2" value={numeClient} onChange={(e) => setNumeClient(e.target.value)}
+            maxLength={40} autoComplete="name" placeholder="Markus W." style={{ width: '100%', margin: 0 }} />
+          <div style={{ fontSize: 11.5, color: '#6B7A90', marginTop: 4, lineHeight: 1.45 }}>
+            {(NUME_CLIENT[limbaGhidEta] || NUME_CLIENT.de)[0]}
           </div>
-        )}
+        </div>
 
         <div style={{ background: '#F6F8FA', borderRadius: 10, padding: '12px 14px', marginBottom: 16 }}>
           <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer' }}>
@@ -7874,7 +7895,8 @@ function LegWorkflow({ order, leg, legEntry, lang, startedAt, arrivedAt, onStatu
           entry={intrare}
           lang={lang}
           driverPhone={profile?.phone}
-          driverName={(profile?.display_name || '').trim() || profile?.name}
+          driverName={(profile?.display_name || '').trim()}
+          driverId={profile?.id}
           onClose={() => setEtaOpen(false)}
           onSent={(count) => {
             setEtaOpen(false)
@@ -11697,6 +11719,7 @@ function ProfileScreen({ session, profile, isOwner, lang, onChangeLang, onProfil
   // Numele afişat clientului în e-mailul cu ora de sosire (07.11.2026).
   // Gol → se foloseşte numele contului.
   const [numeClient, setNumeClient] = useState(profile?.display_name || '')
+  const [limbaGhid] = useLimbaGhid(lang)
   const [numeStare, setNumeStare] = useState(null)
 
   async function salveazaNumeClient() {
@@ -11708,6 +11731,7 @@ function ProfileScreen({ session, profile, isOwner, lang, onChangeLang, onProfil
       setNumeStare({ ok: false, msg: error.message })
     } else {
       setNumeStare({ ok: true, msg: t('displayNameSaved', lang) })
+      try { localStorage.setItem('zd-nume-client', numeClient.trim()) } catch { /* nimic */ }
       onProfileChange?.({ ...profile, display_name: numeClient.trim() || null })
     }
   }
@@ -11941,7 +11965,7 @@ function ProfileScreen({ session, profile, isOwner, lang, onChangeLang, onProfil
       <h3 className="settings-subheading">{t('profSecContact', lang)}</h3>
       <div style={{ margin: '10px 0 14px' }}>
         <label style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-soft)', display: 'block', marginBottom: 5 }}>
-          <User size={14} strokeWidth={1.8} /> {t('displayNameLabel', lang)}
+          <User size={14} strokeWidth={1.8} /> {t('displayNameLabel', lang)} <span style={{ color: '#B23A24' }}>*</span>
         </label>
         <div style={{ display: 'flex', gap: 7 }}>
           <input
@@ -11963,7 +11987,7 @@ function ProfileScreen({ session, profile, isOwner, lang, onChangeLang, onProfil
           </button>
         </div>
         <div style={{ fontSize: 11.5, marginTop: 4, color: numeStare && !numeStare.busy ? (numeStare.ok ? '#1B6E43' : '#B23A24') : 'var(--text-soft)', lineHeight: 1.45 }}>
-          {numeStare && !numeStare.busy ? numeStare.msg : t('displayNameHint', lang)}
+          {numeStare && !numeStare.busy ? numeStare.msg : (NUME_CLIENT[limbaGhid] || NUME_CLIENT.de)[0]}
         </div>
       </div>
       <div style={{ margin: '10px 0 14px' }}>

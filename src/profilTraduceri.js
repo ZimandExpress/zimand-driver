@@ -156,3 +156,32 @@ export function pt(limba, cheie) {
   const rand = T[limba] || T.de
   return (rand && rand[i]) || T.de[i] || cheie
 }
+
+// Pagina „Anleitungen” în limba instrucţiunilor (07.11.2026):
+// [titlu, introducere, link „deschide”, mesaj când nu s-au încărcat].
+const ANL = {
+  de: ['Anleitungen', 'So läuft jeder Auftrag richtig ab – von der Abfahrt bis zur Zustellung. Die passenden Schritte erscheinen auch automatisch beim Losfahren und bei der Ankunft.', 'Ausführliche Anleitung öffnen', 'Noch keine Anleitungen geladen. Bitte mit Internet erneut öffnen.'],
+  en: ['Instructions', 'How every order runs correctly – from departure to delivery. The matching steps also appear automatically when you set off and when you arrive.', 'Open detailed instructions', 'No instructions loaded yet. Please open again with internet.'],
+  ro: ['Instrucțiuni', 'Cum se desfășoară corect fiecare comandă – de la plecare până la livrare. Pașii potriviți apar și automat la plecare și la sosire.', 'Deschide instrucțiunile detaliate', 'Instrucțiunile nu s-au încărcat încă. Deschideți din nou cu internet.'],
+  pl: ['Instrukcje', 'Jak prawidłowo przebiega każde zlecenie – od wyjazdu do doręczenia. Odpowiednie kroki pojawiają się też automatycznie przy wyjeździe i na miejscu.', 'Otwórz szczegółową instrukcję', 'Instrukcje nie zostały jeszcze wczytane. Otwórz ponownie z internetem.'],
+  bg: ['Инструкции', 'Как протича правилно всяка поръчка – от тръгването до доставката. Съответните стъпки се появяват и автоматично при тръгване и при пристигане.', 'Отвори подробната инструкция', 'Инструкциите още не са заредени. Отворете отново с интернет.'],
+  hu: ['Útmutatók', 'Így zajlik helyesen minden megbízás – az indulástól a kézbesítésig. A megfelelő lépések induláskor és érkezéskor automatikusan is megjelennek.', 'Részletes útmutató megnyitása', 'Az útmutatók még nem töltődtek be. Nyissa meg újra internettel.'],
+  cs: ['Pokyny', 'Jak správně probíhá každá zakázka – od odjezdu po doručení. Příslušné kroky se zobrazí i automaticky při odjezdu a při příjezdu.', 'Otevřít podrobné pokyny', 'Pokyny se ještě nenačetly. Otevřete znovu s internetem.'],
+  sk: ['Pokyny', 'Ako správne prebieha každá zákazka – od odchodu po doručenie. Príslušné kroky sa zobrazia aj automaticky pri odchode a pri príchode.', 'Otvoriť podrobné pokyny', 'Pokyny sa ešte nenačítali. Otvorte znova s internetom.'],
+  hr: ['Upute', 'Kako ispravno teče svaki nalog – od polaska do dostave. Odgovarajući koraci pojavljuju se i automatski pri polasku i dolasku.', 'Otvori detaljne upute', 'Upute još nisu učitane. Otvorite ponovno s internetom.'],
+  sr: ['Uputstva', 'Kako ispravno teče svaki nalog – od polaska do isporuke. Odgovarajući koraci se pojavljuju i automatski pri polasku i dolasku.', 'Otvori detaljna uputstva', 'Uputstva još nisu učitana. Otvorite ponovo sa internetom.'],
+  sl: ['Navodila', 'Kako pravilno poteka vsako naročilo – od odhoda do dostave. Ustrezni koraki se prikažejo tudi samodejno ob odhodu in prihodu.', 'Odpri podrobna navodila', 'Navodila še niso naložena. Odprite znova z internetom.'],
+  sq: ['Udhëzime', 'Si zhvillohet saktë çdo porosi – nga nisja deri te dorëzimi. Hapat përkatës shfaqen edhe automatikisht në nisje dhe në mbërritje.', 'Hap udhëzimet e hollësishme', 'Udhëzimet nuk janë ngarkuar ende. Hapeni përsëri me internet.'],
+  uk: ['Інструкції', 'Як правильно виконується кожне замовлення – від виїзду до доставки. Потрібні кроки також зʼявляються автоматично під час виїзду та прибуття.', 'Відкрити докладну інструкцію', 'Інструкції ще не завантажено. Відкрийте знову з інтернетом.'],
+  ru: ['Инструкции', 'Как правильно выполняется каждый заказ – от выезда до доставки. Нужные шаги также появляются автоматически при выезде и по прибытии.', 'Открыть подробную инструкцию', 'Инструкции ещё не загружены. Откройте снова с интернетом.'],
+  tr: ['Talimatlar', 'Her sipariş nasıl doğru yürür – yola çıkıştan teslimata kadar. İlgili adımlar yola çıkarken ve varışta otomatik olarak da görünür.', 'Ayrıntılı talimatı aç', 'Talimatlar henüz yüklenmedi. Lütfen internetle tekrar açın.'],
+  it: ['Istruzioni', 'Come si svolge correttamente ogni ordine – dalla partenza alla consegna. I passi giusti compaiono anche automaticamente alla partenza e all’arrivo.', 'Apri le istruzioni dettagliate', 'Istruzioni non ancora caricate. Riapri con internet.'],
+  es: ['Instrucciones', 'Cómo se realiza correctamente cada pedido – desde la salida hasta la entrega. Los pasos correspondientes también aparecen automáticamente al salir y al llegar.', 'Abrir instrucciones detalladas', 'Las instrucciones aún no se han cargado. Vuelve a abrir con internet.'],
+  fr: ['Instructions', 'Comment chaque commande se déroule correctement – du départ à la livraison. Les étapes correspondantes s’affichent aussi automatiquement au départ et à l’arrivée.', 'Ouvrir les instructions détaillées', 'Instructions pas encore chargées. Rouvrez avec internet.'],
+  pt: ['Instruções', 'Como cada encomenda decorre corretamente – da partida à entrega. Os passos certos também aparecem automaticamente ao partir e ao chegar.', 'Abrir instruções detalhadas', 'As instruções ainda não foram carregadas. Abra novamente com internet.'],
+  nl: ['Instructies', 'Zo verloopt elke opdracht goed – van vertrek tot levering. De juiste stappen verschijnen ook automatisch bij vertrek en aankomst.', 'Uitgebreide instructie openen', 'Nog geen instructies geladen. Open opnieuw met internet.'],
+  el: ['Οδηγίες', 'Πώς εκτελείται σωστά κάθε παραγγελία – από την αναχώρηση ως την παράδοση. Τα σχετικά βήματα εμφανίζονται και αυτόματα στην αναχώρηση και στην άφιξη.', 'Άνοιγμα αναλυτικών οδηγιών', 'Οι οδηγίες δεν έχουν φορτωθεί ακόμη. Ανοίξτε ξανά με internet.'],
+  lt: ['Instrukcijos', 'Kaip teisingai vykdomas kiekvienas užsakymas – nuo išvykimo iki pristatymo. Tinkami žingsniai taip pat automatiškai parodomi išvykstant ir atvykus.', 'Atidaryti išsamią instrukciją', 'Instrukcijos dar neįkeltos. Atidarykite iš naujo su internetu.'],
+  lv: ['Instrukcijas', 'Kā pareizi norit katrs pasūtījums – no izbraukšanas līdz piegādei. Atbilstošie soļi parādās arī automātiski, izbraucot un ierodoties.', 'Atvērt detalizētu instrukciju', 'Instrukcijas vēl nav ielādētas. Atveriet vēlreiz ar internetu.'],
+}
+export function anl(limba, i) { return (ANL[limba] || ANL.de)[i] }

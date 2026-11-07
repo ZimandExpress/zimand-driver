@@ -17,7 +17,7 @@ import { ZP_LIMBI, PLECARE_LIMBI, TRANSPORT_LIMBI, REGULI_LIMBI, RETUR_LIMBI, PO
 // Livrarea de documente, regulile noi (05.11.2026): cutia poştală numai cu
 // acelaşi nume de familie pe cutie şi pe plic, altfel dispeceratul. Înlocuiesc
 // paşii vechi în toate limbile, deci şi cardul comenzii arată la fel.
-import { pt } from './profilTraduceri.js'
+import { pt, anl } from './profilTraduceri.js'
 import { PASI_ZUSTELLART_V2, ZP_PAGINA, RIDICARE_DOC, PLECARE_DOC, BOTE_FORMULAR, PLECARE_MARFA, NUME_CLIENT } from './livrareDocTraduceri.js'
 Object.assign(PASI_ZUSTELLART, PASI_ZUSTELLART_V2)
 import './index.css'
@@ -1021,6 +1021,7 @@ function initialeMeniu(nume) {
 }
 
 function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) {
+  const [limbaMeniu] = useLimbaGhid(lang)
   // Platforma Zimand Software: în antet numele firmei şoferului (nu „Zimand Driver”).
   const brandFirma = useBrandFirma(MULTI_TENANT ? codFirmaSalvat() : '')
   const numeAplicatie = MULTI_TENANT ? (brandFirma?.name || 'Zimand Driver') : 'Zimand Express'
@@ -1626,7 +1627,7 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
         {tab === 'castiguri' && isOwner && <EarningsScreen profile={profile} lang={lang} />}
         {tab === 'fahrzeuge' && <VehiclesScreen session={session} isOwner={isOwner} lang={lang} />}
         {tab === 'legenda' && <LegendaScreen lang={lang} />}
-        {tab === 'anleitungen' && <AnleitungenScreen lang={lang} />}
+        {tab === 'anleitungen' && !MULTI_TENANT && <AnleitungenScreen lang={lang} />}
         {tab === 'profil' && (
           <ProfileScreen
             session={session}
@@ -1693,9 +1694,13 @@ function DriverShell({ session, profile, onProfileChange, lang, onChangeLang }) 
               sus rămân numai cele patru ecrane de lucru. */}
           <div style={{ marginTop: 'auto' }}>
           <div className="menu-group-title">{t('menuGroupAccountHelp', lang)}</div>
-          <button className={`menu-item mic ${tab === 'anleitungen' ? 'active' : ''}`} onClick={() => navTo('anleitungen')}>
-            <span className="ic"><ClipboardList size={17} strokeWidth={1.75} /></span>{t('menuGuides', lang)}
-          </button>
+          {/* Firmele de pe platforma Zimand Software nu au deocamdată
+              „Anleitungen” (07.11.2026). */}
+          {!MULTI_TENANT && (
+            <button className={`menu-item mic ${tab === 'anleitungen' ? 'active' : ''}`} onClick={() => navTo('anleitungen')}>
+              <span className="ic"><ClipboardList size={17} strokeWidth={1.75} /></span>{anl(limbaMeniu, 0)}
+            </button>
+          )}
           <button className={`menu-item mic ${tab === 'fahrzeuge' ? 'active' : ''}`} onClick={() => navTo('fahrzeuge')}>
             <span className="ic"><Truck size={17} strokeWidth={1.75} /></span>{t('menuVehicles', lang)}
           </button>
@@ -10097,21 +10102,33 @@ function GhidSheet({ ghiduri, faza, lang, onClose, cuBote = true, sarcina = null
 }
 
 // Ecranul din meniu: toate instrucţiunile, cu toate fazele, oricând.
+// Pagina „Anleitungen" în limba instrucţiunilor (07.11.2026), cu aceleaşi
+// texte ca ferestrele din comandă (inclusiv plecarea la documente / marfă).
 function AnleitungenScreen({ lang }) {
   const ghiduri = useDriverGuides()
   const [deschis, setDeschis] = useState(null)
+  const [limba] = useLimbaGhid(lang)
   const faze = ['start', 'pickup', 'delivery']
+  const ui = (cheie, cheieT) => (GHID_UI[limba] && GHID_UI[limba][cheie]) || t(cheieT, limba === 'en' ? 'en' : 'de')
+  const pasiPentru = (g, f) => {
+    if (g.key === 'doc_standard' && f === 'start') {
+      const p = PLECARE_DOC[limba] || PLECARE_DOC.de
+      return [p[0], p[1]]
+    }
+    if (g.key === 'ware' && f === 'start') return PLECARE_MARFA[limba] || PLECARE_MARFA.de
+    return ghidInLimba(g, f, limba).pasi || []
+  }
   return (
     <div style={{ padding: '4px 2px 28px' }}>
-      <h2 className="screen-title">{t('menuGuides', lang)}</h2>
-      <p style={{ fontSize: 13.5, color: 'var(--text-soft)', margin: '0 0 14px', lineHeight: 1.5 }}>{t('guidesIntro', lang)}</p>
-      {ghiduri.length === 0 && <div className="empty-note">{t('guidesEmpty', lang)}</div>}
+      <h2 className="screen-title">{anl(limba, 0)}</h2>
+      <p style={{ fontSize: 13.5, color: 'var(--text-soft)', margin: '0 0 14px', lineHeight: 1.5 }}>{anl(limba, 1)}</p>
+      {ghiduri.length === 0 && <div className="empty-note">{anl(limba, 3)}</div>}
       {ghiduri.map((g) => {
         const e = deschis === g.key
         return (
           <div key={g.key} className="ghid-card">
             <button type="button" className="ghid-card-head" onClick={() => setDeschis(e ? null : g.key)} aria-expanded={e}>
-              <span style={{ flex: 1 }}>{titluGhid(g, lang)}</span>
+              <span style={{ flex: 1 }}>{ghidInLimba(g, 'start', limba).titlu}</span>
               {g.video_url && <Play size={15} strokeWidth={2.2} style={{ color: '#C2551A' }} />}
               <ChevronDown size={18} strokeWidth={2} style={{ transform: e ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }} />
             </button>
@@ -10119,16 +10136,16 @@ function AnleitungenScreen({ lang }) {
               <div className="ghid-card-body">
                 <VideoGhid url={g.video_url} lang={lang} />
                 {faze.map((f) => {
-                  const pasi = pasiGhid(g, f, lang)
+                  const pasi = pasiPentru(g, f)
                   if (!pasi.length) return null
                   return (
                     <div key={f} style={{ marginBottom: 10 }}>
-                      <div className="ghid-faza">{t(f === 'start' ? 'guidePhaseStart' : f === 'pickup' ? 'guidePhasePickup' : 'guidePhaseDelivery', lang)}</div>
+                      <div className="ghid-faza">{ui(f === 'start' ? 'phaseStart' : f === 'pickup' ? 'phasePickup' : 'phaseDelivery', f === 'start' ? 'guidePhaseStart' : f === 'pickup' ? 'guidePhasePickup' : 'guidePhaseDelivery')}</div>
                       <ol className="ghid-pasi">{pasi.map((p, i) => <li key={i}>{p}</li>)}</ol>
                     </div>
                   )
                 })}
-                {g.url && <a className="ghid-link" href={g.url} target="_blank" rel="noreferrer">{t('guideOpen', lang)} ↗</a>}
+                {g.url && <a className="ghid-link" href={g.url} target="_blank" rel="noreferrer">{anl(limba, 2)} ↗</a>}
               </div>
             )}
           </div>
